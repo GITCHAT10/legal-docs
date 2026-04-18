@@ -15,15 +15,17 @@ services:
       - BFI_URL=http://bfi:8000
       - REDIS_HOST=redis
     depends_on:
-      - redis
       - eleone
       - shadow
+      - svd
+      - sal
+      - bfi
+      - redis
 
-  event-worker:
+  gateway-worker:
     build:
       context: .
-      dockerfile: Dockerfile.gateway
-    command: ["python", "event_worker.py"]
+      dockerfile: Dockerfile.gateway-worker
     environment:
       - REDIS_HOST=redis
     depends_on:
