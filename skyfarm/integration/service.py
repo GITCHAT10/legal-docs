@@ -3,7 +3,7 @@ import hashlib
 import json
 import os
 from datetime import datetime, timezone, timedelta
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 from pydantic import BaseModel, Field
 import uuid
 
@@ -23,9 +23,12 @@ class IntegrationPayload(BaseModel):
     data: Dict[str, Any]
     signature: str = ""
 
-def generate_canonical_string(method: str, path: str, timestamp: str, request_id: str, body: Dict[str, Any]) -> str:
-    body_json = json.dumps(body, sort_keys=True)
-    body_hash = hashlib.sha256(body_json.encode()).hexdigest()
+def generate_canonical_string(method: str, path: str, timestamp: str, request_id: str, body: Union[Dict[str, Any], bytes]) -> str:
+    if isinstance(body, bytes):
+        body_hash = hashlib.sha256(body).hexdigest()
+    else:
+        body_json = json.dumps(body, sort_keys=True)
+        body_hash = hashlib.sha256(body_json.encode()).hexdigest()
     return f"{method.upper()}\n{path}\n{timestamp}\n{request_id}\n{body_hash}"
 
 def sign_payload_canonical(canonical_string: str, secret: str) -> str:
@@ -38,8 +41,7 @@ def create_integration_event(tenant_id: str, event_type: str, data: Dict[str, An
         type=event_type,
         data=data
     )
-    # Note: In actual transmission, we'll sign with proper method/path
-    # For now, we sign the payload data to keep it consistent
+    # Legacy body-based signature for internal storage/refs
     payload.signature = hmac.new(SECRET_KEY.encode(), json.dumps(payload.model_dump(exclude={"signature"}), sort_keys=True).encode(), hashlib.sha256).hexdigest()
     return payload
 
@@ -49,7 +51,7 @@ def verify_signature_v2(
     path: str,
     timestamp: str,
     request_id: str,
-    body: Dict[str, Any],
+    body: Union[Dict[str, Any], bytes],
     secret: str
 ) -> bool:
     # 1. Timestamp validation (5 mins)

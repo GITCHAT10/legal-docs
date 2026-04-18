@@ -1,15 +1,13 @@
-from fastapi import FastAPI, HTTPException, Request, Header
+from fastapi import FastAPI, HTTPException, Request, Header, Depends
 from .security import verify_signature_v2, SECRET_KEY
+from .database import get_mnos_db, EventLogModel, IdempotencyRegistryModel
+from sqlalchemy.orm import Session
 from typing import Optional
 import json
 import hashlib
-import os
+from datetime import datetime
 
 app = FastAPI(title="MNOS Gateway Mock")
-
-# Simple audit log and idempotency registry
-audit_log = []
-idempotency_registry = {} # key -> {body_hash, response}
 
 @app.post("/mnos/integration/v1/partners/register")
 async def register_partner(request: Request):
@@ -29,14 +27,12 @@ async def receive_event(
     x_request_id: str = Header(...),
     x_idempotency_key: str = Header(...),
     x_signature: str = Header(...),
-    x_timestamp: str = Header(...)
+    x_timestamp: str = Header(...),
+    db: Session = Depends(get_mnos_db)
 ):
     body_bytes = await request.body()
 
     # Verify signature v2 (Canonical String)
-    # Logging for debugging simulation
-    # print(f"DEBUG MNOS: Validating signature for {x_request_id}")
-
     if not verify_signature_v2(
         signature=x_signature,
         method="POST",
@@ -46,18 +42,22 @@ async def receive_event(
         body_bytes=body_bytes,
         secret=SECRET_KEY
     ):
-        return {
-            "success": False,
-            "request_id": x_request_id,
-            "error": {"code": "SIGNATURE_INVALID", "message": "Signature verification failed"}
-        }
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "success": False,
+                "request_id": x_request_id,
+                "error": {"code": "SIGNATURE_INVALID", "message": "Signature verification failed"}
+            }
+        )
 
-    # Deterministic Idempotency check using SHA256
+    # Deterministic Idempotency check using SHA256 in DB
     body_hash = hashlib.sha256(body_bytes).hexdigest()
-    if x_idempotency_key in idempotency_registry:
-        entry = idempotency_registry[x_idempotency_key]
-        if entry["body_hash"] == body_hash:
-            return entry["response"]
+    idem_entry = db.query(IdempotencyRegistryModel).filter(IdempotencyRegistryModel.key == x_idempotency_key).first()
+
+    if idem_entry:
+        if idem_entry.body_hash == body_hash:
+            return idem_entry.response_json
         else:
             raise HTTPException(status_code=409, detail="Idempotency key conflict")
 
@@ -71,11 +71,23 @@ async def receive_event(
         }
     }
 
-    idempotency_registry[x_idempotency_key] = {
-        "body_hash": body_hash,
-        "response": response
-    }
-    audit_log.append(json.loads(body_bytes))
+    # Persist Event
+    new_event = EventLogModel(
+        id=f"mnev_{x_idempotency_key[:8]}",
+        payload=json.loads(body_bytes),
+        status="ingested"
+    )
+    db.add(new_event)
+
+    # Persist Idempotency
+    new_idem = IdempotencyRegistryModel(
+        key=x_idempotency_key,
+        body_hash=body_hash,
+        response_json=response
+    )
+    db.add(new_idem)
+
+    db.commit()
     return response
 
 @app.get("/mnos/integration/v1/health")

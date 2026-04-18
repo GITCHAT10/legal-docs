@@ -15,26 +15,36 @@ def run_simulation():
     tenant_id = "sf_maldives_001"
     secret = "production_ready_secret"
 
-    # 1. Marine: Fish Intake
-    print("\n[Marine] Logging Fish Intake...")
+    # 1. Marine: Fish Intake (Valid)
+    print("\n[Marine] Logging Valid Fish Intake...")
     catch_data = {"vessel_id": "v123", "species": "Yellowfin Tuna", "weight": 52.5, "location": "Zone 4", "tenant_id": tenant_id}
     resp = requests.post(f"{SKYFARM_URL}/api/v1/marine/catch", json=catch_data)
     catch = resp.json()
     print(f"Result: {catch}")
 
-    # 2. Agri: Harvest
-    print("\n[Agri] Logging Farm Harvest...")
-    harvest_data = {"facility_id": "f456", "crop_type": "Lettuce", "quantity": 100, "unit": "kg", "tenant_id": tenant_id}
-    resp = requests.post(f"{SKYFARM_URL}/api/v1/agri/harvest", json=harvest_data)
-    harvest = resp.json()
-    print(f"Result: {harvest}")
+    # 2. Marine: Fish Intake (Invalid Temp - EPIC 3)
+    print("\n[Marine] Logging Invalid Fish Intake (High Temp)...")
+    bad_catch_data = {**catch_data, "temperature_c": 5.5}
+    resp = requests.post(f"{SKYFARM_URL}/api/v1/marine/catch", json=bad_catch_data)
+    print(f"Response: {resp.status_code} - {resp.json()}")
 
-    # 3. Direct Integration Sync (to show hardening and canonical signing)
-    print("\n[Integration] Syncing Events to MNOS via Integration Router...")
+    # 3. Finance: Generate Invoice (EPIC 2)
+    print("\n[Finance] Generating Invoice (Maldives Pricing)...")
+    inv_req = {"base_price": 1000.0, "reference_id": catch["id"]}
+    resp = requests.post(f"{SKYFARM_URL}/api/v1/finance/invoice/generate", json=inv_req)
+    invoice = resp.json()
+    print(f"Invoice: {invoice}")
 
+    # 4. Finance: Create Payout (EPIC 2)
+    print("\n[Finance] Creating Payout Batch...")
+    pay_req = {"amount": 5000.0, "tenant_id": tenant_id}
+    resp = requests.post(f"{SKYFARM_URL}/api/v1/finance/payout/create", json=pay_req)
+    print(f"Payout Result: {resp.json()}")
+
+    # 5. Integration: Direct Sync with Canonical Signing (EPIC 1)
+    print("\n[Integration] Syncing Event to MNOS with Canonical Signing...")
     event_id = f"evt_{uuid.uuid4().hex}"
     idem_key = f"idem_{uuid.uuid4().hex}"
-    # Ensure timestamp has no microseconds and ends with Z for simplicity, or just use isoformat
     timestamp = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
     request_id = str(uuid.uuid4())
 
@@ -64,12 +74,11 @@ def run_simulation():
         "Content-Type": "application/json"
     }
 
-    print(f"Sending signed event to MNOS (X-Request-Id: {request_id})...")
     resp = requests.post(f"{MNOS_URL}{path}", data=body_bytes, headers=headers)
     print(f"MNOS Response: {resp.json()}")
 
-    # 4. Test Idempotency
-    print("\n[Integration] Testing Idempotency (Sending same request again)...")
+    # 6. Test Idempotency
+    print("\n[Integration] Testing Idempotency...")
     resp = requests.post(f"{MNOS_URL}{path}", data=body_bytes, headers=headers)
     print(f"MNOS Idempotency Response: {resp.json()}")
 

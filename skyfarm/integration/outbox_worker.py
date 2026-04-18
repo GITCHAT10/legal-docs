@@ -5,23 +5,32 @@ import requests
 import uuid
 import os
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 MNOS_URL = os.getenv("MNOS_URL", "http://localhost:8000")
 
 def process_outbox(db: Session):
-    """Simple synchronous outbox processor for MVP/Sprint 1"""
-    pending_events = db.query(IntegrationOutboxModel).filter(IntegrationOutboxModel.status == "pending").all()
+    """Outbox processor with retry backoff and dead-letter system"""
+    now = datetime.utcnow()
+    pending_events = db.query(IntegrationOutboxModel).filter(
+        IntegrationOutboxModel.status.in_(["pending", "failed"]),
+        IntegrationOutboxModel.next_attempt_at <= now,
+        IntegrationOutboxModel.attempt_count < 4
+    ).all()
 
     for entry in pending_events:
         try:
             method = "POST"
             path = "/mnos/integration/v1/events"
-            timestamp = datetime.now(timezone.utc).isoformat()
+            timestamp = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
             request_id = str(uuid.uuid4())
 
+            # Use exact body bytes for signing and transmission
+            body_json = json.dumps(entry.payload_json, sort_keys=True)
+            body_bytes = body_json.encode()
+
             # Use canonical signing format
-            canonical = generate_canonical_string(method, path, timestamp, request_id, entry.payload_json)
+            canonical = generate_canonical_string(method, path, timestamp, request_id, body_bytes)
             signature = sign_payload_canonical(canonical, SECRET_KEY)
 
             headers = {
@@ -32,24 +41,32 @@ def process_outbox(db: Session):
                 "Content-Type": "application/json"
             }
 
-            resp = requests.post(f"{MNOS_URL}{path}", json=entry.payload_json, headers=headers, timeout=(2, 5))
+            resp = requests.post(f"{MNOS_URL}{path}", data=body_bytes, headers=headers, timeout=(2, 5))
 
             if 200 <= resp.status_code < 300:
                 entry.status = "sent"
             else:
-                entry.status = "failed"
-                entry.last_error = f"MNOS Error: {resp.status_code} - {resp.text}"
+                handle_failure(entry, f"MNOS Error: {resp.status_code} - {resp.text}")
 
             entry.attempt_count += 1
             db.commit()
         except Exception as e:
-            entry.status = "failed"
-            entry.last_error = str(e)
+            handle_failure(entry, str(e))
             entry.attempt_count += 1
             db.commit()
 
+def handle_failure(entry, error_msg):
+    entry.status = "failed"
+    entry.last_error = error_msg
+
+    # Backoff logic: 15s, 60s, 5m, 15m
+    backoffs = [15, 60, 300, 900]
+    if entry.attempt_count < len(backoffs):
+        entry.next_attempt_at = datetime.utcnow() + timedelta(seconds=backoffs[entry.attempt_count])
+    else:
+        entry.status = "dead_letter"
+
 def run_worker_loop(db_session_factory):
-    """Conceptual loop for a real worker process"""
     import time
     while True:
         db = db_session_factory()

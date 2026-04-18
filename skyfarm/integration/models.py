@@ -8,9 +8,10 @@ class IntegrationOutboxModel(Base):
     event_id = Column(String, unique=True, index=True)
     event_type = Column(String)
     payload_json = Column(JSON)
-    status = Column(String, default="pending") # pending, sent, failed
+    status = Column(String, default="pending") # pending, sent, failed, dead_letter
     attempt_count = Column(Integer, default=0)
     last_error = Column(String, nullable=True)
     idempotency_key = Column(String, index=True)
+    next_attempt_at = Column(DateTime, default=datetime.utcnow)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

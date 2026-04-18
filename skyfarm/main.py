@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from skyfarm.database import engine, Base
+from skyfarm.database import engine, Base, SessionLocal
 import skyfarm.identity.models
 import skyfarm.marine.models
 import skyfarm.agri.models
@@ -8,6 +8,9 @@ import skyfarm.finance.models
 import skyfarm.trace.models
 import skyfarm.restaurant.models
 import skyfarm.integration.models
+import threading
+from skyfarm.integration.outbox_worker import process_outbox
+import time
 
 # Create tables
 Base.metadata.create_all(bind=engine)
@@ -27,6 +30,23 @@ app.include_router(logistics_router)
 app.include_router(finance_router)
 app.include_router(trace_router)
 app.include_router(integration_router)
+
+# Background Worker Thread
+def start_worker():
+    while True:
+        db = SessionLocal()
+        try:
+            process_outbox(db)
+        except Exception as e:
+            print(f"Worker Error: {e}")
+        finally:
+            db.close()
+        time.sleep(5) # Poll every 5 seconds for simulation
+
+@app.on_event("startup")
+async def startup_event():
+    thread = threading.Thread(target=start_worker, daemon=True)
+    thread.start()
 
 @app.get("/")
 def read_root():
