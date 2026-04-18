@@ -20,7 +20,7 @@ metrics = {
 }
 
 def process_outbox(db: Session):
-    """Outbox processor with Phase 3 retry backoff and dead-letter system"""
+    """Outbox processor with Phase 5 retry logic and Phase 3 error visibility"""
     now = datetime.utcnow()
     pending_events = db.query(IntegrationOutboxModel).filter(
         IntegrationOutboxModel.status.in_(["pending", "failed"]),
@@ -53,20 +53,20 @@ def process_outbox(db: Session):
             if entry.attempt_count > 0:
                 metrics["retry_count"] += 1
 
-            # Phase 2: Timeouts
+            # Phase 2: Mandatory timeout
             resp = requests.post(f"{MNOS_URL}{path}", data=body_bytes, headers=headers, timeout=(2, 5))
 
             if 200 <= resp.status_code < 300:
                 entry.status = "sent"
                 metrics["success_count"] += 1
             else:
-                # Phase 3: Handle Retryable vs Non-Retryable
-                # Retry on: 408, 429, 5xx, timeout
-                if resp.status_code in [408, 429] or resp.status_code >= 500:
+                # Phase 5: Implement 15s -> 60s -> 300s retry rules
+                # Retry on: timeout (caught below), 5xx, connection error (caught below)
+                if resp.status_code >= 500 or resp.status_code == 408:
                      error_msg = f"Retryable MNOS Error: {resp.status_code}"
                      handle_failure(entry, error_msg)
                 else:
-                     # Non-retryable (400, 401, 403, 409, 422) -> Move to DLQ immediately or just fail
+                     # Non-retryable
                      entry.status = "failed"
                      entry.last_error = f"Permanent MNOS Error: {resp.status_code} - {resp.text}"
 
@@ -76,27 +76,31 @@ def process_outbox(db: Session):
             metrics["last_processed_at"] = datetime.now(timezone.utc).isoformat()
             db.commit()
         except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+            # Phase 5: Retry on timeout or connection error
             handle_failure(entry, f"Network/Timeout Error: {str(e)}")
             metrics["failure_count"] += 1
             entry.attempt_count += 1
             db.commit()
         except Exception as e:
+            # Phase 3: No silent failures in the worker
             entry.status = "failed"
             entry.last_error = f"System Error: {str(e)}"
             metrics["failure_count"] += 1
             entry.attempt_count += 1
             db.commit()
+            # In a worker, we might not want to re-raise if we want to continue with next entries,
+            # but we log it as failed in DB.
 
 def handle_failure(entry, error_msg):
     entry.status = "failed"
     entry.last_error = error_msg
 
-    # Phase 3: Exponential backoff (15s, 1m, 5m, 15m)
-    backoffs = [15, 60, 300, 900]
+    # Phase 5: Retry delays (15s, 60s, 300s)
+    backoffs = [15, 60, 300]
     if entry.attempt_count < len(backoffs):
         entry.next_attempt_at = datetime.utcnow() + timedelta(seconds=backoffs[entry.attempt_count])
     else:
-        entry.status = "dead_letter"
+        entry.status = "failed" # Final failure state after all retries
         metrics["dead_letter_count"] += 1
 
 def run_worker_loop(db_session_factory):

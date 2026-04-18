@@ -56,28 +56,22 @@ def send_to_mnos(payload: IntegrationSend):
     }
 
     try:
-        # Phase 2: 2s connect, 5s read timeout
+        # Phase 2: Mandatory timeout (2s connect, 5s read)
         resp = requests.post(endpoint, data=body_bytes, headers=headers, timeout=(2, 5))
 
-        # Phase 2: Proper response validation
-        if not (200 <= resp.status_code < 300):
+        # Phase 2: Proper response status code check
+        if resp.status_code >= 400:
              raise HTTPException(
                 status_code=resp.status_code,
-                detail={
-                    "success": False,
-                    "message": "MNOS_INTEGRATION_ERROR",
-                    "upstream_status": resp.status_code,
-                    "upstream_error": resp.json() if resp.headers.get("Content-Type") == "application/json" else resp.text
-                }
+                detail=f"MNOS error: {resp.text}"
             )
 
         return resp.json()
-    except requests.exceptions.Timeout:
-        raise HTTPException(status_code=504, detail={"success": False, "message": "MNOS_GATEWAY_TIMEOUT"})
     except Exception as e:
+        # Phase 3: No silent failures
         if isinstance(e, HTTPException):
             raise e
-        raise HTTPException(status_code=500, detail={"success": False, "message": f"INTEGRATION_FAILURE: {str(e)}"})
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/metrics", response_model=MetricsResponse)
 def metrics():

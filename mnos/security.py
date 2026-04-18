@@ -4,9 +4,8 @@ import json
 import os
 from datetime import datetime, timezone
 
-SECRET_KEY = os.getenv("MNOS_INTEGRATION_SECRET")
-if not SECRET_KEY:
-    raise RuntimeError("CRITICAL: MNOS_INTEGRATION_SECRET is missing. Boot failed.")
+# Phase 1: Mandatory secret handling. App will fail if env var is missing.
+SECRET_KEY = os.environ["MNOS_INTEGRATION_SECRET"]
 
 def generate_canonical_string(method: str, path: str, timestamp: str, request_id: str, body_bytes: bytes) -> str:
     body_hash = hashlib.sha256(body_bytes).hexdigest()
@@ -34,3 +33,12 @@ def verify_signature_v2(
     expected_signature = hmac.new(secret.encode(), expected_canonical.encode(), hashlib.sha256).hexdigest()
 
     return hmac.compare_digest(signature, expected_signature)
+
+# Legacy support
+def verify_signature(payload: dict, secret: str) -> bool:
+    if "signature" not in payload:
+        return False
+    data_to_sign = {k: v for k, v in payload.items() if k != 'signature'}
+    message = json.dumps(data_to_sign, sort_keys=True)
+    expected_signature = hmac.new(secret.encode(), message.encode(), hashlib.sha256).hexdigest()
+    return hmac.compare_digest(payload["signature"], expected_signature)
