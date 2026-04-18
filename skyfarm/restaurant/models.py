@@ -9,11 +9,3 @@ class RestaurantOrderModel(Base):
     items_json = Column(JSON)
     total_amount = Column(Float)
     timestamp = Column(DateTime, default=datetime.utcnow)
-
-class RetailSaleModel(Base):
-    __tablename__ = "retail_sales"
-    id = Column(String, primary_key=True, index=True)
-    store_id = Column(String)
-    items_json = Column(JSON)
-    total_amount = Column(Float)
-    timestamp = Column(DateTime, default=datetime.utcnow)

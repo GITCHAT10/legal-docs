@@ -7,6 +7,7 @@ import skyfarm.logistics.models
 import skyfarm.finance.models
 import skyfarm.trace.models
 import skyfarm.restaurant.models
+import skyfarm.retail.models
 import skyfarm.integration.models
 import threading
 from skyfarm.integration.outbox_worker import process_outbox
@@ -20,6 +21,8 @@ from skyfarm.agri.router import router as agri_router
 from skyfarm.logistics.router import router as logistics_router
 from skyfarm.finance.router import router as finance_router
 from skyfarm.trace.router import router as trace_router
+from skyfarm.restaurant.router import router as restaurant_router
+from skyfarm.retail.router import router as retail_router
 from skyfarm.integration.router import router as integration_router
 
 app = FastAPI(title="SKYFARM API Gateway")
@@ -29,6 +32,8 @@ app.include_router(agri_router)
 app.include_router(logistics_router)
 app.include_router(finance_router)
 app.include_router(trace_router)
+app.include_router(restaurant_router)
+app.include_router(retail_router)
 app.include_router(integration_router)
 
 # Background Worker Thread

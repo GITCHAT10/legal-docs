@@ -1,22 +1,11 @@
-from pydantic import BaseModel
+from sqlalchemy import Column, String, Float, DateTime, JSON
+from skyfarm.database import Base
 from datetime import datetime
-from typing import List
 
-class SaleItem(BaseModel):
-    product_id: str
-    quantity: float
-    price: float
-
-class RetailSale(BaseModel):
-    id: str
-    store_id: str
-    items: List[SaleItem]
-    total_amount: float
-    timestamp: datetime = datetime.now()
-
-# In-memory storage
-sales = {}
-
-def record_sale(sale: RetailSale):
-    sales[sale.id] = sale
-    return sale
+class RetailSaleModel(Base):
+    __tablename__ = "retail_sales"
+    id = Column(String, primary_key=True, index=True)
+    store_id = Column(String)
+    items_json = Column(JSON)
+    total_amount = Column(Float)
+    timestamp = Column(DateTime, default=datetime.utcnow)
