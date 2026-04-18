@@ -12,8 +12,8 @@ class TestSkyfarm(unittest.TestCase):
 
     def test_integration_signing(self):
         data = {"batch_id": "b1", "status": "harvested"}
-        payload = create_integration_event("evt1", "tenant1", "PRODUCTION", data)
-        # Use model_dump for Pydantic v2
+        # create_integration_event(tenant_id, event_type, data, event_id=None)
+        payload = create_integration_event("tenant1", "PRODUCTION", data, event_id="evt1")
         self.assertTrue(verify_signature(payload.model_dump(), SECRET_KEY))
 
         # Test invalid signature

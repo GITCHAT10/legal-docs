@@ -1,46 +1,76 @@
 import hmac
 import hashlib
 import json
-import time
 import os
-from datetime import datetime, timezone
-from typing import Any, Dict
-from pydantic import BaseModel
+from datetime import datetime, timezone, timedelta
+from typing import Any, Dict, Optional
+from pydantic import BaseModel, Field
+import uuid
 
-SECRET_KEY = os.getenv("SKYFARM_INTEGRATION_SECRET", "skyfarm_mnos_secret_key")
+# Enforce secret in production, fail boot if missing
+SECRET_KEY = os.getenv("SKYFARM_INTEGRATION_SECRET")
+if not SECRET_KEY:
+    if os.getenv("SKYFARM_ENV") != "dev":
+         raise RuntimeError("CRITICAL: SKYFARM_INTEGRATION_SECRET is missing. Boot failed.")
+    SECRET_KEY = "dev_fallback_secret"
 
 class IntegrationPayload(BaseModel):
-    event_id: str
+    event_id: str = Field(default_factory=lambda: f"evt_{uuid.uuid4().hex}")
     source: str = "skyfarm"
     tenant_id: str
     type: str
-    timestamp: str
+    timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     data: Dict[str, Any]
     signature: str = ""
 
-def sign_payload(payload: Dict[str, Any], secret: str) -> str:
-    # Remove signature if present for signing
-    data_to_sign = {k: v for k, v in payload.items() if k != 'signature'}
-    # Ensure consistent ordering
-    message = json.dumps(data_to_sign, sort_keys=True)
-    return hmac.new(secret.encode(), message.encode(), hashlib.sha256).hexdigest()
+def generate_canonical_string(method: str, path: str, timestamp: str, request_id: str, body: Dict[str, Any]) -> str:
+    body_json = json.dumps(body, sort_keys=True)
+    body_hash = hashlib.sha256(body_json.encode()).hexdigest()
+    return f"{method.upper()}\n{path}\n{timestamp}\n{request_id}\n{body_hash}"
 
-def create_integration_event(event_id: str, tenant_id: str, event_type: str, data: Dict[str, Any], source: str = "skyfarm") -> IntegrationPayload:
-    timestamp = datetime.now(timezone.utc).isoformat()
-    payload_dict = {
-        "event_id": event_id,
-        "source": source,
-        "tenant_id": tenant_id,
-        "type": event_type,
-        "timestamp": timestamp,
-        "data": data
-    }
-    signature = sign_payload(payload_dict, SECRET_KEY)
-    payload_dict["signature"] = signature
-    return IntegrationPayload(**payload_dict)
+def sign_payload_canonical(canonical_string: str, secret: str) -> str:
+    return hmac.new(secret.encode(), canonical_string.encode(), hashlib.sha256).hexdigest()
 
+def create_integration_event(tenant_id: str, event_type: str, data: Dict[str, Any], event_id: Optional[str] = None) -> IntegrationPayload:
+    payload = IntegrationPayload(
+        event_id=event_id or f"evt_{uuid.uuid4().hex}",
+        tenant_id=tenant_id,
+        type=event_type,
+        data=data
+    )
+    # Note: In actual transmission, we'll sign with proper method/path
+    # For now, we sign the payload data to keep it consistent
+    payload.signature = hmac.new(SECRET_KEY.encode(), json.dumps(payload.model_dump(exclude={"signature"}), sort_keys=True).encode(), hashlib.sha256).hexdigest()
+    return payload
+
+def verify_signature_v2(
+    signature: str,
+    method: str,
+    path: str,
+    timestamp: str,
+    request_id: str,
+    body: Dict[str, Any],
+    secret: str
+) -> bool:
+    # 1. Timestamp validation (5 mins)
+    try:
+        req_time = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+        if abs((datetime.now(timezone.utc) - req_time).total_seconds()) > 300:
+            return False
+    except:
+        return False
+
+    # 2. Canonical string check
+    expected_canonical = generate_canonical_string(method, path, timestamp, request_id, body)
+    expected_signature = sign_payload_canonical(expected_canonical, secret)
+
+    return hmac.compare_digest(signature, expected_signature)
+
+# Legacy support for internal tests if needed
 def verify_signature(payload: Dict[str, Any], secret: str) -> bool:
     if "signature" not in payload:
         return False
-    expected_signature = sign_payload(payload, secret)
+    data_to_sign = {k: v for k, v in payload.items() if k != 'signature'}
+    message = json.dumps(data_to_sign, sort_keys=True)
+    expected_signature = hmac.new(secret.encode(), message.encode(), hashlib.sha256).hexdigest()
     return hmac.compare_digest(payload["signature"], expected_signature)

@@ -7,11 +7,13 @@ import skyfarm.logistics.models
 import skyfarm.finance.models
 import skyfarm.trace.models
 import skyfarm.restaurant.models
+import skyfarm.integration.models
 
 # Create tables
 Base.metadata.create_all(bind=engine)
 
 from skyfarm.marine.router import router as marine_router
+from skyfarm.agri.router import router as agri_router
 from skyfarm.logistics.router import router as logistics_router
 from skyfarm.finance.router import router as finance_router
 from skyfarm.trace.router import router as trace_router
@@ -20,6 +22,7 @@ from skyfarm.integration.router import router as integration_router
 app = FastAPI(title="SKYFARM API Gateway")
 
 app.include_router(marine_router)
+app.include_router(agri_router)
 app.include_router(logistics_router)
 app.include_router(finance_router)
 app.include_router(trace_router)

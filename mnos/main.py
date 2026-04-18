@@ -1,63 +1,83 @@
-from fastapi import FastAPI, HTTPException, Request
-from .security import verify_signature, SECRET_KEY
-import logging
+from fastapi import FastAPI, HTTPException, Request, Header
+from .security import verify_signature_v2, SECRET_KEY
+from typing import Optional
+import json
+import hashlib
+import os
 
 app = FastAPI(title="MNOS Gateway Mock")
 
-# Simple audit log and replay protection
+# Simple audit log and idempotency registry
 audit_log = []
-seen_events = set()
+idempotency_registry = {} # key -> {body_hash, response}
 
-@app.post("/integration/v1/entities")
-async def receive_entity(request: Request):
-    payload = await request.json()
-    if not verify_signature(payload, SECRET_KEY):
-        raise HTTPException(status_code=401, detail="Invalid signature")
-
-    event_id = payload.get("event_id")
-    if event_id in seen_events:
-        return {"status": "duplicate", "message": "Event already processed"}
-
-    seen_events.add(event_id)
-    audit_log.append(payload)
-    return {"status": "success", "message": "Entity received"}
-
-@app.post("/integration/v1/events/{category}")
-async def receive_event(category: str, request: Request):
-    payload = await request.json()
-    if not verify_signature(payload, SECRET_KEY):
-        raise HTTPException(status_code=401, detail="Invalid signature")
-
-    event_id = payload.get("event_id")
-    if event_id in seen_events:
-        return {"status": "duplicate", "message": "Event already processed"}
-
-    seen_events.add(event_id)
-    audit_log.append(payload)
-    return {"status": "success", "message": f"Event {category} received"}
-
-@app.post("/integration/v1/trace/records")
-async def receive_trace(request: Request):
-    payload = await request.json()
-    if not verify_signature(payload, SECRET_KEY):
-        raise HTTPException(status_code=401, detail="Invalid signature")
-
-    event_id = payload.get("event_id")
-    if event_id in seen_events:
-        return {"status": "duplicate", "message": "Event already processed"}
-
-    seen_events.add(event_id)
-    audit_log.append(payload)
-    return {"status": "success", "message": "Trace record received"}
-
-@app.get("/mnos/v1/policies/skyfarm")
-async def get_policies():
+@app.post("/mnos/integration/v1/partners/register")
+async def register_partner(request: Request):
     return {
-        "export_rules": "v1.0",
-        "quality_thresholds": {"min_grade": "A"},
-        "reporting_requirements": "daily"
+        "success": True,
+        "data": {
+            "partner_id": "ptn_001",
+            "status": "active",
+            "token_issuer": "mnos",
+            "signature_mode": "hmac-sha256"
+        }
     }
 
-@app.get("/health")
+@app.post("/mnos/integration/v1/events")
+async def receive_event(
+    request: Request,
+    x_request_id: str = Header(...),
+    x_idempotency_key: str = Header(...),
+    x_signature: str = Header(...),
+    x_timestamp: str = Header(...)
+):
+    body_bytes = await request.body()
+
+    # Verify signature v2 (Canonical String)
+    # Logging for debugging simulation
+    # print(f"DEBUG MNOS: Validating signature for {x_request_id}")
+
+    if not verify_signature_v2(
+        signature=x_signature,
+        method="POST",
+        path="/mnos/integration/v1/events",
+        timestamp=x_timestamp,
+        request_id=x_request_id,
+        body_bytes=body_bytes,
+        secret=SECRET_KEY
+    ):
+        return {
+            "success": False,
+            "request_id": x_request_id,
+            "error": {"code": "SIGNATURE_INVALID", "message": "Signature verification failed"}
+        }
+
+    # Deterministic Idempotency check using SHA256
+    body_hash = hashlib.sha256(body_bytes).hexdigest()
+    if x_idempotency_key in idempotency_registry:
+        entry = idempotency_registry[x_idempotency_key]
+        if entry["body_hash"] == body_hash:
+            return entry["response"]
+        else:
+            raise HTTPException(status_code=409, detail="Idempotency key conflict")
+
+    response = {
+        "success": True,
+        "request_id": x_request_id,
+        "data": {
+            "accepted": True,
+            "mnos_event_id": f"mnev_{x_idempotency_key[:8]}",
+            "status": "ingested"
+        }
+    }
+
+    idempotency_registry[x_idempotency_key] = {
+        "body_hash": body_hash,
+        "response": response
+    }
+    audit_log.append(json.loads(body_bytes))
+    return response
+
+@app.get("/mnos/integration/v1/health")
 async def health():
-    return {"status": "up"}
+    return {"success": True, "data": {"status": "healthy"}}
