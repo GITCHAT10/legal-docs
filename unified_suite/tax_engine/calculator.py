@@ -1,0 +1,47 @@
+class MoatsTaxCalculator:
+    """
+    MOATS (Maldives Operations & Accounting Tax System)
+    Unified tax logic for all Maldives Port and Airport operations.
+    Follows MIRA compliance: 10% Service Charge, 17% TGST.
+    """
+
+    SERVICE_CHARGE_RATE = 0.10
+    TGST_RATE = 0.17  # MIRA-compliant rate (Updated)
+
+    @classmethod
+    def calculate_bill(cls, base_amount: float, sc_rate: float = None, tgst_rate: float = None):
+        """
+        Calculates the total bill including Service Charge and TGST.
+        Formula:
+        1. Subtotal = Base + (Base * 10%)
+        2. TGST = Subtotal * 17%
+        3. Total = Subtotal + TGST
+        """
+        sc_r = sc_rate if sc_rate is not None else cls.SERVICE_CHARGE_RATE
+        tgst_r = tgst_rate if tgst_rate is not None else cls.TGST_RATE
+
+        service_charge = base_amount * sc_r
+        subtotal = base_amount + service_charge
+        tgst = subtotal * tgst_r
+        total = subtotal + tgst
+
+        return {
+            "base_amount": round(base_amount, 2),
+            "service_charge": round(service_charge, 2),
+            "subtotal": round(subtotal, 2),
+            "tgst": round(tgst, 2),
+            "total_amount": round(total, 2),
+            "currency": "MVR",
+            "compliance": "MIRA_COMPLIANT_V2"
+        }
+
+    @classmethod
+    def calculate_customs_duty(cls, value: float, category: str):
+        """
+        Stub for Customs Duty calculation (MOATS Extended).
+        Different categories might have different duty rates.
+        """
+        # Example: General cargo 15%
+        duty_rate = 0.15
+        duty = value * duty_rate
+        return round(duty, 2)
