@@ -37,4 +37,4 @@ def test_gateway_proxy_eleone():
     # Calling through gateway
     resp = requests.get("http://127.0.0.1:8020/api/v1/eleone/health")
     assert resp.status_code == 200
-    assert resp.json()["service"] == "eleone"
+    assert resp.json() == {"status": "ok"}

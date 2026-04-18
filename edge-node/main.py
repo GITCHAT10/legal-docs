@@ -7,7 +7,7 @@ app = FastAPI(title="BUILDX Edge Node")
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "edge"}
+    return {"status": "ok"}
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8006))

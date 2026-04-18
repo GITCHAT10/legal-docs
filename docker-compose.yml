@@ -1,10 +1,20 @@
 version: '3.8'
 
 services:
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   gateway:
     build:
       context: .
-      dockerfile: Dockerfile.gateway
+      dockerfile: ./services/gateway/Dockerfile
     ports:
       - "8000:8000"
     environment:
@@ -15,54 +25,59 @@ services:
       - BFI_URL=http://bfi:8000
       - REDIS_HOST=redis
     depends_on:
-      - eleone
-      - shadow
-      - svd
-      - sal
-      - bfi
-      - redis
+      redis:
+        condition: service_healthy
 
   gateway-worker:
     build:
       context: .
-      dockerfile: Dockerfile.gateway-worker
+      dockerfile: ./services/gateway/Dockerfile
+    command: ["python", "services/gateway/event_worker.py"]
     environment:
       - REDIS_HOST=redis
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
+      gateway:
+        condition: service_started
 
   eleone:
     build:
       context: .
-      dockerfile: Dockerfile.eleone
-    environment:
-      - REDIS_HOST=redis
+      dockerfile: ./services/eleone/Dockerfile
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
 
   shadow:
     build:
       context: .
-      dockerfile: Dockerfile.shadow
-    environment:
-      - REDIS_HOST=redis
+      dockerfile: ./services/shadow/Dockerfile
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
 
   svd:
     build:
       context: .
-      dockerfile: Dockerfile.svd
+      dockerfile: ./services/svd/Dockerfile
 
   sal:
     build:
       context: .
-      dockerfile: Dockerfile.sal
+      dockerfile: ./services/sal/Dockerfile
 
   bfi:
     build:
       context: .
-      dockerfile: Dockerfile.bfi
+      dockerfile: ./services/bfi/Dockerfile
+
+  edge-node:
+    build:
+      context: .
+      dockerfile: ./edge-node/Dockerfile
+    ports:
+      - "8006:8006"
 
   db:
     image: postgres:15
@@ -71,8 +86,3 @@ services:
       - POSTGRES_PASSWORD=password
     volumes:
       - ./infra/db/init.sql:/docker-entrypoint-initdb.d/init.sql
-
-  redis:
-    image: redis:7
-    ports:
-      - "6379:6379"

@@ -11,7 +11,7 @@ ledger = []
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "shadow"}
+    return {"status": "ok"}
 
 @app.post("/entry")
 async def add_entry(data: dict):

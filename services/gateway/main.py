@@ -19,7 +19,7 @@ def get_services():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "gateway"}
+    return {"status": "ok"}
 
 @app.api_route("/api/v1/{service_name}/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
 async def gateway_proxy(service_name: str, path: str, request: Request, x_idempotency_key: Optional[str] = Header(None)):

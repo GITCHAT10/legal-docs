@@ -7,7 +7,7 @@ app = FastAPI(title="BUILDX svd Service")
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "svd"}
+    return {"status": "ok"}
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
