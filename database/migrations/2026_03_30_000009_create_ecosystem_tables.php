@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('demands', function (Blueprint $table) {
-            $table->uuid('id')->primary();
+            $table->string('id', 100)->primary(); // Support business IDs like DEMAND-101
             $table->string('source');
             $table->string('user_type');
             $table->string('priority');
@@ -19,8 +19,8 @@ return new class extends Migration
         });
 
         Schema::create('decisions', function (Blueprint $table) {
-            $table->uuid('id')->primary();
-            $table->uuid('demand_id');
+            $table->string('id', 100)->primary();
+            $table->string('demand_id', 100)->index();
             $table->string('fulfillment_mode');
             $table->string('logistics_mode');
             $table->string('assigned_node');
@@ -30,8 +30,8 @@ return new class extends Migration
         });
 
         Schema::create('shipments', function (Blueprint $table) {
-            $table->uuid('id')->primary();
-            $table->uuid('decision_id');
+            $table->string('id', 100)->primary();
+            $table->string('decision_id', 100)->index();
             $table->string('warehouse_id');
             $table->string('status')->default('ready');
             $table->string('mode');
@@ -40,8 +40,8 @@ return new class extends Migration
         });
 
         Schema::create('flights', function (Blueprint $table) {
-            $table->uuid('id')->primary();
-            $table->uuid('shipment_id');
+            $table->string('id', 100)->primary();
+            $table->string('shipment_id', 100)->index();
             $table->timestamp('departure');
             $table->timestamp('arrival');
             $table->string('status')->default('assigned');
@@ -50,7 +50,6 @@ return new class extends Migration
 
         Schema::create('financial_ledger', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            // aggregate_id / reference_id as string
             $table->string('reference_id', 100)->index();
             $table->decimal('base', 15, 2);
             $table->decimal('service_charge', 15, 2);
