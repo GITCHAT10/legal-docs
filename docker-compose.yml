@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+
+  mnos-gateway:
+    build: .
+    command: uvicorn mnos.main:app --host 0.0.0.0 --port 8000
+    environment:
+      - MNOS_INTEGRATION_SECRET=${MNOS_INTEGRATION_SECRET:-dev_fallback_secret}
+      - REDIS_HOST=redis
+      - MNOS_ENV=prod
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+
+  mnos-worker:
+    build: .
+    command: python3 -m mnos.worker
+    environment:
+      - MNOS_INTEGRATION_SECRET=${MNOS_INTEGRATION_SECRET:-dev_fallback_secret}
+      - REDIS_HOST=redis
+      - MNOS_ENV=prod
+    depends_on:
+      - redis
+
+  edge-node:
+    build: .
+    command: python3 -m edge-node.fuel_controller
+    environment:
+      - MNOS_INTEGRATION_SECRET=${MNOS_INTEGRATION_SECRET:-dev_fallback_secret}
+      - REDIS_HOST=redis
+    depends_on:
+      - redis
+
+  unified-suite:
+    build: .
+    command: uvicorn unified_suite.main:app --host 0.0.0.0 --port 8003
+    environment:
+      - NEXGEN_SECRET=${NEXGEN_SECRET:-dev_fallback_secret}
+    ports:
+      - "8003:8003"
