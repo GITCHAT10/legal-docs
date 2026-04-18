@@ -53,15 +53,14 @@ def process_outbox(db: Session):
             if entry.attempt_count > 0:
                 metrics["retry_count"] += 1
 
-            # Phase 2: Mandatory timeout
-            resp = requests.post(f"{MNOS_URL}{path}", data=body_bytes, headers=headers, timeout=(2, 5))
+            # Phase 2: Standardized 5s timeout
+            resp = requests.post(f"{MNOS_URL}{path}", data=body_bytes, headers=headers, timeout=5)
 
             if 200 <= resp.status_code < 300:
                 entry.status = "sent"
                 metrics["success_count"] += 1
             else:
                 # Phase 5: Implement 15s -> 60s -> 300s retry rules
-                # Retry on: timeout (caught below), 5xx, connection error (caught below)
                 if resp.status_code >= 500 or resp.status_code == 408:
                      error_msg = f"Retryable MNOS Error: {resp.status_code}"
                      handle_failure(entry, error_msg)
@@ -82,14 +81,11 @@ def process_outbox(db: Session):
             entry.attempt_count += 1
             db.commit()
         except Exception as e:
-            # Phase 3: No silent failures in the worker
             entry.status = "failed"
             entry.last_error = f"System Error: {str(e)}"
             metrics["failure_count"] += 1
             entry.attempt_count += 1
             db.commit()
-            # In a worker, we might not want to re-raise if we want to continue with next entries,
-            # but we log it as failed in DB.
 
 def handle_failure(entry, error_msg):
     entry.status = "failed"
@@ -100,7 +96,7 @@ def handle_failure(entry, error_msg):
     if entry.attempt_count < len(backoffs):
         entry.next_attempt_at = datetime.utcnow() + timedelta(seconds=backoffs[entry.attempt_count])
     else:
-        entry.status = "failed" # Final failure state after all retries
+        entry.status = "failed" # Final failure state
         metrics["dead_letter_count"] += 1
 
 def run_worker_loop(db_session_factory):

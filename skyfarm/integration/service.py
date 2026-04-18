@@ -7,8 +7,8 @@ from typing import Any, Dict, Optional, Union
 from pydantic import BaseModel, Field
 import uuid
 
-# Phase 1: Mandatory secret handling. App will fail if env var is missing.
-SECRET_KEY = os.environ["SKYFARM_INTEGRATION_SECRET"]
+# Phase 1: Mandatory secret handling using os.environ. App will fail if missing.
+SECRET_KEY = os.environ["MNOS_INTEGRATION_SECRET"]
 
 class IntegrationPayload(BaseModel):
     event_id: str = Field(default_factory=lambda: f"evt_{uuid.uuid4().hex}")
@@ -39,7 +39,6 @@ def create_integration_event(tenant_id: str, event_type: str, data: Dict[str, An
         data=data,
         correlation_id=correlation_id
     )
-    # Note: Transmitted requests use canonical signing in the outbox_worker/router
     return payload
 
 def verify_signature_v2(
@@ -51,13 +50,15 @@ def verify_signature_v2(
     body: Union[Dict[str, Any], bytes],
     secret: str
 ) -> bool:
-    # 1. Timestamp validation (60 seconds per Phase 1)
+    # 1. Strict Timestamp validation (60 seconds per Phase 1)
     try:
-        req_time = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+        # Support both Z and +00:00
+        ts_str = timestamp.replace('Z', '+00:00')
+        req_time = datetime.fromisoformat(ts_str)
         if abs((datetime.now(timezone.utc) - req_time).total_seconds()) > 60:
             return False
-    except Exception as e:
-        raise ValueError(f"Invalid timestamp format: {str(e)}")
+    except Exception:
+        return False
 
     # 2. Canonical string check
     expected_canonical = generate_canonical_string(method, path, timestamp, request_id, body)
@@ -65,8 +66,8 @@ def verify_signature_v2(
 
     return hmac.compare_digest(signature, expected_signature)
 
-# Legacy support for internal tests if needed
 def verify_signature(payload: Dict[str, Any], secret: str) -> bool:
+    """Legacy helper for internal tests"""
     if "signature" not in payload:
         return False
     data_to_sign = {k: v for k, v in payload.items() if k != 'signature'}

@@ -4,7 +4,7 @@ import json
 import os
 from datetime import datetime, timezone
 
-# Phase 1: Mandatory secret handling. App will fail if env var is missing.
+# Enforce secret in production, fail boot if missing (removed fallback)
 SECRET_KEY = os.environ["MNOS_INTEGRATION_SECRET"]
 
 def generate_canonical_string(method: str, path: str, timestamp: str, request_id: str, body_bytes: bytes) -> str:
