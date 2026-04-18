@@ -50,7 +50,8 @@ return new class extends Migration
 
         Schema::create('financial_ledger', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->uuid('reference_id'); // e.g. folio_id or demand_id
+            // aggregate_id / reference_id as string
+            $table->string('reference_id', 100)->index();
             $table->decimal('base', 15, 2);
             $table->decimal('service_charge', 15, 2);
             $table->decimal('tgst', 15, 2);
