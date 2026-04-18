@@ -28,23 +28,25 @@ services:
       redis:
         condition: service_healthy
 
-  gateway-worker:
+  event-worker:
     build:
       context: .
-      dockerfile: ./services/gateway/Dockerfile
-    command: ["python", "services/gateway/event_worker.py"]
+      dockerfile: ./services/gateway/Dockerfile.worker
     environment:
       - REDIS_HOST=redis
+      - SHADOW_URL=http://shadow:8000
     depends_on:
       redis:
         condition: service_healthy
-      gateway:
+      shadow:
         condition: service_started
 
   eleone:
     build:
       context: .
       dockerfile: ./services/eleone/Dockerfile
+    environment:
+      - REDIS_HOST=redis
     depends_on:
       redis:
         condition: service_healthy
@@ -53,6 +55,8 @@ services:
     build:
       context: .
       dockerfile: ./services/shadow/Dockerfile
+    environment:
+      - REDIS_HOST=redis
     depends_on:
       redis:
         condition: service_healthy
