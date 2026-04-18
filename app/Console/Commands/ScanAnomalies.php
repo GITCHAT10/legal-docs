@@ -79,19 +79,31 @@ class ScanAnomalies extends Command
                     file_put_contents($output, $message . PHP_EOL, FILE_APPEND);
                 }
             } else {
-                $anomaly = RevenueAnomaly::create([
-                    'type' => $result->type,
-                    'detector_class' => $detectorClass,
-                    'aggregate_type' => $entry->aggregate_type,
-                    'aggregate_id' => $entry->aggregate_id,
-                    'severity_score' => $scores['severity_score'],
-                    'confidence_score' => $scores['confidence_score'],
-                    'risk_score' => $scores['risk_score'],
-                    'scoring_breakdown' => $scores['breakdown'],
-                    'diff' => $result->diff,
-                    'source_event_id' => $entry->id,
-                    'detected_at' => now(),
-                ]);
+                // ISSUE 1 FIX: Use updateOrCreate with fingerprint to prevent crashes
+                $fingerprint = hash('sha256', implode('|', [
+                    $entry->aggregate_type,
+                    $entry->aggregate_id,
+                    $result->type,
+                    json_encode($result->diff)
+                ]));
+
+                $anomaly = RevenueAnomaly::updateOrCreate(
+                    ['fingerprint' => $fingerprint],
+                    [
+                        'type' => $result->type,
+                        'detector_class' => $detectorClass,
+                        'aggregate_type' => $entry->aggregate_type,
+                        'aggregate_id' => $entry->aggregate_id,
+                        'severity_score' => $scores['severity_score'],
+                        'confidence_score' => $scores['confidence_score'],
+                        'risk_score' => $scores['risk_score'],
+                        'scoring_breakdown' => $scores['breakdown'],
+                        'diff' => $result->diff,
+                        'source_event_id' => $entry->id,
+                        'detected_at' => now(),
+                        'status' => 'detected', // Reset status if re-detected? Or keep existing?
+                    ]
+                );
 
                 event(new AnomalyDetected($anomaly));
             }

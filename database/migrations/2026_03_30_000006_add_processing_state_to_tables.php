@@ -36,13 +36,24 @@ return new class extends Migration
 
     public function down(): void
     {
+        // ISSUE 2 FIX: Add hasColumn checks in down()
         Schema::table('shadow_entries', function (Blueprint $table) {
-            $table->dropIndex('idx_processing_queue_poll');
-            $table->dropColumn(['is_processing', 'processed_at']);
+            if (Schema::hasColumn('shadow_entries', 'is_processing')) {
+                $table->dropIndex('idx_processing_queue_poll');
+                $table->dropColumn('is_processing');
+            }
+            if (Schema::hasColumn('shadow_entries', 'processed_at')) {
+                $table->dropColumn('processed_at');
+            }
         });
 
         Schema::table('revenue_anomalies', function (Blueprint $table) {
-            $table->dropColumn(['is_processing', 'processed_at']);
+            if (Schema::hasColumn('revenue_anomalies', 'is_processing')) {
+                $table->dropColumn('is_processing');
+            }
+            if (Schema::hasColumn('revenue_anomalies', 'processed_at')) {
+                $table->dropColumn('processed_at');
+            }
         });
     }
 };

@@ -12,46 +12,45 @@ return new class extends Migration
             $table->uuid('id')->primary();
 
             // === ANOMALY IDENTIFICATION ===
-            $table->string('type', 100)->index(); // "VALUE_SHAVE", "PHANTOM_BOOKING", etc.
-            $table->string('detector_class', 255); // FQCN of detector that found this
-            $table->string('aggregate_type', 100); // "Folio", "Booking", etc.
-            $table->uuid('aggregate_id'); // Reference to the affected entity
+            $table->string('type', 100)->index();
+            $table->string('detector_class', 255);
+            $table->string('aggregate_type', 100);
+            // ISSUE 3 FIX: aggregate_id must be string, not uuid
+            $table->string('aggregate_id', 100)->index();
 
             // === CRITICAL FIX #7: ANOMALY DEDUPLICATION ===
-            $table->string('fingerprint', 64)->unique()->index(); // SHA256 hash for dedup
-            // fingerprint = hash('sha256', aggregate_type + aggregate_id + type + key_diff_fields)
+            $table->string('fingerprint', 64)->unique()->index();
 
             // === CRITICAL FIX #4: SEPARATED SCORING (NOT SINGLE anomaly_score) ===
-            $table->integer('severity_score')->unsigned()->default(0); // 0-100: Business impact
-            $table->integer('confidence_score')->unsigned()->default(0); // 0-100: Detection certainty
-            $table->integer('risk_score')->unsigned()->default(0); // 0-100: Composite risk (calculated)
-            $table->json('scoring_breakdown')->nullable(); // Detailed scoring components
+            $table->integer('severity_score')->unsigned()->default(0);
+            $table->integer('confidence_score')->unsigned()->default(0);
+            $table->integer('risk_score')->unsigned()->default(0);
+            $table->json('scoring_breakdown')->nullable();
 
             // === ANOMALY DETAILS ===
-            $table->text('description')->nullable(); // Human-readable explanation
-            $table->json('diff')->nullable(); // What changed: {old_value, new_value, field}
-            $table->json('context')->nullable(); // Additional context for investigation
+            $table->text('description')->nullable();
+            $table->json('diff')->nullable();
+            $table->json('context')->nullable();
 
             // === CRITICAL FIX #6: STRUCTURED EVIDENCE REFERENCE ===
-            $table->uuid('evidence_record_id')->nullable(); // FK to evidence_records
-            // Evidence contains: shadow vs live comparison, timeline, system_context, rule_triggered
+            $table->uuid('evidence_record_id')->nullable();
 
             // === STATE & LIFECYCLE ===
-            $table->string('status', 20)->default('detected')->index(); // detected, reviewing, resolved, false_positive
-            $table->string('priority', 20)->default('medium')->index(); // low, medium, high, critical
+            $table->string('status', 20)->default('detected')->index();
+            $table->string('priority', 20)->default('medium')->index();
             $table->timestamp('detected_at')->useCurrent();
             $table->timestamp('reviewed_at')->nullable();
             $table->timestamp('resolved_at')->nullable();
-            $table->uuid('reviewed_by')->nullable(); // User who triaged this
-            $table->text('resolution_notes')->nullable(); // Why it was resolved a certain way
+            $table->uuid('reviewed_by')->nullable();
+            $table->text('resolution_notes')->nullable();
 
             // === ENFORCEMENT TRACKING ===
             $table->boolean('enforcement_triggered')->default(false);
-            $table->uuid('enforcement_action_id')->nullable(); // FK to enforcement_actions
+            $table->uuid('enforcement_action_id')->nullable();
 
             // === AUDIT TRAIL ===
-            $table->json('detection_metadata')->nullable(); // Detector runtime info, thresholds used
-            $table->string('source_event_id')->nullable(); // Original shadow_entry.id that triggered this
+            $table->json('detection_metadata')->nullable();
+            $table->string('source_event_id')->nullable();
 
             $table->timestamps();
 
