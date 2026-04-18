@@ -10,9 +10,7 @@ import uuid
 # Enforce secret in production, fail boot if missing
 SECRET_KEY = os.getenv("SKYFARM_INTEGRATION_SECRET")
 if not SECRET_KEY:
-    if os.getenv("SKYFARM_ENV") != "dev":
-         raise RuntimeError("CRITICAL: SKYFARM_INTEGRATION_SECRET is missing. Boot failed.")
-    SECRET_KEY = "dev_fallback_secret"
+    raise RuntimeError("CRITICAL: SKYFARM_INTEGRATION_SECRET is missing. Boot failed.")
 
 class IntegrationPayload(BaseModel):
     event_id: str = Field(default_factory=lambda: f"evt_{uuid.uuid4().hex}")
@@ -43,8 +41,7 @@ def create_integration_event(tenant_id: str, event_type: str, data: Dict[str, An
         data=data,
         correlation_id=correlation_id
     )
-    # Legacy body-based signature for internal storage/refs
-    payload.signature = hmac.new(SECRET_KEY.encode(), json.dumps(payload.model_dump(exclude={"signature"}), sort_keys=True).encode(), hashlib.sha256).hexdigest()
+    # Note: Transmitted requests use canonical signing in the outbox_worker/router
     return payload
 
 def verify_signature_v2(
@@ -56,10 +53,10 @@ def verify_signature_v2(
     body: Union[Dict[str, Any], bytes],
     secret: str
 ) -> bool:
-    # 1. Timestamp validation (5 mins)
+    # 1. Timestamp validation (60 seconds per Phase 1)
     try:
         req_time = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
-        if abs((datetime.now(timezone.utc) - req_time).total_seconds()) > 300:
+        if abs((datetime.now(timezone.utc) - req_time).total_seconds()) > 60:
             return False
     except:
         return False
@@ -69,12 +66,3 @@ def verify_signature_v2(
     expected_signature = hmac.new(secret.encode(), expected_canonical.encode(), hashlib.sha256).hexdigest()
 
     return hmac.compare_digest(signature, expected_signature)
-
-# Legacy support for internal tests if needed
-def verify_signature(payload: Dict[str, Any], secret: str) -> bool:
-    if "signature" not in payload:
-        return False
-    data_to_sign = {k: v for k, v in payload.items() if k != 'signature'}
-    message = json.dumps(data_to_sign, sort_keys=True)
-    expected_signature = hmac.new(secret.encode(), message.encode(), hashlib.sha256).hexdigest()
-    return hmac.compare_digest(payload["signature"], expected_signature)

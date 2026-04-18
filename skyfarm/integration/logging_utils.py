@@ -1,5 +1,6 @@
 import logging
 import json
+import os
 from datetime import datetime, timezone
 
 class JSONFormatter(logging.Formatter):
@@ -11,10 +12,15 @@ class JSONFormatter(logging.Formatter):
             "module": record.module,
             "funcName": record.funcName,
         }
-        # Add extra fields if they exist
-        for key, value in record.__dict__.items():
-            if key in ["request_id", "event_id", "correlation_id", "tenant_id"]:
-                log_entry[key] = value
+        # Standardized fields for integration observability (Phase 6)
+        for key in ["request_id", "event_id", "correlation_id", "tenant_id", "category", "status"]:
+            if hasattr(record, key):
+                log_entry[key] = getattr(record, key)
+            elif isinstance(record.args, dict) and key in record.args:
+                log_entry[key] = record.args[key]
+            elif hasattr(record, 'extra') and record.extra and key in record.extra:
+                 log_entry[key] = record.extra[key]
+
         return json.dumps(log_entry)
 
 def setup_json_logging():
