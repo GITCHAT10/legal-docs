@@ -22,6 +22,7 @@ class IntegrationPayload(BaseModel):
     timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     data: Dict[str, Any]
     signature: str = ""
+    correlation_id: Optional[str] = None
 
 def generate_canonical_string(method: str, path: str, timestamp: str, request_id: str, body: Union[Dict[str, Any], bytes]) -> str:
     if isinstance(body, bytes):
@@ -34,12 +35,13 @@ def generate_canonical_string(method: str, path: str, timestamp: str, request_id
 def sign_payload_canonical(canonical_string: str, secret: str) -> str:
     return hmac.new(secret.encode(), canonical_string.encode(), hashlib.sha256).hexdigest()
 
-def create_integration_event(tenant_id: str, event_type: str, data: Dict[str, Any], event_id: Optional[str] = None) -> IntegrationPayload:
+def create_integration_event(tenant_id: str, event_type: str, data: Dict[str, Any], event_id: Optional[str] = None, correlation_id: Optional[str] = None) -> IntegrationPayload:
     payload = IntegrationPayload(
         event_id=event_id or f"evt_{uuid.uuid4().hex}",
         tenant_id=tenant_id,
         type=event_type,
-        data=data
+        data=data,
+        correlation_id=correlation_id
     )
     # Legacy body-based signature for internal storage/refs
     payload.signature = hmac.new(SECRET_KEY.encode(), json.dumps(payload.model_dump(exclude={"signature"}), sort_keys=True).encode(), hashlib.sha256).hexdigest()
@@ -64,7 +66,7 @@ def verify_signature_v2(
 
     # 2. Canonical string check
     expected_canonical = generate_canonical_string(method, path, timestamp, request_id, body)
-    expected_signature = sign_payload_canonical(expected_canonical, secret)
+    expected_signature = hmac.new(secret.encode(), expected_canonical.encode(), hashlib.sha256).hexdigest()
 
     return hmac.compare_digest(signature, expected_signature)
 

@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Request, Header, Depends
 from .security import verify_signature_v2, SECRET_KEY
 from .database import get_mnos_db, EventLogModel, IdempotencyRegistryModel
+from .schemas import EventPayloadSchema
 from sqlalchemy.orm import Session
 from typing import Optional
 import json
@@ -8,6 +9,9 @@ import hashlib
 from datetime import datetime
 
 app = FastAPI(title="MNOS Gateway Mock")
+
+# Track replayed request IDs in memory for additional safety if needed,
+# but DB event_ingest_log is the source of truth.
 
 @app.post("/mnos/integration/v1/partners/register")
 async def register_partner(request: Request):
@@ -32,7 +36,7 @@ async def receive_event(
 ):
     body_bytes = await request.body()
 
-    # Verify signature v2 (Canonical String)
+    # 1. Signature and Timestamp Validation (Replay Protection Window)
     if not verify_signature_v2(
         signature=x_signature,
         method="POST",
@@ -51,7 +55,14 @@ async def receive_event(
             }
         )
 
-    # Deterministic Idempotency check using SHA256 in DB
+    # 2. Schema Validation (No raw JSON returned blindly)
+    try:
+        body_json = json.loads(body_bytes)
+        event_data = EventPayloadSchema(**body_json)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"INVALID_EVENT_SCHEMA: {str(e)}")
+
+    # 3. Deterministic Idempotency check using SHA256 in DB
     body_hash = hashlib.sha256(body_bytes).hexdigest()
     idem_entry = db.query(IdempotencyRegistryModel).filter(IdempotencyRegistryModel.key == x_idempotency_key).first()
 
@@ -60,6 +71,13 @@ async def receive_event(
             return idem_entry.response_json
         else:
             raise HTTPException(status_code=409, detail="Idempotency key conflict")
+
+    # 4. Check for replayed request_id (extra layer)
+    # We'll use the request_id as a field in our eventual audit table,
+    # but for now we'll ensure we haven't processed this exact event_id
+    existing_event = db.query(EventLogModel).filter(EventLogModel.id == f"mnev_{x_idempotency_key[:8]}").first()
+    if existing_event:
+         raise HTTPException(status_code=409, detail="DUPLICATE_EVENT_ID")
 
     response = {
         "success": True,
@@ -74,7 +92,7 @@ async def receive_event(
     # Persist Event
     new_event = EventLogModel(
         id=f"mnev_{x_idempotency_key[:8]}",
-        payload=json.loads(body_bytes),
+        payload=event_data.model_dump(),
         status="ingested"
     )
     db.add(new_event)

@@ -1,5 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from skyfarm.integration.service import create_integration_event, SECRET_KEY, generate_canonical_string, sign_payload_canonical
+from skyfarm.integration.outbox_worker import get_metrics
+from skyfarm.integration.schemas import MetricsResponse, HealthResponse
 import requests
 from pydantic import BaseModel
 from typing import Any, Dict, Optional
@@ -52,16 +54,32 @@ def send_to_mnos(payload: IntegrationSend):
     }
 
     try:
+        # Connect timeout 2s, Read timeout 5s
         resp = requests.post(endpoint, data=body_bytes, headers=headers, timeout=(2, 5))
 
+        # Proper response validation
         if not (200 <= resp.status_code < 300):
-            return resp.json()
+             raise HTTPException(
+                status_code=resp.status_code,
+                detail=resp.json() if resp.headers.get("Content-Type") == "application/json" else resp.text
+            )
 
         return resp.json()
+    except requests.exceptions.Timeout:
+        raise HTTPException(status_code=504, detail="MNOS_GATEWAY_TIMEOUT")
     except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
         raise HTTPException(status_code=500, detail=f"Integration Failed: {str(e)}")
 
-@router.get("/health")
+@router.get("/metrics", response_model=MetricsResponse)
+def metrics():
+    return {
+        "success": True,
+        "data": get_metrics()
+    }
+
+@router.get("/health", response_model=HealthResponse)
 def health():
     return {
         "success": True,

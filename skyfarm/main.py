@@ -11,6 +11,7 @@ import skyfarm.retail.models
 import skyfarm.integration.models
 import threading
 from skyfarm.integration.outbox_worker import process_outbox
+from skyfarm.integration.logging_utils import logger
 import time
 
 # Create tables
@@ -38,12 +39,13 @@ app.include_router(integration_router)
 
 # Background Worker Thread
 def start_worker():
+    logger.info("Outbox worker thread starting")
     while True:
         db = SessionLocal()
         try:
             process_outbox(db)
         except Exception as e:
-            print(f"Worker Error: {e}")
+            logger.error(f"Worker Error: {e}")
         finally:
             db.close()
         time.sleep(5) # Poll every 5 seconds for simulation
@@ -52,6 +54,7 @@ def start_worker():
 async def startup_event():
     thread = threading.Thread(target=start_worker, daemon=True)
     thread.start()
+    logger.info("SKYFARM application started")
 
 @app.get("/")
 def read_root():
