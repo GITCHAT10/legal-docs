@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.gateway
+    ports:
+      - "8000:8000"
+    environment:
+      - ELEONE_URL=http://eleone:8000
+      - SHADOW_URL=http://shadow:8000
+      - SVD_URL=http://svd:8000
+      - SAL_URL=http://sal:8000
+      - BFI_URL=http://bfi:8000
+      - REDIS_HOST=redis
+    depends_on:
+      - redis
+      - eleone
+      - shadow
+
+  event-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.gateway
+    command: ["python", "event_worker.py"]
+    environment:
+      - REDIS_HOST=redis
+    depends_on:
+      - redis
+
+  eleone:
+    build:
+      context: .
+      dockerfile: Dockerfile.eleone
+    environment:
+      - REDIS_HOST=redis
+    depends_on:
+      - redis
+
+  shadow:
+    build:
+      context: .
+      dockerfile: Dockerfile.shadow
+    environment:
+      - REDIS_HOST=redis
+    depends_on:
+      - redis
+
+  svd:
+    build:
+      context: .
+      dockerfile: Dockerfile.svd
+
+  sal:
+    build:
+      context: .
+      dockerfile: Dockerfile.sal
+
+  bfi:
+    build:
+      context: .
+      dockerfile: Dockerfile.bfi
+
+  db:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=buildx
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - ./infra/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
