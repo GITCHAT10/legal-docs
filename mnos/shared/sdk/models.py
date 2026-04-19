@@ -17,6 +17,7 @@ class MnosEnvelope(BaseModel):
     transaction_id: str
     shadow_id: Optional[str] = None
     event_id: Optional[str] = None
+    policy_decision_id: Optional[str] = None
     status: str
     data: Optional[Any] = None
 

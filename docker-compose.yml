@@ -67,6 +67,8 @@ services:
 
   db:
     image: postgres:15-alpine
+    volumes:
+      - .:/app
     environment:
       - POSTGRES_DB=mnos_lifeline
       - POSTGRES_PASSWORD=password

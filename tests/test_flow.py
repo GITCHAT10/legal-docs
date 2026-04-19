@@ -27,17 +27,18 @@ async def test_create_patient_flow():
 
     with patch("mnos.modules.lifeline.main.mnos_client") as mock_client:
         mock_client.verify_aegis = AsyncMock(return_value=True)
-        mock_client.decide_eleone = AsyncMock(return_value="ALLOW")
+        mock_client.decide_eleone = AsyncMock(return_value=("ALLOW", "POL-123"))
         mock_client.publish_event = AsyncMock(return_value="EVT-123")
         mock_client.commit_shadow = AsyncMock(return_value="SHD-123")
         # create_response_envelope is a sync method in the SDK
-        mock_client.create_response_envelope.side_effect = lambda module, transaction_id, status, data, shadow_id, event_id: MnosEnvelope(
+        mock_client.create_response_envelope.side_effect = lambda module, transaction_id, status, data, shadow_id, event_id, policy_decision_id: MnosEnvelope(
             module=module,
             transaction_id=transaction_id,
             status=status,
             data=data,
             shadow_id=shadow_id,
-            event_id=event_id
+            event_id=event_id,
+            policy_decision_id=policy_decision_id
         )
 
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -45,6 +46,7 @@ async def test_create_patient_flow():
 
         assert response.status_code == 200
         assert response.json()["status"] == "success"
+        assert response.json()["policy_decision_id"] == "POL-123"
         mock_client.verify_aegis.assert_called_once()
         mock_client.decide_eleone.assert_called_once()
         mock_client.publish_event.assert_called_once()

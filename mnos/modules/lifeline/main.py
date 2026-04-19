@@ -26,7 +26,7 @@ async def create_patient(patient: Patient, request: Request):
          raise HTTPException(status_code=403, detail="AEGIS verification failed")
 
     # 2. ELEONE decide
-    decision = await mnos_client.decide_eleone({"action": "CREATE_PATIENT", "data": patient.dict()})
+    decision, policy_decision_id = await mnos_client.decide_eleone({"action": "CREATE_PATIENT", "data": patient.model_dump()})
     if decision != "ALLOW":
         raise HTTPException(status_code=403, detail="ELEONE policy denial")
 
@@ -37,7 +37,7 @@ async def create_patient(patient: Patient, request: Request):
     event_id = await mnos_client.publish_event("PATIENT_CREATED", {"patient_id": patient_id})
 
     # 5. SHADOW commit
-    shadow_id = await mnos_client.commit_shadow(transaction_id, event_id, patient.dict())
+    shadow_id = await mnos_client.commit_shadow(transaction_id, event_id, patient.model_dump())
 
     return mnos_client.create_response_envelope(
         module="lifeline",
@@ -45,7 +45,8 @@ async def create_patient(patient: Patient, request: Request):
         status="success",
         data={"patient_id": patient_id},
         shadow_id=shadow_id,
-        event_id=event_id
+        event_id=event_id,
+        policy_decision_id=policy_decision_id
     )
 
 @app.post("/api/lifeline/encounters")

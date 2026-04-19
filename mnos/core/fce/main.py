@@ -1,20 +1,24 @@
 from fastapi import FastAPI, Request
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 import uuid
 
 app = FastAPI(title="MNOS FCE")
 
+class InvoiceItem(BaseModel):
+    code: str
+    price: float
+
 class CalculateRequest(BaseModel):
-    items: list
+    items: List[InvoiceItem]
     patient_id: str
     insurance_id: Optional[str] = None
 
 @app.post("/api/core/fce/calculate")
-async def calculate(request: dict):
+async def calculate(request: CalculateRequest):
     # Mock financial clearance logic
     # 10% Service Charge, 17% TGST as per Maldives tax logic
-    subtotal = sum(item.get("price", 0) for item in request.get("items", []))
+    subtotal = sum(item.price for item in request.items)
     service_charge = subtotal * 0.10
     tgst = (subtotal + service_charge) * 0.17
     total = subtotal + service_charge + tgst
