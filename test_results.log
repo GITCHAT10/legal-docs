@@ -1,0 +1,10 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.0.3, pluggy-1.6.0
+rootdir: /app
+configfile: pytest.ini
+plugins: anyio-4.13.0
+collected 1 item
+
+tests/test_mnos_flow.py .                                                [100%]
+
+============================== 1 passed in 1.65s ===============================

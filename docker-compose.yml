@@ -11,47 +11,28 @@ services:
       timeout: 5s
       retries: 5
 
-  mnos-api:
+  gateway:
     build:
       context: .
-      dockerfile: ./services/core/mnos_api/Dockerfile
+      dockerfile: ./infra/docker/Dockerfile.gateway
     ports:
       - "8000:8000"
     environment:
-      - ROUTER_URL=http://mnos-router:8003
-      - SHADOW_URL=http://shadow:8002
       - REDIS_HOST=redis
     depends_on:
       redis:
         condition: service_healthy
-      mnos-router:
-        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
-  mnos-router:
+  # CORE
+  aegis:
     build:
       context: .
-      dockerfile: ./services/core/mnos_router/Dockerfile
-    environment:
-      - PORT=8003
-      - ELEONE_URL=http://eleone:8001
-      - SHADOW_URL=http://shadow:8002
-    depends_on:
-      - eleone
-      - shadow
-      - xport
-      - aqua
-      - inn
-      - skygodown
-      - atollairways
-      - svd
-      - bfi
-
-  eleone:
-    build:
-      context: .
-      dockerfile: ./services/core/eleone/Dockerfile
-    environment:
-      - REDIS_HOST=redis
+      dockerfile: ./infra/docker/Dockerfile.aegis
     depends_on:
       redis:
         condition: service_healthy
@@ -59,76 +40,52 @@ services:
   shadow:
     build:
       context: .
-      dockerfile: ./services/core/shadow/Dockerfile
-    environment:
-      - REDIS_HOST=redis
+      dockerfile: ./infra/docker/Dockerfile.shadow
     depends_on:
       redis:
         condition: service_healthy
 
-  sal:
+  eleone:
     build:
       context: .
-      dockerfile: ./services/core/sal/Dockerfile
+      dockerfile: ./infra/docker/Dockerfile.eleone
+    depends_on:
+      redis:
+        condition: service_healthy
 
-  event-worker:
+  events:
     build:
       context: .
-      dockerfile: ./services/core/mnos_api/Dockerfile
-    command: ["python", "services/core/event_worker.py"]
-    environment:
-      - REDIS_HOST=redis
-      - SAL_URL=http://sal:8004
+      dockerfile: ./infra/docker/Dockerfile.events
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  fce:
+    build:
+      context: .
+      dockerfile: ./infra/docker/Dockerfile.fce
     depends_on:
       redis:
         condition: service_healthy
 
   # MODULES
-  xport:
+  lifeline:
     build:
       context: .
-      dockerfile: ./modules/xport/Dockerfile
-  aqua:
-    build:
-      context: .
-      dockerfile: ./modules/aqua/Dockerfile
-  inn:
-    build:
-      context: .
-      dockerfile: ./modules/inn/Dockerfile
-  skygodown:
-    build:
-      context: .
-      dockerfile: ./modules/skygodown/Dockerfile
-  atollairways:
-    build:
-      context: .
-      dockerfile: ./modules/atollairways/Dockerfile
-  svd:
-    build:
-      context: .
-      dockerfile: ./modules/svd/Dockerfile
-  bfi:
-    build:
-      context: .
-      dockerfile: ./modules/bfi/Dockerfile
+      dockerfile: ./infra/docker/Dockerfile.lifeline
 
-  edge-node:
+  aasandha:
     build:
       context: .
-      dockerfile: ./edge-node/Dockerfile
-    ports:
-      - "8006:8006"
-    environment:
-      - REDIS_HOST=redis
-    depends_on:
-      redis:
-        condition: service_healthy
+      dockerfile: ./infra/docker/Dockerfile.aasandha
 
-  db:
-    image: postgres:15
-    environment:
-      - POSTGRES_DB=buildx
-      - POSTGRES_PASSWORD=password
-    volumes:
-      - ./infra/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+  pharmacy:
+    build:
+      context: .
+      dockerfile: ./infra/docker/Dockerfile.pharmacy
+
+  finance:
+    build:
+      context: .
+      dockerfile: ./infra/docker/Dockerfile.finance

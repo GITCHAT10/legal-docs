@@ -1,79 +1,70 @@
 #!/bin/bash
 set -e
 
-echo "🚀 BOOTSTRAPPING BUILDX SYSTEM (EXECUTION FIX MODE)..."
+echo "🚀 BOOTSTRAPPING MNOS SYSTEM (PROD-READY)..."
 
 # Ports
-PORT_API=8000
+PORT_GATEWAY=8000
 PORT_ELEONE=8001
 PORT_SHADOW=8002
-PORT_ROUTER=8003
-PORT_SAL=8004
-PORT_EDGE=8006
+PORT_EVENTS=8003
+PORT_AEGIS=8004
+PORT_FCE=8005
 
-# 1. Redis Initialization
+# 1. Start Redis
 if command -v redis-server >/dev/null 2>&1; then
-    echo "✅ REDIS: starting server..."
+    echo "✅ Starting REDIS..."
     redis-server --daemonize yes
-
-    # Verify Redis is ready
-    READY=0
-    for i in {1..10}; do
-        if redis-cli ping | grep -q PONG; then
-            READY=1
-            echo "✅ REDIS: connected"
-            break
-        fi
-        sleep 1
-    done
-    if [ $READY -eq 0 ]; then
-        echo "❌ ERROR: Redis failed to start"
-        echo "Mocking redis for sandbox..."
+    sleep 2
+    if ! redis-cli ping | grep -q PONG; then
+        echo "❌ REDIS FAILED"
+        exit 1
     fi
-else
-    echo "❌ ERROR: redis-server not found. Redis is mandatory for event pipeline."
-    echo "Mocking redis for sandbox..."
 fi
 
-# Cleanup on exit
-trap "echo 'Finalizing processes...'; kill \$(jobs -p) 2>/dev/null || true" EXIT
+# Cleanup
+trap "echo 'Shutting down services...'; kill \$(jobs -p) 2>/dev/null || true" EXIT
 
-# 2. Start Services (Real logs, no suppression)
-echo "Starting MNOS Services..."
+# 2. Start Core
+echo "Starting MNOS CORE..."
 export REDIS_HOST="localhost"
+python3 -u core/eleone/api/main.py --port $PORT_ELEONE &
+python3 -u core/shadow/api/main.py --port $PORT_SHADOW &
+python3 -u core/events/api/main.py --port $PORT_EVENTS &
+python3 -u core/aegis/api/main.py --port $PORT_AEGIS &
+python3 -u core/fce/api/main.py --port $PORT_FCE &
 
-python3 -u services/core/mnos_api/main.py --port $PORT_API &
-python3 -u services/core/mnos_router/main.py --port $PORT_ROUTER &
-python3 -u services/core/eleone/main.py --port $PORT_ELEONE &
-python3 -u services/core/shadow/main.py --port $PORT_SHADOW &
-python3 -u services/core/sal/main.py --port $PORT_SAL &
-python3 -u edge-node/main.py --port $PORT_EDGE &
-python3 -u services/core/event_worker.py &
+# 3. Start Interface
+echo "Starting MNOS INTERFACES..."
+python3 -u interfaces/gateway/api/main.py --port $PORT_GATEWAY &
 
-# 3. Health Checks
+# 4. Start Modules (Subset for validation)
+echo "Starting MNOS MODULES..."
+python3 -u modules/lifeline/api/main.py --port 8006 &
+
+# Health Check Helper
 check_health() {
     local url=$1
     local name=$2
-    echo -n "Verifying $name... "
+    echo -n "Waiting for $name... "
     for i in {1..20}; do
         if curl -sf "$url" > /dev/null; then
-            echo "✅ UP"
+            echo "✅"
             return 0
         fi
         sleep 1
     done
-    echo "❌ FAILED"
+    echo "❌"
     return 1
 }
 
-check_health "http://localhost:$PORT_API/health" "MNOS API" || echo "Mocking redis for sandbox..."
-check_health "http://localhost:$PORT_ELEONE/health" "ELEONE" || echo "Mocking redis for sandbox..."
-check_health "http://localhost:$PORT_SHADOW/health" "SHADOW" || echo "Mocking redis for sandbox..."
-check_health "http://localhost:$PORT_ROUTER/health" "Router" || echo "Mocking redis for sandbox..."
-check_health "http://localhost:$PORT_SAL/health" "SAL" || echo "Mocking redis for sandbox..."
-check_health "http://localhost:$PORT_EDGE/health" "Edge Node" || echo "Mocking redis for sandbox..."
+# 5. Verification
+check_health "http://localhost:$PORT_GATEWAY/health" "Gateway" || exit 1
+check_health "http://localhost:$PORT_ELEONE/health" "ELEONE" || exit 1
+check_health "http://localhost:$PORT_SHADOW/health" "SHADOW" || exit 1
+check_health "http://localhost:$PORT_EVENTS/health" "Events" || exit 1
+check_health "http://localhost:$PORT_AEGIS/health" "Aegis" || exit 1
+check_health "http://localhost:$PORT_FCE/health" "FCE" || exit 1
 
-echo "✅ BUILDX SYSTEM IS RUNNING END-TO-END"
-echo "Gateway: http://localhost:$PORT_API"
-
+echo "✅ MNOS SYSTEM FULLY VERIFIED AND RUNNING"
 wait

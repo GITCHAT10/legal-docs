@@ -3,10 +3,3 @@ uvicorn
 httpx
 redis
 pydantic
-sqlalchemy
-psycopg2-binary
-python-jose
-passlib
-python-multipart
-pytest
-pytest-asyncio
