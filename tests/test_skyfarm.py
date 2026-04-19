@@ -1,5 +1,5 @@
 import unittest
-from skyfarm.identity.models import UserModel, Role, EntityModel, EntityType
+from skyfarm.identity.models import UserModel, Role
 from skyfarm.integration.service import create_integration_event, verify_signature_v2, generate_canonical_string, sign_payload_canonical, SECRET_KEY
 from skyfarm.finance.service import calculate_maldives_pricing
 import uuid
