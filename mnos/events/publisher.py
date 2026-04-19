@@ -23,8 +23,31 @@ class EventPublisher:
             from mnos.mock_redis import get_redis_client
             self.redis = get_redis_client()
 
-    def publish(self, channel: str, message: dict):
+    def publish(self, channel: str, entity: str, action: str, payload: dict):
         import time
+        import uuid
+        import hmac
+        import hashlib
+        from datetime import datetime, timezone
+
+        # Standardize Sovereign Event Schema
+        event_id = str(uuid.uuid4())
+        timestamp = datetime.now(timezone.utc).isoformat()
+
+        # Sign event
+        secret = os.getenv("MNOS_INTEGRATION_SECRET", "dev_fallback_secret")
+        canonical = f"{event_id}:{entity}:{action}:{timestamp}:{json.dumps(payload, sort_keys=True)}"
+        signature = hmac.new(secret.encode(), canonical.encode(), hashlib.sha256).hexdigest()
+
+        message = {
+            "id": event_id,
+            "entity": entity,
+            "action": action,
+            "timestamp": timestamp,
+            "payload": payload,
+            "signature": signature
+        }
+
         max_retries = 3
         retry_delay = 1 # second
 

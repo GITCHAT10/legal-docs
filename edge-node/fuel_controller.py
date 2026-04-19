@@ -35,8 +35,9 @@ class EdgeFuelController:
         self.pubsub = self.redis.pubsub()
 
     def verify_mnos_signature(self, payload: dict) -> bool:
+        # Standard Sovereign Verification: Signature must cover all decision fields
         signature = payload.pop("mnos_signature", None)
-        # remove shadow_hash if present as it was added after signing in worker
+        # remove fields added after signing if any
         shadow_hash = payload.pop("shadow_hash", None)
 
         message = json.dumps(payload, sort_keys=True)
@@ -57,7 +58,10 @@ class EdgeFuelController:
 
         for message in self.pubsub.listen():
             if message["type"] == "message":
-                data = json.loads(message["data"])
+                # Standard Sovereign Event Handling
+                event = json.loads(message["data"])
+                data = event.get("payload", {})
+
                 request_id = data.get("request_id")
 
                 print(f"[*] Received Decision for Request: {request_id}")

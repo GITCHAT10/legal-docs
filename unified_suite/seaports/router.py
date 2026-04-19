@@ -23,13 +23,12 @@ async def register_vessel(vessel: Vessel, request: Request):
 
     # MNOS Integration
     event_payload = {
-        "type": "vessel.registered",
         "vessel_id": vessel.vessel_id,
         "name": vessel.name,
         "tax_applied": tax_info
     }
     ShadowService.log_event("VESSEL_REGISTERED", event_payload)
-    EventPublisher().publish("seaport.events", event_payload)
+    EventPublisher().publish("seaport.events", entity=vessel.vessel_id, action="REGISTER", payload=event_payload)
 
     return registered_vessel
 
@@ -39,14 +38,22 @@ async def list_vessels():
 
 @router.post("/vessels/{vessel_id}/assign-berth")
 async def assign_berth(vessel_id: str, request: Request):
+    # MOATS TAX ENFORCEMENT
+    tax_info = MoatsTaxCalculator.calculate_bill(750.00) # Berth Assignment Fee
+
+    if not MoatsTaxCalculator.validate_tax_compliance(tax_info):
+        from unified_suite.core.flows import SovereignFlows
+        SovereignFlows.deny_flow(vessel_id, "Tax Compliance Breach", {"tax_data": tax_info})
+        raise HTTPException(status_code=400, detail="Sovereign Error: MOATS Tax Validation Failed")
+
     berth = service.assign_berth(vessel_id)
     if not berth:
         raise HTTPException(status_code=404, detail="Vessel not found or no berths available")
 
     # MNOS Integration
-    event_payload = {"type": "vessel.berth_assigned", "vessel_id": vessel_id, "berth": berth}
+    event_payload = {"vessel_id": vessel_id, "berth": berth}
     ShadowService.log_event("BERTH_ASSIGNED", event_payload)
-    EventPublisher().publish("seaport.events", event_payload)
+    EventPublisher().publish("seaport.events", entity=vessel_id, action="ASSIGN_BERTH", payload=event_payload)
 
     return {"vessel_id": vessel_id, "berth": berth}
 

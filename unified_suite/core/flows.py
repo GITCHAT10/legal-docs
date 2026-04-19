@@ -38,10 +38,11 @@ class SovereignFlows:
         """
         Offline island mode mechanism: Queue operations locally when central gateway is unreachable.
         """
+        from datetime import datetime, timezone
         buffer_entry = {
             "operation": operation_type,
             "payload": payload,
-            "buffered_at": "ISO8601_PLACEHOLDER" # In real use, actual timestamp
+            "buffered_at": datetime.now(timezone.utc).isoformat()
         }
 
         # In this simulation, we log it to a local 'buffer' (Shadow Ledger acts as local persistence)
@@ -49,6 +50,22 @@ class SovereignFlows:
 
         logger.warning(f"Island Mode: Buffered {operation_type} for later sync. Hash: {shadow_hash}")
         return {"status": "BUFFERED", "sync_required": True, "buffer_hash": shadow_hash}
+
+    @classmethod
+    def replay_buffer(cls):
+        """
+        Replay all buffered operations to the central MNOS system.
+        """
+        from mnos.database import SessionLocal, ShadowLogModel
+        db = SessionLocal()
+        try:
+            buffered_ops = db.query(ShadowLogModel).filter(ShadowLogModel.event_type == "BUFFERED_OFFLINE_OP").all()
+            for op in buffered_ops:
+                logger.info(f"Replaying operation: {op.payload.get('operation')}. Hash: {op.current_hash}")
+                # Real implementation would call MNOS API here
+            return len(buffered_ops)
+        finally:
+            db.close()
 
     @classmethod
     def is_resource_locked(cls, resource_id: str) -> bool:

@@ -119,6 +119,8 @@ async def fuel_request(
 
     # 2. Idempotency Check
     body_hash = hashlib.sha256(body_bytes).hexdigest()
+
+    # Standard Sovereign Idempotency: Key must be unique for state-changing ops
     idem_entry = db.query(IdempotencyRegistryModel).filter(IdempotencyRegistryModel.key == x_idempotency_key).first()
     if idem_entry:
         if idem_entry.body_hash == body_hash:
@@ -139,7 +141,12 @@ async def fuel_request(
         "fuel_request": payload,
         "shadow_hash": shadow_hash
     }
-    publisher.publish("FUEL_REQUESTED", event_payload)
+    publisher.publish(
+        channel="FUEL_REQUESTED",
+        entity=payload.get("aircraft_id", "UNKNOWN"),
+        action="REQUEST_FUEL",
+        payload=event_payload
+    )
 
     response = {
         "success": True,

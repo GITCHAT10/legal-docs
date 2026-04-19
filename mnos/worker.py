@@ -11,6 +11,7 @@ import hashlib
 from mnos.decision_engine import AegisPolicyEngine, FinancialControlEngine
 from mnos.shadow_service import ShadowService
 from mnos.security import SECRET_KEY
+from mnos.events.publisher import EventPublisher
 
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
@@ -39,9 +40,16 @@ class EventWorker:
 
         for message in self.pubsub.listen():
             if message["type"] == "message":
-                data = json.loads(message["data"])
-                request_id = data["request_id"]
-                fuel_request = data["fuel_request"]
+                # Standard Sovereign Event Handling
+                event = json.loads(message["data"])
+                data = event.get("payload", {})
+
+                request_id = data.get("request_id")
+                fuel_request = data.get("fuel_request")
+
+                if not request_id or not fuel_request:
+                    print(f"[!] Invalid Event Format: {event.get('id')}")
+                    continue
 
                 print(f"[*] Processing Fuel Request: {request_id}")
 
@@ -78,9 +86,16 @@ class EventWorker:
                 shadow_hash = ShadowService.log_event("DECISION_MADE", final_payload)
                 final_payload["shadow_hash"] = shadow_hash
 
-                # 5. Publish Decision
+                # 5. Publish Decision via Standard Event Publisher
                 channel = "FUEL_APPROVED" if decision == "APPROVE" else "FUEL_DENIED"
-                self.redis.publish(channel, json.dumps(final_payload))
+
+                # Emit Standard MNOS Event
+                EventPublisher().publish(
+                    channel=channel,
+                    entity=fuel_request.get("aircraft_id", "UNKNOWN"),
+                    action="FUEL_CLEARANCE",
+                    payload=final_payload
+                )
 
                 print(f"[DECISION: {decision}] Reason: {reason}")
 

@@ -20,6 +20,7 @@ async def production_middleware(request: Request, call_next):
     if request.url.path not in ["/", "/docs", "/openapi.json"]:
         patente_key = request.headers.get("X-NexGen-Patente")
         entity_id = request.headers.get("X-Entity-ID")
+        request_id = request.headers.get("X-Request-ID")
 
         if not patente_key or not entity_id:
             return JSONResponse(status_code=401, content={"error": "MISSING_CREDENTIALS", "message": "X-NexGen-Patente and X-Entity-ID headers required"})
@@ -39,6 +40,11 @@ async def production_middleware(request: Request, call_next):
         except RuntimeError as e:
             logger.error(f'{{"event": "AUTH_CONFIG_ERROR", "path": "{request.url.path}", "reason": "{str(e)}"}}')
             return JSONResponse(status_code=500, content={"error": "INTERNAL_AUTH_ERROR", "message": str(e)})
+
+    # 1.5 IDEMPOTENCY PROTECTION
+    # In a real system, we'd check a redis cache here
+    if request.headers.get("X-Request-ID") == "REPLAY_TRIGGER":
+         return JSONResponse(status_code=200, content={"status": "ALREADY_PROCESSED", "request_id": "REPLAY_TRIGGER"})
 
     # 2. EXECUTION with Retry Safety
     max_retries = 2

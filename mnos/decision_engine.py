@@ -29,6 +29,12 @@ class AegisPolicyEngine:
         except:
              return False, "PATENTE validation failed"
 
+        # Sovereign Requirement: Asset Validation
+        # In a real system, we would query the unified_suite service
+        # Here we simulate: Aircrafts with 'UNKNOWN' in ID are rejected
+        if "UNKNOWN" in aircraft_id:
+            return False, "Unrecognized Asset: Aircraft not registered"
+
         # Policy: flight_id must start with 'FL' and aircraft_id must start with 'AC'
         if not flight_id.startswith("FL"):
             return False, "Invalid flight ID"
