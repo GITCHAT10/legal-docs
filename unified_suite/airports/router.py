@@ -14,6 +14,11 @@ async def create_flight(flight: Flight, request: Request):
     # MOATS TAX ENFORCEMENT
     tax_info = MoatsTaxCalculator.calculate_bill(1500.00) # Standard Airport Fee
 
+    if not MoatsTaxCalculator.validate_tax_compliance(tax_info):
+        from unified_suite.core.flows import SovereignFlows
+        SovereignFlows.deny_flow(flight.flight_number, "Tax Compliance Breach", {"tax_data": tax_info})
+        raise HTTPException(status_code=400, detail="Sovereign Error: MOATS Tax Validation Failed")
+
     scheduled_flight = service.schedule_flight(flight)
 
     # MNOS Integration

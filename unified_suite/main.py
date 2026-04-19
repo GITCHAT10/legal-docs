@@ -29,17 +29,29 @@ async def production_middleware(request: Request, call_next):
 
         try:
             if not NexGenPatenteVerifier.authorize_access(patente_key, entity_id, area):
-                logger.warning(f'{{"event": "AUTH_FAILURE", "entity": "{entity_id}", "path": "{request.url.path}"}}')
+                from unified_suite.core.flows import SovereignFlows
+                SovereignFlows.deny_flow(entity_id or "UNKNOWN", "Unauthorized Area Access", {"path": request.url.path})
                 return JSONResponse(status_code=403, content={"error": "ACCESS_DENIED", "message": f"Entity {entity_id} not authorized for {area}"})
         except PermissionError as e:
-            logger.warning(f'{{"event": "AUTH_FAILURE", "entity": "{entity_id}", "path": "{request.url.path}", "reason": "{str(e)}"}}')
+            from unified_suite.core.flows import SovereignFlows
+            SovereignFlows.deny_flow(entity_id or "UNKNOWN", str(e), {"path": request.url.path})
             return JSONResponse(status_code=403, content={"error": "AUTH_FAILED", "message": str(e)})
         except RuntimeError as e:
             logger.error(f'{{"event": "AUTH_CONFIG_ERROR", "path": "{request.url.path}", "reason": "{str(e)}"}}')
             return JSONResponse(status_code=500, content={"error": "INTERNAL_AUTH_ERROR", "message": str(e)})
 
-    # 2. EXECUTION
-    response = await call_next(request)
+    # 2. EXECUTION with Retry Safety
+    max_retries = 2
+    for attempt in range(max_retries + 1):
+        try:
+            response = await call_next(request)
+            break
+        except Exception as e:
+            if attempt == max_retries:
+                logger.error(f'{{"event": "REQUEST_FINAL_FAILURE", "path": "{request.url.path}", "error": "{str(e)}"}}')
+                return JSONResponse(status_code=503, content={"error": "SERVICE_UNAVAILABLE", "message": "Resilient processing failed"})
+            logger.warning(f'{{"event": "REQUEST_RETRY", "path": "{request.url.path}", "attempt": {attempt + 1}}}')
+            time.sleep(0.5)
 
     # 3. STRUCTURED LOGGING
     process_time = time.time() - start_time

@@ -14,6 +14,11 @@ async def register_vessel(vessel: Vessel, request: Request):
     # MOATS TAX ENFORCEMENT
     tax_info = MoatsTaxCalculator.calculate_bill(5000.00) # Standard Port Fee
 
+    if not MoatsTaxCalculator.validate_tax_compliance(tax_info):
+        from unified_suite.core.flows import SovereignFlows
+        SovereignFlows.deny_flow(vessel.vessel_id, "Tax Compliance Breach", {"tax_data": tax_info})
+        raise HTTPException(status_code=400, detail="Sovereign Error: MOATS Tax Validation Failed")
+
     registered_vessel = service.register_vessel(vessel)
 
     # MNOS Integration

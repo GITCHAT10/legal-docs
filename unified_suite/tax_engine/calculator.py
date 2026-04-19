@@ -45,3 +45,28 @@ class MoatsTaxCalculator:
         duty_rate = 0.15
         duty = value * duty_rate
         return round(duty, 2)
+
+    @classmethod
+    def validate_tax_compliance(cls, bill_data: dict) -> bool:
+        """
+        Sovereign Validation: Ensures the bill data adheres to MIRA standards.
+        - Must include Service Charge (10% of base)
+        - Must include TGST (17% of subtotal)
+        - Total must match summation
+        """
+        try:
+            base = bill_data.get("base_amount", 0)
+            sc = bill_data.get("service_charge", 0)
+            tgst = bill_data.get("tgst", 0)
+            total = bill_data.get("total_amount", 0)
+
+            expected_sc = round(base * cls.SERVICE_CHARGE_RATE, 2)
+            expected_tgst = round((base + expected_sc) * cls.TGST_RATE, 2)
+            expected_total = round((base + expected_sc + expected_tgst), 2)
+
+            # Allow for minor rounding differences (0.01)
+            return (abs(sc - expected_sc) <= 0.01 and
+                    abs(tgst - expected_tgst) <= 0.01 and
+                    abs(total - expected_total) <= 0.01)
+        except Exception:
+            return False

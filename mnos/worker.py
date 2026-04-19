@@ -45,8 +45,13 @@ class EventWorker:
 
                 print(f"[*] Processing Fuel Request: {request_id}")
 
-                # 1. AEGIS Policy Check
-                aegis_ok, aegis_msg = AegisPolicyEngine.validate_request(fuel_request)
+                # 1. AEGIS Policy Check (Hardened)
+                try:
+                    aegis_ok, aegis_msg = AegisPolicyEngine.validate_request(fuel_request)
+                except PermissionError as e:
+                    aegis_ok, aegis_msg = False, str(e)
+                except Exception as e:
+                    aegis_ok, aegis_msg = False, f"System Error: {str(e)}"
 
                 # 2. FCE Financial Check
                 fce_ok, fce_msg = (True, "Skipped")

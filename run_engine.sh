@@ -10,6 +10,10 @@ rm -f skyfarm.db mnos.db mnos.log skyfarm.log
 export SKYFARM_INTEGRATION_SECRET="${SKYFARM_INTEGRATION_SECRET:-dev_fallback_secret}"
 export MNOS_INTEGRATION_SECRET="${MNOS_INTEGRATION_SECRET:-dev_fallback_secret}"
 export NEXGEN_SECRET="${NEXGEN_SECRET:-dev_fallback_secret}"
+
+# Configure PATENTE_HASH for tests
+# Hash of 'dev_fallback_token'
+export PATENTE_HASH="5063ad7329d8724779e8003cccabf7aad2220b58c804375dc3e968bdc811587c"
 export SKYFARM_ENV="prod"
 export MNOS_ENV="prod"
 

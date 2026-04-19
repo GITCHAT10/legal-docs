@@ -1,8 +1,33 @@
+from unified_suite.core.patente import NexGenPatenteVerifier
+import logging
+
+logger = logging.getLogger("unified_suite")
+
 class AegisPolicyEngine:
     @staticmethod
     def validate_request(fuel_request: dict):
         flight_id = fuel_request.get("flight_id", "")
         aircraft_id = fuel_request.get("aircraft_id", "")
+
+        # Sovereign Requirement: Unified PATENTE Validation
+        operator_id = fuel_request.get("operator_id", "")
+        patente_token = fuel_request.get("signature", "") # Reusing signature field for patente in this sim context
+
+        # DEBUG
+        # import os
+        # logger.info(f"DEBUG: operator_id={operator_id}, token={patente_token}, hash_env={os.getenv('PATENTE_HASH')}")
+
+        # For simulation simplicity, we will skip area validation if operator starts with CAPT
+        # But token validation is mandatory
+        try:
+            # Check if PATENTE_HASH matches token hash
+            import os
+            import hashlib
+            expected = os.getenv("PATENTE_HASH")
+            if not expected or hashlib.sha256(patente_token.encode()).hexdigest() != expected:
+                 return False, "PATENTE validation failed"
+        except:
+             return False, "PATENTE validation failed"
 
         # Policy: flight_id must start with 'FL' and aircraft_id must start with 'AC'
         if not flight_id.startswith("FL"):
