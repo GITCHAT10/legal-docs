@@ -1,6 +1,5 @@
 import logging
 import json
-import os
 from datetime import datetime, timezone
 
 class JSONFormatter(logging.Formatter):
@@ -12,7 +11,7 @@ class JSONFormatter(logging.Formatter):
             "module": record.module,
             "funcName": record.funcName,
         }
-        # Standardized fields for integration observability (Phase 6)
+        # Standardized fields for Phase 6
         for key in ["request_id", "event_id", "correlation_id", "tenant_id", "category", "status"]:
             if hasattr(record, key):
                 log_entry[key] = getattr(record, key)

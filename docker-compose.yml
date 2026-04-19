@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  skyfarm:
+    build: .
+    ports:
+      - "8001:8001"
+    environment:
+      - SKYFARM_INTEGRATION_SECRET=${SKYFARM_INTEGRATION_SECRET}
+      - MNOS_INTEGRATION_SECRET=${MNOS_INTEGRATION_SECRET}
+      - MNOS_URL=http://mnos:8000
+      - DATABASE_URL=sqlite:///./skyfarm.db
+      - SKYFARM_ENV=prod
+    depends_on:
+      - mnos
+    volumes:
+      - skyfarm_data:/app
+
+  mnos:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["uvicorn", "mnos.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "8000:8000"
+    environment:
+      - MNOS_INTEGRATION_SECRET=${MNOS_INTEGRATION_SECRET}
+      - MNOS_ENV=prod
+    volumes:
+      - mnos_data:/app
+
+volumes:
+  skyfarm_data:
+  mnos_data:

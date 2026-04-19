@@ -4,7 +4,7 @@ import json
 import os
 from datetime import datetime, timezone
 
-# Enforce secret in production, fail boot if missing (removed fallback)
+# Phase 1: Strict secret handling. App must fail if missing.
 SECRET_KEY = os.environ["MNOS_INTEGRATION_SECRET"]
 
 def generate_canonical_string(method: str, path: str, timestamp: str, request_id: str, body_bytes: bytes) -> str:
@@ -20,12 +20,12 @@ def verify_signature_v2(
     body_bytes: bytes,
     secret: str
 ) -> bool:
-    # 1. Timestamp validation (60 seconds per Phase 1)
+    # 1. Strict Timestamp validation (60 seconds per Phase 1)
     try:
         req_time = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
         if abs((datetime.now(timezone.utc) - req_time).total_seconds()) > 60:
             return False
-    except:
+    except Exception:
         return False
 
     # 2. Canonical string check
@@ -34,7 +34,6 @@ def verify_signature_v2(
 
     return hmac.compare_digest(signature, expected_signature)
 
-# Legacy support
 def verify_signature(payload: dict, secret: str) -> bool:
     if "signature" not in payload:
         return False

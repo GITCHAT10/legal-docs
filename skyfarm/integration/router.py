@@ -1,8 +1,7 @@
 from fastapi import APIRouter, HTTPException
-from skyfarm.integration.service import create_integration_event, SECRET_KEY, generate_canonical_string, sign_payload_canonical, verify_signature_v2
+from skyfarm.integration.service import create_integration_event, SECRET_KEY, generate_canonical_string, sign_payload_canonical
 from skyfarm.integration.outbox_worker import get_metrics
 from skyfarm.integration.schemas import MetricsResponse, HealthResponse
-from skyfarm.integration.logging_utils import logger
 import requests
 from pydantic import BaseModel
 from typing import Any, Dict, Optional
@@ -48,19 +47,6 @@ def send_to_mnos(payload: IntegrationSend):
     canonical = generate_canonical_string(method, path, timestamp, request_id, body_bytes)
     signature = sign_payload_canonical(canonical, SECRET_KEY)
 
-    # Phase 6: Verify HMAC signature before sending
-    if not verify_signature_v2(
-        signature=signature,
-        method=method,
-        path=path,
-        timestamp=timestamp,
-        request_id=request_id,
-        body=body_bytes,
-        secret=SECRET_KEY
-    ):
-        logger.error("Internal signature verification failed", extra={"request_id": request_id, "event_id": event.event_id})
-        raise HTTPException(status_code=500, detail="Internal integrity error: Signature mismatch")
-
     headers = {
         "X-Request-Id": request_id,
         "X-Idempotency-Key": payload.idempotency_key or str(uuid.uuid4()),
@@ -69,25 +55,21 @@ def send_to_mnos(payload: IntegrationSend):
         "Content-Type": "application/json"
     }
 
-    # Phase 5: Structured Logging
-    logger.info("MNOS request", extra={"endpoint": endpoint, "payload_summary": payload.event_type, "request_id": request_id})
-
     try:
         resp = requests.post(endpoint, data=body_bytes, headers=headers, timeout=5)
 
         if resp.status_code >= 400:
-             logger.error("MNOS error", extra={"status": resp.status_code, "body": resp.text, "request_id": request_id})
+             # Phase 3: No silent failures, explicit raise
              raise HTTPException(
                 status_code=resp.status_code,
                 detail=f"MNOS rejected request: {resp.text}"
             )
 
-        logger.info("MNOS success", extra={"status": resp.status_code, "request_id": request_id})
         return resp.json()
     except Exception as e:
+        # Phase 3: Re-raise as HTTPException to ensure no silent failures
         if isinstance(e, HTTPException):
             raise e
-        logger.error("MNOS connection error", extra={"error": str(e), "request_id": request_id})
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/metrics", response_model=MetricsResponse)
