@@ -1,0 +1,21 @@
+version: '3.8'
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
+    depends_on:
+      - postgres
+      - redis
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: academy
+      POSTGRES_PASSWORD: password
+
+  redis:
+    image: redis:alpine

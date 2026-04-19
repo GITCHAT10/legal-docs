@@ -1,0 +1,12 @@
+{
+    "name": "Academy",
+    "alias": "academy",
+    "description": "Academy module for MNOS",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\Academy\\App\\Providers\\AcademyServiceProvider"
+    ],
+    "files": [],
+    "requires": []
+}
