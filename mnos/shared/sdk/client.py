@@ -27,7 +27,12 @@ class MnosClient:
     def _get_headers(self, method: str, path: str, body_dict: Dict[str, Any], idempotency_key: Optional[str] = None) -> Dict[str, str]:
         timestamp = str(int(time.time()))
         request_id = str(uuid.uuid4())
-        body_bytes = json.dumps(body_dict, sort_keys=True).encode()
+
+        # Ensure we use exactly the same normalization as the server
+        if body_dict:
+            body_bytes = json.dumps(body_dict, sort_keys=True, separators=(",", ":")).encode()
+        else:
+            body_bytes = b""
 
         signature = self._generate_signature(method, path, timestamp, request_id, body_bytes)
 

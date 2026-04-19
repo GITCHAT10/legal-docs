@@ -16,7 +16,7 @@ async def signature_validation_middleware(request: Request, call_next):
     request_id = request.headers.get("X-Request-Id")
 
     if not all([signature, timestamp, request_id]):
-        raise HTTPException(status_code=401, detail="Missing security headers")
+        raise HTTPException(status_code=401, detail=f"Missing security headers: sign={signature}, ts={timestamp}, req={request_id}")
 
     # Time window validation (60 seconds)
     try:
@@ -32,8 +32,17 @@ async def signature_validation_middleware(request: Request, call_next):
     path = request.url.path
 
     body = await request.body()
-    # In some cases body might be empty, but for POST/PUT it should be there or at least empty dict
-    body_hash = hashlib.sha256(body).hexdigest()
+    # Canonical body hash - ensure we match the SDK
+    if body:
+        # Load and dump to ensure same format
+        try:
+            body_dict = json.loads(body)
+            normalized_body = json.dumps(body_dict, sort_keys=True, separators=(",", ":")).encode()
+            body_hash = hashlib.sha256(normalized_body).hexdigest()
+        except:
+            body_hash = hashlib.sha256(body).hexdigest()
+    else:
+        body_hash = hashlib.sha256(b"").hexdigest()
 
     canonical_string = f"{method}\n{path}\n{timestamp}\n{request_id}\n{body_hash}"
     expected_sig = hmac.new(
@@ -43,14 +52,12 @@ async def signature_validation_middleware(request: Request, call_next):
     ).hexdigest()
 
     if signature != expected_sig:
-         # Allow "sig" only if in development/test mode? No, let's be strict for "production-ready"
-         if signature != "sig":
-             raise HTTPException(status_code=401, detail="Invalid signature")
+        raise HTTPException(status_code=401, detail="Invalid signature")
 
-    # Important: body was consumed, we need to make it available again if needed
-    # But since we are proxying, we will read it again.
-    # FastAPI/Starlette allows re-reading via request._body = body or similar if using a middleware that doesn't consume it
-    # But here we are just validating. The proxy will read it too.
+    async def receive():
+        return {"type": "http.request", "body": body}
+
+    request._receive = receive
 
     return await call_next(request)
 
