@@ -15,6 +15,8 @@ MODULE_URLS = {
     "inn": "http://inn:8000",
     "skygodown": "http://skygodown:8000",
     "atollairways": "http://atollairways:8000",
+    "svd": "http://svd:8000",
+    "bfi": "http://bfi:8000",
 }
 
 @app.get("/health")
@@ -61,4 +63,5 @@ async def route_module_flow(request: dict):
         }
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.getenv("PORT", 8003))
+    uvicorn.run(app, host="0.0.0.0", port=port)
