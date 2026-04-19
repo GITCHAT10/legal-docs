@@ -13,6 +13,10 @@ class AirportService:
     def assign_gate(self, flight_number: str):
         for flight in self.flights:
             if flight.flight_number == flight_number:
+                # IDEMPOTENCY: Do not reassign if already assigned
+                if flight.gate:
+                    return flight.gate
+
                 # Basic logic: assign the first available gate
                 used_gates = [f.gate for f in self.flights if f.gate]
                 for gate in self.gates:

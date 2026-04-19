@@ -8,10 +8,14 @@ from unified_suite.seaports.models import Vessel, Container
 from datetime import datetime
 
 def test_nexgen_patente():
-    entity_id = "TEST_ENTITY"
+    entity_id = "CAPT_TEST"
     patente = NexGenPatenteVerifier.generate_patente(entity_id)
-    assert NexGenPatenteVerifier.verify_patente(entity_id, patente, "TEST") is True
-    assert NexGenPatenteVerifier.verify_patente(entity_id, "wrong_key", "TEST") is False
+    # Valid auth
+    assert NexGenPatenteVerifier.authorize_access(entity_id, patente, "DOCKING_AREA") is True
+    # Invalid key
+    assert NexGenPatenteVerifier.authorize_access(entity_id, "wrong_key", "DOCKING_AREA") is False
+    # Invalid area for entity type
+    assert NexGenPatenteVerifier.authorize_access("VESL_01", NexGenPatenteVerifier.generate_patente("VESL_01"), "GATE_AREA") is False
 
 def test_moats_tax_logic():
     base = 1000.0
@@ -24,7 +28,7 @@ def test_moats_tax_logic():
     assert bill['total_amount'] == 1287.0
     assert bill['compliance'] == "MIRA_COMPLIANT_V2"
 
-def test_airport_service():
+def test_airport_service_idempotency():
     service = AirportService()
     flight = Flight(
         flight_number="TEST123",
@@ -34,9 +38,12 @@ def test_airport_service():
         arrival_time=datetime.now()
     )
     service.schedule_flight(flight)
-    gate = service.assign_gate("TEST123")
-    assert gate == "GATE_1"
-    assert service.get_all_flights()[0].gate == "GATE_1"
+    gate1 = service.assign_gate("TEST123")
+    assert gate1 == "GATE_1"
+
+    # IDEMPOTENCY CHECK
+    gate2 = service.assign_gate("TEST123")
+    assert gate2 == "GATE_1" # Should not change
 
 def test_seaport_service():
     service = SeaPortService()

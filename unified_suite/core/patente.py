@@ -30,10 +30,30 @@ class NexGenPatenteVerifier:
         return hashlib.sha256(f"{entity_id}:{secret}".encode()).hexdigest()
 
     @staticmethod
-    def authorize_access(patente_key: str, area: str) -> bool:
+    def authorize_access(entity_id: str, patente_key: str, area: str) -> bool:
         """
-        Checks if the patente provides access to a specific port/airport area.
-        For simulation: All valid patentes have access.
+        PRODUCTION-GRADE AUTHORIZATION
+        1. Verifies the SHA256 patente_key matches the entity_id + secret.
+        2. Checks entity-based access control rules for the requested area.
         """
-        # Logic can be expanded to check specific scopes in the future
-        return True
+        # Step 1: Verification
+        if not NexGenPatenteVerifier.verify_patente(entity_id, patente_key, "any"):
+            return False
+
+        # Step 2: Entity-based Access Control (EBAC)
+        # Rules:
+        # - Entities starting with 'CAPT' have access to 'DOCKING_AREA' and 'GATE_AREA'
+        # - Entities starting with 'STAF' have access to 'GATE_AREA' only
+        # - Entities starting with 'VESL' have access to 'DOCKING_AREA'
+        # - Entities starting with 'FLGT' have access to 'GATE_AREA'
+
+        if entity_id.startswith("CAPT"):
+            return area in ["DOCKING_AREA", "GATE_AREA"]
+        elif entity_id.startswith("STAF"):
+            return area == "GATE_AREA"
+        elif entity_id.startswith("VESL"):
+            return area == "DOCKING_AREA"
+        elif entity_id.startswith("FLGT"):
+            return area == "GATE_AREA"
+
+        return False

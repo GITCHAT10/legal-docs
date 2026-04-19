@@ -13,6 +13,10 @@ class SeaPortService:
     def assign_berth(self, vessel_id: str):
         for vessel in self.vessels:
             if vessel.vessel_id == vessel_id:
+                # IDEMPOTENCY: Do not reassign if already assigned
+                if vessel.berth:
+                    return vessel.berth
+
                 used_berths = [v.berth for v in self.vessels if v.berth]
                 for berth in self.berths:
                     if berth not in used_berths:

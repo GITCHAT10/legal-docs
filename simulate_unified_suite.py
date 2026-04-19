@@ -11,6 +11,8 @@ from unified_suite.airports.service import AirportService
 from unified_suite.airports.models import Flight
 from unified_suite.seaports.service import SeaPortService
 from unified_suite.seaports.models import Vessel, Container
+import requests
+import json
 
 def run_simulation():
     print("🚀 STARTING MALDIVES UNIFIED AIRPORT & PORT SUITE SIMULATION")
@@ -20,11 +22,18 @@ def run_simulation():
     print("\n[NEXGEN ASI PATENTE] Verifying Personnel...")
     captain_id = "CAPT_777"
     patente = NexGenPatenteVerifier.generate_patente(captain_id)
-    is_valid = NexGenPatenteVerifier.verify_patente(captain_id, patente, "PERSONNEL")
+    is_valid = NexGenPatenteVerifier.authorize_access(captain_id, patente, "DOCKING_AREA")
     print(f"Captain {captain_id} Patente: {patente}")
-    print(f"Verification Status: {'✅ VALID' if is_valid else '❌ INVALID'}")
+    print(f"Authorization Status (DOCKING_AREA): {'✅ AUTHORIZED' if is_valid else '❌ DENIED'}")
 
-    # 2. AIRPORT OPERATIONS (SITA/AMADEUS)
+    # 2. API INTEGRATION (Production Middleware)
+    print("\n[PRODUCTION API] Testing Middleware Auth...")
+    BASE_URL = "http://localhost:8003"
+    headers = {
+        "X-Entity-ID": captain_id,
+        "X-NexGen-Patente": patente,
+        "Content-Type": "application/json"
+    }
     print("\n[AIRPORT SUITE] Scheduling Arrival at Velana International (VIA)...")
     airport = AirportService()
     flight = Flight(
