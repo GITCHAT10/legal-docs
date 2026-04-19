@@ -18,12 +18,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - ELEONE_URL=http://eleone:8000
-      - SHADOW_URL=http://shadow:8000
-      - SVD_URL=http://svd:8000
-      - SAL_URL=http://sal:8000
-      - BFI_URL=http://bfi:8000
-      - EDGE_URL=http://edge-node:8006
+      - PORT=8000
       - REDIS_HOST=redis
     depends_on:
       redis:
@@ -34,26 +29,14 @@ services:
       timeout: 5s
       retries: 3
 
-  event-worker:
-    build:
-      context: .
-      dockerfile: ./services/gateway/Dockerfile.worker
-    environment:
-      - REDIS_HOST=redis
-      - SHADOW_URL=http://shadow:8000
-    depends_on:
-      redis:
-        condition: service_healthy
-      shadow:
-        condition: service_started
-
   eleone:
     build:
       context: .
       dockerfile: ./services/eleone/Dockerfile
-    depends_on:
-      redis:
-        condition: service_healthy
+    ports:
+      - "8001:8001"
+    environment:
+      - PORT=8001
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
       interval: 10s
@@ -64,11 +47,10 @@ services:
     build:
       context: .
       dockerfile: ./services/shadow/Dockerfile
+    ports:
+      - "8002:8002"
     environment:
-      - REDIS_HOST=redis
-    depends_on:
-      redis:
-        condition: service_healthy
+      - PORT=8002
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
       interval: 10s
@@ -79,6 +61,10 @@ services:
     build:
       context: .
       dockerfile: ./services/svd/Dockerfile
+    ports:
+      - "8003:8003"
+    environment:
+      - PORT=8003
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
       interval: 10s
@@ -89,6 +75,10 @@ services:
     build:
       context: .
       dockerfile: ./services/sal/Dockerfile
+    ports:
+      - "8004:8004"
+    environment:
+      - PORT=8004
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
       interval: 10s
@@ -99,6 +89,10 @@ services:
     build:
       context: .
       dockerfile: ./services/bfi/Dockerfile
+    ports:
+      - "8005:8005"
+    environment:
+      - PORT=8005
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
       interval: 10s
@@ -111,16 +105,10 @@ services:
       dockerfile: ./edge-node/Dockerfile
     ports:
       - "8006:8006"
+    environment:
+      - PORT=8006
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8006/health"]
       interval: 10s
       timeout: 5s
       retries: 3
-
-  db:
-    image: postgres:15
-    environment:
-      - POSTGRES_DB=buildx
-      - POSTGRES_PASSWORD=password
-    volumes:
-      - ./infra/db/init.sql:/docker-entrypoint-initdb.d/init.sql

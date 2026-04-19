@@ -10,7 +10,7 @@ This repository contains a production-ready MNOS execution engine scaffold.
    ```
 2. Verify system health:
    ```bash
-   ./scripts/validate_stack.sh
+   ./scripts/verify_system.sh
    ```
 
 ## 🚀 Local Bootstrap (without Docker)
