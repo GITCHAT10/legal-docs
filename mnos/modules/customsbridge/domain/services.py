@@ -39,14 +39,23 @@ class CustomsOrchestrator:
         next_action = "RELEASE"
         aegis_action = None
 
+        # Internal state for DB records
+        provenance_status = "VERIFIED"
+        yield_status = "MATCH"
+        settlement_status = "SETTLED"
+        risk_score = 0.0
+
         # 1. Receive request - Log to SHADOW/EVENTS
         await self._safe_call(self.shadow.write_record, {"event": "CUSTOMS_CLEARANCE_REQUESTED", "data": request_in.model_dump()})
         await self._safe_call(self.events.publish_event, "CUSTOMS_CLEARANCE_REQUESTED", request_in.model_dump())
 
         # 2. Verify BatchIDs with AQUA
         aqua_res = await self._safe_call(self.aqua.verify_batches, request_in.mnos_batch_ids)
-        provenance_status = "VERIFIED"
-        if aqua_res.get("status") != "VERIFIED":
+        if not aqua_res or aqua_res.get("status") == "ERROR":
+            await self._shadow_failure("AQUA service unavailable", request_in)
+            status = "REVIEW"
+            reasons.append("AQUA service unavailable")
+        elif aqua_res.get("status") != "VERIFIED":
             reasons.append("BatchID not found or unverified")
             status = "BLOCKED"
             provenance_status = "FAILED"
@@ -54,68 +63,60 @@ class CustomsOrchestrator:
             await self._safe_call(self.events.publish_event, "CUSTOMS_PROVENANCE_VERIFIED", {"request_id": request_in.request_id})
 
         # 3. Validate yield/weight with ODYSSEY
-        odyssey_res = await self._safe_call(self.odyssey.validate_yield, request_in.mnos_batch_ids, request_in.declared_weight)
-        yield_status = "MATCH"
-        if odyssey_res.get("status") == "MISMATCH":
-            reasons.append("Weight variance above soft threshold")
-            yield_status = "MISMATCH"
-            if status != "BLOCKED":
+        if status != "REVIEW":
+            odyssey_res = await self._safe_call(self.odyssey.validate_yield, request_in.mnos_batch_ids, request_in.declared_weight)
+            if not odyssey_res or odyssey_res.get("status") == "ERROR":
+                await self._shadow_failure("ODYSSEY service unavailable", request_in)
                 status = "REVIEW"
-            await self._safe_call(self.events.publish_event, "CUSTOMS_YIELD_MISMATCH_DETECTED", {"request_id": request_in.request_id})
+                reasons.append("ODYSSEY service unavailable")
+            elif odyssey_res.get("status") == "MISMATCH":
+                reasons.append("Weight variance above soft threshold")
+                yield_status = "MISMATCH"
+                if status != "BLOCKED":
+                    status = "REVIEW"
+                await self._safe_call(self.events.publish_event, "CUSTOMS_YIELD_MISMATCH_DETECTED", {"request_id": request_in.request_id})
 
         # 4. Check export readiness with SKYGODOWN
-        skygodown_res = await self._safe_call(self.skygodown.check_export_readiness, request_in.mnos_batch_ids)
-        if skygodown_res.get("status") != "READY":
-            reasons.append("Export readiness check failed in SKYGODOWN")
-            if status == "APPROVED":
+        if status != "REVIEW":
+            skygodown_res = await self._safe_call(self.skygodown.check_export_readiness, request_in.mnos_batch_ids)
+            if not skygodown_res or skygodown_res.get("status") == "ERROR":
+                await self._shadow_failure("SKYGODOWN service unavailable", request_in)
                 status = "REVIEW"
+                reasons.append("SKYGODOWN service unavailable")
+            elif skygodown_res.get("status") != "READY":
+                reasons.append("Export readiness check failed in SKYGODOWN")
+                if status == "APPROVED":
+                    status = "REVIEW"
 
         # 5. Confirm commission/settlement with FCE
-        fce_res = await self._safe_call(self.fce.check_settlement, request_in.mnos_batch_ids)
-        settlement_status = "SETTLED"
-        if fce_res.get("status") != "SETTLED":
-            reasons.append("Settlement incomplete")
-            settlement_status = "PENDING"
-            status = "BLOCKED"
-            await self._safe_call(self.events.publish_event, "CUSTOMS_SETTLEMENT_INCOMPLETE", {"request_id": request_in.request_id})
+        if status != "REVIEW":
+            fce_res = await self._safe_call(self.fce.check_settlement, request_in.mnos_batch_ids)
+            if not fce_res or fce_res.get("status") == "ERROR":
+                await self._shadow_failure("FCE service unavailable", request_in)
+                status = "REVIEW"
+                reasons.append("FCE service unavailable")
+            elif fce_res.get("status") != "SETTLED":
+                reasons.append("Settlement incomplete")
+                settlement_status = "PENDING"
+                status = "BLOCKED"
+                await self._safe_call(self.events.publish_event, "CUSTOMS_SETTLEMENT_INCOMPLETE", {"request_id": request_in.request_id})
 
         # 6. Score anomaly via ELEONE
-        eleone_res = await self._safe_call(self.eleone.get_risk_score, request_in.model_dump())
-        if not eleone_res or "risk_score" not in eleone_res:
-            await self._safe_call(
-                self.shadow.write_record,
-                {
-                    "event": "CUSTOMS_FAILURE",
-                    "data": {
-                        "reason": "ELEONE risk scoring unavailable",
-                        "request": request_in.model_dump()
-                    }
-                }
-            )
-
-            logger.warning(
-                "ELEONE unavailable - forcing REVIEW",
-                extra={"request": request_in.model_dump()}
-            )
-
-            return ClearanceResponse(
-                status="REVIEW",
-                code=202,
-                integrity_status="MANUAL_REVIEW_REQUIRED",
-                risk_score=0.0,
-                next_action="SUPERVISOR_REVIEW",
-                reasons=["ELEONE risk scoring unavailable"]
-            )
-
-        risk_score = eleone_res["risk_score"]
-
-        if risk_score > 0.9:
-            status = "BLOCKED"
-            reasons.append("High risk score from ELEONE")
-            logger.warning(f"High risk score detected: {risk_score} for request {request_in.request_id}")
-        elif risk_score > 0.4 and status == "APPROVED":
-            status = "REVIEW"
-            logger.info(f"Moderate risk score detected: {risk_score} for request {request_in.request_id}, forcing REVIEW")
+        if status != "REVIEW":
+            eleone_res = await self._safe_call(self.eleone.get_risk_score, request_in.model_dump())
+            if not eleone_res or "risk_score" not in eleone_res or eleone_res.get("status") == "ERROR":
+                await self._shadow_failure("ELEONE risk scoring unavailable", request_in)
+                status = "REVIEW"
+                reasons.append("ELEONE risk scoring unavailable")
+            else:
+                risk_score = eleone_res["risk_score"]
+                if risk_score > 0.9:
+                    status = "BLOCKED"
+                    reasons.append("High risk score from ELEONE")
+                    logger.warning(f"High risk score detected: {risk_score} for request {request_in.request_id}")
+                elif risk_score > 0.4 and status == "APPROVED":
+                    status = "REVIEW"
+                    logger.info(f"Moderate risk score detected: {risk_score} for request {request_in.request_id}, forcing REVIEW")
 
         # Final adjustments for BLOCKED/REVIEW
         if status == "BLOCKED":
@@ -123,7 +124,7 @@ class CustomsOrchestrator:
             integrity_status = "FAILED"
             next_action = "PHYSICAL_INSPECTION"
             aegis_res = await self._safe_call(self.aegis.trigger_port_lock, request_in.container_id, ", ".join(reasons), request_in.request_id)
-            aegis_action = "PORT_LOCK_ENGAGED" if not aegis_res.get("simulated") else "PORT_LOCK_SIMULATED"
+            aegis_action = "PORT_LOCK_ENGAGED" if not (aegis_res and aegis_res.get("simulated")) else "PORT_LOCK_SIMULATED"
             await self._safe_call(self.events.publish_event, "CUSTOMS_CLEARANCE_BLOCKED", {"request_id": request_in.request_id, "reasons": reasons})
         elif status == "REVIEW":
             code = 202
@@ -133,7 +134,7 @@ class CustomsOrchestrator:
         else:
             await self._safe_call(self.events.publish_event, "CUSTOMS_CLEARANCE_APPROVED", {"request_id": request_in.request_id})
 
-        # DB Persistence
+        # DB Persistence - Mandatory for all paths
         db_request = CustomsClearanceRequest(
             request_id=request_in.request_id,
             container_id=request_in.container_id,
@@ -194,24 +195,9 @@ class CustomsOrchestrator:
         return self.db.query(CustomsClearanceRequest).filter(CustomsClearanceRequest.request_id == request_id).first()
 
     async def process_override(self, request_in: OverrideRequest):
-        # Dual authorization logic: supervisor_id and officer_id must be present (handled by schema)
-        # In a more advanced implementation, we would verify their roles
         review = self.db.query(CustomsReview).filter(CustomsReview.id == request_in.review_id).first()
         if not review:
-            await self._safe_call(
-                self.shadow.write_record,
-                {
-                    "event": "CUSTOMS_FAILURE",
-                    "data": {
-                        "reason": "Override attempted for unknown review_id",
-                        "review_id": request_in.review_id
-                    }
-                }
-            )
-            logger.warning(
-                "Override completion blocked for unknown review_id",
-                extra={"review_id": request_in.review_id}
-            )
+            await self._shadow_failure(f"Override attempted for unknown review_id: {request_in.review_id}", request_in)
             return {"status": "FAILED", "reason": "Review not found", "action": "NO_EVENT_EMITTED"}
 
         review.review_status = "OVERRIDDEN"
@@ -233,22 +219,7 @@ class CustomsOrchestrator:
     async def process_inspection(self, result: InspectionResult):
         db_request = self.get_request_by_id(result.request_id)
         if not db_request:
-            await self._safe_call(
-                self.shadow.write_record,
-                {
-                    "event": "CUSTOMS_FAILURE",
-                    "data": {
-                        "reason": "Inspection attempted for unknown request_id",
-                        "request_id": result.request_id
-                    }
-                }
-            )
-
-            logger.warning(
-                "Inspection completion blocked for unknown request_id",
-                extra={"request_id": result.request_id}
-            )
-
+            await self._shadow_failure(f"Inspection attempted for unknown request_id: {result.request_id}", result)
             return {
                 "status": "FAILED",
                 "reason": "Request not found",
@@ -260,4 +231,18 @@ class CustomsOrchestrator:
 
         await self._safe_call(self.shadow.write_record, {"event": "CUSTOMS_INSPECTION_COMPLETED", "data": result.model_dump()})
         await self._safe_call(self.events.publish_event, "CUSTOMS_INSPECTION_COMPLETED", result.model_dump())
-        return {"status": "SUCCESS", "message": "Inspection result recorded"}
+        return {"status": "APPROVED", "message": "Inspection result recorded"}
+
+    async def _shadow_failure(self, reason: str, context: any):
+        payload = context.model_dump() if hasattr(context, "model_dump") else context
+        await self._safe_call(
+            self.shadow.write_record,
+            {
+                "event": "CUSTOMS_FAILURE",
+                "data": {
+                    "reason": reason,
+                    "request": payload
+                }
+            }
+        )
+        logger.warning(f"CUSTOMS_FAILURE: {reason}", extra={"context": payload})

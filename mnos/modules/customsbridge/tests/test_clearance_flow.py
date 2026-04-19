@@ -183,3 +183,65 @@ async def test_inspection_unknown_request():
         assert response["reason"] == "Request not found"
         assert mock_events.publish_event.called is False
         assert any(call.args[0]["event"] == "CUSTOMS_FAILURE" for call in mock_shadow.call_args_list)
+
+@pytest.mark.asyncio
+async def test_clearance_aqua_failure_flow():
+    request_data = {
+        "request_id": "REQ-2026-0005",
+        "container_id": "MSCU1234571",
+        "declaration_type": "EXPORT",
+        "commodity": "YELLOWFIN_TUNA",
+        "mnos_batch_ids": ["B-AQUA-FAIL"],
+        "declared_weight": 100.0,
+        "requested_by_officer_id": "CUST-0042"
+    }
+    request = ClearanceRequest(**request_data)
+
+    mock_db = MagicMock()
+
+    with patch("mnos.modules.customsbridge.domain.services.AquaClient.verify_batches", new_callable=AsyncMock) as mock_aqua, \
+         patch("mnos.modules.customsbridge.domain.services.ShadowClient.write_record", new_callable=AsyncMock) as mock_shadow:
+
+        # Simulate AQUA failure
+        mock_aqua.return_value = {"status": "ERROR"}
+
+        orchestrator = CustomsOrchestrator(mock_db)
+        response = await orchestrator.process_clearance_request(request)
+
+        assert response.status == "REVIEW"
+        assert "AQUA service unavailable" in response.reasons
+        assert any(call.args[0]["event"] == "CUSTOMS_FAILURE" for call in mock_shadow.call_args_list)
+
+@pytest.mark.asyncio
+async def test_clearance_fce_failure_flow():
+    request_data = {
+        "request_id": "REQ-2026-0006",
+        "container_id": "MSCU1234572",
+        "declaration_type": "EXPORT",
+        "commodity": "YELLOWFIN_TUNA",
+        "mnos_batch_ids": ["B-FCE-FAIL"],
+        "declared_weight": 100.0,
+        "requested_by_officer_id": "CUST-0042"
+    }
+    request = ClearanceRequest(**request_data)
+
+    mock_db = MagicMock()
+
+    with patch("mnos.modules.customsbridge.domain.services.AquaClient.verify_batches", new_callable=AsyncMock) as mock_aqua, \
+         patch("mnos.modules.customsbridge.domain.services.OdysseyClient.validate_yield", new_callable=AsyncMock) as mock_odyssey, \
+         patch("mnos.modules.customsbridge.domain.services.SkyGodownClient.check_export_readiness", new_callable=AsyncMock) as mock_skygodown, \
+         patch("mnos.modules.customsbridge.domain.services.FceClient.check_settlement", new_callable=AsyncMock) as mock_fce, \
+         patch("mnos.modules.customsbridge.domain.services.ShadowClient.write_record", new_callable=AsyncMock) as mock_shadow:
+
+        mock_aqua.return_value = {"status": "VERIFIED"}
+        mock_odyssey.return_value = {"status": "MATCH"}
+        mock_skygodown.return_value = {"status": "READY"}
+        # Simulate FCE failure
+        mock_fce.return_value = {"status": "ERROR"}
+
+        orchestrator = CustomsOrchestrator(mock_db)
+        response = await orchestrator.process_clearance_request(request)
+
+        assert response.status == "REVIEW"
+        assert "FCE service unavailable" in response.reasons
+        assert any(call.args[0]["event"] == "CUSTOMS_FAILURE" for call in mock_shadow.call_args_list)
