@@ -143,7 +143,8 @@ async def fuel_request(
     }
     publisher.publish(
         channel="FUEL_REQUESTED",
-        entity=payload.get("aircraft_id", "UNKNOWN"),
+        entity_id=payload.get("aircraft_id", "UNKNOWN"),
+        entity_type="AIRCRAFT",
         action="REQUEST_FUEL",
         payload=event_payload
     )

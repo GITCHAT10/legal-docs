@@ -25,14 +25,19 @@ async def production_middleware(request: Request, call_next):
         if not patente_key or not entity_id:
             return JSONResponse(status_code=401, content={"error": "MISSING_CREDENTIALS", "message": "X-NexGen-Patente and X-Entity-ID headers required"})
 
-        # Determine Area based on path
-        area = "GATE_AREA" if "airports" in request.url.path else "DOCKING_AREA"
+        # Determine Scope based on path
+        if "airports" in request.url.path:
+            scope = "AIRPORT_OPS"
+        elif "seaports" in request.url.path:
+            scope = "PORT_OPS"
+        else:
+            scope = "ADMIN"
 
         try:
-            if not NexGenPatenteVerifier.authorize_access(patente_key, entity_id, area):
+            if not NexGenPatenteVerifier.authorize_access(patente_key, entity_id, scope):
                 from unified_suite.core.flows import SovereignFlows
-                SovereignFlows.deny_flow(entity_id or "UNKNOWN", "Unauthorized Area Access", {"path": request.url.path})
-                return JSONResponse(status_code=403, content={"error": "ACCESS_DENIED", "message": f"Entity {entity_id} not authorized for {area}"})
+                SovereignFlows.deny_flow(entity_id or "UNKNOWN", "Insufficient Scope Permissions", {"path": request.url.path, "required": scope})
+                return JSONResponse(status_code=403, content={"error": "ACCESS_DENIED", "message": f"Entity {entity_id} not authorized for {scope}"})
         except PermissionError as e:
             from unified_suite.core.flows import SovereignFlows
             SovereignFlows.deny_flow(entity_id or "UNKNOWN", str(e), {"path": request.url.path})

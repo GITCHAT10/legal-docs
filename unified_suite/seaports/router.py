@@ -28,7 +28,13 @@ async def register_vessel(vessel: Vessel, request: Request):
         "tax_applied": tax_info
     }
     ShadowService.log_event("VESSEL_REGISTERED", event_payload)
-    EventPublisher().publish("seaport.events", entity=vessel.vessel_id, action="REGISTER", payload=event_payload)
+    EventPublisher().publish(
+        channel="seaport.events",
+        entity_id=vessel.vessel_id,
+        entity_type="VESSEL",
+        action="REGISTER",
+        payload=event_payload
+    )
 
     return registered_vessel
 
@@ -53,7 +59,13 @@ async def assign_berth(vessel_id: str, request: Request):
     # MNOS Integration
     event_payload = {"vessel_id": vessel_id, "berth": berth}
     ShadowService.log_event("BERTH_ASSIGNED", event_payload)
-    EventPublisher().publish("seaport.events", entity=vessel_id, action="ASSIGN_BERTH", payload=event_payload)
+    EventPublisher().publish(
+        channel="seaport.events",
+        entity_id=vessel_id,
+        entity_type="VESSEL",
+        action="ASSIGN_BERTH",
+        payload=event_payload
+    )
 
     return {"vessel_id": vessel_id, "berth": berth}
 

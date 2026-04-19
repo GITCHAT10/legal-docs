@@ -44,8 +44,11 @@ class AegisPolicyEngine:
         return True, "Policy check passed"
 
 class FinancialControlEngine:
-    @staticmethod
-    def check_clearance(fuel_request: dict):
+    # Track fuel allocation to prevent over-fueling
+    _fuel_ledger = {}
+
+    @classmethod
+    def check_clearance(cls, fuel_request: dict):
         amount = fuel_request.get("fuel_amount", 0)
         operator_id = fuel_request.get("operator_id", "")
 
@@ -57,4 +60,11 @@ class FinancialControlEngine:
         if amount > 1000:
             return False, "Insufficient credit for large amount"
 
+        # CONCURRENCY & LIMIT CHECK
+        aircraft_id = fuel_request.get("aircraft_id", "UNKNOWN")
+        current_total = cls._fuel_ledger.get(aircraft_id, 0)
+        if current_total + amount > 5000:
+            return False, f"Daily limit exceeded for {aircraft_id}. Already fueled {current_total}L"
+
+        cls._fuel_ledger[aircraft_id] = current_total + amount
         return True, "Financial clearance granted"

@@ -27,9 +27,9 @@ def run_simulation():
     import hashlib
     os.environ["PATENTE_HASH"] = hashlib.sha256(patente.encode()).hexdigest()
 
-    is_valid = NexGenPatenteVerifier.authorize_access(patente, captain_id, "DOCKING_AREA")
+    is_valid = NexGenPatenteVerifier.authorize_access(patente, captain_id, "PORT_OPS")
     print(f"Captain {captain_id} Patente: {patente}")
-    print(f"Authorization Status (DOCKING_AREA): {'✅ AUTHORIZED' if is_valid else '❌ DENIED'}")
+    print(f"Authorization Status (PORT_OPS): {'✅ AUTHORIZED' if is_valid else '❌ DENIED'}")
 
     # 2. API INTEGRATION (Production Middleware)
     print("\n[PRODUCTION API] Testing Middleware Auth...")

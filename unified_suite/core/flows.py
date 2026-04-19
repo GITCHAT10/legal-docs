@@ -21,14 +21,20 @@ class SovereignFlows:
             "context": context
         }
 
-        # 1. Cryptographic Log
+        # 1. Cryptographic Log (SUCCESS and FAILURE of the denial itself)
         shadow_hash = ShadowService.log_event("SOVEREIGN_DENIAL", event_payload)
 
         # 2. Resource Lock
         cls._locked_resources.add(resource_id)
 
-        # 3. Emit Enforcement Event
-        EventPublisher().publish("enforcement.events", {**event_payload, "shadow_hash": shadow_hash})
+        # 3. Emit Standardized Enforcement Event
+        EventPublisher().publish(
+            channel="enforcement.events",
+            entity_id=resource_id,
+            entity_type="RESOURCE",
+            action="DENY_AND_LOCK",
+            payload={**event_payload, "shadow_hash": shadow_hash}
+        )
 
         logger.error(f"Sovereign Denial: Resource {resource_id} locked. Reason: {reason}. Hash: {shadow_hash}")
         return {"status": "DENIED", "lock_id": shadow_hash[:8]}

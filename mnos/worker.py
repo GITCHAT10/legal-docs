@@ -92,7 +92,8 @@ class EventWorker:
                 # Emit Standard MNOS Event
                 EventPublisher().publish(
                     channel=channel,
-                    entity=fuel_request.get("aircraft_id", "UNKNOWN"),
+                    entity_id=fuel_request.get("aircraft_id", "UNKNOWN"),
+                    entity_type="AIRCRAFT",
                     action="FUEL_CLEARANCE",
                     payload=final_payload
                 )

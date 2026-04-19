@@ -28,7 +28,13 @@ async def create_flight(flight: Flight, request: Request):
         "tax_applied": tax_info
     }
     ShadowService.log_event("FLIGHT_SCHEDULED", event_payload)
-    EventPublisher().publish("airport.events", entity=flight.flight_number, action="SCHEDULE", payload=event_payload)
+    EventPublisher().publish(
+        channel="airport.events",
+        entity_id=flight.flight_number,
+        entity_type="FLIGHT",
+        action="SCHEDULE",
+        payload=event_payload
+    )
 
     return scheduled_flight
 
@@ -53,6 +59,12 @@ async def assign_gate(flight_number: str, request: Request):
     # MNOS Integration
     event_payload = {"flight_number": flight_number, "gate": gate}
     ShadowService.log_event("GATE_ASSIGNED", event_payload)
-    EventPublisher().publish("airport.events", entity=flight_number, action="ASSIGN_GATE", payload=event_payload)
+    EventPublisher().publish(
+        channel="airport.events",
+        entity_id=flight_number,
+        entity_type="FLIGHT",
+        action="ASSIGN_GATE",
+        payload=event_payload
+    )
 
     return {"flight_number": flight_number, "gate": gate}
