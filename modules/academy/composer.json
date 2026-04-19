@@ -1,0 +1,15 @@
+{
+    "name": "mnos/academy-module",
+    "description": "MNOS Academy Module",
+    "type": "laravel-module",
+    "require": {
+        "php": "^8.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\Academy\\": "app/",
+            "Modules\\Academy\\Database\\Seeders\\": "database/seeders/",
+            "Modules\\Academy\\Database\\Factories\\": "database/factories/"
+        }
+    }
+}
