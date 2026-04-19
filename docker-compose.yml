@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  api-gateway:
+    build: ./mnos/interfaces/api_gateway
+    ports:
+      - "8000:8000"
+    environment:
+      - MNOS_INTEGRATION_SECRET=top-secret
+    depends_on:
+      - aegis
+      - eleone
+      - shadow
+
+  aegis:
+    build: ./mnos/core/aegis
+    ports:
+      - "8001:8001"
+
+  shadow:
+    build: ./mnos/core/shadow
+    ports:
+      - "8002:8002"
+
+  eleone:
+    build: ./mnos/core/eleone
+    ports:
+      - "8003:8003"
+
+  events:
+    build: ./mnos/core/events
+    ports:
+      - "8004:8004"
+    depends_on:
+      - redis
+
+  fce:
+    build: ./mnos/core/fce
+    ports:
+      - "8005:8005"
+
+  lifeline:
+    build: ./mnos/modules/lifeline
+    environment:
+      - MNOS_INTEGRATION_SECRET=top-secret
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=mnos_lifeline
+      - POSTGRES_PASSWORD=password
+    ports:
+      - "5432:5432"
