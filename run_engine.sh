@@ -28,7 +28,7 @@ PORT_SAL=8004
 PORT_BFI=8005
 PORT_EDGE=8006
 
-# 1. Redis
+# Redis Check
 if command -v redis-server >/dev/null 2>&1; then
     echo "✅ REDIS: starting..."
     redis-server --daemonize yes || echo "⚠️ REDIS: already running"
@@ -40,7 +40,7 @@ fi
 # Cleanup
 trap "kill \$(jobs -p) 2>/dev/null || true" EXIT
 
-# 2. Gateway
+# 1. Gateway
 echo "Starting Gateway..."
 export REDIS_HOST="localhost"
 export ELEONE_URL="http://localhost:$PORT_ELEONE"
@@ -51,44 +51,50 @@ export BFI_URL="http://localhost:$PORT_BFI"
 export EDGE_URL="http://localhost:$PORT_EDGE"
 
 python3 services/gateway/main.py --port $PORT_GATEWAY > gateway.log 2>&1 &
-sleep 2
-curl -sf "http://localhost:$PORT_GATEWAY/health" > /dev/null || { echo "❌ ERROR: Gateway failed"; exit 1; }
 
-# 3. Worker
+# Health Check Loop
+check_health() {
+    local url=$1
+    local name=$2
+    local retries=10
+    local count=0
+    until curl -sf "$url" > /dev/null; do
+        ((count++))
+        if [ $count -gt $retries ]; then
+            echo "❌ ERROR: $name failed to start at $url"
+            exit 1
+        fi
+        sleep 1
+    done
+    echo "✅ $name is UP"
+}
+
+check_health "http://localhost:$PORT_GATEWAY/health" "Gateway"
+
+# 2. Worker
 if command -v redis-cli >/dev/null 2>&1 && redis-cli ping >/dev/null 2>&1; then
-    echo "✅ Starting Worker..."
+    echo "Starting Worker..."
     python3 services/gateway/event_worker.py > worker.log 2>&1 &
-else
-    echo "⚠️ Skipping Worker (Redis not ready)"
 fi
 
-# 4. Other services
-echo "Starting microservices..."
-python3 services/eleone/main.py --port $PORT_ELEONE > /dev/null 2>&1 &
-python3 services/shadow/main.py --port $PORT_SHADOW > /dev/null 2>&1 &
-python3 services/svd/main.py --port $PORT_SVD > /dev/null 2>&1 &
-python3 services/sal/main.py --port $PORT_SAL > /dev/null 2>&1 &
-python3 services/bfi/main.py --port $PORT_BFI > /dev/null 2>&1 &
-python3 edge-node/main.py --port $PORT_EDGE > /dev/null 2>&1 &
+# 3. Microservices
+echo "Starting core microservices..."
+python3 services/eleone/main.py --port $PORT_ELEONE > eleone.log 2>&1 &
+python3 services/shadow/main.py --port $PORT_SHADOW > shadow.log 2>&1 &
+python3 services/svd/main.py --port $PORT_SVD > svd.log 2>&1 &
+python3 services/sal/main.py --port $PORT_SAL > sal.log 2>&1 &
+python3 services/bfi/main.py --port $PORT_BFI > bfi.log 2>&1 &
+python3 edge-node/main.py --port $PORT_EDGE > edge.log 2>&1 &
 
-sleep 5
+check_health "http://localhost:$PORT_ELEONE/health" "ELEONE"
+check_health "http://localhost:$PORT_SHADOW/health" "SHADOW"
+check_health "http://localhost:$PORT_SVD/health" "SVD"
+check_health "http://localhost:$PORT_SAL/health" "SAL"
+check_health "http://localhost:$PORT_BFI/health" "BFI"
+check_health "http://localhost:$PORT_EDGE/health" "Edge Node"
 
-# Health checks
-CHECK_URLS=(
-    "http://localhost:$PORT_ELEONE/health"
-    "http://localhost:$PORT_SHADOW/health"
-    "http://localhost:$PORT_SVD/health"
-    "http://localhost:$PORT_SAL/health"
-    "http://localhost:$PORT_BFI/health"
-    "http://localhost:$PORT_EDGE/health"
-)
-
-for url in "${CHECK_URLS[@]}"; do
-    curl -sf "$url" > /dev/null || { echo "❌ ERROR: Service at $url failed health check"; exit 1; }
-done
-
-echo "✅ BUILDX SYSTEM IS FULLY UP"
-echo "Gateway: http://localhost:8000"
-echo "System Status: http://localhost:8000/system/status"
+echo "✅ BUILDX SYSTEM FULLY VERIFIED"
+echo "Gateway: http://localhost:$PORT_GATEWAY"
+echo "System Status: http://localhost:$PORT_GATEWAY/system/status"
 
 wait
