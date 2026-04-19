@@ -22,7 +22,12 @@ def run_simulation():
     print("\n[NEXGEN ASI PATENTE] Verifying Personnel...")
     captain_id = "CAPT_777"
     patente = NexGenPatenteVerifier.generate_patente(captain_id)
-    is_valid = NexGenPatenteVerifier.authorize_access(captain_id, patente, "DOCKING_AREA")
+
+    # Set environment for standalone simulation auth
+    import hashlib
+    os.environ["PATENTE_HASH"] = hashlib.sha256(patente.encode()).hexdigest()
+
+    is_valid = NexGenPatenteVerifier.authorize_access(patente, captain_id, "DOCKING_AREA")
     print(f"Captain {captain_id} Patente: {patente}")
     print(f"Authorization Status (DOCKING_AREA): {'✅ AUTHORIZED' if is_valid else '❌ DENIED'}")
 

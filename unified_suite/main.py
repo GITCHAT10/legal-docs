@@ -27,9 +27,16 @@ async def production_middleware(request: Request, call_next):
         # Determine Area based on path
         area = "GATE_AREA" if "airports" in request.url.path else "DOCKING_AREA"
 
-        if not NexGenPatenteVerifier.authorize_access(entity_id, patente_key, area):
-            logger.warning(f'{{"event": "AUTH_FAILURE", "entity": "{entity_id}", "path": "{request.url.path}"}}')
-            return JSONResponse(status_code=403, content={"error": "ACCESS_DENIED", "message": f"Entity {entity_id} not authorized for {area}"})
+        try:
+            if not NexGenPatenteVerifier.authorize_access(patente_key, entity_id, area):
+                logger.warning(f'{{"event": "AUTH_FAILURE", "entity": "{entity_id}", "path": "{request.url.path}"}}')
+                return JSONResponse(status_code=403, content={"error": "ACCESS_DENIED", "message": f"Entity {entity_id} not authorized for {area}"})
+        except PermissionError as e:
+            logger.warning(f'{{"event": "AUTH_FAILURE", "entity": "{entity_id}", "path": "{request.url.path}", "reason": "{str(e)}"}}')
+            return JSONResponse(status_code=403, content={"error": "AUTH_FAILED", "message": str(e)})
+        except RuntimeError as e:
+            logger.error(f'{{"event": "AUTH_CONFIG_ERROR", "path": "{request.url.path}", "reason": "{str(e)}"}}')
+            return JSONResponse(status_code=500, content={"error": "INTERNAL_AUTH_ERROR", "message": str(e)})
 
     # 2. EXECUTION
     response = await call_next(request)

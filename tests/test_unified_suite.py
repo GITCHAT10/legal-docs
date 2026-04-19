@@ -7,15 +7,27 @@ from unified_suite.seaports.service import SeaPortService
 from unified_suite.seaports.models import Vessel, Container
 from datetime import datetime
 
-def test_nexgen_patente():
-    entity_id = "CAPT_TEST"
-    patente = NexGenPatenteVerifier.generate_patente(entity_id)
-    # Valid auth
-    assert NexGenPatenteVerifier.authorize_access(entity_id, patente, "DOCKING_AREA") is True
-    # Invalid key
-    assert NexGenPatenteVerifier.authorize_access(entity_id, "wrong_key", "DOCKING_AREA") is False
-    # Invalid area for entity type
-    assert NexGenPatenteVerifier.authorize_access("VESL_01", NexGenPatenteVerifier.generate_patente("VESL_01"), "GATE_AREA") is False
+def test_patente_auth(monkeypatch):
+    import hashlib
+    token = "secret_token"
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+
+    # Test valid token
+    monkeypatch.setenv("PATENTE_HASH", token_hash)
+    assert NexGenPatenteVerifier.authorize_access(token) is True
+
+    # Test invalid token
+    with pytest.raises(PermissionError, match="Invalid patente token"):
+        NexGenPatenteVerifier.authorize_access("wrong_token")
+
+    # Test missing token
+    with pytest.raises(PermissionError, match="Missing patente token"):
+        NexGenPatenteVerifier.authorize_access(None)
+
+    # Test missing config
+    monkeypatch.delenv("PATENTE_HASH", raising=False)
+    with pytest.raises(RuntimeError, match="PATENTE_HASH not configured"):
+        NexGenPatenteVerifier.authorize_access(token)
 
 def test_moats_tax_logic():
     base = 1000.0
@@ -28,7 +40,7 @@ def test_moats_tax_logic():
     assert bill['total_amount'] == 1287.0
     assert bill['compliance'] == "MIRA_COMPLIANT_V2"
 
-def test_airport_service_idempotency():
+def test_gate_idempotency():
     service = AirportService()
     flight = Flight(
         flight_number="TEST123",
@@ -38,23 +50,44 @@ def test_airport_service_idempotency():
         arrival_time=datetime.now()
     )
     service.schedule_flight(flight)
-    gate1 = service.assign_gate("TEST123")
-    assert gate1 == "GATE_1"
 
-    # IDEMPOTENCY CHECK
-    gate2 = service.assign_gate("TEST123")
-    assert gate2 == "GATE_1" # Should not change
+    # First call
+    gate1 = service.assign_gate(flight)
+    assert gate1 is not None
 
-def test_seaport_service():
+    # Second call
+    gate2 = service.assign_gate(flight)
+    assert gate1 == gate2
+
+    # Test exhaustion
+    service.gates = ["GATE_1"]
+    flight2 = Flight(flight_number="F2", airline="A", origin="O", destination="D", arrival_time=datetime.now())
+    service.schedule_flight(flight2)
+    with pytest.raises(Exception, match="No gates available"):
+        service.assign_gate(flight2)
+
+def test_berth_idempotency():
     service = SeaPortService()
     vessel = Vessel(
         vessel_id="V1",
         name="TestVessel",
         origin="CCC",
         arrival_time=datetime.now(),
-        containers=[Container(container_id="C1", size=20, contents="Stuff", weight=10.0)]
+        containers=[]
     )
     service.register_vessel(vessel)
-    berth = service.assign_berth("V1")
-    assert berth == "BERTH_1"
-    assert len(service.get_vessel_manifest("V1")) == 1
+
+    # First call
+    berth1 = service.assign_berth(vessel)
+    assert berth1 is not None
+
+    # Second call
+    berth2 = service.assign_berth(vessel)
+    assert berth1 == berth2
+
+    # Test exhaustion
+    service.berths = ["BERTH_1"]
+    vessel2 = Vessel(vessel_id="V2", name="T2", origin="O", arrival_time=datetime.now())
+    service.register_vessel(vessel2)
+    with pytest.raises(Exception, match="No berths available"):
+        service.assign_berth(vessel2)

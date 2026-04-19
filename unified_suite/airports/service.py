@@ -1,5 +1,8 @@
 from .models import Flight
 from typing import List
+import logging
+
+logger = logging.getLogger("unified_suite")
 
 class AirportService:
     def __init__(self):
@@ -10,20 +13,29 @@ class AirportService:
         self.flights.append(flight)
         return flight
 
-    def assign_gate(self, flight_number: str):
-        for flight in self.flights:
-            if flight.flight_number == flight_number:
-                # IDEMPOTENCY: Do not reassign if already assigned
-                if flight.gate:
-                    return flight.gate
+    def assign_gate(self, flight):
+        # Compatibility: handle flight object or flight_number string
+        flight_obj = flight
+        if isinstance(flight, str):
+            flight_obj = next((f for f in self.flights if f.flight_number == flight), None)
+            if not flight_obj:
+                return None
 
-                # Basic logic: assign the first available gate
-                used_gates = [f.gate for f in self.flights if f.gate]
-                for gate in self.gates:
-                    if gate not in used_gates:
-                        flight.gate = gate
-                        return gate
-        return None
+        # ✅ Idempotency: preserve existing assignment
+        if flight_obj.gate:
+            logger.info(f"Idempotency: preserving existing gate {flight_obj.gate} for flight {flight_obj.flight_number}")
+            return flight_obj.gate
+
+        used_gates = [f.gate for f in self.flights if f.gate]
+
+        for gate in self.gates:
+            if gate not in used_gates:
+                flight_obj.gate = gate
+                logger.info(f"New assignment: flight {flight_obj.flight_number} assigned to {gate}")
+                return gate
+
+        logger.error(f"Assignment failed: no gates available for flight {flight_obj.flight_number}")
+        raise Exception("No gates available")
 
     def get_all_flights(self) -> List[Flight]:
         return self.flights
