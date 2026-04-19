@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Request
 from pydantic import BaseModel
+from typing import Optional
 import uuid
 
 app = FastAPI(title="MNOS FCE")
@@ -8,8 +9,6 @@ class CalculateRequest(BaseModel):
     items: list
     patient_id: str
     insurance_id: Optional[str] = None
-
-from typing import Optional
 
 @app.post("/api/core/fce/calculate")
 async def calculate(request: dict):

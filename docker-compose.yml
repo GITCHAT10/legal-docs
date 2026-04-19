@@ -2,7 +2,9 @@ version: '3.8'
 
 services:
   api-gateway:
-    build: ./mnos/interfaces/api_gateway
+    build:
+      context: .
+      dockerfile: mnos/interfaces/api_gateway/Dockerfile
     ports:
       - "8000:8000"
     environment:
@@ -13,34 +15,48 @@ services:
       - shadow
 
   aegis:
-    build: ./mnos/core/aegis
+    build:
+      context: .
+      dockerfile: mnos/core/aegis/Dockerfile
     ports:
       - "8001:8001"
 
   shadow:
-    build: ./mnos/core/shadow
+    build:
+      context: .
+      dockerfile: mnos/core/shadow/Dockerfile
     ports:
       - "8002:8002"
 
   eleone:
-    build: ./mnos/core/eleone
+    build:
+      context: .
+      dockerfile: mnos/core/eleone/Dockerfile
     ports:
       - "8003:8003"
 
   events:
-    build: ./mnos/core/events
+    build:
+      context: .
+      dockerfile: mnos/core/events/Dockerfile
     ports:
       - "8004:8004"
     depends_on:
       - redis
 
   fce:
-    build: ./mnos/core/fce
+    build:
+      context: .
+      dockerfile: mnos/core/fce/Dockerfile
     ports:
       - "8005:8005"
 
   lifeline:
-    build: ./mnos/modules/lifeline
+    build:
+      context: .
+      dockerfile: mnos/modules/lifeline/Dockerfile
+    ports:
+      - "8006:8006"
     environment:
       - MNOS_INTEGRATION_SECRET=top-secret
 

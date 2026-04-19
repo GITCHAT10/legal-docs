@@ -12,13 +12,13 @@ fi
 
 # 2. Build and start services
 echo "Starting services with Docker Compose..."
-docker-compose up -d
+docker compose up -d
 
 # 3. Wait for DB and run migrations
 echo "Waiting for database..."
 sleep 5
 echo "Running migrations..."
-# docker-compose exec db psql -U jules -d mnos_lifeline -f /infra/db/migrations/20240419_initial_schema.sql
+docker compose exec -T db psql -U postgres -d mnos_lifeline -f /app/infra/db/migrations/20240419_initial_schema.sql || echo "Migration skipped or failed (DB might not be ready)"
 
 # 4. Health checks
 echo "Running health checks..."
