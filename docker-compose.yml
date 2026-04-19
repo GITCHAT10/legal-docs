@@ -103,6 +103,12 @@ services:
     build:
       context: .
       dockerfile: ./modules/bfi/Dockerfile
+  edge-node:
+    build:
+      context: .
+      dockerfile: ./edge-node/Dockerfile
+    ports:
+      - "8006:8006"
 
   db:
     image: postgres:15
