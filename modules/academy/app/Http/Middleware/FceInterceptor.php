@@ -10,7 +10,11 @@ class FceInterceptor
 {
     public function handle(Request $request, Closure $next)
     {
-        $isFinancial = strpos($request->path(), 'finance') !== false;
+        $financialRoutes = ['invoices', 'payments', 'transactions'];
+
+        $isFinancial = collect($financialRoutes)->contains(function ($route) use ($request) {
+            return str_contains($request->path(), $route);
+        });
 
         if ($isFinancial && in_array($request->method(), ['POST', 'PUT', 'PATCH'])) {
              // Block if FCE call fails (Fail-closed)

@@ -21,6 +21,7 @@ Route::prefix('v1/modules/academy')
         AttachMNOSHeaders::class,
         ValidateMNOSSig::class,
         CheckPolicyGate::class,
+        FceInterceptor::class,
         ShadowAutoCommit::class
     ])
     ->group(function () use ($domains) {
