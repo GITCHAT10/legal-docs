@@ -1,7 +1,7 @@
 from fastapi import FastAPI
-from app.config import settings
-from api import routes_clearance, routes_review, routes_inspection
-from domain.database import init_db
+from mnos.modules.customsbridge.app.config import settings
+from mnos.modules.customsbridge.api import routes_clearance, routes_review, routes_inspection
+from mnos.modules.customsbridge.domain.database import init_db
 
 app = FastAPI(
     title=settings.APP_NAME,

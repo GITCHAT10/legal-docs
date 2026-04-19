@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from schemas.request import ClearanceRequest
-from schemas.response import ClearanceResponse
-from domain.services import CustomsOrchestrator
-from domain.database import get_db
-from api.auth import verify_customs_token
+from mnos.modules.customsbridge.schemas.request import ClearanceRequest
+from mnos.modules.customsbridge.schemas.response import ClearanceResponse
+from mnos.modules.customsbridge.domain.services import CustomsOrchestrator
+from mnos.modules.customsbridge.domain.database import get_db
+from mnos.modules.customsbridge.api.auth import verify_customs_token
 
 router = APIRouter(dependencies=[Depends(verify_customs_token)])
 

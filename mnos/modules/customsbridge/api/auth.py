@@ -1,6 +1,6 @@
 from fastapi import HTTPException, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from app.config import settings
+from mnos.modules.customsbridge.app.config import settings
 
 security = HTTPBearer()
 

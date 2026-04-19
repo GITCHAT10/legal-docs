@@ -1,14 +1,14 @@
 import uuid
 import logging
 from sqlalchemy.orm import Session
-from app.config import settings
-from adapters.mnos_clients import (
+from mnos.modules.customsbridge.app.config import settings
+from mnos.modules.customsbridge.adapters.mnos_clients import (
     AquaClient, OdysseyClient, FceClient, EleoneClient,
     EventsClient, ShadowClient, AegisClient, SkyGodownClient
 )
-from schemas.request import ClearanceRequest, OverrideRequest, InspectionResult
-from schemas.response import ClearanceResponse
-from domain.models import CustomsClearanceRequest, CustomsClearanceBatch, CustomsReview
+from mnos.modules.customsbridge.schemas.request import ClearanceRequest, OverrideRequest, InspectionResult
+from mnos.modules.customsbridge.schemas.response import ClearanceResponse
+from mnos.modules.customsbridge.domain.models import CustomsClearanceRequest, CustomsClearanceBatch, CustomsReview
 
 logger = logging.getLogger(__name__)
 
@@ -81,13 +81,41 @@ class CustomsOrchestrator:
 
         # 6. Score anomaly via ELEONE
         eleone_res = await self._safe_call(self.eleone.get_risk_score, request_in.model_dump())
-        risk_score = eleone_res.get("risk_score", 0.0)
+        if not eleone_res or "risk_score" not in eleone_res:
+            await self._safe_call(
+                self.shadow.write_record,
+                {
+                    "event": "CUSTOMS_FAILURE",
+                    "data": {
+                        "reason": "ELEONE risk scoring unavailable",
+                        "request": request_in.model_dump()
+                    }
+                }
+            )
+
+            logger.warning(
+                "ELEONE unavailable - forcing REVIEW",
+                extra={"request": request_in.model_dump()}
+            )
+
+            return ClearanceResponse(
+                status="REVIEW",
+                code=202,
+                integrity_status="MANUAL_REVIEW_REQUIRED",
+                risk_score=0.0,
+                next_action="SUPERVISOR_REVIEW",
+                reasons=["ELEONE risk scoring unavailable"]
+            )
+
+        risk_score = eleone_res["risk_score"]
 
         if risk_score > 0.9:
             status = "BLOCKED"
             reasons.append("High risk score from ELEONE")
+            logger.warning(f"High risk score detected: {risk_score} for request {request_in.request_id}")
         elif risk_score > 0.4 and status == "APPROVED":
             status = "REVIEW"
+            logger.info(f"Moderate risk score detected: {risk_score} for request {request_in.request_id}, forcing REVIEW")
 
         # Final adjustments for BLOCKED/REVIEW
         if status == "BLOCKED":
@@ -169,30 +197,66 @@ class CustomsOrchestrator:
         # Dual authorization logic: supervisor_id and officer_id must be present (handled by schema)
         # In a more advanced implementation, we would verify their roles
         review = self.db.query(CustomsReview).filter(CustomsReview.id == request_in.review_id).first()
-        if review:
-            review.review_status = "OVERRIDDEN"
-            review.reviewer_id = f"{request_in.officer_id}/{request_in.supervisor_id}"
-            review.decision_notes = request_in.reason
+        if not review:
+            await self._safe_call(
+                self.shadow.write_record,
+                {
+                    "event": "CUSTOMS_FAILURE",
+                    "data": {
+                        "reason": "Override attempted for unknown review_id",
+                        "review_id": request_in.review_id
+                    }
+                }
+            )
+            logger.warning(
+                "Override completion blocked for unknown review_id",
+                extra={"review_id": request_in.review_id}
+            )
+            return {"status": "FAILED", "reason": "Review not found", "action": "NO_EVENT_EMITTED"}
 
-            # Update associated request
-            req = self.db.query(CustomsClearanceRequest).filter(CustomsClearanceRequest.id == review.clearance_request_id).first()
-            if req:
-                req.status = "APPROVED"
-                req.clearance_token = str(uuid.uuid4())
+        review.review_status = "OVERRIDDEN"
+        review.reviewer_id = f"{request_in.officer_id}/{request_in.supervisor_id}"
+        review.decision_notes = request_in.reason
 
-            self.db.commit()
+        # Update associated request
+        req = self.db.query(CustomsClearanceRequest).filter(CustomsClearanceRequest.id == review.clearance_request_id).first()
+        if req:
+            req.status = "APPROVED"
+            req.clearance_token = str(uuid.uuid4())
 
-            await self._safe_call(self.shadow.write_record, {"event": "CUSTOMS_OVERRIDE_EXECUTED", "data": request_in.model_dump()})
-            await self._safe_call(self.events.publish_event, "CUSTOMS_OVERRIDE_EXECUTED", request_in.model_dump())
-            return {"status": "OVERRIDDEN", "message": "Supervisor dual-authorized override successful"}
+        self.db.commit()
 
-        return {"status": "FAILED", "message": "Review not found"}
+        await self._safe_call(self.shadow.write_record, {"event": "CUSTOMS_OVERRIDE_EXECUTED", "data": request_in.model_dump()})
+        await self._safe_call(self.events.publish_event, "CUSTOMS_OVERRIDE_EXECUTED", request_in.model_dump())
+        return {"status": "APPROVED", "message": "Supervisor dual-authorized override successful"}
 
     async def process_inspection(self, result: InspectionResult):
         db_request = self.get_request_by_id(result.request_id)
-        if db_request:
-            db_request.status = "INSPECTED_" + result.inspection_result
-            self.db.commit()
+        if not db_request:
+            await self._safe_call(
+                self.shadow.write_record,
+                {
+                    "event": "CUSTOMS_FAILURE",
+                    "data": {
+                        "reason": "Inspection attempted for unknown request_id",
+                        "request_id": result.request_id
+                    }
+                }
+            )
+
+            logger.warning(
+                "Inspection completion blocked for unknown request_id",
+                extra={"request_id": result.request_id}
+            )
+
+            return {
+                "status": "FAILED",
+                "reason": "Request not found",
+                "action": "NO_EVENT_EMITTED"
+            }
+
+        db_request.status = "INSPECTED_" + result.inspection_result
+        self.db.commit()
 
         await self._safe_call(self.shadow.write_record, {"event": "CUSTOMS_INSPECTION_COMPLETED", "data": result.model_dump()})
         await self._safe_call(self.events.publish_event, "CUSTOMS_INSPECTION_COMPLETED", result.model_dump())

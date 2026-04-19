@@ -1,5 +1,5 @@
 import httpx
-from app.config import settings
+from mnos.modules.customsbridge.app.config import settings
 
 class BaseMnosClient:
     _client = None
