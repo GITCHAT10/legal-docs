@@ -11,104 +11,103 @@ services:
       timeout: 5s
       retries: 5
 
-  gateway:
+  # CORE SERVICES
+  mnos-api:
     build:
       context: .
-      dockerfile: ./services/gateway/Dockerfile
+      dockerfile: ./services/core/mnos_api/Dockerfile
     ports:
       - "8000:8000"
     environment:
-      - PORT=8000
-      - REDIS_HOST=redis
+      - ROUTER_URL=http://mnos-router:8000
+      - SHADOW_URL=http://shadow:8002
+      - MNOS_GATEWAY_SECRET=${MNOS_GATEWAY_SECRET:-mnos-prod-secret}
     depends_on:
       redis:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
+
+  mnos-router:
+    build:
+      context: .
+      dockerfile: ./services/core/mnos_router/Dockerfile
+    depends_on:
+      - eleone
+      - shadow
+      - xport
+      - aqua
+      - inn
+      - skygodown
+      - atollairways
+      - svd
+      - bfi
 
   eleone:
     build:
       context: .
-      dockerfile: ./services/eleone/Dockerfile
-    ports:
-      - "8001:8001"
-    environment:
-      - PORT=8001
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
+      dockerfile: ./services/core/eleone/Dockerfile
+    depends_on:
+      redis:
+        condition: service_healthy
 
   shadow:
     build:
       context: .
-      dockerfile: ./services/shadow/Dockerfile
-    ports:
-      - "8002:8002"
-    environment:
-      - PORT=8002
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-
-  svd:
-    build:
-      context: .
-      dockerfile: ./services/svd/Dockerfile
-    ports:
-      - "8003:8003"
-    environment:
-      - PORT=8003
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
+      dockerfile: ./services/core/shadow/Dockerfile
+    depends_on:
+      redis:
+        condition: service_healthy
 
   sal:
     build:
       context: .
-      dockerfile: ./services/sal/Dockerfile
-    ports:
-      - "8004:8004"
-    environment:
-      - PORT=8004
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
+      dockerfile: ./services/core/sal/Dockerfile
 
+  event-worker:
+    build:
+      context: .
+      dockerfile: ./services/core/mnos_api/Dockerfile
+    command: ["python", "services/core/event_worker.py"]
+    environment:
+      - REDIS_HOST=redis
+      - SAL_URL=http://sal:8004
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # MODULES
+  xport:
+    build:
+      context: .
+      dockerfile: ./modules/xport/Dockerfile
+  aqua:
+    build:
+      context: .
+      dockerfile: ./modules/aqua/Dockerfile
+  inn:
+    build:
+      context: .
+      dockerfile: ./modules/inn/Dockerfile
+  skygodown:
+    build:
+      context: .
+      dockerfile: ./modules/skygodown/Dockerfile
+  atollairways:
+    build:
+      context: .
+      dockerfile: ./modules/atollairways/Dockerfile
+  svd:
+    build:
+      context: .
+      dockerfile: ./modules/svd/Dockerfile
   bfi:
     build:
       context: .
-      dockerfile: ./services/bfi/Dockerfile
-    ports:
-      - "8005:8005"
-    environment:
-      - PORT=8005
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
+      dockerfile: ./modules/bfi/Dockerfile
 
-  edge-node:
-    build:
-      context: .
-      dockerfile: ./edge-node/Dockerfile
-    ports:
-      - "8006:8006"
+  db:
+    image: postgres:15
     environment:
-      - PORT=8006
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8006/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
+      - POSTGRES_DB=buildx
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - ./infra/db/init.sql:/docker-entrypoint-initdb.d/init.sql
