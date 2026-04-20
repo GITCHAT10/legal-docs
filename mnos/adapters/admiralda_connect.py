@@ -2,7 +2,7 @@ from typing import Dict, Any, Optional
 import uuid
 from mnos.shared.sdk.mnos_client import mnos_client
 from mnos.modules.fce import service as fce_service
-from mnos.core.db.session import SessionLocal
+from mnos.core.db import session as db_session
 
 class AdmiraldaConnect:
     """
@@ -24,7 +24,7 @@ class AdmiraldaConnect:
         """
         REAL FCE Execution: Open Folio for goodwill buffer.
         """
-        db = SessionLocal()
+        db = db_session.SessionLocal()
         try:
             # Enforce policy
             ltv = data.get("ltv", 0)
@@ -33,7 +33,6 @@ class AdmiraldaConnect:
                 return {"status": "DENIED", "reason": "POLICY_VIOLATION"}
 
             trace_id = f"FCE-BUF-{uuid.uuid4().hex}"
-            # Use reservation_id as string
             folio = fce_service.open_folio(db, str(f"BUFF-{data.get('tenant_id')}"), trace_id)
             return {
                 "status": "AUTHORIZED",
@@ -42,7 +41,6 @@ class AdmiraldaConnect:
                 "trace_id": trace_id
             }
         except Exception as e:
-            # Let's print the error for debugging during test run if it fails again
             print(f"ADAPTER ERROR: {str(e)}")
             return {"status": "FAILED", "detail": str(e)}
         finally:

@@ -17,12 +17,17 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 @pytest.fixture(scope="module", autouse=True)
 def setup_db():
     os.environ["TESTING"] = "1"
+    # Patch the global session to use our test engine
     db_session.engine = engine
     db_session.SessionLocal = TestingSessionLocal
 
-    # Load all models for Base to see them
-    from mnos.modules.fce import models as fce_models
-    from mnos.modules.shadow import models as shadow_models
+    # IMPORT ALL MODELS TO ENSURE THEY ARE IN Base.metadata
+    from mnos.core.models.user import User
+    from mnos.interfaces.prestige.guests.models import Guest
+    from mnos.modules.inn.reservations.models import Reservation, Room, Stay
+    from mnos.modules.aqua.transfers.models import TransferRequest, Vehicle, Manifest
+    from mnos.modules.fce.models import Folio, FolioLine, Payment, Invoice, LedgerEntry, OutboxEvent
+    from mnos.modules.shadow.models import Evidence
 
     Base.metadata.create_all(bind=engine)
     yield
