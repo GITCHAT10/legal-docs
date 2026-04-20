@@ -17,12 +17,8 @@ reusable_oauth2 = OAuth2PasswordBearer(
 )
 
 def get_db() -> Generator:
-    # Check for testing environment
-    if os.getenv("TESTING"):
-        from mnos.core.tests.test_flow import TestingSessionLocal
-        db = TestingSessionLocal()
-    else:
-        db = SessionLocal()
+    # Use standard SessionLocal. Tests should use dependency_overrides.
+    db = SessionLocal()
     try:
         yield db
     finally:

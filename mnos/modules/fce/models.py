@@ -43,7 +43,7 @@ class FolioLine(Base):
     service_charge = Column(Float, default=0.0)
     tgst = Column(Float, default=0.0)
     green_tax = Column(Float, default=0.0)
-    amount = Column(Float, nullable=False) # Total amount
+    amount = Column(Float, nullable=False) # Total authoritative amount
     description = Column(String)
     is_reversed = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -55,7 +55,7 @@ class Payment(Base):
     folio_id = Column(Integer, ForeignKey("folio.id"), nullable=False)
     trace_id = Column(String, unique=True, index=True, nullable=False)
     amount = Column(Float, nullable=False)
-    method = Column(String, nullable=False)
+    method = Column(String, nullable=False) # cash, credit_card, etc
     status = Column(Enum(PaymentStatus), default=PaymentStatus.PAID)
     created_at = Column(DateTime, default=datetime.utcnow)
 

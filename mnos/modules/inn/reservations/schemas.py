@@ -1,22 +1,7 @@
-from typing import Optional, List
-from datetime import date
 from pydantic import BaseModel
-from mnos.modules.inn.reservations.models import ReservationStatus, RoomStatus
-
-class RoomBase(BaseModel):
-    room_number: str
-    room_type: str
-    status: RoomStatus = RoomStatus.READY
-    base_price: float = 0.0
-
-class RoomCreate(RoomBase):
-    pass
-
-class Room(RoomBase):
-    id: int
-
-    class Config:
-        from_attributes = True
+from datetime import date
+from typing import List, Optional
+from .models import ReservationStatus, RoomStatus
 
 class StayBase(BaseModel):
     room_id: int
@@ -29,6 +14,7 @@ class StayCreate(StayBase):
 class Stay(StayBase):
     id: int
     reservation_id: int
+    is_active: bool
 
     class Config:
         from_attributes = True
@@ -37,16 +23,35 @@ class ReservationBase(BaseModel):
     guest_id: int
     status: ReservationStatus = ReservationStatus.PENDING
     total_amount: float = 0.0
+    adults: int = 1
+    children: int = 0
 
 class ReservationCreate(ReservationBase):
     stays: List[StayCreate]
 
 class ReservationUpdate(BaseModel):
     status: Optional[ReservationStatus] = None
+    total_amount: Optional[float] = None
 
 class Reservation(ReservationBase):
     id: int
-    stays: List[Stay] = []
+    stays: List[Stay]
+
+    class Config:
+        from_attributes = True
+
+class RoomBase(BaseModel):
+    room_number: str
+    room_type: str
+    status: RoomStatus = RoomStatus.READY
+    base_price: float = 0.0
+    capacity: int = 2
+
+class RoomCreate(RoomBase):
+    pass
+
+class Room(RoomBase):
+    id: int
 
     class Config:
         from_attributes = True

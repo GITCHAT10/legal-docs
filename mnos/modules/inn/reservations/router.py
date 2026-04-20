@@ -24,11 +24,7 @@ def create_room(
     room_in: schemas.RoomCreate,
     current_user: Any = Depends(deps.get_current_user),
 ) -> Any:
-    db_room = models.Room(**room_in.dict())
-    db.add(db_room)
-    db.commit()
-    db.refresh(db_room)
-    return db_room
+    return service.create_room(db, room_in=room_in)
 
 @router.post("/", response_model=schemas.Reservation)
 def create_reservation(

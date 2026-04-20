@@ -23,11 +23,7 @@ def create_vehicle(
     vehicle_in: schemas.VehicleCreate,
     current_user: Any = Depends(deps.get_current_user),
 ) -> Any:
-    db_obj = models.Vehicle(**vehicle_in.dict())
-    db.add(db_obj)
-    db.commit()
-    db.refresh(db_obj)
-    return db_obj
+    return service.create_vehicle(db, vehicle_in=vehicle_in)
 
 @router.post("/", response_model=schemas.TransferRequest)
 def create_transfer_request(

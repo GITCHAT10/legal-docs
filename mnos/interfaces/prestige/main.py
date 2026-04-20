@@ -6,10 +6,7 @@ from mnos.interfaces.prestige.guests.router import router as guests_router
 from mnos.modules.inn.reservations.router import router as reservations_router
 from mnos.modules.aqua.transfers.router import router as transfers_router
 from mnos.modules.fce.router import router as finance_router
-from mnos.modules.inn.housekeeping.router import router as housekeeping_router
-from mnos.modules.inn.maintenance.router import router as maintenance_router
-from mnos.modules.inn.laundry.router import router as laundry_router
-from mnos.modules.inn.staging.router import router as staging_router
+from mnos.modules.maintain.router import router as maintenance_router
 from mnos.core.events.websockets import router as ws_router
 
 app = FastAPI(
@@ -31,10 +28,7 @@ app.include_router(guests_router, prefix=f"{settings.API_V1_STR}/guests", tags=[
 app.include_router(reservations_router, prefix=f"{settings.API_V1_STR}/reservations", tags=["reservations"])
 app.include_router(transfers_router, prefix=f"{settings.API_V1_STR}/transfers", tags=["transfers"])
 app.include_router(finance_router, prefix=f"{settings.API_V1_STR}/finance", tags=["finance"])
-app.include_router(housekeeping_router, prefix=f"{settings.API_V1_STR}/housekeeping", tags=["housekeeping"])
 app.include_router(maintenance_router, prefix=f"{settings.API_V1_STR}/maintenance", tags=["maintenance"])
-app.include_router(laundry_router, prefix=f"{settings.API_V1_STR}/laundry", tags=["laundry"])
-app.include_router(staging_router, prefix=f"{settings.API_V1_STR}/staging", tags=["staging"])
 app.include_router(ws_router, tags=["events"])
 
 @app.get("/health")

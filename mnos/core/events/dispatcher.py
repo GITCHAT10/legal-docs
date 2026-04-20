@@ -31,39 +31,45 @@ event_dispatcher = EventDispatcher()
 # --- Cross-module Event Handlers ---
 
 def get_db_session():
-    if os.getenv("TESTING"):
-        from mnos.core.tests.test_flow import TestingSessionLocal
-        return TestingSessionLocal()
+    # Helper to get session without circular imports or broken test paths
     from mnos.core.db.session import SessionLocal
     return SessionLocal()
 
 def handle_reservation_confirmed(data):
-    from mnos.modules.aqua.transfers.service import create_transfer_request
-    from mnos.modules.aqua.transfers.schemas import TransferRequestCreate
-    from mnos.modules.aqua.transfers.models import TransferType
-
-    reservation_id = data.get("reservation_id")
-    db = get_db_session()
+    # In a real MNOS system, this would go through the event bus (Redis)
+    # to avoid direct service dependencies here.
     try:
-        transfer_in = TransferRequestCreate(
-            reservation_id=reservation_id,
-            type=TransferType.BOAT,
-            pickup_location="Velana International Airport",
-            destination="Resort Island"
-        )
-        create_transfer_request(db, request_in=transfer_in)
-    finally:
-        db.close()
+        from mnos.modules.aqua.transfers.service import create_transfer_request
+        from mnos.modules.aqua.transfers.schemas import TransferRequestCreate
+        from mnos.modules.aqua.transfers.models import TransferType
+
+        reservation_id = data.get("reservation_id")
+        db = get_db_session()
+        try:
+            transfer_in = TransferRequestCreate(
+                reservation_id=reservation_id,
+                type=TransferType.BOAT,
+                pickup_location="Velana International Airport",
+                destination="Resort Island"
+            )
+            create_transfer_request(db, request_in=transfer_in)
+        finally:
+            db.close()
+    except ImportError:
+        pass
 
 def handle_housekeeping_completed(data):
-    from mnos.modules.inn.reservations.service import mark_room_ready_from_housekeeping
-
-    room_id = data.get("room_id")
-    db = get_db_session()
     try:
-        mark_room_ready_from_housekeeping(db, room_id)
-    finally:
-        db.close()
+        from mnos.modules.inn.reservations.service import mark_room_ready_from_housekeeping
+
+        room_id = data.get("room_id")
+        db = get_db_session()
+        try:
+            mark_room_ready_from_housekeeping(db, room_id)
+        finally:
+            db.close()
+    except ImportError:
+        pass
 
 # Registering handlers
 event_dispatcher.subscribe("reservation_confirmed", handle_reservation_confirmed)
