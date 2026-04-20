@@ -6,6 +6,7 @@ from mnos.core.ai.models import PrestigeData, BookingData, FinanceData, AiOutput
 from mnos.core.ai.routing_optimizer.service import RoutingOptimizer
 from mnos.core.ai.demand_predictor.service import DemandPredictor
 from mnos.core.ai.revenue_optimizer.service import RevenueOptimizer
+from mnos.core.ai.policy_validator import PolicyValidator
 from mnos.shared.sdk.mnos_client import MnosClient
 
 class AiEngine:
@@ -16,6 +17,7 @@ class AiEngine:
         self.routing_optimizer = RoutingOptimizer()
         self.demand_predictor = DemandPredictor()
         self.revenue_optimizer = RevenueOptimizer()
+        self.policy_validator = PolicyValidator()
         self.mnos_client = MnosClient()
 
     async def run_optimization_cycle(
@@ -35,9 +37,15 @@ class AiEngine:
         decisions.extend(await self.demand_predictor.predict(prestige_data, booking_data))
         decisions.extend(await self.revenue_optimizer.optimize(finance_data, booking_data))
 
+        # Attach trace_id and validate against policy
+        for d in decisions:
+            d.trace_id = trace_id
+
+        validated_decisions = self.policy_validator.validate_all(decisions)
+
         output = AiOutput(
             trace_id=trace_id,
-            decisions=decisions,
+            decisions=validated_decisions,
             metadata={
                 "input_counts": {
                     "prestige": len(prestige_data),
