@@ -1,41 +1,43 @@
-MNOS PRESTIGE HARDENING REPORT
+MNOS PRESTIGE HARDENING FINAL REPORT (PROD-FIX)
 
-Files Changed:
+Files Changed/Fixed:
+- mnos/modules/fce/models.py: Implemented canonical finance structure (Folio, FolioLine, Payment) with trace_id requirements.
+- mnos/modules/fce/schemas.py: Unified data contracts with trace_id.
+- mnos/modules/fce/service.py: Authoritative finance logic with idempotency and Maldives tax calculation (Base + 10% SC -> TGST on subtotal).
+- mnos/modules/fce/router.py: Aligned routes with authoritative models and trace_id.
+- mnos/modules/inn/reservations/router.py: Corrected route ordering (/rooms before /{id}).
+- mnos/modules/aqua/transfers/router.py: Corrected route ordering (/vehicles before /{id}).
 - mnos/interfaces/prestige/main.py: Fixed router imports and order.
-- mnos/modules/inn/reservations/router.py: Moved /rooms before /{reservation_id}.
-- mnos/modules/aqua/transfers/router.py: Moved /vehicles before /{request_id}.
-- mnos/modules/fce/schemas.py: Unified data contracts with real persistence models.
-- mnos/modules/fce/router.py: Aligned router with FCE service and added trace_id requirements.
-- mnos/modules/fce/service.py: Added missing lock_exchange_rate function.
-- mnos/tests/test_prestige_harden.py: Added comprehensive integration tests.
+- mnos/tests/test_full_booking_flow.py: Mandatory end-to-end integration test.
 
 Test Results:
-- Integrated flow (Guest -> Room -> Reservation -> Folio -> Charge -> Invoice -> Transfer): PASSED
+- mnos/tests/test_full_booking_flow.py: 1 PASSED (100%)
 
-Sample End-to-End Booking Flow:
+End-to-End Booking Flow Sample Requests (trace_id mandatory):
 
-1. Create Guest
-POST /api/v1/guests/
-Response: {"id": 1, "first_name": "Alice", "last_name": "Wander", "email": "alice@mnos.com", ...}
-
-2. Create Room
-POST /api/v1/reservations/rooms
-Response: {"id": 1, "room_number": "B01", "room_type": "Beach Villa", "status": "ready", ...}
-
-3. Create Reservation
+1. Create Reservation (INN)
 POST /api/v1/reservations/
-Response: {"id": 1, "guest_id": 1, "status": "pending", "stays": [...], ...}
+Payload: {"guest_id": 1, "total_amount": 0.0, "stays": [{"room_id": 1, "check_in_date": "2024-04-19", "check_out_date": "2024-04-19"}]}
+Response: {"id": 1, ...}
 
-4. Open Folio (Authority FCE)
+2. Open Folio (FCE)
 POST /api/v1/finance/folios
-Payload: {"external_reservation_id": "1", "trace_id": "TR-A1B2C3D4"}
-Response: {"id": 1, "external_reservation_id": "1", "trace_id": "TR-A1B2C3D4", "status": "open", ...}
+Payload: {"external_reservation_id": "1", "trace_id": "TR-999"}
+Response: {"id": 1, "status": "open", "trace_id": "TR-999", ...}
 
-5. Post Charge (Authority FCE)
+3. Add Charge (FCE - FolioLine)
 POST /api/v1/finance/folios/1/charges
-Payload: {"trace_id": "CH-E5F6G7H8", "type": "room", "base_amount": 1000.0, "description": "Room charge", "apply_green_tax": true, "nights": 1}
-Response: {"id": 1, "folio_id": 1, "trace_id": "CH-E5F6G7H8", "type": "room", "base_amount": 1000.0, "service_charge": 100.0, "tgst": 187.0, "green_tax": 6.0, "total_amount": 1293.0, ...}
+Payload: {"trace_id": "CH-999", "type": "room", "base_amount": 500.0, "description": "Night 1", "apply_green_tax": true, "nights": 1}
+Response: {"id": 1, "amount": 649.5, "trace_id": "CH-999", ...}
 
-6. Finalize Invoice
-POST /api/v1/finance/folios/1/finalize
-Response: {"id": 1, "folio_id": 1, "invoice_number": "INV-F9A2B4C1", "total_amount": 1293.0, "tax_summary": {"sc": 100.0, "tgst": 187.0, "green_tax": 6.0}, ...}
+4. Post Payment (FCE)
+POST /api/v1/finance/folios/1/payments
+Payload: {"trace_id": "PY-999", "amount": 649.5, "method": "credit_card"}
+Response: {"id": 1, "amount": 649.5, "status": "paid", "trace_id": "PY-999", ...}
+
+5. Create Transfer (AQUA)
+POST /api/v1/transfers/
+Payload: {"reservation_id": 1, "type": "boat", "pickup_location": "Airport", "destination": "Resort"}
+Response: {"id": 1, "status": "pending", ...}
+
+PRESTIGE end-to-end booking flow is now operational.

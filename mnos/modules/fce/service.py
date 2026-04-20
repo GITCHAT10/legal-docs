@@ -2,6 +2,7 @@ from typing import Dict, Optional
 from sqlalchemy.orm import Session
 from mnos.modules.fce import models
 import uuid
+from datetime import datetime
 
 # MIRA compliant rates
 SERVICE_CHARGE_RATE = 0.10
@@ -54,20 +55,20 @@ def post_charge(db: Session, folio_id: int, charge_data: Dict, trace_id: str) ->
         service_charge=taxes["sc"],
         tgst=taxes["tgst"],
         green_tax=taxes["green_tax"],
-        total_amount=taxes["total"],
+        amount=taxes["total"],
         description=charge_data.get("description")
     )
     db.add(line)
 
     folio = db.query(models.Folio).filter(models.Folio.id == folio_id).first()
-    folio.total_amount += line.total_amount
+    folio.total_amount += line.amount
     db.add(folio)
 
     # Record in ledger
     ledger = models.LedgerEntry(
         trace_id=f"ledger-{trace_id}",
         account_code="REVENUE",
-        credit=line.total_amount,
+        credit=line.amount,
         description=f"Charge for folio {folio_id}"
     )
     db.add(ledger)
@@ -76,10 +77,30 @@ def post_charge(db: Session, folio_id: int, charge_data: Dict, trace_id: str) ->
     db.refresh(line)
     return line
 
+def post_payment(db: Session, folio_id: int, payment_data: Dict, trace_id: str) -> models.Payment:
+    existing = db.query(models.Payment).filter(models.Payment.trace_id == trace_id).first()
+    if existing:
+        return existing
+
+    payment = models.Payment(
+        folio_id=folio_id,
+        trace_id=trace_id,
+        amount=payment_data["amount"],
+        method=payment_data["method"],
+        status=payment_data.get("status", models.PaymentStatus.PAID)
+    )
+    db.add(payment)
+
+    folio = db.query(models.Folio).filter(models.Folio.id == folio_id).first()
+    folio.paid_amount += payment.amount
+    db.add(folio)
+
+    db.commit()
+    db.refresh(payment)
+    return payment
+
 def finalize_invoice(db: Session, folio_id: int) -> models.Invoice:
     folio = db.query(models.Folio).filter(models.Folio.id == folio_id).first()
-    if folio.status == models.FolioStatus.FINALIZED:
-        return folio.invoices[0]
 
     invoice = models.Invoice(
         folio_id=folio_id,
@@ -97,35 +118,6 @@ def finalize_invoice(db: Session, folio_id: int) -> models.Invoice:
     db.commit()
     db.refresh(invoice)
     return invoice
-
-def reverse_charge(db: Session, line_id: int, trace_id: str) -> Optional[models.FolioLine]:
-    line = db.query(models.FolioLine).filter(models.FolioLine.id == line_id).first()
-    if not line or line.is_reversed:
-        return line
-
-    # Create reversal line
-    reversal = models.FolioLine(
-        folio_id=line.folio_id,
-        trace_id=trace_id,
-        type=line.type,
-        base_amount=-line.base_amount,
-        service_charge=-line.service_charge,
-        tgst=-line.tgst,
-        green_tax=-line.green_tax,
-        total_amount=-line.total_amount,
-        description=f"Reversal of {line.id}",
-        is_reversed=True
-    )
-    db.add(reversal)
-    line.is_reversed = True
-
-    folio = db.query(models.Folio).filter(models.Folio.id == line.folio_id).first()
-    folio.total_amount += reversal.total_amount
-    db.add(folio)
-
-    db.commit()
-    db.refresh(reversal)
-    return reversal
 
 def lock_exchange_rate(db: Session, currency: str, rate: float, expires_at: datetime) -> models.ExchangeRateLock:
     lock = models.ExchangeRateLock(

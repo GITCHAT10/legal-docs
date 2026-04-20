@@ -37,6 +37,16 @@ def post_charge(
     charge_data = charge_in.dict()
     return service.post_charge(db, folio_id=folio_id, charge_data=charge_data, trace_id=charge_in.trace_id)
 
+@router.post("/folios/{folio_id}/payments", response_model=schemas.Payment)
+def post_payment(
+    folio_id: int,
+    payment_in: schemas.PaymentBase,
+    db: Session = Depends(deps.get_db),
+    current_user: Any = Depends(deps.get_current_user),
+) -> Any:
+    payment_data = payment_in.dict()
+    return service.post_payment(db, folio_id=folio_id, payment_data=payment_data, trace_id=payment_in.trace_id)
+
 @router.post("/folios/{folio_id}/finalize", response_model=schemas.Invoice)
 def finalize_invoice(
     folio_id: int,

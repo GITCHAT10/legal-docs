@@ -19,8 +19,25 @@ class FolioLine(FolioLineBase):
     service_charge: float
     tgst: float
     green_tax: float
-    total_amount: float
+    amount: float
     is_reversed: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class PaymentBase(BaseModel):
+    trace_id: str
+    amount: float
+    method: str
+    status: PaymentStatus = PaymentStatus.PAID
+
+class PaymentCreate(PaymentBase):
+    folio_id: int
+
+class Payment(PaymentBase):
+    id: int
+    folio_id: int
     created_at: datetime
 
     class Config:
@@ -52,18 +69,7 @@ class Folio(FolioBase):
     paid_amount: float
     created_at: datetime
     lines: List[FolioLine] = []
-
-    class Config:
-        from_attributes = True
-
-class LedgerEntry(BaseModel):
-    id: int
-    trace_id: str
-    account_code: str
-    debit: float
-    credit: float
-    description: Optional[str] = None
-    created_at: datetime
+    payments: List[Payment] = []
 
     class Config:
         from_attributes = True

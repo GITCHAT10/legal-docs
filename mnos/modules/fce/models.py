@@ -12,7 +12,6 @@ class FolioStatus(str, enum.Enum):
 class PaymentStatus(str, enum.Enum):
     PENDING = "pending"
     PAID = "paid"
-    PARTIAL = "partial"
     FAILED = "failed"
 
 class ChargeType(str, enum.Enum):
@@ -33,7 +32,7 @@ class Folio(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     lines = relationship("FolioLine", back_populates="folio")
-    invoices = relationship("Invoice", back_populates="folio")
+    payments = relationship("Payment", back_populates="folio")
 
 class FolioLine(Base):
     id = Column(Integer, primary_key=True, index=True)
@@ -44,12 +43,23 @@ class FolioLine(Base):
     service_charge = Column(Float, default=0.0)
     tgst = Column(Float, default=0.0)
     green_tax = Column(Float, default=0.0)
-    total_amount = Column(Float, nullable=False)
+    amount = Column(Float, nullable=False) # Total amount
     description = Column(String)
     is_reversed = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     folio = relationship("Folio", back_populates="lines")
+
+class Payment(Base):
+    id = Column(Integer, primary_key=True, index=True)
+    folio_id = Column(Integer, ForeignKey("folio.id"), nullable=False)
+    trace_id = Column(String, unique=True, index=True, nullable=False)
+    amount = Column(Float, nullable=False)
+    method = Column(String, nullable=False)
+    status = Column(Enum(PaymentStatus), default=PaymentStatus.PAID)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    folio = relationship("Folio", back_populates="payments")
 
 class Invoice(Base):
     id = Column(Integer, primary_key=True, index=True)
@@ -58,8 +68,6 @@ class Invoice(Base):
     total_amount = Column(Float, nullable=False)
     tax_summary = Column(JSON)
     created_at = Column(DateTime, default=datetime.utcnow)
-
-    folio = relationship("Folio", back_populates="invoices")
 
 class LedgerEntry(Base):
     id = Column(Integer, primary_key=True, index=True)
