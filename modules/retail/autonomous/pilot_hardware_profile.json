@@ -1,0 +1,54 @@
+{
+  "store_id": "PILOT_ATOLL_1",
+  "store_name": "MARS Autonomous Retail Atoll-1",
+  "mode": "ASSISTED_AUTONOMOUS",
+  "hardware_nodes": [
+    {
+      "node_id": "CAM_01",
+      "type": "CAMERA",
+      "position": "OVERHEAD_ENTRANCE",
+      "stream_active": true
+    },
+    {
+      "node_id": "CAM_02",
+      "type": "CAMERA",
+      "position": "OVERHEAD_AISLE_1",
+      "stream_active": true
+    },
+    {
+      "node_id": "CAM_03",
+      "type": "CAMERA",
+      "position": "OVERHEAD_AISLE_2",
+      "stream_active": true
+    },
+    {
+      "node_id": "CAM_04",
+      "type": "CAMERA",
+      "position": "OVERHEAD_EXIT",
+      "stream_active": true
+    },
+    {
+      "node_id": "GATE_01",
+      "type": "GATE",
+      "features": ["NFC", "QR"],
+      "controller_ip": "10.0.0.50"
+    },
+    {
+      "node_id": "SHELF_01",
+      "type": "SHELF",
+      "sensors": ["LOAD_CELL", "RFID"],
+      "capacity": 50
+    },
+    {
+      "node_id": "EDGE_01",
+      "type": "EDGE_BOX",
+      "model": "JETSON_ORIN",
+      "connected_nodes": ["CAM_01", "CAM_02", "CAM_03", "CAM_04", "SHELF_01"]
+    }
+  ],
+  "policy": {
+    "auto_settle_threshold": 0.95,
+    "review_threshold": 0.90,
+    "fail_mode": "FAIL_CLOSED"
+  }
+}
