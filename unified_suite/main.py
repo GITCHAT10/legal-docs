@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from unified_suite.airports.router import router as airport_router
 from unified_suite.seaports.router import router as seaport_router
+from unified_suite.atoll_airways.router import router as atoll_router
 from unified_suite.core.patente import NexGenPatenteVerifier
 import time
 import logging
@@ -30,6 +31,8 @@ async def production_middleware(request: Request, call_next):
             scope = "AIRPORT_OPS"
         elif "seaports" in request.url.path:
             scope = "PORT_OPS"
+        elif "atoll_airways" in request.url.path:
+            scope = "AIRPORT_OPS" # Seaplane ops fall under airport scope
         else:
             scope = "ADMIN"
 
@@ -72,6 +75,7 @@ async def production_middleware(request: Request, call_next):
 
 app.include_router(airport_router, prefix="/airports", tags=["Airports"])
 app.include_router(seaport_router, prefix="/seaports", tags=["Sea Ports"])
+app.include_router(atoll_router, prefix="/atoll_airways", tags=["Atoll Airways (Seaplanes)"])
 
 @app.get("/")
 async def root():

@@ -47,6 +47,10 @@ python3 test_fuel_flow.py
 echo "🛫 EXECUTING UNIFIED AIRPORT & PORT SUITE SIMULATION..."
 python3 simulate_unified_suite.py
 
+# Run Atoll Airways Simulation
+echo "🏝️  EXECUTING ATOLL AIRWAYS SEAPLANE SIMULATION..."
+python3 simulate_atoll_airways.py
+
 # Final Verification
 echo "🔍 VERIFYING PERSISTENT STATE..."
 echo "--- MNOS WORKER LOG ---"
