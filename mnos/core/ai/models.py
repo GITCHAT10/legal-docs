@@ -8,6 +8,8 @@ class DecisionStatus(str, Enum):
     ADVISORY = "ADVISORY"
     ELIGIBLE_FOR_REVIEW = "ELIGIBLE_FOR_REVIEW"
     PENDING = "PENDING"
+    PROPOSED = "PROPOSED"
+    APPROVED = "APPROVED"
 
 class PrestigeData(BaseModel):
     """Data from the Prestige commercial layer (search, journeys)."""

@@ -1,8 +1,10 @@
 import json
 import os
 import uuid
+import hashlib
 import logging
 from typing import List, Dict, Any, Optional
+from datetime import datetime, timezone
 from mnos.core.ai.models import PrestigeData, BookingData, FinanceData, AiOutput, AiDecision, DecisionStatus
 from mnos.core.ai.routing_optimizer.service import RoutingOptimizer
 from mnos.core.ai.demand_predictor.service import DemandPredictor
@@ -15,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 class AiEngine:
     """
-    Orchestrates AI modules and integrates with MNOS EVENTS engine.
+    Orchestrates AI modules and integrates with MNOS CORE (EVENTS, SHADOW, AEGIS).
     """
     def __init__(self):
         self.routing_optimizer = RoutingOptimizer()
@@ -42,15 +44,15 @@ class AiEngine:
             decisions.extend(await self.demand_predictor.predict(prestige_data, booking_data))
             decisions.extend(await self.revenue_optimizer.optimize(finance_data, booking_data))
 
-            # Attach trace_id and validate against policy
+            # Attach trace_id
             for d in decisions:
                 d.trace_id = trace_id
 
             validated_decisions = self.policy_validator.validate_all(decisions)
 
-            # Calculate scores (V1 stubs)
-            avg_confidence = sum(d.confidence_score for d in validated_decisions) / len(validated_decisions) if validated_decisions else 0.0
+            # AEGIS Policy Compliance Score
             policy_compliance = len([d for d in validated_decisions if d.status != DecisionStatus.REJECTED]) / len(validated_decisions) if validated_decisions else 1.0
+            avg_confidence = sum(d.confidence_score for d in validated_decisions) / len(validated_decisions) if validated_decisions else 0.0
 
             output = AiOutput(
                 trace_id=trace_id,
@@ -67,15 +69,25 @@ class AiEngine:
                 }
             )
 
-            # Save to decisions.json (output requirement)
+            # 1. SHADOW Ledger Binding (Audit-First)
+            # Fail closed if SHADOW write fails
+            await self._bind_to_shadow(output, prestige_data, booking_data, finance_data)
+
+            # 2. Save to decisions.json
             self._save_decisions(output)
 
-            # Integrate with EVENTS engine
-            await self.mnos_client.publish_event(
-                event_type="AI_OPTIMIZATION_COMPLETED",
-                data=output.model_dump(),
-                trace_id=trace_id
-            )
+            # 3. EVENTS Integration
+            for d in output.decisions:
+                await self.mnos_client.publish_event(
+                    event_type="AI_DECISION_PROPOSED",
+                    data={
+                        "module": d.module,
+                        "confidence_score": d.confidence_score,
+                        "policy_score": output.policy_score,
+                        "decision_payload": d.model_dump()
+                    },
+                    trace_id=trace_id
+                )
 
             return output
 
@@ -83,14 +95,12 @@ class AiEngine:
             # Fail-Closed Behavior
             logger.error(f"AiEngine optimization cycle failed: {str(e)}")
 
-            # Log failure to SHADOW
             await self.mnos_client.publish_event(
                 event_type="AI_OPTIMIZATION_FAILED",
                 data={"error": str(e)},
                 trace_id=trace_id
             )
 
-            # Return safe empty advisory
             empty_output = AiOutput(
                 trace_id=trace_id,
                 decisions=[],
@@ -102,30 +112,52 @@ class AiEngine:
             self._save_decisions(empty_output)
             return empty_output
 
-    async def execute_decision_with_approval(self, decision: AiDecision, operator_id: Optional[str]) -> Dict[str, Any]:
+    async def _bind_to_shadow(self, output: AiOutput, prestige: Any, booking: Any, finance: Any):
+        """Writes AI decisions to SHADOW ledger before any possible execution."""
+        # Create hashes for audit integrity
+        decision_hash = hashlib.sha256(output.model_dump_json().encode()).hexdigest()
+        input_data = {"prestige": [p.model_dump() for p in prestige],
+                      "booking": [b.model_dump() for b in booking],
+                      "finance": [f.model_dump() for f in finance]}
+        input_hash = hashlib.sha256(json.dumps(input_data, default=str).encode()).hexdigest()
+        policy_hash = hashlib.sha256(str(PolicyValidator.PROHIBITED_KEYWORDS + PolicyValidator.PROHIBITED_EVENTS).encode()).hexdigest()
+
+        shadow_log = {
+            "trace_id": output.trace_id,
+            "decision_hash": decision_hash,
+            "input_hash": input_hash,
+            "policy_hash": policy_hash,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "status": "PROPOSED"
+        }
+
+        # SDK call to SHADOW
+        result = await self.mnos_client.publish_event(
+            event_type="SHADOW_AUDIT_WRITE",
+            data=shadow_log,
+            trace_id=output.trace_id
+        )
+
+        if result.get("status") != "SUCCESS":
+            raise RuntimeError(f"SHADOW ledger binding failed for trace_id {output.trace_id}")
+
+    async def approve_and_execute_decision(self, decision: AiDecision, operator_id: str) -> Dict[str, Any]:
         """
-        Phase 2 implementation of L2 Supervisor Gate for state-changing actions.
-        AI remains ADVISORY_ONLY; human approval required before execution.
+        L2 Supervisor Gate: Human approval for AI decisions.
         """
         if decision.status == DecisionStatus.REJECTED:
-            # SHADOW logging for blocked cases
-            await self.mnos_client.publish_event(
-                event_type="SUPERVISOR_BLOCKED",
-                data={
-                    "decision": decision.model_dump(),
-                    "reason": "Policy REJECTED status"
-                },
-                trace_id=decision.trace_id
-            )
-            return {"status": "BLOCKED", "reason": "Decision was rejected by policy gate."}
+             return {"status": "BLOCKED", "reason": "Decision rejected by AEGIS policy."}
 
         try:
             # Mandatory human approval check
             approval_metadata = require_supervisor_approval(decision.action, operator_id)
 
-            # SHADOW logging for approved cases
+            # Update status to APPROVED
+            decision.status = DecisionStatus.APPROVED
+
+            # Emit execution event
             await self.mnos_client.publish_event(
-                event_type="SUPERVISOR_APPROVED",
+                event_type="AI_DECISION_EXECUTE",
                 data={
                     "decision": decision.model_dump(),
                     "approval": approval_metadata
@@ -134,18 +166,13 @@ class AiEngine:
             )
 
             return {
-                "status": "APPROVED",
-                "execution_ready": True,
+                "status": "EXECUTED",
                 "metadata": approval_metadata
             }
         except ApprovalRequired as e:
-            # SHADOW logging for blocked cases (missing approval)
             await self.mnos_client.publish_event(
                 event_type="SUPERVISOR_BLOCKED",
-                data={
-                    "decision": decision.model_dump(),
-                    "reason": str(e)
-                },
+                data={"decision": decision.model_dump(), "reason": str(e)},
                 trace_id=decision.trace_id
             )
             raise

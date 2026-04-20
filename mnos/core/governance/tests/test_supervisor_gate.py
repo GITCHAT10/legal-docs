@@ -38,16 +38,16 @@ async def test_ai_engine_execution_with_approval():
     )
 
     # Test approved path
-    result = await engine.execute_decision_with_approval(decision, "SUPER-456")
-    assert result["status"] == "APPROVED"
-    assert result["execution_ready"] is True
+    result = await engine.approve_and_execute_decision(decision, "SUPER-456")
+    assert result["status"] == "EXECUTED"
+    assert decision.status == DecisionStatus.APPROVED
 
     # Test blocked path (REJECTED status)
     rejected_decision = decision.model_copy()
     rejected_decision.status = DecisionStatus.REJECTED
-    result_blocked = await engine.execute_decision_with_approval(rejected_decision, "SUPER-456")
+    result_blocked = await engine.approve_and_execute_decision(rejected_decision, "SUPER-456")
     assert result_blocked["status"] == "BLOCKED"
 
     # Test blocked path (Missing approval)
     with pytest.raises(ApprovalRequired):
-        await engine.execute_decision_with_approval(decision, None)
+        await engine.approve_and_execute_decision(decision, "")
