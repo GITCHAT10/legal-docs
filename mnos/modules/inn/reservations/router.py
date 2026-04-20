@@ -14,9 +14,6 @@ def read_rooms(
     limit: int = 100,
     current_user: Any = Depends(deps.get_current_user),
 ) -> Any:
-    """
-    Retrieve rooms.
-    """
     rooms = db.query(models.Room).offset(skip).limit(limit).all()
     return rooms
 
@@ -27,9 +24,6 @@ def create_room(
     room_in: schemas.RoomCreate,
     current_user: Any = Depends(deps.get_current_user),
 ) -> Any:
-    """
-    Create new room.
-    """
     db_room = models.Room(**room_in.dict())
     db.add(db_room)
     db.commit()
@@ -43,9 +37,6 @@ def create_reservation(
     reservation_in: schemas.ReservationCreate,
     current_user: Any = Depends(deps.get_current_user),
 ) -> Any:
-    """
-    Create new reservation.
-    """
     return service.create_reservation(db, reservation_in=reservation_in)
 
 @router.get("/{reservation_id}", response_model=schemas.Reservation)
@@ -54,9 +45,6 @@ def read_reservation(
     db: Session = Depends(deps.get_db),
     current_user: Any = Depends(deps.get_current_user),
 ) -> Any:
-    """
-    Get reservation by ID.
-    """
     reservation = db.query(models.Reservation).filter(models.Reservation.id == reservation_id).first()
     if not reservation:
         raise HTTPException(status_code=404, detail="Reservation not found")
@@ -69,9 +57,6 @@ def update_reservation_status(
     db: Session = Depends(deps.get_db),
     current_user: Any = Depends(deps.get_current_user),
 ) -> Any:
-    """
-    Update reservation status.
-    """
     reservation = service.update_reservation_status(db, reservation_id=reservation_id, status=status_in.status)
     if not reservation:
         raise HTTPException(status_code=404, detail="Reservation not found")

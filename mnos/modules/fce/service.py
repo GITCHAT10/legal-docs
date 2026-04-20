@@ -6,82 +6,98 @@ from datetime import datetime
 from .tax_logic import calculate_maldives_tax
 
 def open_folio(db: Session, reservation_id: str, trace_id: str) -> models.Folio:
-    existing = db.query(models.Folio).filter(models.Folio.trace_id == trace_id).first()
-    if existing:
-        return existing
+    try:
+        existing = db.query(models.Folio).filter(models.Folio.trace_id == trace_id).first()
+        if existing:
+            return existing
 
-    folio = models.Folio(
-        external_reservation_id=reservation_id,
-        trace_id=trace_id,
-        status=models.FolioStatus.OPEN
-    )
-    db.add(folio)
-    db.commit()
-    db.refresh(folio)
-    return folio
+        folio = models.Folio(
+            external_reservation_id=reservation_id,
+            trace_id=trace_id,
+            status=models.FolioStatus.OPEN
+        )
+        db.add(folio)
+        db.commit()
+        db.refresh(folio)
+        return folio
+    except Exception:
+        db.rollback()
+        raise
 
 def post_charge(db: Session, folio_id: int, charge_data: Dict, trace_id: str) -> models.FolioLine:
-    existing = db.query(models.FolioLine).filter(models.FolioLine.trace_id == trace_id).first()
-    if existing:
-        return existing
+    try:
+        existing = db.query(models.FolioLine).filter(models.FolioLine.trace_id == trace_id).first()
+        if existing:
+            return existing
 
-    taxes = calculate_maldives_tax(
-        charge_data["base_amount"],
-        charge_data.get("apply_green_tax", False),
-        charge_data.get("nights", 0)
-    )
+        taxes = calculate_maldives_tax(
+            charge_data["base_amount"],
+            charge_data.get("apply_green_tax", False),
+            charge_data.get("nights", 0)
+        )
 
-    line = models.FolioLine(
-        folio_id=folio_id,
-        trace_id=trace_id,
-        type=charge_data["type"],
-        base_amount=taxes["base"],
-        service_charge=taxes["service_charge"],
-        tgst=taxes["tgst"],
-        green_tax=taxes["green_tax"],
-        amount=taxes["total"],
-        description=charge_data.get("description")
-    )
-    db.add(line)
+        line = models.FolioLine(
+            folio_id=folio_id,
+            trace_id=trace_id,
+            type=charge_data["type"],
+            base_amount=taxes["base"],
+            service_charge=taxes["service_charge"],
+            tgst=taxes["tgst"],
+            green_tax=taxes["green_tax"],
+            amount=taxes["total"],
+            description=charge_data.get("description")
+        )
+        db.add(line)
 
-    folio = db.query(models.Folio).filter(models.Folio.id == folio_id).first()
-    folio.total_amount += line.amount
-    db.add(folio)
+        folio = db.query(models.Folio).filter(models.Folio.id == folio_id).first()
+        if not folio:
+            raise ValueError(f"Folio {folio_id} not found")
+        folio.total_amount += line.amount
+        db.add(folio)
 
-    # Record in ledger
-    ledger = models.LedgerEntry(
-        trace_id=f"ledger-{trace_id}",
-        account_code="REVENUE",
-        credit=line.amount,
-        description=f"Charge for folio {folio_id}"
-    )
-    db.add(ledger)
+        # Record in ledger
+        ledger = models.LedgerEntry(
+            trace_id=f"ledger-{trace_id}",
+            account_code="REVENUE",
+            credit=line.amount,
+            description=f"Charge for folio {folio_id}"
+        )
+        db.add(ledger)
 
-    db.commit()
-    db.refresh(line)
-    return line
+        db.commit()
+        db.refresh(line)
+        return line
+    except Exception:
+        db.rollback()
+        raise
 
 def post_payment(db: Session, folio_id: int, payment_data: Dict, trace_id: str) -> models.Payment:
-    existing = db.query(models.Payment).filter(models.Payment.trace_id == trace_id).first()
-    if existing:
-        return existing
+    try:
+        existing = db.query(models.Payment).filter(models.Payment.trace_id == trace_id).first()
+        if existing:
+            return existing
 
-    payment = models.Payment(
-        folio_id=folio_id,
-        trace_id=trace_id,
-        amount=payment_data["amount"],
-        method=payment_data["method"],
-        status=payment_data.get("status", models.PaymentStatus.PAID)
-    )
-    db.add(payment)
+        payment = models.Payment(
+            folio_id=folio_id,
+            trace_id=trace_id,
+            amount=payment_data["amount"],
+            method=payment_data["method"],
+            status=payment_data.get("status", models.PaymentStatus.PAID)
+        )
+        db.add(payment)
 
-    folio = db.query(models.Folio).filter(models.Folio.id == folio_id).first()
-    folio.paid_amount += payment.amount
-    db.add(folio)
+        folio = db.query(models.Folio).filter(models.Folio.id == folio_id).first()
+        if not folio:
+            raise ValueError(f"Folio {folio_id} not found")
+        folio.paid_amount += payment.amount
+        db.add(folio)
 
-    db.commit()
-    db.refresh(payment)
-    return payment
+        db.commit()
+        db.refresh(payment)
+        return payment
+    except Exception:
+        db.rollback()
+        raise
 
 def finalize_invoice(db: Session, folio_id: int) -> models.Invoice:
     folio = db.query(models.Folio).filter(models.Folio.id == folio_id).first()

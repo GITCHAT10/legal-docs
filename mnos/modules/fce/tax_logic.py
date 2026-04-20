@@ -5,7 +5,7 @@ def calculate_maldives_tax(base_amount: float, apply_green_tax: bool = False, ni
 
     green_tax = 0.0
     if apply_green_tax:
-        green_tax = nights * 6.0 # standard USD 6
+        green_tax = nights * 6.0
 
     total = subtotal + tgst + green_tax
 

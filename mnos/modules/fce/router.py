@@ -54,3 +54,17 @@ def finalize_invoice(
     current_user: Any = Depends(deps.get_current_user),
 ) -> Any:
     return service.finalize_invoice(db, folio_id=folio_id)
+
+@router.get("/summary", response_model=Any)
+def get_finance_summary(
+    db: Session = Depends(deps.get_db),
+    current_user: Any = Depends(deps.get_current_user),
+):
+    from sqlalchemy import func
+    folio_counts = db.query(models.Folio.status, func.count(models.Folio.id)).group_by(models.Folio.status).all()
+    total_rev = db.query(func.sum(models.Folio.total_amount)).scalar() or 0.0
+
+    return {
+        "folio_status_counts": {status.value: count for status, count in folio_counts},
+        "total_revenue_recognized": total_rev
+    }

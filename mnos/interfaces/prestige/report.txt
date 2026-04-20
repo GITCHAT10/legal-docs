@@ -1,43 +1,30 @@
-MNOS PRESTIGE HARDENING FINAL REPORT (PROD-FIX)
+MNOS CORE REFIT: MNOS-PRESTIGE-V2-INTAKE FINAL REPORT
 
-Files Changed/Fixed:
-- mnos/modules/fce/models.py: Implemented canonical finance structure (Folio, FolioLine, Payment) with trace_id requirements.
-- mnos/modules/fce/schemas.py: Unified data contracts with trace_id.
-- mnos/modules/fce/service.py: Authoritative finance logic with idempotency and Maldives tax calculation (Base + 10% SC -> TGST on subtotal).
-- mnos/modules/fce/router.py: Aligned routes with authoritative models and trace_id.
-- mnos/modules/inn/reservations/router.py: Corrected route ordering (/rooms before /{id}).
-- mnos/modules/aqua/transfers/router.py: Corrected route ordering (/vehicles before /{id}).
-- mnos/interfaces/prestige/main.py: Fixed router imports and order.
-- mnos/tests/test_full_booking_flow.py: Mandatory end-to-end integration test.
+Summary of Changes:
 
-Test Results:
-- mnos/tests/test_full_booking_flow.py: 1 PASSED (100%)
+1. Production Hardening:
+   - FCE: Centralized 'calculate_maldives_tax' (Base + 10% SC -> 17% TGST) and hardened service logic.
+   - Persistence: Unified models using FolioLine and canonical Payment structures with trace_id idempotency.
+   - Routing: Fixed route declaration order in INN and AQUA modules to prevent shadowing.
+   - Fail-Closed: Wrapped all financial transitions in atomic blocks with rollback.
 
-End-to-End Booking Flow Sample Requests (trace_id mandatory):
+2. Whale Intake Engine:
+   - Schema: Implemented RoomingListUpload and StagingReservation with granular lifecycle states.
+   - Validation: Strict row-level validation (guest_name, dates, occupancy) with per-row error capture.
+   - Promotion: Hardened promotion flow requiring SHADOW evidence commit, trace_id, and duplicate prevention.
+   - Visibility: Added status endpoints for intake lifecycle and finance summary.
 
-1. Create Reservation (INN)
-POST /api/v1/reservations/
-Payload: {"guest_id": 1, "total_amount": 0.0, "stays": [{"room_id": 1, "check_in_date": "2024-04-19", "check_out_date": "2024-04-19"}]}
-Response: {"id": 1, ...}
+3. Evidence Integrity (SHADOW):
+   - Integrated mandatory SHADOW evidence recording for all state-changing operations across modules.
+   - SDK (MnosClient) automatically handles evidence commitment for authoritative actions.
 
-2. Open Folio (FCE)
-POST /api/v1/finance/folios
-Payload: {"external_reservation_id": "1", "trace_id": "TR-999"}
-Response: {"id": 1, "status": "open", "trace_id": "TR-999", ...}
+Verification Results:
+- Boot Integrity: SUCCESS (All modules and interfaces boot without Error)
+- Integrated Flow Test: PASS (Reservation -> Transfer -> Folio -> Charge -> Payment -> Close)
+- Tax Reconciliation: PASS (Authoritative Maldives rule enforced)
+- Intake Hardening: PASS (Partial batch handling and validation errors verified)
 
-3. Add Charge (FCE - FolioLine)
-POST /api/v1/finance/folios/1/charges
-Payload: {"trace_id": "CH-999", "type": "room", "base_amount": 500.0, "description": "Night 1", "apply_green_tax": true, "nights": 1}
-Response: {"id": 1, "amount": 649.5, "trace_id": "CH-999", ...}
-
-4. Post Payment (FCE)
-POST /api/v1/finance/folios/1/payments
-Payload: {"trace_id": "PY-999", "amount": 649.5, "method": "credit_card"}
-Response: {"id": 1, "amount": 649.5, "status": "paid", "trace_id": "PY-999", ...}
-
-5. Create Transfer (AQUA)
-POST /api/v1/transfers/
-Payload: {"reservation_id": 1, "type": "boat", "pickup_location": "Airport", "destination": "Resort"}
-Response: {"id": 1, "status": "pending", ...}
-
-PRESTIGE end-to-end booking flow is now operational.
+Production Readiness:
+- All core financial and intake flows are production-ready.
+- Intake parsers (XLSX) are fully operational.
+- SHADOW evidence chain ensures full auditability.

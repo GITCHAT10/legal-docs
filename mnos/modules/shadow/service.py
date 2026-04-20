@@ -18,6 +18,12 @@ def commit_evidence(db: Session, trace_id: str, payload: dict) -> models.Evidenc
 
     evidence = models.Evidence(
         trace_id=trace_id,
+        actor=payload.get("actor", "SYSTEM"),
+        action=payload.get("action", "STATE_CHANGE"),
+        entity_type=payload.get("entity_type"),
+        entity_id=str(payload.get("entity_id")) if payload.get("entity_id") else None,
+        before_state=payload.get("before_state"),
+        after_state=payload.get("after_state"),
         payload=payload,
         previous_hash=prev_hash,
         payload_digest=payload_digest,
