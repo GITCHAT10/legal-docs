@@ -5,6 +5,9 @@ import os
 from datetime import datetime, timezone
 
 # Phase 1: Strict secret handling. App must fail if missing.
+if not os.environ.get("MNOS_INTEGRATION_SECRET"):
+    raise RuntimeError("MNOS_INTEGRATION_SECRET NOT CONFIGURED - SYSTEM HALT")
+
 SECRET_KEY = os.environ["MNOS_INTEGRATION_SECRET"]
 
 def generate_canonical_string(method: str, path: str, timestamp: str, request_id: str, body_bytes: bytes) -> str:

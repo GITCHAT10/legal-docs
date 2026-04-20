@@ -20,7 +20,7 @@ metrics = {
 }
 
 def process_outbox(db: Session):
-    """Outbox processor with Phase 5 retry logic and Phase 3 error visibility"""
+    """Outbox processor with Phase 5 retry logic and Traceability"""
     now = datetime.utcnow()
     pending_events = db.query(IntegrationOutboxModel).filter(
         IntegrationOutboxModel.status.in_(["pending", "failed"]),
@@ -35,6 +35,7 @@ def process_outbox(db: Session):
             path = "/mnos/integration/v1/events"
             timestamp = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
             request_id = str(uuid.uuid4())
+            correlation_id = entry.payload_json.get("correlation_id") or str(uuid.uuid4())
 
             body_json = json.dumps(entry.payload_json, sort_keys=True)
             body_bytes = body_json.encode()
@@ -45,6 +46,7 @@ def process_outbox(db: Session):
             headers = {
                 "X-Request-Id": request_id,
                 "X-Idempotency-Key": entry.idempotency_key,
+                "X-Correlation-Id": correlation_id,
                 "X-Timestamp": timestamp,
                 "X-Signature": signature,
                 "Content-Type": "application/json"
@@ -53,14 +55,14 @@ def process_outbox(db: Session):
             if entry.attempt_count > 0:
                 metrics["retry_count"] += 1
 
-            # Phase 2: Standardized 5s timeout
+            # Standardized 5s timeout
             resp = requests.post(f"{MNOS_URL}{path}", data=body_bytes, headers=headers, timeout=5)
 
             if 200 <= resp.status_code < 300:
                 entry.status = "sent"
                 metrics["success_count"] += 1
             else:
-                # Phase 5: Implement 15s -> 60s -> 300s retry rules
+                # Exponential backoff retry for 5xx/408
                 if resp.status_code >= 500 or resp.status_code == 408:
                      error_msg = f"Retryable MNOS Error: {resp.status_code}"
                      handle_failure(entry, error_msg)
@@ -75,7 +77,6 @@ def process_outbox(db: Session):
             metrics["last_processed_at"] = datetime.now(timezone.utc).isoformat()
             db.commit()
         except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
-            # Phase 5: Retry on timeout or connection error
             handle_failure(entry, f"Network/Timeout Error: {str(e)}")
             metrics["failure_count"] += 1
             entry.attempt_count += 1
@@ -91,12 +92,12 @@ def handle_failure(entry, error_msg):
     entry.status = "failed"
     entry.last_error = error_msg
 
-    # Phase 5: Retry delays (15s, 60s, 300s)
+    # Retry delays (15s, 60s, 300s)
     backoffs = [15, 60, 300]
     if entry.attempt_count < len(backoffs):
         entry.next_attempt_at = datetime.utcnow() + timedelta(seconds=backoffs[entry.attempt_count])
     else:
-        entry.status = "failed" # Final failure state
+        entry.status = "failed"
         metrics["dead_letter_count"] += 1
 
 def run_worker_loop(db_session_factory):

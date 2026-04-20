@@ -8,6 +8,9 @@ from pydantic import BaseModel, Field
 import uuid
 
 # Phase 1: Strict secret handling. App must fail if missing.
+if not os.environ.get("SKYFARM_INTEGRATION_SECRET"):
+    raise RuntimeError("SKYFARM_INTEGRATION_SECRET NOT CONFIGURED - SYSTEM HALT")
+
 SECRET_KEY = os.environ["SKYFARM_INTEGRATION_SECRET"]
 
 class IntegrationPayload(BaseModel):
