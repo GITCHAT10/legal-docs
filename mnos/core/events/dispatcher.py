@@ -31,9 +31,6 @@ event_dispatcher = EventDispatcher()
 # --- Cross-module Event Handlers ---
 
 def get_db_session():
-    if os.getenv("TESTING"):
-        from mnos.core.tests.test_flow import TestingSessionLocal
-        return TestingSessionLocal()
     from mnos.core.db.session import SessionLocal
     return SessionLocal()
 

@@ -1,6 +1,6 @@
 from typing import Optional
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 from mnos.modules.inn.laundry.models import LaundryStatus
 
 class LaundryItemBase(BaseModel):

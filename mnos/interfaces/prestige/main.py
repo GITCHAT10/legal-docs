@@ -9,7 +9,6 @@ from mnos.modules.fce.router import router as finance_router
 from mnos.modules.inn.housekeeping.router import router as housekeeping_router
 from mnos.modules.inn.maintenance.router import router as maintenance_router
 from mnos.modules.inn.laundry.router import router as laundry_router
-from mnos.modules.asi.api.router import router as asi_router
 from mnos.core.events.websockets import router as ws_router
 
 app = FastAPI(
@@ -34,7 +33,6 @@ app.include_router(finance_router, prefix=f"{settings.API_V1_STR}/finance", tags
 app.include_router(housekeeping_router, prefix=f"{settings.API_V1_STR}/housekeeping", tags=["housekeeping"])
 app.include_router(maintenance_router, prefix=f"{settings.API_V1_STR}/maintenance", tags=["maintenance"])
 app.include_router(laundry_router, prefix=f"{settings.API_V1_STR}/laundry", tags=["laundry"])
-app.include_router(asi_router, prefix=f"{settings.API_V1_STR}/asi", tags=["asi"])
 app.include_router(ws_router, tags=["events"])
 
 @app.get("/health")

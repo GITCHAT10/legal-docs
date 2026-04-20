@@ -2,7 +2,6 @@ from sqlalchemy import Column, Integer, String, ForeignKey, Enum, DateTime, Floa
 from sqlalchemy.orm import relationship
 import enum
 from datetime import datetime
-from mnos.core.db.base_class import Base
 
 class LaundryStatus(str, enum.Enum):
     PENDING = "pending"
@@ -12,7 +11,9 @@ class LaundryStatus(str, enum.Enum):
     DELIVERED = "delivered"
     CANCELLED = "cancelled"
 
+from mnos.core.db.base_class import Base
 class LaundryItem(Base):
+    __tablename__ = "laundryitem"
     id = Column(Integer, primary_key=True, index=True)
     folio_id = Column(Integer, ForeignKey("folio.id"), nullable=False)
     guest_id = Column(Integer, ForeignKey("guest.id"), nullable=False)

@@ -1,5 +1,6 @@
 from typing import Optional
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, ConfigDict, Field
+from pydantic import EmailStr
 
 class UserBase(BaseModel):
     email: Optional[EmailStr] = None

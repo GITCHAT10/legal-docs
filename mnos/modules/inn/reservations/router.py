@@ -58,7 +58,7 @@ def create_room(
     """
     Create new room.
     """
-    db_room = models.Room(**room_in.dict())
+    db_room = models.Room(**room_in.model_dump())
     db.add(db_room)
     db.commit()
     db.refresh(db_room)

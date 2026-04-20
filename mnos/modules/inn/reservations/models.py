@@ -1,7 +1,6 @@
 from sqlalchemy import Column, Integer, String, Date, ForeignKey, Enum, Float
 from sqlalchemy.orm import relationship
 import enum
-from mnos.core.db.base_class import Base
 
 class ReservationStatus(str, enum.Enum):
     PENDING = "pending"
@@ -16,14 +15,18 @@ class RoomStatus(str, enum.Enum):
     MAINTENANCE = "maintenance"
     OCCUPIED = "occupied"
 
+from mnos.core.db.base_class import Base
 class Room(Base):
+    __tablename__ = "room"
     id = Column(Integer, primary_key=True, index=True)
     room_number = Column(String, unique=True, index=True, nullable=False)
     room_type = Column(String, nullable=False)
     status = Column(Enum(RoomStatus), default=RoomStatus.READY)
     base_price = Column(Float, default=0.0)
 
+from mnos.core.db.base_class import Base
 class Reservation(Base):
+    __tablename__ = "reservation"
     id = Column(Integer, primary_key=True, index=True)
     guest_id = Column(Integer, ForeignKey("guest.id"), nullable=False)
     status = Column(Enum(ReservationStatus), default=ReservationStatus.PENDING)
@@ -32,7 +35,9 @@ class Reservation(Base):
     guest = relationship("Guest")
     stays = relationship("Stay", back_populates="reservation")
 
+from mnos.core.db.base_class import Base
 class Stay(Base):
+    __tablename__ = "stay"
     id = Column(Integer, primary_key=True, index=True)
     reservation_id = Column(Integer, ForeignKey("reservation.id"), nullable=False)
     room_id = Column(Integer, ForeignKey("room.id"), nullable=False)

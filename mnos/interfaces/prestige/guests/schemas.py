@@ -1,6 +1,7 @@
 from typing import Optional
 from datetime import date
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, ConfigDict, Field
+from pydantic import EmailStr
 
 class GuestBase(BaseModel):
     first_name: Optional[str] = None

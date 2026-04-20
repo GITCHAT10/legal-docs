@@ -1,7 +1,8 @@
 from sqlalchemy import Column, Integer, String, Date
-from mnos.core.db.base_class import Base
 
+from mnos.core.db.base_class import Base
 class Guest(Base):
+    __tablename__ = "guest"
     id = Column(Integer, primary_key=True, index=True)
     first_name = Column(String, index=True, nullable=False)
     last_name = Column(String, index=True, nullable=False)

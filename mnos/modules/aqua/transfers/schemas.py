@@ -1,6 +1,6 @@
 from typing import Optional, List
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 from mnos.modules.aqua.transfers.models import TransferType, TransferStatus
 
 class VehicleBase(BaseModel):

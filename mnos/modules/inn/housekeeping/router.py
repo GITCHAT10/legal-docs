@@ -16,7 +16,7 @@ def create_task(
     task_in: schemas.HousekeepingTaskCreate,
     current_user: Any = Depends(deps.get_current_user),
 ) -> Any:
-    db_obj = models.HousekeepingTask(**task_in.dict())
+    db_obj = models.HousekeepingTask(**task_in.model_dump())
     db.add(db_obj)
     db.commit()
     db.refresh(db_obj)

@@ -1,8 +1,9 @@
 from sqlalchemy import Column, Integer, String, DateTime, JSON
-from mnos.core.db.base_class import Base
 from datetime import datetime
 
+from mnos.core.db.base_class import Base
 class Evidence(Base):
+    __tablename__ = "evidence"
     id = Column(Integer, primary_key=True, index=True)
     trace_id = Column(String, index=True, nullable=False)
     payload = Column(JSON, nullable=False)

@@ -2,7 +2,6 @@ from sqlalchemy import Column, Integer, String, ForeignKey, Enum, DateTime
 from sqlalchemy.orm import relationship
 import enum
 from datetime import datetime
-from mnos.core.db.base_class import Base
 
 class MaintenanceStatus(str, enum.Enum):
     OPEN = "open"
@@ -16,7 +15,9 @@ class MaintenancePriority(str, enum.Enum):
     HIGH = "high"
     URGENT = "urgent"
 
+from mnos.core.db.base_class import Base
 class MaintenanceTicket(Base):
+    __tablename__ = "maintenanceticket"
     id = Column(Integer, primary_key=True, index=True)
     room_id = Column(Integer, ForeignKey("room.id"), nullable=True)
     title = Column(String, nullable=False)

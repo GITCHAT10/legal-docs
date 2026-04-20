@@ -36,7 +36,7 @@ def create_guest(
             status_code=400,
             detail="A guest with this email already exists.",
         )
-    guest = models.Guest(**guest_in.dict())
+    guest = models.Guest(**guest_in.model_dump())
     db.add(guest)
     db.commit()
     db.refresh(guest)

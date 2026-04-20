@@ -1,6 +1,6 @@
 from typing import Optional, List
 from datetime import date
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 from mnos.modules.inn.reservations.models import ReservationStatus, RoomStatus
 
 class RoomBase(BaseModel):

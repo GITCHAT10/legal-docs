@@ -1,54 +1,56 @@
 from typing import Optional, List
 from datetime import datetime
-from pydantic import BaseModel
-from mnos.modules.fce.models import PaymentStatus, ChargeType, FolioStatus
+from pydantic import BaseModel, ConfigDict, Field
+from mnos.modules.fce.models import FolioStatus, ChargeType
+from decimal import Decimal
 
 class ChargeBase(BaseModel):
     type: ChargeType
-    amount: float
+    total_amount: Decimal = Field(default=Decimal("0.0"), alias="amount")
     description: Optional[str] = None
-    base_amount: float
-    service_charge: float = 0.0
-    tgst: float = 0.0
-    green_tax: float = 0.0
+    base_amount: Decimal
+    service_charge: Decimal = Decimal("0.0")
+    tgst: Decimal = Decimal("0.0")
+    green_tax: Decimal = Decimal("0.0")
+    model_config = ConfigDict(populate_by_name=True)
 
 class ChargeCreate(ChargeBase):
     folio_id: int
+    trace_id: str
 
 class Charge(ChargeBase):
     id: int
+    folio_id: int
+    trace_id: str
     created_at: datetime
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 class PaymentCreate(BaseModel):
     folio_id: int
-    amount: float
+    amount: Decimal
     method: str
+    trace_id: str
     transaction_reference: Optional[str] = None
 
 class Payment(BaseModel):
     id: int
     folio_id: int
-    amount: float
+    trace_id: str
+    amount: Decimal
     method: str
     transaction_reference: Optional[str] = None
     created_at: datetime
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class FolioBase(BaseModel):
     external_reservation_id: str
-    total_amount: float = 0.0
-    paid_amount: float = 0.0
+    trace_id: str
+    total_amount: Decimal = Decimal("0.0")
+    paid_amount: Decimal = Decimal("0.0")
     status: FolioStatus = FolioStatus.OPEN
 
 class Folio(FolioBase):
     id: int
-    charges: List[Charge] = []
+    charges: List[Charge] = Field(default=[], alias="lines")
     payments: List[Payment] = []
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)

@@ -2,7 +2,6 @@ import pytest
 from mnos.adapters.admiralda_connect import admiralda_connect
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from mnos.core.db.base_class import Base
 from mnos.core.db import session as db_session
 from mnos.modules.shadow import models as shadow_models
 from mnos.modules.fce import models as fce_models
@@ -20,6 +19,7 @@ def setup_db():
     db_session.engine = engine
     db_session.SessionLocal = TestingSessionLocal
 
+    from mnos.core.db.base_class import Base
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)

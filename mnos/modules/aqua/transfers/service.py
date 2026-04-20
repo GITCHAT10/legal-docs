@@ -4,7 +4,7 @@ from mnos.modules.aqua.transfers import models, schemas
 from mnos.core.events.dispatcher import event_dispatcher
 
 def create_transfer_request(db: Session, *, request_in: schemas.TransferRequestCreate) -> models.TransferRequest:
-    db_obj = models.TransferRequest(**request_in.dict())
+    db_obj = models.TransferRequest(**request_in.model_dump())
     db.add(db_obj)
     db.commit()
     db.refresh(db_obj)
