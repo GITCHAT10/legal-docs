@@ -1,0 +1,68 @@
+{
+  "trace_id": "7a013512-c9a2-4678-bda4-5d6991b2622a",
+  "decisions": [
+    {
+      "module": "routing_optimizer",
+      "action": "ADD_FREQUENCY",
+      "reasoning": "High search volume (150) but low conversion for MLE->GAN. Suggest adding more options.",
+      "parameters": {
+        "route": "MLE-GAN",
+        "suggested_increase": 0.2
+      },
+      "confidence_score": 0.85,
+      "timestamp": "2026-04-20T05:10:06.452043Z"
+    },
+    {
+      "module": "routing_optimizer",
+      "action": "UPGRADE_VESSEL",
+      "reasoning": "High occupancy (95.00%) on route R1. Current capacity fully utilized.",
+      "parameters": {
+        "route_id": "R1",
+        "required_capacity": 150
+      },
+      "confidence_score": 0.92,
+      "timestamp": "2026-04-20T05:10:06.452070Z"
+    },
+    {
+      "module": "demand_predictor",
+      "action": "PREDICT_SURGE",
+      "reasoning": "Search surge detected for MLE->VAM.",
+      "parameters": {
+        "route": "MLE-VAM",
+        "surge_factor": 1.5,
+        "period": "NEXT_7_DAYS"
+      },
+      "confidence_score": 0.88,
+      "timestamp": "2026-04-20T05:10:06.452079Z"
+    },
+    {
+      "module": "revenue_optimizer",
+      "action": "INCREASE_PRICE",
+      "reasoning": "High occupancy (95.00%) on route R1. Optimizing for margin.",
+      "parameters": {
+        "route_id": "R1",
+        "increase_percentage": 0.1
+      },
+      "confidence_score": 0.9,
+      "timestamp": "2026-04-20T05:10:06.452091Z"
+    },
+    {
+      "module": "revenue_optimizer",
+      "action": "APPLY_DISCOUNT",
+      "reasoning": "Low occupancy (20.00%) with short lead time for route R2.",
+      "parameters": {
+        "route_id": "R2",
+        "discount_percentage": 0.15
+      },
+      "confidence_score": 0.8,
+      "timestamp": "2026-04-20T05:10:06.452099Z"
+    }
+  ],
+  "metadata": {
+    "input_counts": {
+      "prestige": 2,
+      "booking": 2,
+      "finance": 1
+    }
+  }
+}
