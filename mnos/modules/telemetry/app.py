@@ -1,7 +1,7 @@
 import uuid
 from fastapi import FastAPI, HTTPException, Depends
 from mnos.modules.telemetry.schemas import (
-    HandshakeRequest, HandshakeResponse, TelemetryPacket, ComfortIndex
+    HandshakeRequest, HandshakeResponse, TelemetryPacket, ComfortIndex, FlightState
 )
 from mnos.modules.telemetry.service import StabilityArbiter
 from mnos.shared.sdk.mnos_client import MnosClient
@@ -39,6 +39,18 @@ async def ingest_telemetry(packet: TelemetryPacket):
     # Process Comfort Index
     comfort = arbiter.calculate_comfort_index(packet)
 
+    # Emit foiling state changes
+    # (Implementation of state tracking would go here, for now just emit the event)
+    if packet.flight_state == FlightState.FOILING:
+        await mnos_client.emit_event(
+            "ss.vessel.flight_active",
+            {
+                "vessel_id": packet.vessel_id,
+                "flying_height": packet.flying_height,
+                "efficiency": comfort.flight_efficiency
+            }
+        )
+
     # Check for High Roll/Discomfort Zone (4.0 threshold)
     if comfort.score >= 4.0:
         await mnos_client.emit_event(
@@ -47,13 +59,13 @@ async def ingest_telemetry(packet: TelemetryPacket):
                 "vessel_id": packet.vessel_id,
                 "score": comfort.score,
                 "status": comfort.status,
+                "flight_state": packet.flight_state,
                 "recommendation": comfort.recommendation,
                 "location": {"lat": packet.gnss.latitude, "lon": packet.gnss.longitude}
             }
         )
 
     # Check for G-force trigger (Shadow Burst)
-    # Total G-force calculation: sqrt(ax^2 + ay^2 + az^2)
     total_g = (packet.imu.accel_x**2 + packet.imu.accel_y**2 + packet.imu.accel_z**2)**0.5
 
     if total_g > 2.5:
@@ -75,5 +87,6 @@ async def ingest_telemetry(packet: TelemetryPacket):
         "status": "RECEIVED",
         "total_g": round(total_g, 2),
         "comfort_score": comfort.score,
-        "recommendation": comfort.recommendation if comfort.score >= 4.0 else None
+        "flight_state": packet.flight_state,
+        "recommendation": comfort.recommendation if comfort.score >= 4.0 or "Transition" in (comfort.recommendation or "") else None
     }

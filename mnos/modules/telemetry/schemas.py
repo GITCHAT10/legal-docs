@@ -1,6 +1,12 @@
 from pydantic import BaseModel, Field
 from datetime import datetime, timezone
-from typing import Optional, List
+from typing import Optional, List, Dict
+from enum import Enum
+
+class FlightState(str, Enum):
+    DISPLACEMENT = "DISPLACEMENT"
+    TRANSITION = "TRANSITION"
+    FOILING = "FOILING"
 
 class HandshakeRequest(BaseModel):
     vessel_id: str
@@ -32,12 +38,22 @@ class GNSSData(BaseModel):
     course: float # degrees
     satellites: int
 
+class ActuatorData(BaseModel):
+    flap_angle: float # degrees
+    strut_extension: float # percentage 0-100
+    motor_rpm: int
+    power_draw_kw: float
+
 class TelemetryPacket(BaseModel):
     vessel_id: str
     session_token: str
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     imu: IMUData
     gnss: GNSSData
+    actuators: Optional[ActuatorData] = None
+    flight_state: FlightState = FlightState.DISPLACEMENT
+    flying_height: float = 0.0 # meters
+    wave_height: float = 0.0 # meters
     battery_voltage: float
     is_charging: bool
 
@@ -47,6 +63,7 @@ class ComfortIndex(BaseModel):
     pitch_stability: float
     roll_stability: float
     vibration_level: float
+    flight_efficiency: float # 0-1.0
     status: str # "SMOOTH", "MODERATE", "ROUGH", "EXTREME"
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     recommendation: Optional[str] = None
