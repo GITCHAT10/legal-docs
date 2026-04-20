@@ -21,7 +21,7 @@ class PrestigeData(BaseModel):
 class BookingData(BaseModel):
     """Booking and occupancy data."""
     route_id: str
-    total_capacity: int
+    total_capacity: int = Field(gt=0)
     booked_seats: int
     avg_lead_time_days: float
     cancellation_rate: float

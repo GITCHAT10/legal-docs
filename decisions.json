@@ -1,5 +1,5 @@
 {
-  "trace_id": "0bfd11e0-c8af-4fe0-9c5a-7429dba77987",
+  "trace_id": "5407ca3c-388b-4a88-887f-21f8f05a7945",
   "decisions": [
     {
       "module": "routing_optimizer",
@@ -10,14 +10,14 @@
         "suggested_increase": 0.2
       },
       "confidence_score": 0.85,
-      "trace_id": "0bfd11e0-c8af-4fe0-9c5a-7429dba77987",
+      "trace_id": "5407ca3c-388b-4a88-887f-21f8f05a7945",
       "policy_version": "1.0.0",
       "recommendation_type": "GENERAL",
       "bounded_reason": "",
       "max_allowed_impact": 0.0,
       "jurisdiction": "MV",
       "status": "ELIGIBLE_FOR_REVIEW",
-      "timestamp": "2026-04-20T05:21:02.385157Z"
+      "timestamp": "2026-04-20T05:30:06.411526Z"
     },
     {
       "module": "routing_optimizer",
@@ -28,33 +28,14 @@
         "required_capacity": 150
       },
       "confidence_score": 0.92,
-      "trace_id": "0bfd11e0-c8af-4fe0-9c5a-7429dba77987",
+      "trace_id": "5407ca3c-388b-4a88-887f-21f8f05a7945",
       "policy_version": "1.0.0",
       "recommendation_type": "GENERAL",
       "bounded_reason": "",
       "max_allowed_impact": 0.0,
       "jurisdiction": "MV",
       "status": "ELIGIBLE_FOR_REVIEW",
-      "timestamp": "2026-04-20T05:21:02.385182Z"
-    },
-    {
-      "module": "demand_predictor",
-      "action": "PREDICT_SURGE",
-      "reasoning": "Search surge detected for MLE->VAM.",
-      "parameters": {
-        "route": "MLE-VAM",
-        "surge_factor": 1.5,
-        "period": "NEXT_7_DAYS"
-      },
-      "confidence_score": 0.88,
-      "trace_id": "0bfd11e0-c8af-4fe0-9c5a-7429dba77987",
-      "policy_version": "1.0.0",
-      "recommendation_type": "GENERAL",
-      "bounded_reason": "",
-      "max_allowed_impact": 0.0,
-      "jurisdiction": "MV",
-      "status": "ELIGIBLE_FOR_REVIEW",
-      "timestamp": "2026-04-20T05:21:02.385302Z"
+      "timestamp": "2026-04-20T05:30:06.411622Z"
     },
     {
       "module": "revenue_optimizer",
@@ -65,38 +46,20 @@
         "increase_percentage": 0.1
       },
       "confidence_score": 0.94,
-      "trace_id": "0bfd11e0-c8af-4fe0-9c5a-7429dba77987",
+      "trace_id": "5407ca3c-388b-4a88-887f-21f8f05a7945",
       "policy_version": "1.0.0",
       "recommendation_type": "YIELD_MANAGEMENT",
       "bounded_reason": "High confidence (>=0.93): Eligible for policy review.",
       "max_allowed_impact": 0.1,
       "jurisdiction": "MV",
       "status": "ELIGIBLE_FOR_REVIEW",
-      "timestamp": "2026-04-20T05:21:02.385321Z"
-    },
-    {
-      "module": "revenue_optimizer",
-      "action": "APPLY_DISCOUNT",
-      "reasoning": "Low occupancy (20.00%) with short lead time for route R2.",
-      "parameters": {
-        "route_id": "R2",
-        "discount_percentage": 0.15
-      },
-      "confidence_score": 0.82,
-      "trace_id": "0bfd11e0-c8af-4fe0-9c5a-7429dba77987",
-      "policy_version": "1.0.0",
-      "recommendation_type": "DYNAMIC_PRICING",
-      "bounded_reason": "Low confidence threshold (<0.85) for revenue optimization.",
-      "max_allowed_impact": 0.2,
-      "jurisdiction": "MV",
-      "status": "REJECTED",
-      "timestamp": "2026-04-20T05:21:02.385332Z"
+      "timestamp": "2026-04-20T05:30:06.411663Z"
     }
   ],
   "metadata": {
     "input_counts": {
-      "prestige": 2,
-      "booking": 2,
+      "prestige": 1,
+      "booking": 1,
       "finance": 1
     }
   }
