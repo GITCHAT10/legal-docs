@@ -21,7 +21,7 @@ class PrestigeData(BaseModel):
 class BookingData(BaseModel):
     """Booking and occupancy data."""
     route_id: str
-    total_capacity: int = Field(gt=0)
+    total_capacity: int = Field(..., gt=0)
     booked_seats: int
     avg_lead_time_days: float
     cancellation_rate: float
@@ -59,4 +59,7 @@ class AiOutput(BaseModel):
     """Full output containing multiple decisions."""
     trace_id: str
     decisions: List[AiDecision]
+    confidence_score: float = 0.0
+    policy_score: float = 0.0
+    advisory_only: bool = True
     metadata: Dict[str, Any]

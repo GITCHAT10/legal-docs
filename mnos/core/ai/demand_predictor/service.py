@@ -7,6 +7,12 @@ class DemandPredictor:
     """
     async def predict(self, prestige_data: List[PrestigeData], booking_data: List[BookingData]) -> List[AiDecision]:
         decisions = []
+        # Defensive guard for capacity
+        for b in booking_data:
+            if b.total_capacity <= 0:
+                print(f"Warning: Invalid total_capacity ({b.total_capacity}) for route {b.route_id}. Skipping.")
+                continue
+
         # Simple demand prediction logic based on search trends and booking velocity
         for p in prestige_data:
             if p.searches_last_24h > 500:

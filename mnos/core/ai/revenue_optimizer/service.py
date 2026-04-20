@@ -8,6 +8,9 @@ class RevenueOptimizer:
     async def optimize(self, finance_data: List[FinanceData], booking_data: List[BookingData]) -> List[AiDecision]:
         decisions = []
         for b in booking_data:
+            if b.total_capacity <= 0:
+                print(f"Warning: Invalid total_capacity ({b.total_capacity}) for route {b.route_id}. Skipping.")
+                continue
             occupancy = b.booked_seats / b.total_capacity
             if occupancy < 0.3 and b.avg_lead_time_days < 7:
                 decisions.append(AiDecision(

@@ -18,6 +18,9 @@ class RoutingOptimizer:
                 ))
 
         for b in booking_data:
+            if b.total_capacity <= 0:
+                print(f"Warning: Invalid total_capacity ({b.total_capacity}) for route {b.route_id}. Skipping.")
+                continue
             occupancy = b.booked_seats / b.total_capacity
             if occupancy > 0.9:
                 decisions.append(AiDecision(
