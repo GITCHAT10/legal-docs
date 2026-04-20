@@ -1,12 +1,13 @@
 import json
 import os
 import uuid
-from typing import List, Dict, Any
-from mnos.core.ai.models import PrestigeData, BookingData, FinanceData, AiOutput, AiDecision
+from typing import List, Dict, Any, Optional
+from mnos.core.ai.models import PrestigeData, BookingData, FinanceData, AiOutput, AiDecision, DecisionStatus
 from mnos.core.ai.routing_optimizer.service import RoutingOptimizer
 from mnos.core.ai.demand_predictor.service import DemandPredictor
 from mnos.core.ai.revenue_optimizer.service import RevenueOptimizer
 from mnos.core.ai.policy_validator import PolicyValidator
+from mnos.core.governance.supervisor_gate import require_supervisor_approval, ApprovalRequired
 from mnos.shared.sdk.mnos_client import MnosClient
 
 class AiEngine:
@@ -66,6 +67,54 @@ class AiEngine:
         )
 
         return output
+
+    async def execute_decision_with_approval(self, decision: AiDecision, operator_id: Optional[str]) -> Dict[str, Any]:
+        """
+        Phase 2 implementation of L2 Supervisor Gate for state-changing actions.
+        AI remains ADVISORY_ONLY; human approval required before execution.
+        """
+        if decision.status == DecisionStatus.REJECTED:
+            # SHADOW logging for blocked cases
+            await self.mnos_client.publish_event(
+                event_type="SUPERVISOR_BLOCKED",
+                data={
+                    "decision": decision.model_dump(),
+                    "reason": "Policy REJECTED status"
+                },
+                trace_id=decision.trace_id
+            )
+            return {"status": "BLOCKED", "reason": "Decision was rejected by policy gate."}
+
+        try:
+            # Mandatory human approval check
+            approval_metadata = require_supervisor_approval(decision.action, operator_id)
+
+            # SHADOW logging for approved cases
+            await self.mnos_client.publish_event(
+                event_type="SUPERVISOR_APPROVED",
+                data={
+                    "decision": decision.model_dump(),
+                    "approval": approval_metadata
+                },
+                trace_id=decision.trace_id
+            )
+
+            return {
+                "status": "APPROVED",
+                "execution_ready": True,
+                "metadata": approval_metadata
+            }
+        except ApprovalRequired as e:
+            # SHADOW logging for blocked cases (missing approval)
+            await self.mnos_client.publish_event(
+                event_type="SUPERVISOR_BLOCKED",
+                data={
+                    "decision": decision.model_dump(),
+                    "reason": str(e)
+                },
+                trace_id=decision.trace_id
+            )
+            raise
 
     def _save_decisions(self, output: AiOutput):
         """Saves decisions to decisions.json in the current working directory."""
