@@ -1,25 +1,31 @@
-# Maldives Sovereign Environmental Backbone
+# Maldives Sovereign ESG Cockpit (IFRS S1/S2)
 
-This repository contains the core modules and integration adapters for the Maldives sovereign environmental scoring and telemetry system.
+This platform orchestrates fragmented resort operations into an audit-ready ESG data lake, aligned with the 1 January 2026 mandatory reporting transition in the Maldives.
 
-## Architecture Classification
+## ESG Orchestration Architecture
 
 The system is organized into three buckets:
 
 ### BUCKET A — EXISTING CORE MODULES (Implemented)
-- **mRIS (Maldives Remote Impact Scoring):** Core engine for calculating environmental footprint based on sovereign signals. (`backend/app/mris.py`)
-- **Sovereign Cockpit:** Unified dashboard for real-time visualization. (`frontend/src/App.tsx`)
-- **Telemetry Ingestion:** Unified interface for sensor data streams. (`backend/app/telemetry.py`)
-- **Signals:** Maldives-specific constants for energy, ocean, air, and waste. (`backend/app/signals.py`)
-- **Backbone Components:** Stubs for Ledger (Blockchain Anchor), Anomaly Engine (Green HACCP), and Compliance Switchboard.
+- **mRIS (Sovereign Scoring):** HCMI 2.0 aligned engine calculating carbon per occupied room and biodiversity impact. (`backend/app/mris.py`)
+- **Shadow Ledger:** Immutable evidence chain using SHA256 hashing for every telemetry record. (`backend/app/ledger.py`)
+- **Sovereign Cockpit:** Real-time dashboard for resort management and island-level compliance tracking. (`frontend/src/App.tsx`)
+- **MNO Controller:** Multi-tenant island data segregation. (`backend/app/tenant.py`)
+- **Environmental Signals:** Tailored Maldives constants (Diesel grid, Desalination). (`backend/app/signals.py`)
 
 ### BUCKET B — NEEDED INTEGRATIONS (Implemented as Adapters)
-- **Ministry Connectors:** Finance and Environment dashboard access paths. (`backend/app/integrations/ministry.py`)
-- **External Feeds:** Adapters for AQICN, IQAir, and Meteorological data. (`backend/app/integrations/feeds.py`)
-- **Field Nodes:** LagoonBin and resort edge node connectors. (`backend/app/integrations/nodes.py`)
+- **PMS/POS API:** Connectors for Opera and FI-ES Andromeda (Occupancy, F&B, Laundry). (`backend/app/integrations/pms.py`)
+- **Logistics Hub:** Fuel logs and TravelCO2 flight API integration. (`backend/app/integrations/logistics.py`)
+- **Billing/Offset API:** Pushes Carbon Surcharges to folios and executes offset trades. (`backend/app/integrations/billing.py`)
+- **Validation Feeds:** AQICN, IQAir, and Meteorological adapters. (`backend/app/integrations/feeds.py`)
 
 ### BUCKET C — NARRATIVE / PRESENTATION (Deferred)
-- Presentation artifacts (Decks, Keynotes, Press Releases) are not part of this implementation.
+- Presentation artifacts (IMF Decks, UN Keynotes, Bond Teasers) are documented as presentation artifacts only and are not part of the codebase.
+
+## Compliance Metrics (CMDA/PCB/CAM)
+- **Environmental:** Marine Biodiversity (Coral Health), Climate Resilience, Plastic Waste vs. Recycled.
+- **Social:** Gender Equality (30% Female Board Target), Local Supplier Spend.
+- **Governance:** Sustainability Policy Compliance, Internal Audit Scores (PCB 2026 Guidelines).
 
 ## Local Setup
 
@@ -34,7 +40,3 @@ The system is organized into three buckets:
 2. Install dependencies: `npm install`
 3. Run the development server: `npm run dev`
 4. Build for production: `npm run build`
-
-## Configuration
-
-Environmental signals and emission factors are configured in `backend/app/signals.py`. These constants are derived from local Maldives diesel-grid data, desalination energy intensity, and maritime logistics.

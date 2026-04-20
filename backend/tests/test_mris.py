@@ -1,22 +1,32 @@
 from app.mris import calculate_footprint
-from app.schemas import FootprintInput, HomeInput, TransportInput, WasteInput
+from app.schemas import FootprintInput, EnvironmentalInput, PMSInput, SocialInput
 import pytest
 
-def test_calculate_home_only():
-    input_data = FootprintInput(home=HomeInput(electricity_kwh=100, water_m3=10, lpg_kg=5))
-    # 100 * 0.73 + 10 * 3.0 + 5 * 2.98 = 73 + 30 + 14.9 = 117.9
+def test_hcmi_calculation():
+    # 100 rooms, 1000kg CO2 = 10kg/room
+    input_data = FootprintInput(
+        pms=PMSInput(occupancy_rooms=100),
+        environmental=EnvironmentalInput(electricity_kwh=1000 / 0.73) # results in ~1000kg CO2
+    )
     result = calculate_footprint(input_data)
-    assert result.home_total == 117.9
-    assert result.grand_total == 117.9
+    assert result.carbon_per_occupied_room == 10.0
 
-def test_calculate_transport_only():
-    input_data = FootprintInput(transport=TransportInput(speedboat_liters=10, seaplane_km=100))
-    # 10 * 2.31 + 100 * 0.50 = 23.1 + 50 = 73.1
-    result = calculate_footprint(input_data)
-    assert result.transport_total == 73.1
-    assert result.grand_total == 73.1
+def test_shadow_ledger_hashing():
+    input_data = FootprintInput(island_id="MV-TEST")
+    result1 = calculate_footprint(input_data)
+    result2 = calculate_footprint(input_data)
 
-def test_calculate_empty():
-    input_data = FootprintInput()
+    assert result1.shadow_hash != ""
+    # Even with same input, timestamp in ledger makes them unique for auditability
+    # though our current create_shadow_hash uses datetime.utcnow()
+    assert len(result1.shadow_hash) == 64
+
+def test_ifrs_compliance_alignment():
+    # Target: 30% female board representation
+    input_data = FootprintInput(social=SocialInput(female_board_percent=30.0))
     result = calculate_footprint(input_data)
-    assert result.grand_total == 0
+    assert result.compliance_status == "IFRS-ALIGNED"
+
+    input_data_fail = FootprintInput(social=SocialInput(female_board_percent=25.0))
+    result_fail = calculate_footprint(input_data_fail)
+    assert result_fail.compliance_status == "PENDING"
