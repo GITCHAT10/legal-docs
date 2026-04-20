@@ -3,23 +3,7 @@ from sqlalchemy.orm import Session
 from mnos.modules.fce import models
 import uuid
 from datetime import datetime
-
-# MIRA compliant rates
-SERVICE_CHARGE_RATE = 0.10
-TGST_RATE = 0.17
-GREEN_TAX_USD = 6.0
-
-def validate_maldives_tax(base_amount: float, apply_green_tax: bool = False, nights: int = 0) -> Dict:
-    sc = base_amount * SERVICE_CHARGE_RATE
-    tgst = (base_amount + sc) * TGST_RATE
-    gt = GREEN_TAX_USD * nights if apply_green_tax else 0.0
-    return {
-        "base": base_amount,
-        "sc": sc,
-        "tgst": tgst,
-        "green_tax": gt,
-        "total": base_amount + sc + tgst + gt
-    }
+from .tax_logic import calculate_maldives_tax
 
 def open_folio(db: Session, reservation_id: str, trace_id: str) -> models.Folio:
     existing = db.query(models.Folio).filter(models.Folio.trace_id == trace_id).first()
@@ -41,7 +25,7 @@ def post_charge(db: Session, folio_id: int, charge_data: Dict, trace_id: str) ->
     if existing:
         return existing
 
-    taxes = validate_maldives_tax(
+    taxes = calculate_maldives_tax(
         charge_data["base_amount"],
         charge_data.get("apply_green_tax", False),
         charge_data.get("nights", 0)
@@ -52,7 +36,7 @@ def post_charge(db: Session, folio_id: int, charge_data: Dict, trace_id: str) ->
         trace_id=trace_id,
         type=charge_data["type"],
         base_amount=taxes["base"],
-        service_charge=taxes["sc"],
+        service_charge=taxes["service_charge"],
         tgst=taxes["tgst"],
         green_tax=taxes["green_tax"],
         amount=taxes["total"],

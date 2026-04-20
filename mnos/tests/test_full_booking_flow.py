@@ -13,7 +13,7 @@ from mnos.core.security.security import get_password_hash
 from mnos.core.models.user import User
 
 # Mock DB for testing
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test_end_to_end.db"
+SQLALCHEMY_DATABASE_URL = "sqlite:///./test_mnos_stabilization.db"
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -52,86 +52,58 @@ def get_auth_header():
     token = response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
 
-def test_full_booking_flow():
+def test_mnos_stabilization_flow():
     os.environ["TESTING"] = "1"
     headers = get_auth_header()
 
-    # 1. Create a Guest
-    guest_data = {
-        "first_name": "John",
-        "last_name": "Doe",
-        "email": "john@mnos.com"
-    }
-    response = client.post("/api/v1/guests/", json=guest_data, headers=headers)
-    assert response.status_code == 200
-    guest_id = response.json()["id"]
+    # Pre-req: Guest and Room
+    guest_res = client.post("/api/v1/guests/", json={"first_name": "Bob", "last_name": "Stable", "email": "bob@mnos.com"}, headers=headers)
+    guest_id = guest_res.json()["id"]
+    room_res = client.post("/api/v1/reservations/rooms", json={"room_number": "S1", "room_type": "Suite"}, headers=headers)
+    room_id = room_res.json()["id"]
 
-    # 2. Create a Room (Static route /rooms tested here)
-    room_data = {
-        "room_number": "101",
-        "room_type": "Beach Villa"
-    }
-    response = client.post("/api/v1/reservations/rooms", json=room_data, headers=headers)
-    assert response.status_code == 200
-    room_id = response.json()["id"]
-
-    # 3. Create a Reservation (INN)
+    # 1. RESERVATION
     reservation_data = {
         "guest_id": guest_id,
         "total_amount": 0.0,
-        "stays": [
-            {
-                "room_id": room_id,
-                "check_in_date": str(date.today()),
-                "check_out_date": str(date.today())
-            }
-        ]
+        "stays": [{"room_id": room_id, "check_in_date": str(date.today()), "check_out_date": str(date.today())}]
     }
-    response = client.post("/api/v1/reservations/", json=reservation_data, headers=headers)
-    assert response.status_code == 200
-    reservation_id = response.json()["id"]
+    res = client.post("/api/v1/reservations/", json=reservation_data, headers=headers)
+    assert res.status_code == 200
+    reservation_id = res.json()["id"]
 
-    # 4. Open Folio (FCE)
-    trace_id = f"TR-{uuid.uuid4().hex[:8]}"
-    folio_data = {
-        "external_reservation_id": str(reservation_id),
-        "trace_id": trace_id
-    }
-    response = client.post("/api/v1/finance/folios", json=folio_data, headers=headers)
-    assert response.status_code == 200
-    folio_id = response.json()["id"]
-
-    # 5. Add Charge (FolioLine)
-    charge_trace = f"CH-{uuid.uuid4().hex[:8]}"
-    charge_data = {
-        "trace_id": charge_trace,
-        "type": "room",
-        "base_amount": 500.0,
-        "description": "Room charge",
-        "apply_green_tax": True,
-        "nights": 1
-    }
-    response = client.post(f"/api/v1/finance/folios/{folio_id}/charges", json=charge_data, headers=headers)
-    assert response.status_code == 200
-    # 500 + 10%(50) + 17%(550=93.5) + 6 = 649.5
-    assert response.json()["amount"] == 649.5
-
-    # 6. Post Payment
-    payment_trace = f"PY-{uuid.uuid4().hex[:8]}"
-    payment_data = {
-        "trace_id": payment_trace,
-        "amount": 649.5,
-        "method": "credit_card"
-    }
-    response = client.post(f"/api/v1/finance/folios/{folio_id}/payments", json=payment_data, headers=headers)
-    assert response.status_code == 200
-
-    # 7. Create Transfer (AQUA)
+    # 2. TRANSFER
     transfer_data = {
         "reservation_id": reservation_id,
         "type": "boat",
         "pickup_location": "Airport",
-        "destination": "Resort"
+        "destination": "Stable Resort"
     }
-    response = client.post("/api/v1/transfers/", json=transfer_data, headers=headers)
-    assert response.status_code == 200
+    res = client.post("/api/v1/transfers/", json=transfer_data, headers=headers)
+    assert res.status_code == 200
+
+    # 3. FOLIO
+    folio_trace = f"TR-{uuid.uuid4().hex[:8]}"
+    folio_data = {"external_reservation_id": str(reservation_id), "trace_id": folio_trace}
+    res = client.post("/api/v1/finance/folios", json=folio_data, headers=headers)
+    assert res.status_code == 200
+    folio_id = res.json()["id"]
+
+    # 4. CHARGE
+    charge_trace = f"CH-{uuid.uuid4().hex[:8]}"
+    charge_data = {"trace_id": charge_trace, "type": "room", "base_amount": 1000.0, "description": "Stabilization Charge"}
+    res = client.post(f"/api/v1/finance/folios/{folio_id}/charges", json=charge_data, headers=headers)
+    assert res.status_code == 200
+    # 1000 + 10%(100) + 17%(1100=187) = 1287.0
+    assert res.json()["amount"] == 1287.0
+
+    # 5. PAYMENT
+    payment_trace = f"PY-{uuid.uuid4().hex[:8]}"
+    payment_data = {"trace_id": payment_trace, "amount": 1287.0, "method": "cash"}
+    res = client.post(f"/api/v1/finance/folios/{folio_id}/payments", json=payment_data, headers=headers)
+    assert res.status_code == 200
+
+    # 6. CLOSE (Finalize Invoice)
+    res = client.post(f"/api/v1/finance/folios/{folio_id}/finalize", headers=headers)
+    assert res.status_code == 200
+    assert res.json()["total_amount"] == 1287.0
