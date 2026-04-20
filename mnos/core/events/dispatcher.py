@@ -1,6 +1,7 @@
 from typing import Callable, Dict, List, Any
 import asyncio
 import os
+import uuid
 
 class EventDispatcher:
     def __init__(self):
@@ -47,10 +48,11 @@ def handle_reservation_confirmed(data):
         db = get_db_session()
         try:
             transfer_in = TransferRequestCreate(
-                reservation_id=reservation_id,
+                external_reservation_id=str(reservation_id),
                 type=TransferType.BOAT,
                 pickup_location="Velana International Airport",
-                destination="Resort Island"
+                destination="Resort Island",
+                trace_id=f"AUTO-TRANS-{uuid.uuid4().hex[:8]}"
             )
             create_transfer_request(db, request_in=transfer_in)
         finally:

@@ -7,7 +7,7 @@ from mnos.modules.inn.reservations import schemas, service, models
 
 router = APIRouter()
 
-@router.get("/rooms/", response_model=List[schemas.Room])
+@router.get("/rooms", response_model=List[schemas.Room])
 def read_rooms(
     db: Session = Depends(deps.get_db),
     skip: int = 0,
@@ -33,7 +33,7 @@ def create_reservation(
     reservation_in: schemas.ReservationCreate,
     current_user: Any = Depends(deps.get_current_user),
 ) -> Any:
-    return service.create_reservation(db, reservation_in=reservation_in)
+    return service.create_reservation(db, reservation_in=reservation_in, actor=current_user.email)
 
 @router.get("/{reservation_id}", response_model=schemas.Reservation)
 def read_reservation(
@@ -53,7 +53,7 @@ def update_reservation_status(
     db: Session = Depends(deps.get_db),
     current_user: Any = Depends(deps.get_current_user),
 ) -> Any:
-    reservation = service.update_reservation_status(db, reservation_id=reservation_id, status=status_in.status)
+    reservation = service.update_reservation_status(db, reservation_id=reservation_id, status=status_in.status, actor=current_user.email)
     if not reservation:
         raise HTTPException(status_code=404, detail="Reservation not found")
     return reservation

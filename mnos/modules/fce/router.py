@@ -14,7 +14,7 @@ def open_folio(
     folio_in: schemas.FolioCreate,
     current_user: Any = Depends(deps.get_current_user),
 ) -> Any:
-    return service.open_folio(db, reservation_id=folio_in.external_reservation_id, trace_id=folio_in.trace_id)
+    return service.open_folio(db, reservation_id=folio_in.external_reservation_id, trace_id=folio_in.trace_id, tenant_id=folio_in.tenant_id, actor=current_user.email)
 
 @router.get("/folios/{folio_id}", response_model=schemas.Folio)
 def read_folio(
@@ -35,17 +35,17 @@ def post_charge(
     current_user: Any = Depends(deps.get_current_user),
 ) -> Any:
     charge_data = charge_in.dict()
-    return service.post_charge(db, folio_id=folio_id, charge_data=charge_data, trace_id=charge_in.trace_id)
+    return service.post_charge(db, folio_id=folio_id, charge_data=charge_data, trace_id=charge_in.trace_id, tenant_id=charge_in.tenant_id, actor=current_user.email)
 
-@router.post("/folios/{folio_id}/payments", response_model=schemas.Payment)
-def post_payment(
+@router.post("/folios/{folio_id}/payments", response_model=schemas.FolioTransaction)
+def post_transaction(
     folio_id: int,
-    payment_in: schemas.PaymentBase,
+    transaction_in: schemas.FolioTransactionBase,
     db: Session = Depends(deps.get_db),
     current_user: Any = Depends(deps.get_current_user),
 ) -> Any:
-    payment_data = payment_in.dict()
-    return service.post_payment(db, folio_id=folio_id, payment_data=payment_data, trace_id=payment_in.trace_id)
+    transaction_data = transaction_in.dict()
+    return service.post_transaction(db, folio_id=folio_id, payment_data=transaction_data, trace_id=transaction_in.trace_id, tenant_id=transaction_in.tenant_id, actor=current_user.email)
 
 @router.post("/folios/{folio_id}/finalize", response_model=schemas.Invoice)
 def finalize_invoice(
@@ -53,7 +53,7 @@ def finalize_invoice(
     db: Session = Depends(deps.get_db),
     current_user: Any = Depends(deps.get_current_user),
 ) -> Any:
-    return service.finalize_invoice(db, folio_id=folio_id)
+    return service.finalize_invoice(db, folio_id=folio_id, actor=current_user.email)
 
 @router.get("/summary", response_model=Any)
 def get_finance_summary(

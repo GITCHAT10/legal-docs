@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Enum, Float, DateTime, JSON, Boolean
+from sqlalchemy import Column, Integer, String, ForeignKey, Enum, Float, DateTime, JSON, Boolean, UniqueConstraint
 from sqlalchemy.orm import relationship
 import enum
 from datetime import datetime
@@ -9,10 +9,11 @@ class FolioStatus(str, enum.Enum):
     FINALIZED = "finalized"
     CANCELLED = "cancelled"
 
-class PaymentStatus(str, enum.Enum):
+class TransactionStatus(str, enum.Enum):
     PENDING = "pending"
-    PAID = "paid"
+    POSTED = "posted"
     FAILED = "failed"
+    REVERSED = "reversed"
 
 class ChargeType(str, enum.Enum):
     ROOM = "room"
@@ -23,21 +24,32 @@ class ChargeType(str, enum.Enum):
 
 class Folio(Base):
     id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(String, index=True, nullable=False, default="default")
+    trace_id = Column(String, index=True, nullable=False)
+    version = Column(Integer, default=1, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    created_by = Column(String, default="SYSTEM")
+
     external_reservation_id = Column(String, index=True, nullable=False)
-    trace_id = Column(String, unique=True, index=True, nullable=False)
     status = Column(Enum(FolioStatus), default=FolioStatus.OPEN)
     total_amount = Column(Float, default=0.0)
     paid_amount = Column(Float, default=0.0)
     currency = Column(String, default="USD")
-    created_at = Column(DateTime, default=datetime.utcnow)
 
     lines = relationship("FolioLine", back_populates="folio")
-    payments = relationship("Payment", back_populates="folio")
+    transactions = relationship("FolioTransaction", back_populates="folio")
+
+    __table_args__ = (UniqueConstraint('tenant_id', 'trace_id', name='_folio_tenant_trace_uc'),)
 
 class FolioLine(Base):
     id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(String, index=True, nullable=False, default="default")
+    trace_id = Column(String, index=True, nullable=False)
+    version = Column(Integer, default=1, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    created_by = Column(String, default="SYSTEM")
+
     folio_id = Column(Integer, ForeignKey("folio.id"), nullable=False)
-    trace_id = Column(String, unique=True, index=True, nullable=False)
     type = Column(Enum(ChargeType), nullable=False)
     base_amount = Column(Float, nullable=False)
     service_charge = Column(Float, default=0.0)
@@ -46,41 +58,66 @@ class FolioLine(Base):
     amount = Column(Float, nullable=False) # Total authoritative amount
     description = Column(String)
     is_reversed = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
 
     folio = relationship("Folio", back_populates="lines")
+    __table_args__ = (UniqueConstraint('tenant_id', 'trace_id', name='_folioline_tenant_trace_uc'),)
 
-class Payment(Base):
+class FolioTransaction(Base):
     id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(String, index=True, nullable=False, default="default")
+    trace_id = Column(String, index=True, nullable=False)
+    version = Column(Integer, default=1, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    created_by = Column(String, default="SYSTEM")
+
     folio_id = Column(Integer, ForeignKey("folio.id"), nullable=False)
-    trace_id = Column(String, unique=True, index=True, nullable=False)
     amount = Column(Float, nullable=False)
     method = Column(String, nullable=False) # cash, credit_card, etc
-    status = Column(Enum(PaymentStatus), default=PaymentStatus.PAID)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    status = Column(Enum(TransactionStatus), default=TransactionStatus.POSTED)
 
-    folio = relationship("Folio", back_populates="payments")
+    folio = relationship("Folio", back_populates="transactions")
+    __table_args__ = (UniqueConstraint('tenant_id', 'trace_id', name='_foliotransaction_tenant_trace_uc'),)
 
 class Invoice(Base):
     id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(String, index=True, nullable=False, default="default")
+    trace_id = Column(String, index=True, nullable=False)
+    version = Column(Integer, default=1, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    created_by = Column(String, default="SYSTEM")
+
     folio_id = Column(Integer, ForeignKey("folio.id"), nullable=False)
     invoice_number = Column(String, unique=True, index=True)
     total_amount = Column(Float, nullable=False)
     tax_summary = Column(JSON)
-    created_at = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (UniqueConstraint('tenant_id', 'trace_id', name='_invoice_tenant_trace_uc'),)
 
 class LedgerEntry(Base):
     id = Column(Integer, primary_key=True, index=True)
-    trace_id = Column(String, unique=True, index=True, nullable=False)
+    tenant_id = Column(String, index=True, nullable=False, default="default")
+    trace_id = Column(String, index=True, nullable=False)
+    version = Column(Integer, default=1, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    created_by = Column(String, default="SYSTEM")
+
     account_code = Column(String, nullable=False)
     debit = Column(Float, default=0.0)
     credit = Column(Float, default=0.0)
     description = Column(String)
-    created_at = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (UniqueConstraint('tenant_id', 'trace_id', name='_ledger_tenant_trace_uc'),)
 
 class ExchangeRateLock(Base):
     id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(String, index=True, nullable=False, default="default")
+    trace_id = Column(String, index=True, nullable=False)
+    version = Column(Integer, default=1, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    created_by = Column(String, default="SYSTEM")
+
     currency = Column(String, nullable=False)
     rate = Column(Float, nullable=False)
     expires_at = Column(DateTime)
-    created_at = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (UniqueConstraint('tenant_id', 'trace_id', name='_exchangerate_tenant_trace_uc'),)

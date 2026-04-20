@@ -8,7 +8,7 @@ from datetime import date
 
 def create_reservation(db: Session, *, reservation_in: schemas.ReservationCreate, actor: str = "SYSTEM") -> models.Reservation:
     try:
-        trace_id = f"RES-{uuid.uuid4().hex[:8]}"
+        if not reservation_in.trace_id: raise ValueError("trace_id required")
 
         # Validate capacity
         for stay_in in reservation_in.stays:
@@ -18,11 +18,14 @@ def create_reservation(db: Session, *, reservation_in: schemas.ReservationCreate
 
         # 1. Create Reservation record
         db_reservation = models.Reservation(
+            tenant_id=reservation_in.tenant_id,
+            trace_id=reservation_in.trace_id,
             guest_id=reservation_in.guest_id,
             status=reservation_in.status,
             total_amount=reservation_in.total_amount,
-            adults=getattr(reservation_in, "adults", 1),
-            children=getattr(reservation_in, "children", 0)
+            adults=reservation_in.adults,
+            children=reservation_in.children,
+            created_by=actor
         )
         db.add(db_reservation)
         db.flush()
@@ -30,16 +33,19 @@ def create_reservation(db: Session, *, reservation_in: schemas.ReservationCreate
         # 2. Create Stay records
         for stay_in in reservation_in.stays:
             db_stay = models.Stay(
+                tenant_id=reservation_in.tenant_id,
+                trace_id=f"STAY-{uuid.uuid4().hex[:8]}",
                 reservation_id=db_reservation.id,
                 room_id=stay_in.room_id,
                 check_in_date=stay_in.check_in_date,
-                check_out_date=stay_in.check_out_date
+                check_out_date=stay_in.check_out_date,
+                created_by=actor
             )
             db.add(db_stay)
 
         db.flush()
 
-        shadow_service.commit_evidence(db, trace_id, {
+        shadow_service.commit_evidence(db, reservation_in.trace_id, {
             "actor": actor, "action": "CREATE_RESERVATION", "entity_type": "RESERVATION", "entity_id": db_reservation.id,
             "after_state": {"guest_id": db_reservation.guest_id, "status": db_reservation.status}
         })
@@ -57,6 +63,8 @@ def change_room(db: Session, reservation_id: int, old_room_id: int, new_room_id:
         res = db.query(models.Reservation).filter(models.Reservation.id == reservation_id).first()
         if not res: raise ValueError("Reservation not found")
 
+        trace_id = f"ROOM-CHANGE-{uuid.uuid4().hex[:8]}"
+
         # 1. Close old stay
         old_stay = db.query(models.Stay).filter(
             models.Stay.reservation_id == reservation_id,
@@ -70,11 +78,14 @@ def change_room(db: Session, reservation_id: int, old_room_id: int, new_room_id:
 
         # 2. Create new stay
         new_stay = models.Stay(
+            tenant_id=res.tenant_id,
+            trace_id=f"STAY-{uuid.uuid4().hex[:8]}",
             reservation_id=reservation_id,
             room_id=new_room_id,
             check_in_date=date.today(),
-            check_out_date=old_stay.check_out_date if old_stay else date.today(), # Placeholder
-            is_active=True
+            check_out_date=old_stay.check_out_date if old_stay else date.today(),
+            is_active=True,
+            created_by=actor
         )
         db.add(new_stay)
 
@@ -82,7 +93,6 @@ def change_room(db: Session, reservation_id: int, old_room_id: int, new_room_id:
         update_room_status(db, old_room_id, models.RoomStatus.DIRTY, actor)
         update_room_status(db, new_room_id, models.RoomStatus.OCCUPIED, actor)
 
-        trace_id = f"ROOM-CHANGE-{uuid.uuid4().hex[:8]}"
         shadow_service.commit_evidence(db, trace_id, {
             "actor": actor, "action": "ROOM_CHANGE", "entity_type": "RESERVATION", "entity_id": reservation_id,
             "before_state": {"room_id": old_room_id},
@@ -95,9 +105,6 @@ def change_room(db: Session, reservation_id: int, old_room_id: int, new_room_id:
         db.rollback()
         raise
 
-def handle_no_show(db: Session, reservation_id: int, actor: str = "SYSTEM"):
-    return update_reservation_status(db, reservation_id, models.ReservationStatus.NO_SHOW, actor)
-
 def update_reservation_status(db: Session, reservation_id: int, status: models.ReservationStatus, actor: str = "SYSTEM") -> Optional[models.Reservation]:
     try:
         db_reservation = db.query(models.Reservation).filter(models.Reservation.id == reservation_id).first()
@@ -106,10 +113,8 @@ def update_reservation_status(db: Session, reservation_id: int, status: models.R
         trace_id = f"RES-STATUS-{uuid.uuid4().hex[:8]}"
         before_state = {"status": db_reservation.status}
 
-        old_status = db_reservation.status
         db_reservation.status = status
 
-        # If cancelled or no-show, auto-cancel transfers
         if status in [models.ReservationStatus.CANCELLED, models.ReservationStatus.NO_SHOW]:
             from mnos.modules.aqua.transfers.service import handle_reservation_cancellation
             handle_reservation_cancellation(db, reservation_id, actor)
@@ -146,9 +151,18 @@ def update_room_status(db: Session, room_id: int, status: models.RoomStatus, act
         db.rollback()
         raise
 
-def create_room(db: Session, *, room_in: schemas.RoomCreate) -> models.Room:
+def create_room(db: Session, *, room_in: schemas.RoomCreate, actor: str = "SYSTEM") -> models.Room:
     try:
-        db_room = models.Room(**room_in.dict())
+        db_room = models.Room(
+            tenant_id=room_in.tenant_id,
+            trace_id=room_in.trace_id,
+            room_number=room_in.room_number,
+            room_type=room_in.room_type,
+            status=room_in.status,
+            base_price=room_in.base_price,
+            capacity=room_in.capacity,
+            created_by=actor
+        )
         db.add(db_room)
         db.commit()
         db.refresh(db_room)
@@ -156,6 +170,3 @@ def create_room(db: Session, *, room_in: schemas.RoomCreate) -> models.Room:
     except Exception:
         db.rollback()
         raise
-
-def mark_room_ready_from_housekeeping(db: Session, room_id: int):
-    return update_room_status(db, room_id, models.RoomStatus.READY)

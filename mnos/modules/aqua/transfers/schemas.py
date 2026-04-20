@@ -1,53 +1,48 @@
-from typing import Optional, List
-from datetime import datetime
 from pydantic import BaseModel
-from mnos.modules.aqua.transfers.models import TransferType, TransferStatus
+from typing import List, Optional
+from datetime import datetime
+from .models import TransferType, TransferStatus
 
 class VehicleBase(BaseModel):
     name: str
     type: TransferType
     capacity: Optional[int] = None
     license_plate: Optional[str] = None
+    trace_id: str
+    tenant_id: str = "default"
 
 class VehicleCreate(VehicleBase):
     pass
 
 class Vehicle(VehicleBase):
     id: int
+    created_at: datetime
 
     class Config:
         from_attributes = True
 
 class TransferRequestBase(BaseModel):
-    reservation_id: int
+    external_reservation_id: str
     type: TransferType
-    status: TransferStatus = TransferStatus.PENDING
-    pickup_time: Optional[datetime] = None
-    eta: Optional[datetime] = None
     pickup_location: Optional[str] = None
     destination: Optional[str] = None
-    vehicle_id: Optional[int] = None
+    trace_id: str
+    tenant_id: str = "default"
 
 class TransferRequestCreate(TransferRequestBase):
     pass
 
 class TransferRequestUpdate(BaseModel):
     status: Optional[TransferStatus] = None
-    eta: Optional[datetime] = None
     vehicle_id: Optional[int] = None
+    eta: Optional[datetime] = None
 
 class TransferRequest(TransferRequestBase):
     id: int
-
-    class Config:
-        from_attributes = True
-
-class ManifestCreate(BaseModel):
-    transfer_request_id: int
-    guest_id: int
-
-class Manifest(ManifestCreate):
-    id: int
+    status: TransferStatus
+    vehicle_id: Optional[int]
+    eta: Optional[datetime]
+    created_at: datetime
 
     class Config:
         from_attributes = True

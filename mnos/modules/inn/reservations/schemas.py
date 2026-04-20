@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from datetime import date
+from datetime import date, datetime
 from typing import List, Optional
 from .models import ReservationStatus, RoomStatus
 
@@ -15,6 +15,7 @@ class Stay(StayBase):
     id: int
     reservation_id: int
     is_active: bool
+    trace_id: str
 
     class Config:
         from_attributes = True
@@ -25,17 +26,19 @@ class ReservationBase(BaseModel):
     total_amount: float = 0.0
     adults: int = 1
     children: int = 0
+    trace_id: str
+    tenant_id: str = "default"
 
 class ReservationCreate(ReservationBase):
     stays: List[StayCreate]
 
 class ReservationUpdate(BaseModel):
     status: Optional[ReservationStatus] = None
-    total_amount: Optional[float] = None
 
 class Reservation(ReservationBase):
     id: int
     stays: List[Stay]
+    created_at: datetime
 
     class Config:
         from_attributes = True
@@ -46,12 +49,15 @@ class RoomBase(BaseModel):
     status: RoomStatus = RoomStatus.READY
     base_price: float = 0.0
     capacity: int = 2
+    trace_id: str
+    tenant_id: str = "default"
 
 class RoomCreate(RoomBase):
     pass
 
 class Room(RoomBase):
     id: int
+    created_at: datetime
 
     class Config:
         from_attributes = True
