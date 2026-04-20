@@ -126,3 +126,14 @@ def reverse_charge(db: Session, line_id: int, trace_id: str) -> Optional[models.
     db.commit()
     db.refresh(reversal)
     return reversal
+
+def lock_exchange_rate(db: Session, currency: str, rate: float, expires_at: datetime) -> models.ExchangeRateLock:
+    lock = models.ExchangeRateLock(
+        currency=currency,
+        rate=rate,
+        expires_at=expires_at
+    )
+    db.add(lock)
+    db.commit()
+    db.refresh(lock)
+    return lock

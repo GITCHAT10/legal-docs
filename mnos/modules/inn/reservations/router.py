@@ -1,4 +1,4 @@
-from typing import List, Any
+from typing import List, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -7,12 +7,41 @@ from mnos.modules.inn.reservations import schemas, service, models
 
 router = APIRouter()
 
+@router.get("/rooms/", response_model=List[schemas.Room])
+def read_rooms(
+    db: Session = Depends(deps.get_db),
+    skip: int = 0,
+    limit: int = 100,
+    current_user: Any = Depends(deps.get_current_user),
+) -> Any:
+    """
+    Retrieve rooms.
+    """
+    rooms = db.query(models.Room).offset(skip).limit(limit).all()
+    return rooms
+
+@router.post("/rooms", response_model=schemas.Room)
+def create_room(
+    *,
+    db: Session = Depends(deps.get_db),
+    room_in: schemas.RoomCreate,
+    current_user: Any = Depends(deps.get_current_user),
+) -> Any:
+    """
+    Create new room.
+    """
+    db_room = models.Room(**room_in.dict())
+    db.add(db_room)
+    db.commit()
+    db.refresh(db_room)
+    return db_room
+
 @router.post("/", response_model=schemas.Reservation)
 def create_reservation(
     *,
     db: Session = Depends(deps.get_db),
     reservation_in: schemas.ReservationCreate,
-    current_user: service.models.Base = Depends(deps.get_current_user),
+    current_user: Any = Depends(deps.get_current_user),
 ) -> Any:
     """
     Create new reservation.
@@ -23,7 +52,7 @@ def create_reservation(
 def read_reservation(
     reservation_id: int,
     db: Session = Depends(deps.get_db),
-    current_user: service.models.Base = Depends(deps.get_current_user),
+    current_user: Any = Depends(deps.get_current_user),
 ) -> Any:
     """
     Get reservation by ID.
@@ -38,7 +67,7 @@ def update_reservation_status(
     reservation_id: int,
     status_in: schemas.ReservationUpdate,
     db: Session = Depends(deps.get_db),
-    current_user: service.models.Base = Depends(deps.get_current_user),
+    current_user: Any = Depends(deps.get_current_user),
 ) -> Any:
     """
     Update reservation status.
@@ -47,33 +76,3 @@ def update_reservation_status(
     if not reservation:
         raise HTTPException(status_code=404, detail="Reservation not found")
     return reservation
-
-@router.post("/rooms", response_model=schemas.Room)
-def create_room(
-    *,
-    db: Session = Depends(deps.get_db),
-    room_in: schemas.RoomCreate,
-    current_user: service.models.Base = Depends(deps.get_current_user),
-) -> Any:
-    """
-    Create new room.
-    """
-    db_room = models.Room(**room_in.dict())
-    db.add(db_room)
-    db.commit()
-    db.refresh(db_room)
-    return db_room
-
-@router.get("/rooms/", response_model=List[schemas.Room])
-def read_rooms(
-    db: Session = Depends(deps.get_db),
-    skip: int = 0,
-    limit: int = 100,
-    current_user: service.models.Base = Depends(deps.get_current_user),
-) -> Any:
-    """
-    Retrieve rooms.
-    """
-    rooms = db.query(models.Room).offset(skip).limit(limit).all()
-    return rooms
-from typing import Any
