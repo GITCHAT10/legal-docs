@@ -57,6 +57,7 @@ async def ingest_call(request: CallIngest):
 
     return PBXResponse(
         status="PROCESSED",
+        trace_id=f"ASI-{request.call_id}",
         call_id=request.call_id,
         tenant_id=request.tenant_id,
         decision=decision,

@@ -32,6 +32,7 @@ class RiskMatrix(BaseModel):
     overall_score: float
 
 class PBXResponse(BaseModel):
+    trace_id: str
     status: str
     call_id: str
     tenant_id: str

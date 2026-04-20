@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, ForeignKey, Enum, Numeric, DateT
 from sqlalchemy.orm import relationship
 import enum
 from datetime import datetime
+from mnos.core.db.base_class import Base
 
 class FolioStatus(str, enum.Enum):
     OPEN = "open"
@@ -22,7 +23,6 @@ class ChargeType(str, enum.Enum):
     TAX = "tax"
     OTHER = "other"
 
-from mnos.core.db.base_class import Base
 class Folio(Base):
     __tablename__ = "folio"
     id = Column(Integer, primary_key=True, index=True)
@@ -38,7 +38,6 @@ class Folio(Base):
     invoices = relationship("Invoice", back_populates="folio")
     payments = relationship("Payment", back_populates="folio")
 
-from mnos.core.db.base_class import Base
 class FolioLine(Base):
     __tablename__ = "folioline"
     id = Column(Integer, primary_key=True, index=True)
@@ -56,7 +55,6 @@ class FolioLine(Base):
 
     folio = relationship("Folio", back_populates="lines")
 
-from mnos.core.db.base_class import Base
 class Payment(Base):
     __tablename__ = "payment"
     id = Column(Integer, primary_key=True, index=True)
@@ -70,7 +68,6 @@ class Payment(Base):
 
     folio = relationship("Folio", back_populates="payments")
 
-from mnos.core.db.base_class import Base
 class Invoice(Base):
     __tablename__ = "invoice"
     id = Column(Integer, primary_key=True, index=True)
@@ -82,7 +79,6 @@ class Invoice(Base):
 
     folio = relationship("Folio", back_populates="invoices")
 
-from mnos.core.db.base_class import Base
 class LedgerEntry(Base):
     __tablename__ = "ledgerentry"
     id = Column(Integer, primary_key=True, index=True)
@@ -93,7 +89,6 @@ class LedgerEntry(Base):
     description = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-from mnos.core.db.base_class import Base
 class ExchangeRateLock(Base):
     __tablename__ = "exchangeratelock"
     id = Column(Integer, primary_key=True, index=True)
@@ -102,7 +97,6 @@ class ExchangeRateLock(Base):
     expires_at = Column(DateTime)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-from mnos.core.db.base_class import Base
 class OutboxEvent(Base):
     __tablename__ = "outboxevent"
     id = Column(Integer, primary_key=True, index=True)
