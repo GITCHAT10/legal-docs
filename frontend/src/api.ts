@@ -27,16 +27,20 @@ export interface FootprintResult {
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-export async function calculateFootprint(data: FootprintInput): Promise<FootprintResult> {
+export async function calculateFootprint(data: FootprintInput, signal?: AbortSignal): Promise<FootprintResult> {
   const response = await fetch(`${API_URL}/api/calculate`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(data),
+    signal,
   });
 
   if (!response.ok) {
+    if (response.statusText === 'abort') {
+        throw new Error('Request aborted');
+    }
     throw new Error('Failed to calculate footprint');
   }
 

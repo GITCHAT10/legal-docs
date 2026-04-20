@@ -22,19 +22,30 @@ function App() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     const timer = setTimeout(async () => {
       setLoading(true);
       try {
-        const res = await calculateFootprint(input);
+        const res = await calculateFootprint(input, controller.signal);
         setResult(res);
-      } catch (err) {
+      } catch (err: any) {
+        if (err.name === 'AbortError') {
+            // Silently handle abortions as they are expected on input change
+            return;
+        }
         console.error(err);
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) {
+            setLoading(false);
+        }
       }
     }, 500);
 
-    return () => clearTimeout(timer);
+    return () => {
+        clearTimeout(timer);
+        controller.abort();
+    };
   }, [input]);
 
   return (
@@ -42,16 +53,16 @@ function App() {
       <div className="max-w-3xl mx-auto space-y-8">
         <div className="text-center">
           <h1 className="text-4xl font-extrabold text-gray-900 sm:text-5xl">
-            Maldives <span className="text-maldives-blue">Carbon Engine</span>
+            Maldives <span className="text-maldives-blue">Sovereign Cockpit</span>
           </h1>
           <p className="mt-3 text-base text-gray-500">
-            Calculate your environmental impact in the Sunny Side of Life.
+            Real-time environmental scoring and telemetry dashboard.
           </p>
         </div>
 
         <CalculatorForm input={input} setInput={setInput} />
 
-        {loading && <div className="text-center text-maldives-blue font-bold">Calculating...</div>}
+        {loading && <div className="text-center text-maldives-blue font-bold">Updating Score...</div>}
 
         <ResultsDashboard result={result} />
       </div>

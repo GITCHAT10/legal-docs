@@ -1,4 +1,4 @@
-from app.logic import calculate_footprint
+from app.mris import calculate_footprint
 from app.schemas import FootprintInput, HomeInput, TransportInput, WasteInput
 import pytest
 

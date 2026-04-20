@@ -1,7 +1,11 @@
-from .constants import *
+from .signals import *
 from .schemas import FootprintInput, FootprintResult
 
 def calculate_footprint(input_data: FootprintInput) -> FootprintResult:
+    """
+    mRIS scoring engine core logic.
+    Calculates carbon footprint based on Maldives environmental signals.
+    """
     home_total = 0
     if input_data.home:
         home_total += input_data.home.electricity_kwh * ELECTRICITY_FACTOR

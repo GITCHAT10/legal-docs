@@ -1,9 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .schemas import FootprintInput, FootprintResult
-from .logic import calculate_footprint
+from .mris import calculate_footprint
 
-app = FastAPI(title="Maldives Carbon Footprint Engine")
+app = FastAPI(title="Maldives Sovereign Cockpit API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -19,4 +19,4 @@ async def calculate(input_data: FootprintInput):
 
 @app.get("/api/health")
 async def health():
-    return {"status": "healthy"}
+    return {"status": "healthy", "version": "1.0.0-sovereign"}
