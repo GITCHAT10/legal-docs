@@ -7,6 +7,7 @@ from mnos.modules.inn.reservations.router import router as reservations_router
 from mnos.modules.aqua.transfers.router import router as transfers_router
 from mnos.modules.fce.router import router as finance_router
 from mnos.modules.maintain.router import router as maintenance_router
+from mnos.modules.shadow.router import router as shadow_router
 from mnos.core.events.websockets import router as ws_router
 
 app = FastAPI(
@@ -29,6 +30,7 @@ app.include_router(reservations_router, prefix=f"{settings.API_V1_STR}/reservati
 app.include_router(transfers_router, prefix=f"{settings.API_V1_STR}/transfers", tags=["transfers"])
 app.include_router(finance_router, prefix=f"{settings.API_V1_STR}/finance", tags=["finance"])
 app.include_router(maintenance_router, prefix=f"{settings.API_V1_STR}/maintenance", tags=["maintenance"])
+app.include_router(shadow_router, prefix=f"{settings.API_V1_STR}/shadow", tags=["audit"])
 app.include_router(ws_router, tags=["events"])
 
 @app.get("/health")

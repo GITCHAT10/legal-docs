@@ -1,9 +1,9 @@
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, List
 from sqlalchemy.orm import Session
 from mnos.modules.fce import models
 import uuid
 from datetime import datetime
-from .services.tax_service import calculate_folio_charge
+from .tax_logic import calculate_folio_charge
 from .services.finance_service import get_next_invoice_number, verify_period_open
 from mnos.modules.shadow import service as shadow_service
 from mnos.core.events.dispatcher import event_dispatcher
@@ -16,7 +16,6 @@ def _genesis_audit_lock(db: Session, trace_id: str, payload: Dict, actor: str):
     try:
         shadow_service.commit_evidence(db, trace_id, payload)
     except Exception as e:
-        # Genesis Lock: If we can't audit it, we can't do it.
         raise RuntimeError(f"Genesis Lock Triggered: SHADOW unreachable for trace {trace_id}. {str(e)}")
 
 def open_folio(db: Session, reservation_id: str, trace_id: str, tenant_id: str = "default", actor: str = "SYSTEM") -> models.Folio:
@@ -35,7 +34,6 @@ def open_folio(db: Session, reservation_id: str, trace_id: str, tenant_id: str =
         db.add(folio)
         db.flush()
 
-        # Mandatory Audit Lock
         _genesis_audit_lock(db, trace_id, {
             "actor": actor,
             "action": "OPEN_FOLIO",
@@ -87,7 +85,6 @@ def post_charge(db: Session, folio_id: int, charge_data: Dict, trace_id: str, te
 
         db.flush()
 
-        # Mandatory Audit Lock
         _genesis_audit_lock(db, trace_id, {
             "actor": actor,
             "action": "POST_CHARGE",
@@ -129,7 +126,6 @@ def post_transaction(db: Session, folio_id: int, payment_data: Dict, trace_id: s
         db.add(folio)
         db.flush()
 
-        # Mandatory Audit Lock
         _genesis_audit_lock(db, trace_id, {
             "actor": actor,
             "action": "POST_TRANSACTION",
@@ -158,6 +154,20 @@ def finalize_invoice(db: Session, folio_id: int, tenant_id: str = "default", act
         invoice_no = get_next_invoice_number(db)
         trace_id = f"FIN-{uuid.uuid4().hex[:8]}"
 
+        # MIRA-Compliant Line Item Summary
+        line_summary = []
+        for l in folio.lines:
+            if not l.is_reversed:
+                line_summary.append({
+                    "id": l.id,
+                    "desc": l.description,
+                    "base": l.base_amount,
+                    "sc": l.service_charge,
+                    "tgst": l.tgst,
+                    "green": l.green_tax,
+                    "total": l.amount
+                })
+
         invoice = models.Invoice(
             tenant_id=tenant_id,
             trace_id=trace_id,
@@ -165,9 +175,10 @@ def finalize_invoice(db: Session, folio_id: int, tenant_id: str = "default", act
             invoice_number=invoice_no,
             total_amount=folio.total_amount,
             tax_summary={
-                "sc": sum(l.service_charge for l in folio.lines if not l.is_reversed),
-                "tgst": sum(l.tgst for l in folio.lines if not l.is_reversed),
-                "green_tax": sum(l.green_tax for l in folio.lines if not l.is_reversed)
+                "sc_total": sum(l.service_charge for l in folio.lines if not l.is_reversed),
+                "tgst_total": sum(l.tgst for l in folio.lines if not l.is_reversed),
+                "green_tax_total": sum(l.green_tax for l in folio.lines if not l.is_reversed),
+                "line_items": line_summary
             },
             created_by=actor
         )
@@ -178,14 +189,17 @@ def finalize_invoice(db: Session, folio_id: int, tenant_id: str = "default", act
         db.add(folio)
         db.flush()
 
-        # Mandatory Audit Lock
         _genesis_audit_lock(db, trace_id, {
             "actor": actor,
             "action": "FINALIZE_FOLIO",
             "entity_type": "INVOICE",
             "entity_id": invoice.id,
             "before_state": {"status": before_status},
-            "after_state": {"status": folio.status, "invoice_number": invoice_no}
+            "after_state": {
+                "status": folio.status,
+                "invoice_number": invoice_no,
+                "mira_compliant": True
+            }
         }, actor)
 
         db.commit()
