@@ -30,7 +30,7 @@ services:
 
   edge-node:
     build: .
-    command: python3 -m edge-node.fuel_controller
+    command: python3 -m edge_node.fuel_controller
     environment:
       - MNOS_INTEGRATION_SECRET=${MNOS_INTEGRATION_SECRET:-dev_fallback_secret}
       - REDIS_HOST=redis

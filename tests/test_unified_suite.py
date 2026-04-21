@@ -14,20 +14,25 @@ def test_patente_auth(monkeypatch):
 
     # Test valid token
     monkeypatch.setenv("PATENTE_HASH", token_hash)
-    assert NexGenPatenteVerifier.authorize_access(token) is True
+    assert NexGenPatenteVerifier.authorize_access(token, "ADMIN_001", "ADMIN") is True
 
     # Test invalid token
     with pytest.raises(PermissionError, match="Invalid patente token"):
-        NexGenPatenteVerifier.authorize_access("wrong_token")
+        NexGenPatenteVerifier.authorize_access("wrong_token", "ADMIN_001", "ADMIN")
 
     # Test missing token
     with pytest.raises(PermissionError, match="Missing patente token"):
-        NexGenPatenteVerifier.authorize_access(None)
+        NexGenPatenteVerifier.authorize_access(None, "ADMIN_001", "ADMIN")
 
     # Test missing config
     monkeypatch.delenv("PATENTE_HASH", raising=False)
     with pytest.raises(RuntimeError, match="PATENTE_HASH not configured"):
-        NexGenPatenteVerifier.authorize_access(token)
+        NexGenPatenteVerifier.authorize_access(token, "ADMIN_001", "ADMIN")
+
+    # Test Scope Rejection
+    monkeypatch.setenv("PATENTE_HASH", token_hash)
+    assert NexGenPatenteVerifier.authorize_access(token, "FLGT_123", "PORT_OPS") is False
+    assert NexGenPatenteVerifier.authorize_access(token, "FLGT_123", "AIRPORT_OPS") is True
 
 def test_moats_tax_logic():
     base = 1000.0

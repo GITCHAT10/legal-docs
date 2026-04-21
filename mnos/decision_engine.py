@@ -20,14 +20,11 @@ class AegisPolicyEngine:
         # For simulation simplicity, we will skip area validation if operator starts with CAPT
         # But token validation is mandatory
         try:
-            # Check if PATENTE_HASH matches token hash
-            import os
-            import hashlib
-            expected = os.getenv("PATENTE_HASH")
-            if not expected or hashlib.sha256(patente_token.encode()).hexdigest() != expected:
-                 return False, "PATENTE validation failed"
-        except:
-             return False, "PATENTE validation failed"
+            if not NexGenPatenteVerifier.authorize_access(patente_token, operator_id, "FUEL_ACCESS"):
+                 return False, "PATENTE validation failed or insufficient scope"
+        except Exception as e:
+             logger.error(f"PATENTE Error in Decision Engine: {str(e)}")
+             return False, f"PATENTE error: {str(e)}"
 
         # Sovereign Requirement: Asset Validation
         # In a real system, we would query the unified_suite service

@@ -24,7 +24,7 @@ PYTHONPATH=$PYTHONPATH:. python3 -u mnos/worker.py > mnos_worker.log 2>&1 &
 WORKER_PID=$!
 
 echo "🔌 STARTING EDGE NODE FUEL CONTROLLER..."
-PYTHONPATH=$PYTHONPATH:. python3 -u edge-node/fuel_controller.py > edge_node.log 2>&1 &
+PYTHONPATH=$PYTHONPATH:. python3 -u edge_node/fuel_controller.py > edge_node.log 2>&1 &
 EDGE_PID=$!
 
 
@@ -47,9 +47,6 @@ python3 test_fuel_flow.py
 echo "🛫 EXECUTING UNIFIED AIRPORT & PORT SUITE SIMULATION..."
 python3 simulate_unified_suite.py
 
-# Run Atoll Airways Simulation
-echo "🏝️  EXECUTING ATOLL AIRWAYS SEAPLANE SIMULATION..."
-python3 simulate_atoll_airways.py
 
 # Final Verification
 echo "🔍 VERIFYING PERSISTENT STATE..."
