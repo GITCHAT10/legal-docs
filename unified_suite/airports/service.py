@@ -12,8 +12,13 @@ class AirportService:
         self._lock = threading.Lock()
 
     def schedule_flight(self, flight: Flight):
-        self.flights.append(flight)
-        return flight
+        with self._lock:
+            existing = next((f for f in self.flights if f.flight_number == flight.flight_number), None)
+            if existing:
+                logger.info(f"Idempotency: flight {flight.flight_number} already scheduled")
+                return existing
+            self.flights.append(flight)
+            return flight
 
     def assign_gate(self, flight):
         with self._lock:

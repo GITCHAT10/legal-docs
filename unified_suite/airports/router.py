@@ -2,41 +2,28 @@ from fastapi import APIRouter, HTTPException, Request
 from .models import Flight
 from .service import AirportService
 from typing import List
-from mnos.events.publisher import EventPublisher
-from mnos.shadow_service import ShadowService
-from unified_suite.tax_engine.calculator import MoatsTaxCalculator
+from unified_suite.core.eleone import ELEONE
 
 router = APIRouter()
 service = AirportService()
 
 @router.post("/flights", response_model=Flight)
 async def create_flight(flight: Flight, request: Request):
-    # MOATS TAX ENFORCEMENT
-    tax_info = MoatsTaxCalculator.calculate_bill(1500.00) # Standard Airport Fee
+    patente = request.headers.get("X-NexGen-Patente")
 
-    if not MoatsTaxCalculator.validate_tax_compliance(tax_info):
-        from unified_suite.core.flows import SovereignFlows
-        SovereignFlows.deny_flow(flight.flight_number, "Tax Compliance Breach", {"tax_data": tax_info})
-        raise HTTPException(status_code=400, detail="Sovereign Error: MOATS Tax Validation Failed")
-
-    scheduled_flight = service.schedule_flight(flight)
-
-    # MNOS Integration
-    event_payload = {
-        "flight_number": flight.flight_number,
-        "origin": flight.origin,
-        "tax_applied": tax_info
-    }
-    ShadowService.log_event("FLIGHT_SCHEDULED", event_payload)
-    EventPublisher().publish(
-        channel="airport.events",
-        entity_id=flight.flight_number,
-        entity_type="FLIGHT",
-        action="SCHEDULE",
-        payload=event_payload
-    )
-
-    return scheduled_flight
+    try:
+        scheduled_flight = ELEONE.execute(
+            action="SCHEDULE_FLIGHT",
+            subject_id=flight.flight_number,
+            func=service.schedule_flight,
+            args=[flight],
+            constraints=["AEGIS", "MOATS"],
+            patente_token=patente,
+            tax_base=1500.00
+        )
+        return scheduled_flight
+    except (PermissionError, ValueError) as e:
+        raise HTTPException(status_code=403 if isinstance(e, PermissionError) else 400, detail=str(e))
 
 @router.get("/flights", response_model=List[Flight])
 async def list_flights():
@@ -44,27 +31,20 @@ async def list_flights():
 
 @router.post("/flights/{flight_number}/assign-gate")
 async def assign_gate(flight_number: str, request: Request):
-    # MOATS TAX ENFORCEMENT
-    tax_info = MoatsTaxCalculator.calculate_bill(250.00) # Gate Assignment Fee
+    patente = request.headers.get("X-NexGen-Patente")
 
-    if not MoatsTaxCalculator.validate_tax_compliance(tax_info):
-        from unified_suite.core.flows import SovereignFlows
-        SovereignFlows.deny_flow(flight_number, "Tax Compliance Breach", {"tax_data": tax_info})
-        raise HTTPException(status_code=400, detail="Sovereign Error: MOATS Tax Validation Failed")
-
-    gate = service.assign_gate(flight_number)
-    if not gate:
-        raise HTTPException(status_code=404, detail="Flight not found or no gates available")
-
-    # MNOS Integration
-    event_payload = {"flight_number": flight_number, "gate": gate}
-    ShadowService.log_event("GATE_ASSIGNED", event_payload)
-    EventPublisher().publish(
-        channel="airport.events",
-        entity_id=flight_number,
-        entity_type="FLIGHT",
-        action="ASSIGN_GATE",
-        payload=event_payload
-    )
-
-    return {"flight_number": flight_number, "gate": gate}
+    try:
+        gate = ELEONE.execute(
+            action="ASSIGN_GATE",
+            subject_id=flight_number,
+            func=service.assign_gate,
+            args=[flight_number],
+            constraints=["AEGIS", "MOATS"],
+            patente_token=patente,
+            tax_base=250.00
+        )
+        return {"flight_number": flight_number, "gate": gate}
+    except (PermissionError, ValueError) as e:
+        raise HTTPException(status_code=403 if isinstance(e, PermissionError) else 400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=str(e))

@@ -8,31 +8,36 @@ from unified_suite.seaports.models import Vessel, Container
 from datetime import datetime
 
 def test_patente_auth(monkeypatch):
+    import hmac
     import hashlib
-    token = "secret_token"
-    token_hash = hashlib.sha256(token.encode()).hexdigest()
+    secret = "test_secret"
+    monkeypatch.setenv("NEXGEN_SECRET", secret)
+
+    def make_token(eid):
+        sig = hmac.new(secret.encode(), eid.encode(), hashlib.sha256).hexdigest()
+        return f"{eid}:{sig}"
+
+    admin_token = make_token("ADMIN_001")
+    flgt_token = make_token("FLGT_123")
 
     # Test valid token
-    monkeypatch.setenv("PATENTE_HASH", token_hash)
-    assert NexGenPatenteVerifier.authorize_access(token, "ADMIN_001", "ADMIN") is True
+    assert NexGenPatenteVerifier.authorize_access(admin_token, "ADMIN_001", "ADMIN") is True
 
-    # Test invalid token
-    with pytest.raises(PermissionError, match="Invalid patente token"):
-        NexGenPatenteVerifier.authorize_access("wrong_token", "ADMIN_001", "ADMIN")
+    # Test invalid token signature
+    with pytest.raises(PermissionError, match="Invalid patente token signature"):
+        NexGenPatenteVerifier.authorize_access("ADMIN_001:wrong_sig", "ADMIN_001", "ADMIN")
 
     # Test missing token
     with pytest.raises(PermissionError, match="Missing patente token"):
         NexGenPatenteVerifier.authorize_access(None, "ADMIN_001", "ADMIN")
 
-    # Test missing config
-    monkeypatch.delenv("PATENTE_HASH", raising=False)
-    with pytest.raises(RuntimeError, match="PATENTE_HASH not configured"):
-        NexGenPatenteVerifier.authorize_access(token, "ADMIN_001", "ADMIN")
+    # Test Binding Violation
+    with pytest.raises(PermissionError, match="not bound to entity ATTACKER"):
+        NexGenPatenteVerifier.authorize_access(flgt_token, "ATTACKER", "AIRPORT_OPS")
 
     # Test Scope Rejection
-    monkeypatch.setenv("PATENTE_HASH", token_hash)
-    assert NexGenPatenteVerifier.authorize_access(token, "FLGT_123", "PORT_OPS") is False
-    assert NexGenPatenteVerifier.authorize_access(token, "FLGT_123", "AIRPORT_OPS") is True
+    assert NexGenPatenteVerifier.authorize_access(flgt_token, "FLGT_123", "PORT_OPS") is False
+    assert NexGenPatenteVerifier.authorize_access(flgt_token, "FLGT_123", "AIRPORT_OPS") is True
 
 def test_moats_tax_logic():
     base = 1000.0

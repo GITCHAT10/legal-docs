@@ -19,6 +19,11 @@ def sign_request(method, path, timestamp, request_id, body):
     canonical = generate_canonical_string(method, path, timestamp, request_id, body_bytes)
     return hmac.new(SECRET_KEY.encode(), canonical.encode(), hashlib.sha256).hexdigest()
 
+def get_patente(entity_id):
+    secret = os.getenv("NEXGEN_SECRET", "NATIONAL_SECRET_2024")
+    sig = hmac.new(secret.encode(), entity_id.encode(), hashlib.sha256).hexdigest()
+    return f"{entity_id}:{sig}"
+
 def send_fuel_request(flight_id, aircraft_id, amount, operator_id, patente_token=None):
     request_id = str(uuid.uuid4())
     timestamp = datetime.now(timezone.utc).isoformat()
@@ -27,8 +32,7 @@ def send_fuel_request(flight_id, aircraft_id, amount, operator_id, patente_token
         "aircraft_id": aircraft_id,
         "fuel_amount": amount,
         "operator_id": operator_id,
-        "timestamp": timestamp,
-        "signature": patente_token # Sim context: using signature field for patente token
+        "signature": patente_token or get_patente(operator_id)
     }
 
     signature = sign_request("POST", "/fuel/request", timestamp, request_id, body)
@@ -60,21 +64,21 @@ if __name__ == "__main__":
     valid_token = "dev_fallback_token"
 
     # 1. Valid Request (APPROVE)
-    send_fuel_request("FL-777", "AC-101", 500, "CAPT_ALPHA", patente_token=valid_token)
+    send_fuel_request("FL-777", "AC-101", 500, "CAPT_ALPHA")
 
     time.sleep(2) # Wait for worker and edge node
 
     # 2. Invalid Flight ID (DENY by AEGIS)
-    send_fuel_request("INVALID-777", "AC-101", 500, "CAPT_ALPHA", patente_token=valid_token)
+    send_fuel_request("INVALID-777", "AC-101", 500, "CAPT_ALPHA")
 
     time.sleep(2)
 
     # 3. Blacklisted Operator (DENY by FCE)
-    send_fuel_request("FL-777", "AC-101", 500, "BLACKLIST-EVIL", patente_token=valid_token)
+    send_fuel_request("FL-777", "AC-101", 500, "BLACKLIST-EVIL")
 
     time.sleep(2)
 
     # 4. Large Amount (DENY by FCE)
-    send_fuel_request("FL-777", "AC-101", 5000, "CAPT_ALPHA", patente_token=valid_token)
+    send_fuel_request("FL-777", "AC-101", 5000, "CAPT_ALPHA")
 
     print("\n✅ TEST SUITE FINISHED.")

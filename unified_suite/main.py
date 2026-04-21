@@ -52,17 +52,13 @@ async def production_middleware(request: Request, call_next):
          return JSONResponse(status_code=200, content={"status": "ALREADY_PROCESSED", "request_id": "REPLAY_TRIGGER"})
 
     # 2. EXECUTION with Retry Safety
-    max_retries = 2
-    for attempt in range(max_retries + 1):
-        try:
-            response = await call_next(request)
-            break
-        except Exception as e:
-            if attempt == max_retries:
-                logger.error(f'{{"event": "REQUEST_FINAL_FAILURE", "path": "{request.url.path}", "error": "{str(e)}"}}')
-                return JSONResponse(status_code=503, content={"error": "SERVICE_UNAVAILABLE", "message": "Resilient processing failed"})
-            logger.warning(f'{{"event": "REQUEST_RETRY", "path": "{request.url.path}", "attempt": {attempt + 1}}}')
-            time.sleep(0.5)
+    # NOTE: In production-locked mode, we do not retry on 4xx/5xx from ELEONE
+    # as they represent sovereign policy denials.
+    try:
+        response = await call_next(request)
+    except Exception as e:
+        logger.error(f'{{"event": "REQUEST_EXCEPTION", "path": "{request.url.path}", "error": "{str(e)}"}}')
+        return JSONResponse(status_code=500, content={"error": "EXECUTION_ERROR", "message": str(e)})
 
     # 3. STRUCTURED LOGGING
     process_time = time.time() - start_time

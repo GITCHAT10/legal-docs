@@ -2,41 +2,28 @@ from fastapi import APIRouter, HTTPException, Request
 from .models import Vessel, Container
 from .service import SeaPortService
 from typing import List
-from mnos.events.publisher import EventPublisher
-from mnos.shadow_service import ShadowService
-from unified_suite.tax_engine.calculator import MoatsTaxCalculator
+from unified_suite.core.eleone import ELEONE
 
 router = APIRouter()
 service = SeaPortService()
 
 @router.post("/vessels", response_model=Vessel)
 async def register_vessel(vessel: Vessel, request: Request):
-    # MOATS TAX ENFORCEMENT
-    tax_info = MoatsTaxCalculator.calculate_bill(5000.00) # Standard Port Fee
+    patente = request.headers.get("X-NexGen-Patente")
 
-    if not MoatsTaxCalculator.validate_tax_compliance(tax_info):
-        from unified_suite.core.flows import SovereignFlows
-        SovereignFlows.deny_flow(vessel.vessel_id, "Tax Compliance Breach", {"tax_data": tax_info})
-        raise HTTPException(status_code=400, detail="Sovereign Error: MOATS Tax Validation Failed")
-
-    registered_vessel = service.register_vessel(vessel)
-
-    # MNOS Integration
-    event_payload = {
-        "vessel_id": vessel.vessel_id,
-        "name": vessel.name,
-        "tax_applied": tax_info
-    }
-    ShadowService.log_event("VESSEL_REGISTERED", event_payload)
-    EventPublisher().publish(
-        channel="seaport.events",
-        entity_id=vessel.vessel_id,
-        entity_type="VESSEL",
-        action="REGISTER",
-        payload=event_payload
-    )
-
-    return registered_vessel
+    try:
+        registered_vessel = ELEONE.execute(
+            action="REGISTER_VESSEL",
+            subject_id=vessel.vessel_id,
+            func=service.register_vessel,
+            args=[vessel],
+            constraints=["AEGIS", "MOATS"],
+            patente_token=patente,
+            tax_base=5000.00
+        )
+        return registered_vessel
+    except (PermissionError, ValueError) as e:
+        raise HTTPException(status_code=403 if isinstance(e, PermissionError) else 400, detail=str(e))
 
 @router.get("/vessels", response_model=List[Vessel])
 async def list_vessels():
@@ -44,30 +31,23 @@ async def list_vessels():
 
 @router.post("/vessels/{vessel_id}/assign-berth")
 async def assign_berth(vessel_id: str, request: Request):
-    # MOATS TAX ENFORCEMENT
-    tax_info = MoatsTaxCalculator.calculate_bill(750.00) # Berth Assignment Fee
+    patente = request.headers.get("X-NexGen-Patente")
 
-    if not MoatsTaxCalculator.validate_tax_compliance(tax_info):
-        from unified_suite.core.flows import SovereignFlows
-        SovereignFlows.deny_flow(vessel_id, "Tax Compliance Breach", {"tax_data": tax_info})
-        raise HTTPException(status_code=400, detail="Sovereign Error: MOATS Tax Validation Failed")
-
-    berth = service.assign_berth(vessel_id)
-    if not berth:
-        raise HTTPException(status_code=404, detail="Vessel not found or no berths available")
-
-    # MNOS Integration
-    event_payload = {"vessel_id": vessel_id, "berth": berth}
-    ShadowService.log_event("BERTH_ASSIGNED", event_payload)
-    EventPublisher().publish(
-        channel="seaport.events",
-        entity_id=vessel_id,
-        entity_type="VESSEL",
-        action="ASSIGN_BERTH",
-        payload=event_payload
-    )
-
-    return {"vessel_id": vessel_id, "berth": berth}
+    try:
+        berth = ELEONE.execute(
+            action="ASSIGN_BERTH",
+            subject_id=vessel_id,
+            func=service.assign_berth,
+            args=[vessel_id],
+            constraints=["AEGIS", "MOATS"],
+            patente_token=patente,
+            tax_base=750.00
+        )
+        return {"vessel_id": vessel_id, "berth": berth}
+    except (PermissionError, ValueError) as e:
+        raise HTTPException(status_code=403 if isinstance(e, PermissionError) else 400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 @router.get("/vessels/{vessel_id}/manifest", response_model=List[Container])
 async def get_manifest(vessel_id: str):

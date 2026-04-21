@@ -1,3 +1,8 @@
+import os
+import logging
+
+logger = logging.getLogger("unified_suite")
+
 class MoatsTaxCalculator:
     """
     MOATS (Maldives Operations & Accounting Tax System)
@@ -7,6 +12,9 @@ class MoatsTaxCalculator:
 
     SERVICE_CHARGE_RATE = 0.10
     TGST_RATE = 0.17  # MIRA-compliant rate (Updated)
+
+    # Tax Liability Ledger (MIRA-ready)
+    _ledger = []
 
     @classmethod
     def calculate_bill(cls, base_amount: float, sc_rate: float = None, tgst_rate: float = None):
@@ -25,15 +33,19 @@ class MoatsTaxCalculator:
         tgst = subtotal * tgst_r
         total = subtotal + tgst
 
-        return {
+        bill_data = {
             "base_amount": round(base_amount, 2),
             "service_charge": round(service_charge, 2),
             "subtotal": round(subtotal, 2),
             "tgst": round(tgst, 2),
             "total_amount": round(total, 2),
             "currency": "MVR",
-            "compliance": "MIRA_COMPLIANT_V2"
+            "compliance": "MIRA_COMPLIANT_V2",
+            "mira_ledger_id": f"MIRA-{os.urandom(4).hex().upper()}"
         }
+
+        cls._ledger.append(bill_data)
+        return bill_data
 
     @classmethod
     def calculate_customs_duty(cls, value: float, category: str):
@@ -45,6 +57,10 @@ class MoatsTaxCalculator:
         duty_rate = 0.15
         duty = value * duty_rate
         return round(duty, 2)
+
+    @classmethod
+    def get_tax_liability_ledger(cls):
+        return cls._ledger
 
     @classmethod
     def validate_tax_compliance(cls, bill_data: dict) -> bool:

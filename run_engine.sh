@@ -7,11 +7,10 @@ echo "🚀 INITIALIZING MNOS SOVEREIGN ENGINE..."
 rm -f mnos.db mnos.log mnos_worker.log edge_node.log unified_suite.log mock_redis_bus.jsonl
 
 # Set production env vars from environment or fallback
-export MNOS_INTEGRATION_SECRET="${MNOS_INTEGRATION_SECRET:-dev_fallback_secret}"
-export NEXGEN_SECRET="${NEXGEN_SECRET:-dev_fallback_secret}"
+export MNOS_INTEGRATION_SECRET="${MNOS_INTEGRATION_SECRET:-NATIONAL_SECRET_2024}"
+export NEXGEN_SECRET="${NEXGEN_SECRET:-NATIONAL_SECRET_2024}"
 
-# Configure PATENTE_HASH for tests
-# Hash of 'dev_fallback_token'
+# Configure PATENTE_HASH for tests (Obsolete in HMAC mode, but kept for legacy compat if needed)
 export PATENTE_HASH="5063ad7329d8724779e8003cccabf7aad2220b58c804375dc3e968bdc811587c"
 export MNOS_ENV="prod"
 
@@ -43,9 +42,9 @@ echo "🔄 EXECUTING FULL OPERATING LOOP..."
 echo "⛽ EXECUTING FUEL AUTHORIZATION CONTROL SYSTEM TEST..."
 python3 test_fuel_flow.py
 
-# Run Unified Suite Simulation
-echo "🛫 EXECUTING UNIFIED AIRPORT & PORT SUITE SIMULATION..."
-python3 simulate_unified_suite.py
+# Run Hardened Unified Suite Simulation
+echo "🛫 EXECUTING HARDENED XPORT SIMULATION..."
+python3 simulate_hardened_xport.py
 
 
 # Final Verification

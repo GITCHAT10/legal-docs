@@ -12,8 +12,13 @@ class SeaPortService:
         self._lock = threading.Lock()
 
     def register_vessel(self, vessel: Vessel):
-        self.vessels.append(vessel)
-        return vessel
+        with self._lock:
+            existing = next((v for v in self.vessels if v.vessel_id == vessel.vessel_id), None)
+            if existing:
+                logger.info(f"Idempotency: vessel {vessel.vessel_id} already registered")
+                return existing
+            self.vessels.append(vessel)
+            return vessel
 
     def assign_berth(self, vessel):
         with self._lock:
