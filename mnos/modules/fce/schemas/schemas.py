@@ -1,7 +1,7 @@
 from typing import Optional, List
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
-from mnos.modules.fce.models import FolioStatus, ChargeType
+from mnos.modules.fce.models import FolioStatus, ChargeType, PaymentStatus
 from decimal import Decimal
 
 class ChargeBase(BaseModel):
@@ -38,6 +38,7 @@ class Payment(BaseModel):
     trace_id: str
     amount: Decimal
     method: str
+    status: PaymentStatus
     transaction_reference: Optional[str] = None
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)

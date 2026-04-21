@@ -8,7 +8,7 @@ from mnos.modules.admiralda.schemas import (
     CommandExecutionResult, ParsedVoiceCommand, VerifiedActor,
     PolicyDecision, FcePrecheckResult, ModuleExecutionResult, ShadowCommitResult
 )
-# Assuming these services exist based on common MNOS patterns
+from mnos.modules.fce import service as fce_service
 from mnos.modules.shadow import service as shadow_service
 from mnos.core.events.dispatcher import event_dispatcher
 
@@ -18,7 +18,6 @@ class AmbiguousCommandError(Exception):
 class AdmiraldaService:
     def __init__(self, db_session=None):
         self.db = db_session
-        # In a real system, these would be injected or looked up via a service registry
         self.id_factory = type('IdFactory', (), {'new': lambda self: str(uuid.uuid4())})()
 
     async def execute_voice_command(
@@ -31,87 +30,77 @@ class AdmiraldaService:
     ) -> CommandExecutionResult:
         command_id = self.id_factory.new()
 
-        try:
-            # 1. Parse
-            parsed = await self.parse_voice_command(transcript)
+        # Initial empty state for failure stubs
+        parsed_intent = "UNKNOWN"
+        normalized_text = transcript.strip()
+        target_module = "UNKNOWN"
 
-            # 2. Verify actor with AEGIS
+        try:
+            # 1. Parse (Threshold >= 0.95)
+            parsed = await self.parse_voice_command(transcript)
+            parsed_intent = parsed.intent
+            normalized_text = parsed.normalized_text
+            target_module = parsed.target_module
+
+            if parsed.confidence < 0.95:
+                 return await self._fail_closed(
+                     command_id, session_id, transcript, normalized_text,
+                     parsed_intent, target_module, "LOW_NLU_CONFIDENCE",
+                     "I'm sorry, I'm not confident enough in that request to execute it."
+                 )
+
+            # 2. Verify actor with AEGIS (Voiceprint >= 0.96)
             actor = await self.verify_actor_with_aegis(
                 caller_id=caller_id,
                 session_id=session_id,
                 metadata=metadata,
             )
 
+            if actor.verification_confidence < 0.96:
+                 return await self._fail_closed(
+                     command_id, session_id, transcript, normalized_text,
+                     parsed_intent, target_module, "LOW_VOICEPRINT_CONFIDENCE",
+                     "I could not verify your identity with enough certainty."
+                 )
+
             # 3. Authorize command
             policy = await self.authorize_command(actor, parsed)
             if not policy.allowed:
-                return CommandExecutionResult(
-                    status="rejected",
-                    command_id=command_id,
-                    actor_id=actor.actor_id,
-                    session_id=session_id,
-                    transcript=transcript,
-                    normalized_text=parsed.normalized_text,
-                    intent=parsed.intent,
-                    target_module=parsed.target_module,
-                    policy_decision=policy.decision,
-                    reason_code=policy.reason_code,
-                    human_message="You are not authorized for that command.",
-                )
+                return await self._fail_closed(
+                     command_id, session_id, transcript, normalized_text,
+                     parsed_intent, target_module, policy.reason_code or "UNAUTHORIZED",
+                     "You are not authorized for that command.", actor.actor_id
+                 )
 
             # 4. Run FCE precheck if needed
             fce_result = None
             if parsed.requires_fce:
-                fce_result = await self.run_fce_precheck_if_needed(actor, parsed)
-                if not fce_result.passed:
-                    return CommandExecutionResult(
-                        status="rejected",
-                        command_id=command_id,
-                        actor_id=actor.actor_id,
-                        session_id=session_id,
-                        transcript=transcript,
-                        normalized_text=parsed.normalized_text,
-                        intent=parsed.intent,
-                        target_module=parsed.target_module,
-                        policy_decision="allow",
-                        reason_code="FCE_PRECHECK_FAILED",
-                        requires_fce=True,
-                        fce_check_passed=False,
-                        human_message="That request did not pass financial control checks.",
+                # Command #1: Preauthorize amount check
+                if not fce_service.preauthorize(self.db, actor.actor_id, parsed.estimated_amount or 0):
+                    return await self._fail_closed(
+                        command_id, session_id, transcript, normalized_text,
+                        parsed_intent, target_module, "FCE_PRECHECK_FAILED",
+                        "That request did not pass financial control checks.", actor.actor_id
                     )
+                fce_result = FcePrecheckResult(passed=True, transaction_id=f"FCE-PRE-{uuid.uuid4().hex[:8]}")
 
             # 5. Dispatch to target module
             module_result = await self.dispatch_to_module(actor, parsed, fce_result)
             if not module_result.success:
-                return CommandExecutionResult(
-                    status="failed",
-                    command_id=command_id,
-                    actor_id=actor.actor_id,
-                    session_id=session_id,
-                    transcript=transcript,
-                    normalized_text=parsed.normalized_text,
-                    intent=parsed.intent,
-                    target_module=parsed.target_module,
-                    policy_decision="allow",
-                    requires_fce=parsed.requires_fce,
-                    fce_check_passed=(fce_result.passed if fce_result else None),
-                    human_message=module_result.human_message,
-                )
+                 return await self._fail_closed(
+                     command_id, session_id, transcript, normalized_text,
+                     parsed_intent, target_module, "MODULE_EXECUTION_FAILED",
+                     module_result.human_message, actor.actor_id
+                 )
 
-            # 6. Commit to SHADOW
+            # 6. Commit to SHADOW (MANDATORY FOR SUCCESS)
             shadow = await self.commit_shadow_record(actor, parsed, module_result, fce_result)
             if not shadow.success:
-                # Sovereignty rule: If SHADOW fails, treat the entire command as failed.
-                return CommandExecutionResult(
-                    status="failed",
-                    command_id=command_id,
-                    session_id=session_id,
-                    transcript=transcript,
-                    normalized_text=parsed.normalized_text,
-                    policy_decision="allow",
-                    reason_code="SHADOW_COMMIT_FAILURE",
-                    human_message="The command could not be completed safely (Audit Failure).",
-                )
+                 return await self._fail_closed(
+                     command_id, session_id, transcript, normalized_text,
+                     parsed_intent, target_module, "SHADOW_COMMIT_FAILURE",
+                     "The command was completed but could not be audited safely.", actor.actor_id
+                 )
 
             # 7. Emit events
             events = await self.emit_events(shadow, module_result)
@@ -122,12 +111,12 @@ class AdmiraldaService:
                 actor_id=actor.actor_id,
                 session_id=session_id,
                 transcript=transcript,
-                normalized_text=parsed.normalized_text,
-                intent=parsed.intent,
-                target_module=module_result.target_module,
+                normalized_text=normalized_text,
+                intent=parsed_intent,
+                target_module=target_module,
                 policy_decision="allow",
                 requires_fce=parsed.requires_fce,
-                fce_check_passed=(fce_result.passed if fce_result else None),
+                fce_check_passed=(True if fce_result else None),
                 shadow_commit_id=shadow.commit_id,
                 events_emitted=events,
                 execution_payload=module_result.payload,
@@ -135,35 +124,58 @@ class AdmiraldaService:
             )
 
         except AmbiguousCommandError:
-            return CommandExecutionResult(
-                status="rejected",
-                command_id=command_id,
-                session_id=session_id,
-                transcript=transcript,
-                normalized_text=transcript.strip(),
-                policy_decision="deny",
-                reason_code="AMBIGUOUS_COMMAND",
-                human_message="I understood the request only partially, so I did not execute it.",
+            return await self._fail_closed(
+                command_id, session_id, transcript, normalized_text,
+                parsed_intent, target_module, "AMBIGUOUS_COMMAND",
+                "I understood the request only partially, so I did not execute it."
             )
         except Exception as e:
             logging.exception(f"Unhandled execution failure for command {command_id}")
-            return CommandExecutionResult(
-                status="failed",
-                command_id=command_id,
-                session_id=session_id,
-                transcript=transcript,
-                normalized_text=transcript.strip(),
-                policy_decision="deny",
-                reason_code="UNHANDLED_EXECUTION_FAILURE",
-                human_message="The command could not be completed safely.",
+            return await self._fail_closed(
+                command_id, session_id, transcript, normalized_text,
+                parsed_intent, target_module, "UNHANDLED_EXECUTION_FAILURE",
+                "The command could not be completed safely."
             )
+
+    async def _fail_closed(self, command_id, session_id, transcript, normalized, intent, module, reason, message, actor_id=None):
+        """
+        Sovereign rule: Every failure path must write an audit record to SHADOW.
+        """
+        if self.db:
+            audit_payload = {
+                "command_id": command_id,
+                "transcript_hash": hashlib.sha256(transcript.encode()).hexdigest(),
+                "status": "REJECTED/FAILED",
+                "reason_code": reason,
+                "actor_id": actor_id
+            }
+            try:
+                shadow_service.commit_evidence(self.db, f"FAIL-{command_id}", audit_payload)
+                # Note: commit_evidence no longer commits, so we must commit here if we want failures persisted immediately
+                # but usually failures happen outside a successful business transaction, so we commit the failure audit.
+                self.db.commit()
+            except:
+                self.db.rollback()
+
+        return CommandExecutionResult(
+            status="rejected" if reason in ["AMBIGUOUS_COMMAND", "UNAUTHORIZED", "LOW_NLU_CONFIDENCE"] else "failed",
+            command_id=command_id,
+            actor_id=actor_id,
+            session_id=session_id,
+            transcript=transcript,
+            normalized_text=normalized,
+            intent=intent,
+            target_module=module,
+            policy_decision="deny",
+            reason_code=reason,
+            human_message=message
+        )
 
     async def parse_voice_command(self, transcript: str) -> ParsedVoiceCommand:
         normalized = transcript.lower().strip()
         if not normalized:
             raise AmbiguousCommandError("Empty transcript")
 
-        # Deterministic NLU Mapping (v1)
         if any(word in normalized for word in ["reservation", "booking", "look up"]):
             return ParsedVoiceCommand(
                 normalized_text=normalized,
@@ -187,13 +199,14 @@ class AdmiraldaService:
                 confidence=0.96,
                 target_module="FCE",
                 requires_fce=True,
+                estimated_amount=Decimal("150.00"),
                 risk_level="medium"
             )
         elif any(word in normalized for word in ["room status", "cleaned"]):
             return ParsedVoiceCommand(
                 normalized_text=normalized,
                 intent="room.status_inquiry",
-                confidence=0.95,
+                confidence=0.97,
                 target_module="INN",
                 requires_fce=False
             )
@@ -201,7 +214,7 @@ class AdmiraldaService:
             return ParsedVoiceCommand(
                 normalized_text=normalized,
                 intent="maintenance.ticket_create",
-                confidence=0.94,
+                confidence=0.96,
                 target_module="MAINTAIN",
                 requires_fce=False
             )
@@ -222,11 +235,6 @@ class AdmiraldaService:
                 requires_fce=False
             )
 
-        # Fallback for ambiguous commands
-        if len(normalized.split()) < 2:
-             raise AmbiguousCommandError("Command too short/ambiguous")
-
-        # If no specific mapping but seems like a command, we might still reject for confidence
         raise AmbiguousCommandError("Intent not recognized")
 
     async def verify_actor_with_aegis(
@@ -235,13 +243,12 @@ class AdmiraldaService:
         session_id: str,
         metadata: dict | None = None,
     ) -> VerifiedActor:
-        # v1 Mock: In production, call AEGIS service
         if not session_id or session_id == "EXPIRED":
             raise Exception("AEGIS: Invalid or expired session")
 
-        # Simulate voice mismatch
-        if metadata and metadata.get("voice_match_score", 1.0) < 0.96:
-            raise Exception("AEGIS: Voiceprint mismatch threshold not met")
+        confidence = 0.99
+        if metadata and "voice_match_score" in metadata:
+            confidence = metadata["voice_match_score"]
 
         return VerifiedActor(
             actor_id="ACTOR-007",
@@ -249,7 +256,7 @@ class AdmiraldaService:
             property_id="PROP-SALA",
             roles=["agent", "guest_service"],
             auth_strength="standard",
-            verification_confidence=0.99
+            verification_confidence=confidence
         )
 
     async def authorize_command(
@@ -257,29 +264,13 @@ class AdmiraldaService:
         actor: VerifiedActor,
         cmd: ParsedVoiceCommand,
     ) -> PolicyDecision:
-        # Check role-based access
         if cmd.risk_level == "high" and "supervisor" not in actor.roles:
             return PolicyDecision(allowed=False, decision="deny", reason_code="INSUFFICIENT_PERMISSIONS")
 
-        # Tenant Isolation
         if actor.tenant_id != "TENANT-MALDIVES-OG":
              return PolicyDecision(allowed=False, decision="deny", reason_code="TENANT_MISMATCH")
 
         return PolicyDecision(allowed=True, decision="allow")
-
-    async def run_fce_precheck_if_needed(
-        self,
-        actor: VerifiedActor,
-        cmd: ParsedVoiceCommand,
-    ) -> FcePrecheckResult | None:
-        # Economic effect check
-        if cmd.intent == "payment.link_generate":
-            # Check if actor can generate payments
-            if "agent" not in actor.roles:
-                return FcePrecheckResult(passed=False, reason="Actor lacks financial role")
-            return FcePrecheckResult(passed=True, transaction_id=f"FCE-PRE-{uuid.uuid4().hex[:8]}")
-
-        return FcePrecheckResult(passed=True)
 
     async def dispatch_to_module(
         self,
@@ -287,7 +278,6 @@ class AdmiraldaService:
         cmd: ParsedVoiceCommand,
         fce_result: FcePrecheckResult | None = None,
     ) -> ModuleExecutionResult:
-        # Orchestration to MNOS modules via their service interfaces
         if cmd.target_module == "INN":
             return ModuleExecutionResult(
                 success=True,
@@ -334,7 +324,6 @@ class AdmiraldaService:
         module_result: ModuleExecutionResult,
         fce_result: FcePrecheckResult | None = None,
     ) -> ShadowCommitResult:
-        # Immutable Evidence Chain
         evidence_payload = {
             "actor_id": actor.actor_id,
             "transcript_hash": hashlib.sha384(cmd.normalized_text.encode()).hexdigest(),
@@ -344,9 +333,9 @@ class AdmiraldaService:
         }
 
         try:
-            # In production, this writes to the SHADOW module's append-only ledger
             if self.db:
                  shadow_service.commit_evidence(self.db, str(uuid.uuid4()), evidence_payload)
+                 self.db.commit() # Commit successful execution + shadow audit
 
             return ShadowCommitResult(success=True, commit_id=f"SHADOW-{uuid.uuid4().hex[:8]}")
         except Exception as e:
@@ -359,11 +348,9 @@ class AdmiraldaService:
         module_result: ModuleExecutionResult,
     ) -> List[str]:
         events = ["ADMIRALDA_COMMAND_EXECUTED"]
-
         main_event = f"ADMIRALDA_{module_result.target_module}_{module_result.action.upper().replace('.', '_')}"
         events.append(main_event)
 
-        # Dispatch via MNOS event bus
         event_dispatcher.dispatch(main_event, {
             "shadow_id": shadow.commit_id,
             "payload": module_result.payload

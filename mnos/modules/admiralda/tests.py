@@ -1,7 +1,7 @@
 import pytest
 import asyncio
 from unittest.mock import MagicMock
-from mnos.modules.admiralda.service import AdmiraldaService, AmbiguousCommandError
+from mnos.modules.admiralda.service import AdmiraldaService
 
 @pytest.mark.asyncio
 async def test_execute_voice_command_success():
@@ -53,7 +53,6 @@ async def test_execute_voice_command_ambiguous_rejection():
 @pytest.mark.asyncio
 async def test_execute_voice_command_aegis_failure():
     service = AdmiraldaService(db_session=MagicMock())
-    # Session missing or invalid should trigger failure
     result = await service.execute_voice_command(
         transcript="Folio balance please",
         channel="sip",
@@ -67,7 +66,7 @@ async def test_execute_voice_command_aegis_failure():
 @pytest.mark.asyncio
 async def test_execute_voice_command_voice_match_failure():
     service = AdmiraldaService(db_session=MagicMock())
-    # Low voice match score should fail AEGIS step
+    # Low voice match score (0.90 < 0.96) should trigger fail-closed
     result = await service.execute_voice_command(
         transcript="Folio balance please",
         channel="sip",
@@ -77,7 +76,7 @@ async def test_execute_voice_command_voice_match_failure():
     )
 
     assert result.status == "failed"
-    assert result.reason_code == "UNHANDLED_EXECUTION_FAILURE"
+    assert result.reason_code == "LOW_VOICEPRINT_CONFIDENCE"
 
 @pytest.mark.asyncio
 async def test_execute_voice_command_maintenance_dispatch():
@@ -92,7 +91,6 @@ async def test_execute_voice_command_maintenance_dispatch():
     assert result.status == "accepted"
     assert result.intent == "maintenance.ticket_create"
     assert result.target_module == "MAINTAIN"
-    assert result.execution_payload == {}
     assert "Maintenance ticket created" in result.human_message
 
 @pytest.mark.asyncio

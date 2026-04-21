@@ -4,6 +4,10 @@ from sqlalchemy.orm import Session
 from mnos.modules.shadow import models
 
 def commit_evidence(db: Session, trace_id: str, payload: dict) -> models.Evidence:
+    """
+    Hardened Shadow Commitment Logic.
+    Removed db.commit() to allow participation in larger atomic transactions.
+    """
     # Get last evidence for chaining
     last = db.query(models.Evidence).order_by(models.Evidence.id.desc()).first()
     prev_hash = last.current_hash if last else "0" * 64
@@ -24,7 +28,7 @@ def commit_evidence(db: Session, trace_id: str, payload: dict) -> models.Evidenc
         current_hash=current_hash
     )
     db.add(evidence)
-    db.commit()
+    db.flush() # Ensure ID and constraints without committing
     db.refresh(evidence)
     return evidence
 

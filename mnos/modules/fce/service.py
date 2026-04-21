@@ -7,11 +7,24 @@ import json
 from mnos.modules.fce import models, tax_logic
 from mnos.modules.shadow import service as shadow_service
 
+def preauthorize(db: Session, actor_id: str, amount: Decimal | float) -> bool:
+    """
+    FCE Financial Gate: Check if the actor is authorized for the amount
+    and if fiscal rules permit the transaction.
+    """
+    if not isinstance(amount, Decimal):
+        amount = Decimal(str(amount))
+
+    # Placeholder for credit limit/policy check
+    if amount > Decimal("50000.00"):
+         return False
+
+    return True
+
 def open_folio(db: Session, reservation_id: str, trace_id: str) -> models.Folio:
     """
     Atomic Folio Creation with Idempotency.
     """
-    # 1. Idempotency Check
     existing = db.query(models.Folio).filter(models.Folio.trace_id == trace_id).first()
     if existing:
         return existing
@@ -24,7 +37,6 @@ def open_folio(db: Session, reservation_id: str, trace_id: str) -> models.Folio:
         )
         db.add(folio)
 
-        # 2. Outbox Event
         outbox = models.OutboxEvent(
             event_type="FOLIO_OPENED",
             payload={"reservation_id": reservation_id, "trace_id": trace_id},
@@ -43,7 +55,6 @@ def post_charge(db: Session, folio_id: int, charge_data: Dict, trace_id: str) ->
     """
     Atomic Charge Posting with MIRA Tax Logic and SHADOW write.
     """
-    # 1. Idempotency Check
     existing = db.query(models.FolioLine).filter(models.FolioLine.trace_id == trace_id).first()
     if existing:
         return existing
@@ -72,14 +83,13 @@ def post_charge(db: Session, folio_id: int, charge_data: Dict, trace_id: str) ->
         folio.total_amount += line.total_amount
         db.add(folio)
 
-        # 2. Atomic SHADOW Write (Simulation within transaction)
+        # Atomic SHADOW Write (Part of the transaction)
         shadow_service.commit_evidence(db, trace_id, {
             "action": "CHARGE_POSTED",
             "folio_id": folio_id,
-            "amount": float(line.total_amount)
+            "amount": str(line.total_amount)
         })
 
-        # 3. Outbox Event
         outbox = models.OutboxEvent(
             event_type="CHARGE_POSTED",
             payload={"folio_id": folio_id, "amount": str(line.total_amount)},
@@ -98,7 +108,6 @@ def process_payment(db: Session, folio_id: int, payment_data: Dict, trace_id: st
     """
     Atomic Payment Processing with Fail-Closed status.
     """
-    # 1. Idempotency Check
     existing = db.query(models.Payment).filter(models.Payment.trace_id == trace_id).first()
     if existing:
         return existing
@@ -109,7 +118,7 @@ def process_payment(db: Session, folio_id: int, payment_data: Dict, trace_id: st
             trace_id=trace_id,
             amount=Decimal(str(payment_data["amount"])),
             method=payment_data["method"],
-            status=models.PaymentStatus.PAID # Assuming gateway success for this flow
+            status=models.PaymentStatus.PAID
         )
         db.add(payment)
 
@@ -117,11 +126,10 @@ def process_payment(db: Session, folio_id: int, payment_data: Dict, trace_id: st
         folio.paid_amount += payment.amount
 
         if folio.paid_amount >= folio.total_amount:
-            folio.status = models.FolioStatus.FINALIZED # Using FINALIZED as PAID status for Folio
+            folio.status = models.FolioStatus.FINALIZED
 
         db.add(folio)
 
-        # 2. Ledger Entry
         ledger = models.LedgerEntry(
             trace_id=f"ledger-{trace_id}",
             account_code="CASH_CC",
@@ -130,7 +138,13 @@ def process_payment(db: Session, folio_id: int, payment_data: Dict, trace_id: st
         )
         db.add(ledger)
 
-        # 3. Outbox Event
+        # Shadow audit
+        shadow_service.commit_evidence(db, trace_id, {
+            "action": "PAYMENT_PROCESSED",
+            "folio_id": folio_id,
+            "amount": str(payment.amount)
+        })
+
         outbox = models.OutboxEvent(
             event_type="PAYMENT_RECEIVED",
             payload={"folio_id": folio_id, "amount": str(payment.amount)},
@@ -143,22 +157,26 @@ def process_payment(db: Session, folio_id: int, payment_data: Dict, trace_id: st
         return payment
     except Exception as e:
         db.rollback()
-        # In case of gateway success but ledger failure
-        return models.Payment(
-            folio_id=folio_id,
-            trace_id=trace_id,
-            amount=Decimal(str(payment_data["amount"])),
-            method=payment_data["method"],
-            status=models.PaymentStatus.PENDING_RECONCILIATION
-        )
+        # Persist a PENDING_RECONCILIATION record on failure if amount was potentially moved
+        error_trace = f"err-{trace_id}-{uuid.uuid4().hex[:4]}"
+        try:
+            recovery_payment = models.Payment(
+                folio_id=folio_id,
+                trace_id=trace_id,
+                amount=Decimal(str(payment_data["amount"])),
+                method=payment_data["method"],
+                status=models.PaymentStatus.PENDING_RECONCILIATION
+            )
+            db.add(recovery_payment)
+            db.commit()
+            return recovery_payment
+        except:
+            db.rollback()
+            raise e
 
 def flush_outbox(db: Session):
-    """
-    Simulated reliable event dispatcher.
-    """
     events = db.query(models.OutboxEvent).filter(models.OutboxEvent.processed == False).all()
     for event in events:
-        # In real life: publish to RabbitMQ/Redis
         event.processed = True
         db.add(event)
     db.commit()
