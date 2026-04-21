@@ -2,12 +2,15 @@ from typing import AsyncGenerator
 
 class TranscriptionEngine:
     """
-    SULTHANA Persona: Real-time Transcription Pipeline.
+    SULTHANA Persona: Multilingual Transcription.
     """
-    async def stream(self, audio_chunks: bytes) -> AsyncGenerator[str, None]:
-        # Mocking the progression of a call
-        yield "Hello, this is SALA Resort."
-        yield "I am calling to confirm my booking."
-        yield "Yes, please go ahead and lock it."
+    async def stream(self, audio_chunks: bytes, language: str = "en-US") -> AsyncGenerator[str, None]:
+        # Mocking the progression based on language
+        if language == "dv-MV":
+             yield "Assalaamu Alaikum."
+             yield "Mee SULTHANA."
+        else:
+             yield "Hello, this is SULTHANA."
+             yield "I am processing your request."
 
 transcription_engine = TranscriptionEngine()
