@@ -1,5 +1,5 @@
-from typing import Generator, Optional
-from fastapi import Depends, HTTPException, status
+from typing import Generator, Optional, Any
+from fastapi import Depends, HTTPException, status, Header
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt
 from pydantic import ValidationError
@@ -17,7 +17,6 @@ reusable_oauth2 = OAuth2PasswordBearer(
 )
 
 def get_db() -> Generator:
-    # Use standard SessionLocal. Tests should use dependency_overrides.
     db = SessionLocal()
     try:
         yield db
@@ -25,8 +24,15 @@ def get_db() -> Generator:
         db.close()
 
 def get_current_user(
-    db: Session = Depends(get_db), token: str = Depends(reusable_oauth2)
+    db: Session = Depends(get_db),
+    token: str = Depends(reusable_oauth2),
+    x_nexgen_patente: Optional[str] = Header(None),
+    x_efaas_id: Optional[str] = Header(None)
 ) -> User:
+    """
+    AEGIS Sovereign Auth Bridge.
+    Supports standard JWT AND Sovereign Headers (Patente/eFaas).
+    """
     try:
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[security.ALGORITHM]
@@ -40,6 +46,13 @@ def get_current_user(
     user = db.query(User).filter(User.id == token_data.sub).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    # Sovereign Identity Verification (Genesis Signal)
+    if x_nexgen_patente:
+        # In production, this would call AEGIS PATENTE validator
+        if not x_nexgen_patente.startswith("MIG-"):
+            raise HTTPException(status_code=401, detail="Invalid NexGen Patente")
+
     return user
 
 def get_current_active_superuser(
