@@ -12,6 +12,7 @@ from mnos.core.config import config
 from mnos.security import verify_signature_v2
 from mnos.database import get_mnos_db, EventLogModel, IdempotencyRegistryModel
 from sqlalchemy.orm import Session
+from typing import Optional
 
 router = APIRouter(prefix="/integration/v1")
 
@@ -22,6 +23,7 @@ async def ingest_production_event(
     x_idempotency_key: str = Header(...),
     x_signature: str = Header(...),
     x_timestamp: str = Header(...),
+    x_trace_id: Optional[str] = Header(None),
     db: Session = Depends(get_mnos_db)
 ):
     body_bytes = await request.body()
@@ -39,7 +41,7 @@ async def ingest_production_event(
         ):
             raise HTTPException(status_code=401, detail="INVALID_SIGNATURE")
 
-    # 2. Schema Validation (Manually since we read body_bytes first)
+    # 2. Schema Validation
     try:
         body_json = json.loads(body_bytes)
         event = ProductionEventSchema(**body_json)
@@ -61,16 +63,14 @@ async def ingest_production_event(
         raise HTTPException(status_code=401, detail="REPLAYED_REQUEST_ID")
 
     # 5. Processing
-    event_id = str(uuid.uuid4())
-    trace_id = str(uuid.uuid4())
+    event_id = body_json.get("event_id") or str(uuid.uuid4())
+    trace_id = x_trace_id or x_request_id
     timestamp_utc = datetime.now(timezone.utc).isoformat()
 
     event_dict = event.model_dump()
     event_dict.update({"event_id": event_id, "trace_id": trace_id, "timestamp": timestamp_utc})
 
-    # Service Execution
     policy_res = policy_evaluation_service(event_dict)
-
     if policy_res["decision"] == "DENY":
          raise HTTPException(status_code=403, detail="POLICY_REJECTION")
 
@@ -95,25 +95,11 @@ async def ingest_production_event(
     }
 
     # 6. Persistence
-    new_event = EventLogModel(
-        id=event_id,
-        payload=event_dict,
-        status="ingested"
-    )
+    new_event = EventLogModel(id=event_id, payload=event_dict, status="ingested")
     db.add(new_event)
-
-    new_idem = IdempotencyRegistryModel(
-        key=x_idempotency_key,
-        body_hash=body_hash,
-        response_json=response
-    )
+    new_idem = IdempotencyRegistryModel(key=x_idempotency_key, body_hash=body_hash, response_json=response)
     db.add(new_idem)
-
-    req_tracker = IdempotencyRegistryModel(
-        key=x_request_id,
-        body_hash="REQ_ID",
-        response_json={}
-    )
+    req_tracker = IdempotencyRegistryModel(key=x_request_id, body_hash="REQ_ID", response_json={})
     db.add(req_tracker)
 
     db.commit()

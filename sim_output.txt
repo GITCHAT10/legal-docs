@@ -1,0 +1,31 @@
+🚀 STARTING SXOS CLOSED ECONOMY SIMULATION...
+
+[1] Supply discovery for 'Industrial Generator'...
+Best Product: Industrial Generator Bulk at $49.54249359577775
+
+[2] Calculating Landed Cost...
+Landed Cost Breakdown: {'base_price': 49.54249359577775, 'shipping': 150.0, 'duty': 9.98, 'tgst_landed': 35.62, 'total_landed': 245.14}
+
+[3] Applying MOATS Tax logic...
+Tax Result: {'items': [{'name': 'Industrial Generator Bulk', 'base': 49.54249359577775, 'tax_type': 'GGST', 'rate': 0.08, 'tax_amount': 3.96}], 'total_tax': 3.96, 'mira_reportable': True}
+
+[4] Optimizing Logistics Route...
+Route Plan: {'route_id': 'rt_823ed9', 'origin': 'Male Port', 'destination': 'Furaveri Resort', 'load_kg': 500.0, 'return_trip_optimized': True, 'return_cargo': 'Waste Plastic / Recycling', 'efficiency_gain': 0.45}
+
+[5] Calculating Trip ESG Impact...
+ESG Report: {'co2_kg': 3.75, 'esg_score': 62.5, 'waste_tracking': 'ENABLED', 'circular_verified': True}
+
+[6] Processing Multi-Party Settlement...
+Settlement Status: COMPLETED
+Distributions: [{'party': 'supplier', 'amount': 159.341}, {'party': 'government', 'amount': 41.6738}, {'party': 'logistics', 'amount': 24.514}, {'party': 'system', 'amount': 36.770999999999994}]
+
+[7] Generating Investor Metrics...
+System Metrics: {'gmv': 245.14, 'margin': 36.77, 'take_rate': 0.15, 'investor_ready': True}
+
+[8] Emitting full economy events to MNOS...
+[SXOS EVENT] TRADE_EXECUTED emitted for resort_furaveri_001
+[SXOS EVENT] TAX_APPLIED emitted for resort_furaveri_001
+[SXOS EVENT] SETTLEMENT_COMPLETE emitted for resort_furaveri_001
+[SXOS EVENT] ESG_RECORDED emitted for resort_furaveri_001
+
+✅ SIMULATION COMPLETE: SXOS Economic System is operational.

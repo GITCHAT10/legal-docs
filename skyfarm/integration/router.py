@@ -48,7 +48,7 @@ def send_to_mnos(payload: IntegrationSend, x_correlation_id: Optional[str] = Hea
         correlation_id=correlation_id
     )
 
-    path = "/mnos/integration/v1/events"
+    path = "/integration/v1/events/production"
     endpoint = f"{MNOS_URL}{path}"
     method = "POST"
     timestamp = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')

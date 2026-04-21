@@ -32,7 +32,7 @@ def process_outbox(db: Session):
         event_id = entry.event_id
         try:
             method = "POST"
-            path = "/mnos/integration/v1/events"
+            path = "/integration/v1/events/production"
             timestamp = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
             request_id = str(uuid.uuid4())
             correlation_id = entry.payload_json.get("correlation_id") or str(uuid.uuid4())
