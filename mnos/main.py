@@ -3,6 +3,7 @@ from .security import verify_signature_v2, SECRET_KEY
 from .database import get_mnos_db, EventLogModel, IdempotencyRegistryModel
 from .events.publisher import EventPublisher
 from .shadow_service import ShadowService
+from .modules.xport.main import router as xport_router
 from sqlalchemy.orm import Session
 from typing import Optional
 import json
@@ -10,6 +11,7 @@ import hashlib
 from datetime import datetime
 
 app = FastAPI(title="MNOS Gateway Mock")
+app.include_router(xport_router)
 
 @app.post("/mnos/integration/v1/partners/register")
 async def register_partner(request: Request):
