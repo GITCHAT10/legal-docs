@@ -5,63 +5,66 @@ from mnos.modules.layout.generator import generate_layout
 from mnos.modules.finance.boq import calculate_boq_and_cost
 from mnos.modules.finance.sxos_adapter import release_sxos_wave_2
 from mnos.modules.interior.designer import scan_room_ar
+from mnos.modules.orchestrate.engine import generate_island_timeline
+from mnos.modules.orchestrate.asana_adapter import auto_generate_asana_board
 
-def run_demo(label, prompt_or_request):
+def run_demo(label, prompt_or_request, island="Male'"):
     print(f"\n--- {label} ---")
     if isinstance(prompt_or_request, str):
         print(f"Prompt: \"{prompt_or_request}\"")
         request = parse_prompt_to_request(prompt_or_request)
     else:
         request = prompt_or_request
-        print(f"Request: {request.plot.width}x{request.plot.depth}, {request.rooms_per_floor} rooms")
 
     # 1. Compliance
     compliance = check_maldives_compliance(request)
-    print(f"Compliance: {'✅ OK' if compliance['is_compliant'] else '❌ FAIL'}")
     if not compliance['is_compliant']:
+        print(f"Compliance: ❌ FAIL")
         return
 
-    # 2. Geometry + Interior Smart Wizard
+    # 2. Geometry + Interiors
     layout = generate_layout(request, compliance)
     if "error" in layout:
         print(f"Engine Error: ❌ {layout['error']}")
         return
-    print(f"Geometry Engine: ✅ Layout + Interiors Generated ({len(layout['interiors'])} furnished rooms)")
 
-    # Showcase one furnished room
-    if layout["interiors"]:
-        room = layout["interiors"][0]
-        print(f"\n[🏠 INTERIOR AI WIZARD - {room['room_id']}]")
-        print(f"Render Mode: {room['render_mode']}")
-        print(f"Automated Furniture (Smart Placement):")
-        for f in room['furniture']:
-            print(f" - {f['item']} ({f['brand']})")
-
-    # 3. BOQ (Structural + Interior)
+    # 3. BOQ
     boq = calculate_boq_and_cost(layout)
-    print(f"\n[📊 BOQ - CONSOLIDATED ESTIMATE]")
-    print(f"Furniture Cost: {boq['currency']} {boq['costs']['furniture']:,}")
-    print(f"Structural Steel: {boq['quantities']['steel_tons']} Tons")
-    print(f"Total Project Estimate: {boq['currency']} {boq['total_estimate']:,}")
 
-    # 4. SXOS WAVE 2 RELEASE
+    # 4. ORCHESTRATION (Asana-Style Timeline)
+    complexity = (request.floors * 0.5) + (request.rooms_per_floor * 0.1)
+    timeline = generate_island_timeline(island, complexity)
+
+    # 5. ASANA WORKFLOW ENGINE (NEW: Human coordination layer)
+    asana_board = auto_generate_asana_board(layout, boq)
+    print(f"\n[📋 ASANA BOARD - {asana_board['board_name']}]")
+    print(f"Human Layer Status: {asana_board['human_layer_status']}")
+    print("Actionable Tasks (Auto-generated from ABEOS):")
+    # Show first task from each phase
+    phases_shown = set()
+    for t in asana_board['tasks']:
+        if t['phase'] not in phases_shown:
+            print(f" - [{t['phase']}] {t['name']} (Assigned: {t['role']})")
+            phases_shown.add(t['phase'])
+
+    # 6. Consolidated Economics
+    print(f"\n[📊 CONSOLIDATED BOQ]")
+    print(f"Steel: {boq['quantities']['steel_tons']} Tons | Furniture: ${boq['costs']['furniture']:,}")
+    print(f"Total Estimate: {boq['currency']} {boq['total_estimate']:,}")
+
+    # 7. SXOS Trigger (Automated Supply Chain)
     print("\n[🚀 SXOS WAVE 2 TRIGGER]")
     sxos_result = release_sxos_wave_2(boq)
     print(f"Status: {sxos_result['status']}")
-    if "procurement" in sxos_result:
-        print(f"Action: {sxos_result['action']}")
 
 def main():
-    print("🏛️ NEXUS ASI — Sovereign Hybrid Construction & Interior Intelligence")
-    print("Hybrid Pipeline: BIM + Smart Wizard + SXOS")
+    print("🏛️ NEXUS ASI — Sovereign Construction & Orchestration Intelligence")
+    print("Hybrid Autonomous + Human Pipeline: ABEOS + ASANA")
 
     # Omadhoo Standard
-    run_demo("OMADHOO PRIME (Hybrid Structural/Interior)", "1500 sqft, 30x50, 3 floors, 5 hotel rooms each floor, terrace")
-
-    # Magicplan Scan Demo
-    print("\n--- 📱 MAGICPLAN AR SCAN SIMULATION ---")
-    scan_data = scan_room_ar("12x15 bedroom")
-    print(f"Scanned Room: {scan_data['width']}x{scan_data['depth']} {scan_data['type']}")
+    run_demo("OMADHOO PRIME (Design-to-Deployment)",
+             "1500 sqft, 30x50, 3 floors, 5 hotel rooms each floor, terrace",
+             island="Omadhoo")
 
 if __name__ == "__main__":
     main()
