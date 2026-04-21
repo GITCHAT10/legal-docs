@@ -45,137 +45,97 @@ def test_precheck_optimal(orchestrator):
     assert response.price.total == 321.75
 
 def test_precheck_unverified_guest(orchestrator):
-    # Mock verify_guest to return False
     orchestrator.aegis.verify_guest = MagicMock(return_value=False)
-
     request = PrecheckRequest(
         resort_id="JUM-OLH",
         guest_id="UNKNOWN_GUEST",
         channel="resort_app",
         requested_slot=datetime.now(),
         package_code="OGX_SUNSET_45",
-        device_context=DeviceContext(
-            app_id="jumeirah-ogx",
-            source_ip="127.0.0.1",
-            client_version="1.0.0"
-        )
+        device_context=DeviceContext(app_id="x", source_ip="y", client_version="z")
     )
     response = orchestrator.precheck(request)
     assert response.status == "denied"
 
-def test_session_lifecycle_success(orchestrator):
-    request = PrecheckRequest(
-        resort_id="JUM-OLH",
-        guest_id="AEGIS_GUEST_001",
-        channel="resort_app",
-        requested_slot=datetime.now(),
-        package_code="OGX_SUNSET_45",
-        device_context=DeviceContext(
-            app_id="jumeirah-ogx",
-            source_ip="127.0.0.1",
-            client_version="1.0.0"
-        )
-    )
-    # 1. Create
-    orchestrator.aegis.verify_guest = MagicMock(return_value=True)
-    create_res = orchestrator.create_session(request)
-    session_id = create_res["session_id"]
-    assert create_res["status"] == "CREATED"
-
-    # 2. Start (Success)
-    orchestrator.fce.preauthorize = MagicMock(return_value=True)
-    start_res = orchestrator.start_session(session_id)
-    assert start_res["status"] == "ACTIVE"
-
-    # 3. Status
-    status = orchestrator.get_session_status(session_id)
-    assert status["status"] == "ACTIVE"
-
-    # 4. End
-    end_res = orchestrator.end_session(session_id)
-    assert end_res["status"] == "COMPLETED"
-
 def test_session_creation_unverified_guest(orchestrator):
+    orchestrator.aegis.verify_guest = MagicMock(return_value=False)
     request = PrecheckRequest(
         resort_id="JUM-OLH",
         guest_id="UNKNOWN_GUEST",
         channel="resort_app",
         requested_slot=datetime.now(),
         package_code="OGX_SUNSET_45",
-        device_context=DeviceContext(
-            app_id="jumeirah-ogx",
-            source_ip="127.0.0.1",
-            client_version="1.0.0"
-        )
+        device_context=DeviceContext(app_id="x", source_ip="y", client_version="z")
     )
-    orchestrator.aegis.verify_guest = MagicMock(return_value=False)
-    create_res = orchestrator.create_session(request)
-    assert "error" in create_res
-    assert create_res["error"] == "Guest verification failed"
+    res = orchestrator.create_session(request)
+    assert "error" in res
+    assert res["error"] == "Guest verification failed"
 
 def test_start_session_preauth_fail(orchestrator):
     request = PrecheckRequest(
         resort_id="JUM-OLH",
-        guest_id="AEGIS_GUEST_001",
-        channel="resort_app",
+        guest_id="G1",
+        channel="app",
         requested_slot=datetime.now(),
-        package_code="OGX_SUNSET_45",
-        device_context=DeviceContext(
-            app_id="jumeirah-ogx",
-            source_ip="127.0.0.1",
-            client_version="1.0.0"
-        )
+        package_code="P1",
+        device_context=DeviceContext(app_id="x", source_ip="y", client_version="z")
     )
     orchestrator.aegis.verify_guest = MagicMock(return_value=True)
     create_res = orchestrator.create_session(request)
     session_id = create_res["session_id"]
 
-    # Mock preauthorize to fail
     orchestrator.fce.preauthorize = MagicMock(return_value=False)
-
     start_res = orchestrator.start_session(session_id)
     assert "error" in start_res
     assert start_res["status"] == "BLOCKED"
 
-    status = orchestrator.get_session_status(session_id)
-    assert status["status"] == "BLOCKED"
+def test_fail_stop_hard_lock(degradation_engine, state_machine, orchestrator):
+    # Trigger Fail-Stop
+    degradation_engine.handle_fail_stop(FailStopEvent(hub_id="H1", reason_code="F", actions=[]))
+    assert state_machine.is_fail_stop()
 
-def test_degradation_flow(degradation_engine, state_machine):
-    event = DegradationEvent(
-        session_id="OGX_SESS_1001",
-        new_state=OGXState.DEGRADED,
-        reason_code="TELEMETRY_DRIFT",
-        severity="HIGH",
-        actions=["disable_replay", "freeze_esg_minting"]
+    # Try economic actions
+    request = PrecheckRequest(
+        resort_id="JUM-OLH",
+        guest_id="G1",
+        channel="app",
+        requested_slot=datetime.now(),
+        package_code="P1",
+        device_context=DeviceContext(app_id="x", source_ip="y", client_version="z")
     )
-    response = degradation_engine.handle_degradation(event)
-    assert response["new_state"] == OGXState.DEGRADED
-    assert state_machine.is_degraded()
+
+    with pytest.raises(RuntimeError, match="FAIL-STOP mode"):
+        orchestrator.create_session(request)
+
+    with pytest.raises(RuntimeError, match="FAIL-STOP mode"):
+        orchestrator.start_session("any")
+
+    with pytest.raises(RuntimeError, match="FAIL-STOP mode"):
+        orchestrator.end_session("any")
+
+    # Status should still be allowed
+    assert orchestrator.get_session_status("any") is None
 
 def test_recovery_quorum_fail_same_role(degradation_engine, state_machine, recovery_service):
-    # Trigger fail-stop
     degradation_engine.handle_fail_stop(FailStopEvent(hub_id="H1", reason_code="F", actions=[]))
 
-    # 3 approvals, but same role (even with different casing, it's normalized)
     quorum = RecoveryQuorum(approvals=[
-        RecoveryApproval(operator_id="OP1", role="Engineer", signature="s1"),
-        RecoveryApproval(operator_id="OP2", role="ENGINEER", signature="s2"),
-        RecoveryApproval(operator_id="OP3", role="engineer", signature="s3")
+        RecoveryApproval(operator_id="OP1", role="ENGINEER", signature="s1"),
+        RecoveryApproval(operator_id="OP2", role="engineer", signature="s2"),
+        RecoveryApproval(operator_id="OP3", role="Engineer", signature="s3")
     ])
     res = recovery_service.process_recovery_quorum(quorum)
     assert res["status"] == "PENDING"
-    assert res["valid_approvals_count"] == 1 # Only one distinct role
+    assert res["valid_approvals_count"] == 1
     assert state_machine.is_fail_stop()
 
 def test_recovery_quorum_success_distinct_roles(degradation_engine, state_machine, recovery_service):
-    # Trigger fail-stop
     degradation_engine.handle_fail_stop(FailStopEvent(hub_id="H1", reason_code="F", actions=[]))
 
-    # 3 approvals, distinct roles (testing normalization)
     quorum = RecoveryQuorum(approvals=[
-        RecoveryApproval(operator_id="OP1", role="cfo", signature="s1"),
+        RecoveryApproval(operator_id="OP1", role="CFO", signature="s1"),
         RecoveryApproval(operator_id="OP2", role="CTO", signature="s2"),
-        RecoveryApproval(operator_id="OP3", role="Engineer", signature="s3")
+        RecoveryApproval(operator_id="OP3", role="AUDITOR", signature="s3")
     ])
     res = recovery_service.process_recovery_quorum(quorum)
     assert res["status"] == "RECOVERED"

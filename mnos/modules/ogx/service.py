@@ -21,6 +21,10 @@ class OGXSessionOrchestrator:
         self.terraform = TerraformAdapter()
         self.active_sessions: Dict[str, Dict] = {}
 
+    def _ensure_not_fail_stop(self):
+        if self.state_machine.is_fail_stop():
+            raise RuntimeError("CRITICAL: System in FAIL-STOP mode. All economic operations locked.")
+
     def precheck(self, request: PrecheckRequest) -> PrecheckResponse:
         # 1. verify guest with AEGIS (Fail-Closed)
         if not self.aegis.verify_guest(request.guest_id):
@@ -53,7 +57,9 @@ class OGXSessionOrchestrator:
         )
 
     def create_session(self, request: PrecheckRequest):
-        # Enforce guest verification during creation as well (Fail-Closed)
+        self._ensure_not_fail_stop()
+
+        # Enforce guest verification (Fail-Closed)
         if not self.aegis.verify_guest(request.guest_id):
             self.shadow.log_event("SESSION_CREATION_REJECTED", {"guest_id": request.guest_id, "reason": "UNVERIFIED_GUEST"})
             return {"error": "Guest verification failed"}
@@ -68,11 +74,10 @@ class OGXSessionOrchestrator:
         return {"session_id": session_id, "status": "CREATED"}
 
     def start_session(self, session_id: str):
+        self._ensure_not_fail_stop()
+
         if session_id not in self.active_sessions:
             return {"error": "Session not found"}
-
-        if self.state_machine.is_fail_stop():
-            return {"error": "System in FAIL-STOP mode"}
 
         session = self.active_sessions[session_id]
 
@@ -95,6 +100,8 @@ class OGXSessionOrchestrator:
         return {"session_id": session_id, "status": "ACTIVE"}
 
     def end_session(self, session_id: str):
+        self._ensure_not_fail_stop()
+
         if session_id not in self.active_sessions:
             return {"error": "Session not found"}
 
@@ -111,6 +118,7 @@ class OGXSessionOrchestrator:
         return {"session_id": session_id, "status": "COMPLETED"}
 
     def get_session_status(self, session_id: str):
+        # Allowed in FAIL-STOP for audit/visibility
         if session_id not in self.active_sessions:
             return None
         session = self.active_sessions[session_id]
@@ -123,6 +131,7 @@ class OGXSessionOrchestrator:
         }
 
     def ingest_telemetry(self, data: TelemetryIngest):
+        self._ensure_not_fail_stop()
         self.events.ingest_telemetry(data.model_dump())
         self.shadow.log_event("TELEMETRY", {"session_id": data.session_id, "sequence_hash": data.sequence_hash})
         return {"status": "received"}
@@ -136,6 +145,12 @@ class OGXDegradationEngine:
         self.terraform = TerraformAdapter()
 
     def handle_degradation(self, event: DegradationEvent):
+        # Block if already FAIL-STOP? No, allowing degradation processing is fine,
+        # but the state machine transition will be a no-op if logic was strictly hierarchical.
+        # Actually, if we are in FAIL-STOP, we stay there.
+        if self.state_machine.is_fail_stop():
+             return {"status": "ignored", "reason": "Already in FAIL-STOP"}
+
         self.state_machine.transition(OGXState.DEGRADED)
         self.events.record_state_change(event.session_id, "DEGRADED")
         self.shadow.log_event("DEGRADATION", event.model_dump())
@@ -181,13 +196,10 @@ class OGXServiceRecovery:
         role_approvals = {}     # role -> operator_id
 
         for approval in quorum.approvals:
-            # Normalize role to uppercase to match required_roles and specification
             role_upper = approval.role.upper()
             if role_upper in required_roles:
                 if self.aegis.verify_operator(approval.operator_id):
-                    # Enforce one approval per operator
                     if approval.operator_id not in operator_approvals:
-                        # Enforce one approval per role
                         if role_upper not in role_approvals:
                             operator_approvals[approval.operator_id] = approval
                             role_approvals[role_upper] = approval.operator_id
