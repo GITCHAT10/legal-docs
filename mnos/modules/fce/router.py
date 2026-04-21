@@ -1,9 +1,9 @@
-from typing import List, Any
+from typing import List, Any, Dict
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from mnos.core.api import deps
-from mnos.modules.fce import schemas, models, service
+from mnos.modules.fce import schemas, models, service, mira_export, edge_cases
 
 router = APIRouter()
 
@@ -54,6 +54,29 @@ def finalize_invoice(
     current_user: Any = Depends(deps.get_current_user),
 ) -> Any:
     return service.finalize_invoice(db, folio_id=folio_id, actor=current_user.email)
+
+@router.post("/lines/{line_id}/void", response_model=schemas.FolioLine)
+def void_charge(
+    line_id: int,
+    reason: str,
+    trace_id: str,
+    db: Session = Depends(deps.get_db),
+    current_user: Any = Depends(deps.get_current_user),
+) -> Any:
+    """Explicit Reversal Doctrine: Linked Counter-Entry."""
+    return edge_cases.void_charge(db, line_id=line_id, reason=reason, trace_id=trace_id, actor=current_user.email)
+
+@router.get("/invoices/{invoice_id}/mira-export", response_model=Dict[str, Any])
+def get_mira_export(
+    invoice_id: int,
+    db: Session = Depends(deps.get_db),
+    current_user: Any = Depends(deps.get_current_user),
+) -> Any:
+    """MIRAconnect Hash-Verified JSON Export."""
+    invoice = db.query(models.Invoice).filter(models.Invoice.id == invoice_id).first()
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    return mira_export.export_mira_json(invoice)
 
 @router.get("/summary", response_model=Any)
 def get_finance_summary(

@@ -4,7 +4,6 @@ from sqlalchemy.orm import Session
 
 from mnos.core.api import deps
 from mnos.modules.aqua.transfers import schemas, service, models
-from mnos.shared.sdk.mnos_client import mnos_client
 
 router = APIRouter()
 
@@ -33,30 +32,7 @@ def create_transfer_request(
     request_in: schemas.TransferRequestCreate,
     current_user: Any = Depends(deps.get_current_user),
 ) -> Any:
-    # Use SDK for transfer creation to ensure SHADOW locking and cross-module visibility
-    req_dict = request_in.dict()
-    trace_id = req_dict.pop("trace_id")
-    tenant_id = req_dict.pop("tenant_id", "default")
-
-    res = mnos_client.create_transfer_request(
-        transfer_data=req_dict,
-        trace_id=trace_id,
-        tenant_id=tenant_id,
-        actor=current_user.email
-    )
-
-    # Fetch and return the created object
-    db_obj = db.query(models.TransferRequest).filter(models.TransferRequest.id == res["id"]).first()
-    return db_obj
-
-@router.get("/", response_model=List[schemas.TransferRequest])
-def read_transfer_requests(
-    db: Session = Depends(deps.get_db),
-    skip: int = 0,
-    limit: int = 100,
-    current_user: Any = Depends(deps.get_current_user),
-) -> Any:
-    return db.query(models.TransferRequest).offset(skip).limit(limit).all()
+    return service.create_transfer_request(db, request_in=request_in, actor=current_user.email)
 
 @router.get("/{request_id}", response_model=schemas.TransferRequest)
 def read_transfer_request(
@@ -67,27 +43,4 @@ def read_transfer_request(
     db_obj = db.query(models.TransferRequest).filter(models.TransferRequest.id == request_id).first()
     if not db_obj:
         raise HTTPException(status_code=404, detail="Transfer request not found")
-    return db_obj
-
-@router.patch("/{request_id}", response_model=schemas.TransferRequest)
-def update_transfer(
-    request_id: int,
-    update_in: schemas.TransferRequestUpdate,
-    db: Session = Depends(deps.get_db),
-    current_user: Any = Depends(deps.get_current_user),
-) -> Any:
-    db_obj = db.query(models.TransferRequest).filter(models.TransferRequest.id == request_id).first()
-    if not db_obj:
-        raise HTTPException(status_code=404, detail="Transfer request not found")
-
-    if update_in.status:
-        service.update_transfer_status(db, request_id=request_id, status=update_in.status, actor=current_user.email)
-    if update_in.vehicle_id:
-        service.assign_vehicle(db, request_id=request_id, vehicle_id=update_in.vehicle_id, actor=current_user.email)
-    if update_in.eta:
-        db_obj.eta = update_in.eta
-        db.add(db_obj)
-        db.commit()
-
-    db.refresh(db_obj)
     return db_obj

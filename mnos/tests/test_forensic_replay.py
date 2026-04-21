@@ -64,7 +64,7 @@ def test_failure_scenario_broken_shadow():
 def test_forensic_replay_flow():
     headers = get_auth_header()
 
-    # 1. Perform multiple operations on an entity
+    # 1. Capture state transition for forensic audit
     folio_trace = f"TR-{uuid.uuid4().hex[:8]}"
     res = client.post("/api/v1/finance/folios", json={
         "external_reservation_id": "RES-REPLAY",

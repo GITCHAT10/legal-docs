@@ -4,7 +4,6 @@ from sqlalchemy.orm import Session
 
 from mnos.core.api import deps
 from mnos.modules.inn.reservations import schemas, service, models
-from mnos.shared.sdk.mnos_client import mnos_client
 
 router = APIRouter()
 
@@ -34,19 +33,7 @@ def create_reservation(
     reservation_in: schemas.ReservationCreate,
     current_user: Any = Depends(deps.get_current_user),
 ) -> Any:
-    # 1. Create Internal Reservation
-    res = service.create_reservation(db, reservation_in=reservation_in, actor=current_user.email)
-
-    # 2. Activate MNOS Bridge: Open Folio
-    # This ensures every booking has a financial life from T-0
-    mnos_client.open_folio(
-        reservation_id=str(res.id),
-        trace_id=f"FOLIO-{reservation_in.trace_id}",
-        tenant_id=res.tenant_id,
-        actor=current_user.email
-    )
-
-    return res
+    return service.create_reservation(db, reservation_in=reservation_in, actor=current_user.email)
 
 @router.get("/{reservation_id}", response_model=schemas.Reservation)
 def read_reservation(
@@ -55,18 +42,6 @@ def read_reservation(
     current_user: Any = Depends(deps.get_current_user),
 ) -> Any:
     reservation = db.query(models.Reservation).filter(models.Reservation.id == reservation_id).first()
-    if not reservation:
-        raise HTTPException(status_code=404, detail="Reservation not found")
-    return reservation
-
-@router.patch("/{reservation_id}/status", response_model=schemas.Reservation)
-def update_reservation_status(
-    reservation_id: int,
-    status_in: schemas.ReservationUpdate,
-    db: Session = Depends(deps.get_db),
-    current_user: Any = Depends(deps.get_current_user),
-) -> Any:
-    reservation = service.update_reservation_status(db, reservation_id=reservation_id, status=status_in.status, actor=current_user.email)
     if not reservation:
         raise HTTPException(status_code=404, detail="Reservation not found")
     return reservation

@@ -2,21 +2,9 @@ from typing import Dict, Optional, Any, List
 from sqlalchemy.orm import Session
 from mnos.modules.fce import models
 import uuid
-from datetime import datetime
-from .tax_logic import calculate_folio_charge
-from .services.finance_service import get_next_invoice_number, verify_period_open
+from datetime import datetime, date
+from .tax_logic import calculate_maldives_taxes
 from mnos.modules.shadow import service as shadow_service
-from mnos.core.events.dispatcher import event_dispatcher
-
-def _genesis_audit_lock(db: Session, trace_id: str, payload: Dict, actor: str):
-    """
-    Fail-Closed Audit Gate.
-    If SHADOW commit fails, the entire transaction MUST rollback.
-    """
-    try:
-        shadow_service.commit_evidence(db, trace_id, payload)
-    except Exception as e:
-        raise RuntimeError(f"Genesis Lock Triggered: SHADOW unreachable for trace {trace_id}. {str(e)}")
 
 def open_folio(db: Session, reservation_id: str, trace_id: str, tenant_id: str = "default", actor: str = "SYSTEM") -> models.Folio:
     try:
@@ -34,13 +22,14 @@ def open_folio(db: Session, reservation_id: str, trace_id: str, tenant_id: str =
         db.add(folio)
         db.flush()
 
-        _genesis_audit_lock(db, trace_id, {
+        # Shadow Evidence
+        shadow_service.commit_evidence(db, trace_id, {
             "actor": actor,
             "action": "OPEN_FOLIO",
             "entity_type": "FOLIO",
             "entity_id": folio.id,
             "after_state": {"reservation_id": reservation_id, "status": folio.status}
-        }, actor)
+        })
 
         db.commit()
         db.refresh(folio)
@@ -57,12 +46,17 @@ def post_charge(db: Session, folio_id: int, charge_data: Dict, trace_id: str, te
 
         folio = db.query(models.Folio).filter(models.Folio.id == folio_id).first()
         if not folio: raise ValueError(f"Folio {folio_id} not found")
-        if folio.status == models.FolioStatus.FINALIZED: raise ValueError("Folio finalized")
 
-        posting_date = charge_data.get("business_date", datetime.utcnow().date())
-        verify_period_open(db, posting_date)
+        biz_date = charge_data.get("business_date")
+        if isinstance(biz_date, str): biz_date = date.fromisoformat(biz_date)
+        elif not biz_date: biz_date = date.today()
 
-        taxes = calculate_folio_charge(db, folio_id, charge_data)
+        taxes = calculate_maldives_taxes(
+            charge_data["base_amount"],
+            biz_date,
+            charge_data.get("apply_green_tax", False),
+            charge_data.get("nights", 0)
+        )
 
         line = models.FolioLine(
             tenant_id=tenant_id,
@@ -82,17 +76,16 @@ def post_charge(db: Session, folio_id: int, charge_data: Dict, trace_id: str, te
         before_state = {"total_amount": folio.total_amount}
         folio.total_amount += line.amount
         db.add(folio)
-
         db.flush()
 
-        _genesis_audit_lock(db, trace_id, {
+        shadow_service.commit_evidence(db, trace_id, {
             "actor": actor,
             "action": "POST_CHARGE",
             "entity_type": "FOLIO_LINE",
             "entity_id": line.id,
             "before_state": before_state,
             "after_state": {"amount": line.amount, "folio_total": folio.total_amount}
-        }, actor)
+        })
 
         db.commit()
         db.refresh(line)
@@ -126,85 +119,18 @@ def post_transaction(db: Session, folio_id: int, payment_data: Dict, trace_id: s
         db.add(folio)
         db.flush()
 
-        _genesis_audit_lock(db, trace_id, {
+        shadow_service.commit_evidence(db, trace_id, {
             "actor": actor,
             "action": "POST_TRANSACTION",
             "entity_type": "FOLIO_TRANSACTION",
             "entity_id": transaction.id,
             "before_state": before_state,
             "after_state": {"amount": transaction.amount, "folio_paid": folio.paid_amount}
-        }, actor)
+        })
 
         db.commit()
         db.refresh(transaction)
         return transaction
-    except Exception:
-        db.rollback()
-        raise
-
-def finalize_invoice(db: Session, folio_id: int, tenant_id: str = "default", actor: str = "SYSTEM") -> models.Invoice:
-    try:
-        folio = db.query(models.Folio).filter(models.Folio.id == folio_id).first()
-        if not folio: raise ValueError("Folio not found")
-
-        if folio.status == models.FolioStatus.FINALIZED:
-            inv = db.query(models.Invoice).filter(models.Invoice.folio_id == folio_id).first()
-            if inv: return inv
-
-        invoice_no = get_next_invoice_number(db)
-        trace_id = f"FIN-{uuid.uuid4().hex[:8]}"
-
-        # MIRA-Compliant Line Item Summary
-        line_summary = []
-        for l in folio.lines:
-            if not l.is_reversed:
-                line_summary.append({
-                    "id": l.id,
-                    "desc": l.description,
-                    "base": l.base_amount,
-                    "sc": l.service_charge,
-                    "tgst": l.tgst,
-                    "green": l.green_tax,
-                    "total": l.amount
-                })
-
-        invoice = models.Invoice(
-            tenant_id=tenant_id,
-            trace_id=trace_id,
-            folio_id=folio_id,
-            invoice_number=invoice_no,
-            total_amount=folio.total_amount,
-            tax_summary={
-                "sc_total": sum(l.service_charge for l in folio.lines if not l.is_reversed),
-                "tgst_total": sum(l.tgst for l in folio.lines if not l.is_reversed),
-                "green_tax_total": sum(l.green_tax for l in folio.lines if not l.is_reversed),
-                "line_items": line_summary
-            },
-            created_by=actor
-        )
-        db.add(invoice)
-
-        before_status = folio.status
-        folio.status = models.FolioStatus.FINALIZED
-        db.add(folio)
-        db.flush()
-
-        _genesis_audit_lock(db, trace_id, {
-            "actor": actor,
-            "action": "FINALIZE_FOLIO",
-            "entity_type": "INVOICE",
-            "entity_id": invoice.id,
-            "before_state": {"status": before_status},
-            "after_state": {
-                "status": folio.status,
-                "invoice_number": invoice_no,
-                "mira_compliant": True
-            }
-        }, actor)
-
-        db.commit()
-        db.refresh(invoice)
-        return invoice
     except Exception:
         db.rollback()
         raise

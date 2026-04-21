@@ -58,6 +58,7 @@ class FolioLine(Base):
     amount = Column(Float, nullable=False) # Total authoritative amount
     description = Column(String)
     is_reversed = Column(Boolean, default=False)
+    reversal_of_entry_id = Column(Integer, ForeignKey("folioline.id")) # Explicit Reversal Doctrine
 
     folio = relationship("Folio", back_populates="lines")
     __table_args__ = (UniqueConstraint('tenant_id', 'trace_id', name='_folioline_tenant_trace_uc'),)
@@ -74,50 +75,7 @@ class FolioTransaction(Base):
     amount = Column(Float, nullable=False)
     method = Column(String, nullable=False) # cash, credit_card, etc
     status = Column(Enum(TransactionStatus), default=TransactionStatus.POSTED)
+    reversal_of_transaction_id = Column(Integer, ForeignKey("foliotransaction.id"))
 
     folio = relationship("Folio", back_populates="transactions")
     __table_args__ = (UniqueConstraint('tenant_id', 'trace_id', name='_foliotransaction_tenant_trace_uc'),)
-
-class Invoice(Base):
-    id = Column(Integer, primary_key=True, index=True)
-    tenant_id = Column(String, index=True, nullable=False, default="default")
-    trace_id = Column(String, index=True, nullable=False)
-    version = Column(Integer, default=1, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    created_by = Column(String, default="SYSTEM")
-
-    folio_id = Column(Integer, ForeignKey("folio.id"), nullable=False)
-    invoice_number = Column(String, unique=True, index=True)
-    total_amount = Column(Float, nullable=False)
-    tax_summary = Column(JSON)
-
-    __table_args__ = (UniqueConstraint('tenant_id', 'trace_id', name='_invoice_tenant_trace_uc'),)
-
-class LedgerEntry(Base):
-    id = Column(Integer, primary_key=True, index=True)
-    tenant_id = Column(String, index=True, nullable=False, default="default")
-    trace_id = Column(String, index=True, nullable=False)
-    version = Column(Integer, default=1, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    created_by = Column(String, default="SYSTEM")
-
-    account_code = Column(String, nullable=False)
-    debit = Column(Float, default=0.0)
-    credit = Column(Float, default=0.0)
-    description = Column(String)
-
-    __table_args__ = (UniqueConstraint('tenant_id', 'trace_id', name='_ledger_tenant_trace_uc'),)
-
-class ExchangeRateLock(Base):
-    id = Column(Integer, primary_key=True, index=True)
-    tenant_id = Column(String, index=True, nullable=False, default="default")
-    trace_id = Column(String, index=True, nullable=False)
-    version = Column(Integer, default=1, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    created_by = Column(String, default="SYSTEM")
-
-    currency = Column(String, nullable=False)
-    rate = Column(Float, nullable=False)
-    expires_at = Column(DateTime)
-
-    __table_args__ = (UniqueConstraint('tenant_id', 'trace_id', name='_exchangerate_tenant_trace_uc'),)
