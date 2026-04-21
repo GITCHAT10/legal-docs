@@ -26,14 +26,19 @@ async def precheck(request: PrecheckRequest):
 async def create_session(request: PrecheckRequest):
     if state_machine.is_fail_stop():
         raise HTTPException(status_code=403, detail="System in FAIL-STOP mode")
-    return orchestrator.create_session(request)
+
+    result = orchestrator.create_session(request)
+    if "error" in result:
+        raise HTTPException(status_code=403, detail=result["error"])
+    return result
 
 @router.post("/sessions/{id}/start")
 async def start_session(id: str):
     result = orchestrator.start_session(id)
     if "error" in result:
-        # Use 403 for business rule violations like FAIL-STOP
-        status_code = 403 if "FAIL-STOP" in result["error"] else 404
+        # Use 403 for business rule violations like FAIL-STOP or preauth failure
+        # In a real system, preauth failure might be 402, but 403 is safe for now
+        status_code = 403 if any(x in result["error"] for x in ["FAIL-STOP", "preauthorization"]) else 404
         raise HTTPException(status_code=status_code, detail=result["error"])
     return result
 

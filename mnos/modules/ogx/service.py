@@ -22,8 +22,16 @@ class OGXSessionOrchestrator:
         self.active_sessions: Dict[str, Dict] = {}
 
     def precheck(self, request: PrecheckRequest) -> PrecheckResponse:
-        # 1. verify guest with AEGIS
-        self.aegis.verify_guest(request.guest_id)
+        # 1. verify guest with AEGIS (Fail-Closed)
+        if not self.aegis.verify_guest(request.guest_id):
+            self.shadow.log_event("PRECHECK_REJECTED", {"guest_id": request.guest_id, "reason": "UNVERIFIED_GUEST"})
+            price_data = self.fce.get_quote(request.package_code)
+            return PrecheckResponse(
+                status="denied",
+                session_state=self.state_machine.current_state,
+                price=PriceInfo(**price_data),
+                constraints=SessionConstraints(dispense_allowed=False)
+            )
 
         # 2. get FCE quote
         price_data = self.fce.get_quote(request.package_code)
@@ -45,6 +53,11 @@ class OGXSessionOrchestrator:
         )
 
     def create_session(self, request: PrecheckRequest):
+        # Enforce guest verification during creation as well (Fail-Closed)
+        if not self.aegis.verify_guest(request.guest_id):
+            self.shadow.log_event("SESSION_CREATION_REJECTED", {"guest_id": request.guest_id, "reason": "UNVERIFIED_GUEST"})
+            return {"error": "Guest verification failed"}
+
         session_id = f"OGX_SESS_{uuid.uuid4().hex.upper()}"
         self.active_sessions[session_id] = {
             "status": "CREATED",
@@ -67,9 +80,12 @@ class OGXSessionOrchestrator:
         if not self.aegis.verify_device(session["device_id"]):
             return {"error": "Device trust validation failed"}
 
-        # FCE preauth
+        # FCE preauth (Fail-Closed)
         price_data = self.fce.get_quote(session["package_code"])
-        self.fce.preauthorize(session_id, price_data["total"])
+        if not self.fce.preauthorize(session_id, price_data["total"]):
+            session["status"] = "BLOCKED"
+            self.shadow.log_event("SESSION_START_FAILED", {"session_id": session_id, "reason": "PREAUTH_FAILED"})
+            return {"error": "Financial preauthorization failed", "status": "BLOCKED"}
 
         # SHADOW log
         self.shadow.log_event("SESSION_START", {"session_id": session_id, "guest_id": session["guest_id"]})
@@ -157,19 +173,35 @@ class OGXServiceRecovery:
     def process_recovery_quorum(self, quorum: RecoveryQuorum):
         """
         Implementation of 3-of-4 approval logic for FAIL-STOP recovery.
-        Enforces distinct operators and required roles.
+        Enforces distinct operators AND distinct roles.
+        Required roles: CFO, CTO, AUDITOR, ENGINEER.
         """
-        required_roles = {"CFO", "CTO", "Auditor", "Engineer"}
-        valid_approvals = {} # Using dict to ensure one approval per operator
+        required_roles = {"CFO", "CTO", "AUDITOR", "ENGINEER"}
+        operator_approvals = {} # operator_id -> approval
+        role_approvals = {}     # role -> operator_id
 
         for approval in quorum.approvals:
-            if approval.role in required_roles:
+            # Normalize role to uppercase to match required_roles and specification
+            role_upper = approval.role.upper()
+            if role_upper in required_roles:
                 if self.aegis.verify_operator(approval.operator_id):
-                    valid_approvals[approval.operator_id] = approval
+                    # Enforce one approval per operator
+                    if approval.operator_id not in operator_approvals:
+                        # Enforce one approval per role
+                        if role_upper not in role_approvals:
+                            operator_approvals[approval.operator_id] = approval
+                            role_approvals[role_upper] = approval.operator_id
 
-        if len(valid_approvals) >= 3:
+        if len(role_approvals) >= 3:
             self.state_machine.transition(OGXState.OPTIMAL)
-            self.shadow.notarize_recovery("SYSTEM", {"approvals": [a.model_dump() for a in valid_approvals.values()]})
+            audit_payload = {"approvals": [a.model_dump() for a in operator_approvals.values()]}
+            self.shadow.log_event("RECOVERY_APPROVED", audit_payload)
+            self.shadow.notarize_recovery("SYSTEM", audit_payload)
             return {"status": "RECOVERED", "new_state": OGXState.OPTIMAL}
 
-        return {"status": "PENDING", "valid_approvals_count": len(valid_approvals)}
+        self.shadow.log_event("RECOVERY_REJECTED", {
+            "reason": "INSUFFICIENT_QUORUM",
+            "distinct_roles_count": len(role_approvals),
+            "distinct_operators_count": len(operator_approvals)
+        })
+        return {"status": "PENDING", "valid_approvals_count": len(role_approvals)}
