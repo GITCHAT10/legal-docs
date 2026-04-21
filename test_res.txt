@@ -1,0 +1,23 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.0.3, pluggy-1.6.0 -- /home/jules/.pyenv/versions/3.12.13/bin/python3
+cachedir: .pytest_cache
+rootdir: /app
+plugins: asyncio-1.3.0, anyio-4.13.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 7 items
+
+mnos/modules/admiralda/tests.py::test_execute_voice_command_success PASSED [ 14%]
+mnos/modules/admiralda/tests.py::test_execute_voice_command_fce_flow PASSED [ 28%]
+mnos/modules/admiralda/tests.py::test_execute_voice_command_ambiguous_rejection PASSED [ 42%]
+mnos/modules/admiralda/tests.py::test_execute_voice_command_aegis_failure PASSED [ 57%]
+mnos/modules/admiralda/tests.py::test_execute_voice_command_voice_match_failure PASSED [ 71%]
+mnos/modules/admiralda/tests.py::test_execute_voice_command_maintenance_dispatch PASSED [ 85%]
+mnos/modules/admiralda/tests.py::test_execute_voice_command_shadow_failure_closed PASSED [100%]
+
+=============================== warnings summary ===============================
+mnos/core/db/base_class.py:4
+  /app/mnos/core/db/base_class.py:4: MovedIn20Warning: The ``as_declarative()`` function is now available as sqlalchemy.orm.as_declarative() (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    @as_declarative()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+========================= 7 passed, 1 warning in 0.76s =========================
