@@ -9,37 +9,36 @@ class ComplianceResult(BaseModel):
 
 def check_maldives_compliance(request: BuildingRequest) -> Dict[str, Any]:
     """
-    Checks the building request against Maldives Building Code (simulated).
-    Rules for inhabited islands (Male', etc.):
-    - Setbacks: Usually 5ft from road, 3ft from neighbors (simplified).
-    - Max Height: Depends on island, but generally floors x height.
-    - Stair Width: Min 3ft for residential, 4ft for public/hotels.
+    Checks the building request against Maldives Building Code and Geometric Feasibility.
     """
     violations = []
     recommendations = []
 
-    # 1. Setback check (simplified)
-    # 30x50 plot is tight.
+    # 1. Setbacks (Maldives standard for inhabited islands)
     usable_width = request.plot.width - 6  # 3ft each side
-    usable_depth = request.plot.depth - 8  # 5ft front, 3ft back
+    usable_depth = request.plot.depth - 8  # 5ft front (road), 3ft back
 
     if usable_width <= 0 or usable_depth <= 0:
-        violations.append("Plot size too small for mandatory setbacks.")
+        violations.append("Plot size too small for mandatory Maldives setbacks.")
 
-    # 2. Stair Width Check
+    # 2. Hard Geometric Guard (CEO BLOCKER 2)
+    # 10ft for stairs + 2ft minimum landing = 12ft
+    if usable_depth > 0 and usable_depth < 12:
+        violations.append("Impossible Geometry: Usable depth < 12ft (Minimum for stairs + landing).")
+
+    # 3. Room Comfort Thresholds
     if request.building_type == "hotel":
         recommendations.append("Ensure main staircase is at least 4ft wide per Maldives Fire Safety standards.")
 
-    # 3. Room Count / Ventilation
-    # 5 rooms on a 30x50 floor (approx 1500 sqft)
-    # Minus setbacks: 24x42 = 1008 sqft usable
-    # 1008 / 5 = 200 sqft per room (including corridor). This is tight.
-    if request.rooms_per_floor > 4 and request.plot.width * request.plot.depth < 2000:
-        recommendations.append("High room density detected. Verify natural ventilation for all bathrooms.")
+        # 30x50 plot with 5 rooms
+        if usable_depth > 0 and usable_width > 0:
+            usable_sqft = usable_width * usable_depth
+            if (usable_sqft / request.rooms_per_floor) < 150:
+                recommendations.append("Extremely high density. Room size may fall below hospitality standards.")
 
     return {
         "is_compliant": len(violations) == 0,
         "violations": violations,
         "recommendations": recommendations,
-        "usable_dimensions": {"width": usable_width, "depth": usable_depth}
+        "usable_dimensions": {"width": max(0, usable_width), "depth": max(0, usable_depth)}
     }
