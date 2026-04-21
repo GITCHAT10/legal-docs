@@ -10,6 +10,7 @@ from mnos.modules.ogx.state import OGXStateMachine
 from mnos.modules.ogx.adapters import (
     AegisAdapter, FceAdapter, EventsAdapter, ShadowAdapter, TerraformAdapter
 )
+from mnos.modules.ogx.exceptions import SecurityException, FinancialException, SovereignException
 
 class OGXSessionOrchestrator:
     def __init__(self, state_machine: OGXStateMachine):
@@ -23,19 +24,13 @@ class OGXSessionOrchestrator:
 
     def _ensure_not_fail_stop(self):
         if self.state_machine.is_fail_stop():
-            raise RuntimeError("CRITICAL: System in FAIL-STOP mode. All economic operations locked.")
+            raise SovereignException("CRITICAL: System in FAIL-STOP mode. All economic operations locked.")
 
     def precheck(self, request: PrecheckRequest) -> PrecheckResponse:
         # 1. verify guest with AEGIS (Fail-Closed)
         if not self.aegis.verify_guest(request.guest_id):
             self.shadow.log_event("PRECHECK_REJECTED", {"guest_id": request.guest_id, "reason": "UNVERIFIED_GUEST"})
-            price_data = self.fce.get_quote(request.package_code)
-            return PrecheckResponse(
-                status="denied",
-                session_state=self.state_machine.current_state,
-                price=PriceInfo(**price_data),
-                constraints=SessionConstraints(dispense_allowed=False)
-            )
+            raise SecurityException(f"Guest {request.guest_id} not verified by AEGIS")
 
         # 2. get FCE quote
         price_data = self.fce.get_quote(request.package_code)
@@ -62,7 +57,7 @@ class OGXSessionOrchestrator:
         # Enforce guest verification (Fail-Closed)
         if not self.aegis.verify_guest(request.guest_id):
             self.shadow.log_event("SESSION_CREATION_REJECTED", {"guest_id": request.guest_id, "reason": "UNVERIFIED_GUEST"})
-            return {"error": "Guest verification failed"}
+            raise SecurityException(f"Guest {request.guest_id} not verified by AEGIS")
 
         session_id = f"OGX_SESS_{uuid.uuid4().hex.upper()}"
         self.active_sessions[session_id] = {
@@ -83,14 +78,14 @@ class OGXSessionOrchestrator:
 
         # AEGIS verify device trust
         if not self.aegis.verify_device(session["device_id"]):
-            return {"error": "Device trust validation failed"}
+            raise SecurityException(f"Device trust validation failed for {session['device_id']}")
 
         # FCE preauth (Fail-Closed)
         price_data = self.fce.get_quote(session["package_code"])
         if not self.fce.preauthorize(session_id, price_data["total"]):
             session["status"] = "BLOCKED"
             self.shadow.log_event("SESSION_START_FAILED", {"session_id": session_id, "reason": "PREAUTH_FAILED"})
-            return {"error": "Financial preauthorization failed", "status": "BLOCKED"}
+            raise FinancialException(f"Pre-authorization failed for session {session_id}")
 
         # SHADOW log
         self.shadow.log_event("SESSION_START", {"session_id": session_id, "guest_id": session["guest_id"]})
@@ -145,9 +140,6 @@ class OGXDegradationEngine:
         self.terraform = TerraformAdapter()
 
     def handle_degradation(self, event: DegradationEvent):
-        # Block if already FAIL-STOP? No, allowing degradation processing is fine,
-        # but the state machine transition will be a no-op if logic was strictly hierarchical.
-        # Actually, if we are in FAIL-STOP, we stay there.
         if self.state_machine.is_fail_stop():
              return {"status": "ignored", "reason": "Already in FAIL-STOP"}
 

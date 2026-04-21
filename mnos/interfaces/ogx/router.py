@@ -8,6 +8,7 @@ from mnos.modules.ogx.service import (
     OGXSessionOrchestrator, OGXDegradationEngine, OGXServiceRecovery
 )
 from mnos.modules.ogx.state import OGXStateMachine
+from mnos.modules.ogx.exceptions import SecurityException, FinancialException, SovereignException
 
 router = APIRouter(prefix="/ogx/v1", tags=["OGX"])
 
@@ -20,34 +21,43 @@ recovery_service = OGXServiceRecovery(state_machine)
 
 @router.post("/sessions/precheck", response_model=PrecheckResponse)
 async def precheck(request: PrecheckRequest):
-    return orchestrator.precheck(request)
+    try:
+        return orchestrator.precheck(request)
+    except SecurityException as e:
+        raise HTTPException(status_code=403, detail=str(e))
 
 @router.post("/sessions", response_model=SessionCreateResponse)
 async def create_session(request: PrecheckRequest):
-    if state_machine.is_fail_stop():
-        raise HTTPException(status_code=403, detail="System in FAIL-STOP mode")
-
-    result = orchestrator.create_session(request)
-    if "error" in result:
-        raise HTTPException(status_code=403, detail=result["error"])
-    return result
+    try:
+        return orchestrator.create_session(request)
+    except SovereignException as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except SecurityException as e:
+        raise HTTPException(status_code=403, detail=str(e))
 
 @router.post("/sessions/{id}/start")
 async def start_session(id: str):
-    result = orchestrator.start_session(id)
-    if "error" in result:
-        # Use 403 for business rule violations like FAIL-STOP or preauth failure
-        # In a real system, preauth failure might be 402, but 403 is safe for now
-        status_code = 403 if any(x in result["error"] for x in ["FAIL-STOP", "preauthorization"]) else 404
-        raise HTTPException(status_code=status_code, detail=result["error"])
-    return result
+    try:
+        result = orchestrator.start_session(id)
+        if isinstance(result, dict) and "error" in result:
+            raise HTTPException(status_code=404, detail=result["error"])
+        return result
+    except SovereignException as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except SecurityException as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except FinancialException as e:
+        raise HTTPException(status_code=402, detail=str(e))
 
 @router.post("/sessions/{id}/end")
 async def end_session(id: str):
-    result = orchestrator.end_session(id)
-    if "error" in result:
-        raise HTTPException(status_code=404, detail=result["error"])
-    return result
+    try:
+        result = orchestrator.end_session(id)
+        if isinstance(result, dict) and "error" in result:
+            raise HTTPException(status_code=404, detail=result["error"])
+        return result
+    except SovereignException as e:
+        raise HTTPException(status_code=403, detail=str(e))
 
 @router.get("/sessions/{id}/status", response_model=SessionStatusResponse)
 async def get_session_status(id: str):
@@ -58,7 +68,10 @@ async def get_session_status(id: str):
 
 @router.post("/telemetry/ingest")
 async def ingest_telemetry(data: TelemetryIngest):
-    return orchestrator.ingest_telemetry(data)
+    try:
+        return orchestrator.ingest_telemetry(data)
+    except SovereignException as e:
+        raise HTTPException(status_code=403, detail=str(e))
 
 @router.post("/events/degradation")
 async def report_degradation(event: DegradationEvent):

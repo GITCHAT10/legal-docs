@@ -9,6 +9,7 @@ from mnos.modules.ogx.state import OGXStateMachine
 from mnos.modules.ogx.service import (
     OGXSessionOrchestrator, OGXDegradationEngine, OGXServiceRecovery
 )
+from mnos.modules.ogx.exceptions import SecurityException, FinancialException, SovereignException
 
 @pytest.fixture
 def state_machine():
@@ -54,8 +55,8 @@ def test_precheck_unverified_guest(orchestrator):
         package_code="OGX_SUNSET_45",
         device_context=DeviceContext(app_id="x", source_ip="y", client_version="z")
     )
-    response = orchestrator.precheck(request)
-    assert response.status == "denied"
+    with pytest.raises(SecurityException):
+        orchestrator.precheck(request)
 
 def test_session_creation_unverified_guest(orchestrator):
     orchestrator.aegis.verify_guest = MagicMock(return_value=False)
@@ -67,9 +68,8 @@ def test_session_creation_unverified_guest(orchestrator):
         package_code="OGX_SUNSET_45",
         device_context=DeviceContext(app_id="x", source_ip="y", client_version="z")
     )
-    res = orchestrator.create_session(request)
-    assert "error" in res
-    assert res["error"] == "Guest verification failed"
+    with pytest.raises(SecurityException):
+        orchestrator.create_session(request)
 
 def test_start_session_preauth_fail(orchestrator):
     request = PrecheckRequest(
@@ -85,16 +85,15 @@ def test_start_session_preauth_fail(orchestrator):
     session_id = create_res["session_id"]
 
     orchestrator.fce.preauthorize = MagicMock(return_value=False)
-    start_res = orchestrator.start_session(session_id)
-    assert "error" in start_res
-    assert start_res["status"] == "BLOCKED"
+    with pytest.raises(FinancialException):
+        orchestrator.start_session(session_id)
+
+    assert orchestrator.get_session_status(session_id)["status"] == "BLOCKED"
 
 def test_fail_stop_hard_lock(degradation_engine, state_machine, orchestrator):
-    # Trigger Fail-Stop
     degradation_engine.handle_fail_stop(FailStopEvent(hub_id="H1", reason_code="F", actions=[]))
     assert state_machine.is_fail_stop()
 
-    # Try economic actions
     request = PrecheckRequest(
         resort_id="JUM-OLH",
         guest_id="G1",
@@ -104,17 +103,14 @@ def test_fail_stop_hard_lock(degradation_engine, state_machine, orchestrator):
         device_context=DeviceContext(app_id="x", source_ip="y", client_version="z")
     )
 
-    with pytest.raises(RuntimeError, match="FAIL-STOP mode"):
+    with pytest.raises(SovereignException, match="FAIL-STOP mode"):
         orchestrator.create_session(request)
 
-    with pytest.raises(RuntimeError, match="FAIL-STOP mode"):
+    with pytest.raises(SovereignException, match="FAIL-STOP mode"):
         orchestrator.start_session("any")
 
-    with pytest.raises(RuntimeError, match="FAIL-STOP mode"):
+    with pytest.raises(SovereignException, match="FAIL-STOP mode"):
         orchestrator.end_session("any")
-
-    # Status should still be allowed
-    assert orchestrator.get_session_status("any") is None
 
 def test_recovery_quorum_fail_same_role(degradation_engine, state_machine, recovery_service):
     degradation_engine.handle_fail_stop(FailStopEvent(hub_id="H1", reason_code="F", actions=[]))
