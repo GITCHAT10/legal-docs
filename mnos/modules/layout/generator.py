@@ -1,11 +1,12 @@
 import math
 from typing import List, Dict, Any
 from mnos.core.ai.parser import BuildingRequest
+from mnos.modules.interior.designer import smart_wizard_populate_room
 
 def generate_layout(request: BuildingRequest, compliance: Dict[str, Any]) -> Dict[str, Any]:
     """
     Generates a 2D layout based on building request and compliance constraints.
-    Deterministic Geometry Engine v1.0
+    Deterministic Geometry Engine v1.0 + Interior AI Wizard
     """
     usable = compliance.get("usable_dimensions")
     if not usable or not compliance.get("is_compliant"):
@@ -28,7 +29,8 @@ def generate_layout(request: BuildingRequest, compliance: Dict[str, Any]) -> Dic
         "floors": request.floors,
         "footprint": usable,
         "components": [],
-        "structural": {}
+        "structural": {},
+        "interiors": []
     }
 
     layout["components"].append({
@@ -38,7 +40,6 @@ def generate_layout(request: BuildingRequest, compliance: Dict[str, Any]) -> Dic
     })
 
     # 2. Corridor Logic (Single-loaded for tight plots, double for wide)
-    # Double-loaded requires: 2*room + corridor
     is_double_loaded = width >= (2 * min_room_width + corridor_width)
 
     room_count = request.rooms_per_floor
@@ -61,7 +62,7 @@ def generate_layout(request: BuildingRequest, compliance: Dict[str, Any]) -> Dic
         "position": {"x": corridor_x, "y": stair_depth}
     })
 
-    # 3. Room Placement (Ceiling-based Row Calculation)
+    # 3. Room Placement + Interior Smart Wizard
     room_depth = corridor_depth / rows
 
     for i in range(room_count):
@@ -73,20 +74,26 @@ def generate_layout(request: BuildingRequest, compliance: Dict[str, Any]) -> Dic
             row = i
             x_pos = 0
 
+        room_id = f"Room_{i+1}"
+        room_dims = {"width": room_width, "depth": room_depth}
         layout["components"].append({
             "type": "room",
-            "id": f"Room_{i+1}",
-            "dimensions": {"width": room_width, "depth": room_depth},
+            "id": room_id,
+            "dimensions": room_dims,
             "position": {"x": x_pos, "y": stair_depth + (row * room_depth)}
         })
 
-    # 4. Structural Grid (Derived Columns)
+        # TRIGGER INTERIOR AI WIZARD
+        interior = smart_wizard_populate_room(room_id, "hotel_room", room_dims)
+        layout["interiors"].append(interior)
+
+    # 4. Structural Grid
     col_per_row = 3 if is_double_loaded else 2
     total_columns = (rows + 1) * col_per_row
 
     layout["structural"] = {
         "columns": total_columns,
-        "footings": total_columns, # Simplified grid
+        "footings": total_columns,
         "grid_rows": rows + 1,
         "grid_cols": col_per_row
     }
