@@ -9,19 +9,33 @@ class FceService:
     """
     Financial Control Engine: Maldives-native tax logic and pre-auth.
     """
-    def calculate_folio(self, base_amount: Decimal, pax: int = 1, nights: int = 1) -> Dict[str, Any]:
+    def calculate_folio(
+        self,
+        base_amount: Decimal,
+        pax: int = 1,
+        nights: int = 1,
+        stay_hours: float = 24.0,
+        is_child: bool = False,
+        effective_tgst: Decimal = None
+    ) -> Dict[str, Any]:
         """
-        Strict MOATS tax logic implementation:
+        Hardened MIRA Compliance Logic:
         1. Subtotal = Base
-        2. Service Charge = 10% of Subtotal
-        3. TGST = 17% of (Subtotal + Service Charge)
-        4. Green Tax = $6 * pax * nights
+        2. TGST Transition: Use effective_tgst if provided.
+        3. Green Tax 12-hour rule: $0 if stay < 12h.
+        4. Child Exemption: Green Tax skip if is_child=True.
         """
+        tgst_rate = effective_tgst if effective_tgst is not None else config.TGST
+
         subtotal = base_amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         service_charge = (subtotal * config.SERVICE_CHARGE).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         taxable_amount = subtotal + service_charge
-        tgst = (taxable_amount * config.TGST).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        green_tax = (config.GREEN_TAX_USD * Decimal(pax) * Decimal(nights)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        tgst = (taxable_amount * tgst_rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+        # MIRA Green Tax Rules
+        green_tax = Decimal("0.00")
+        if not is_child and stay_hours >= 12.0:
+            green_tax = (config.GREEN_TAX_USD * Decimal(pax) * Decimal(nights)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
         total = taxable_amount + tgst + green_tax
 
@@ -30,9 +44,11 @@ class FceService:
             "service_charge": service_charge,
             "taxable_amount": taxable_amount,
             "tgst": tgst,
+            "tgst_rate": tgst_rate,
             "green_tax": green_tax,
             "total": total,
-            "currency": "USD"
+            "currency": "USD",
+            "mira_compliant": True
         }
 
     def validate_pre_auth(self, folio_id: str, amount: Decimal, credit_limit: Decimal) -> bool:

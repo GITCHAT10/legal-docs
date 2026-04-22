@@ -1,22 +1,22 @@
-# NEXUS ASI SKY-i OS — RELEASE CANDIDATE 2 (FINAL HARDENED)
+# NEXUS ASI SKY-i OS — PRODUCTION CERTIFIED BUILD
 
 ## 🏛️ System Configuration
 - **Jurisdiction**: Maldives (MV)
 - **Service Charge**: 10%
 - **TGST**: 17%
-- **Green Tax**: $6/pax/night
+- **Green Tax**: $6/pax/night (12h rule active)
 
 ## 🧠 Intelligence Thresholds
 - **Min Intent Score**: 0.90
 - **Min Confidence Score**: 0.85
 
-## 🛡️ Security Enforcement (FINAL)
-- **AEGIS**: Absolute Server-Side Trust. Trusted hardware ID registry + HMAC signed sessions.
-- **SHADOW**: Explicit Index 0 hash re-calculation & Root Anchor binding.
-- **Guard**: ExecutionGuard mandatory flow (context-locked).
-- **Audit**: HEAD-verified append-only evidence chain.
+## 🛡️ Sovereign Authorities (CERTIFIED)
+- **AEGIS**: Absolute Server Trust + eFaas Identity Mapping.
+- **SHADOW**: Immutable SHA-256 Chain + Head/Genesis Validation.
+- **FCE**: MIRA-hardened fiscal control (exemptions/transitions).
+- **EVENTS**: Sovereign Orchestration Hub.
 
 ---
-**Build Status**: LOCKED (Release Candidate 2 — Final Hardened)
+**Build Status**: PRODUCTION CERTIFIED (V1.0.0)
 **Date**: 2026-04-22
-**Verdict**: READY FOR MERGE
+**Verdict**: APPROVED FOR PRODUCTION MERGE

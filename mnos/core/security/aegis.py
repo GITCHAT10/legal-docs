@@ -58,4 +58,17 @@ class AegisService:
         # Enforcement: The session is now strictly bound to the server's knowledge of this device.
         return True
 
+    def _map_efaas_identity(self, oidc_payload: Dict[str, Any]):
+        """Maps real eFaas OIDC fields to internal guest profile."""
+        mapping = {
+            "national_id": oidc_payload.get("id_number") or oidc_payload.get("sub"),
+            "full_name": oidc_payload.get("name"),
+            "birthdate": oidc_payload.get("birthdate"),
+            "verified": oidc_payload.get("email_verified", False)
+        }
+        if not mapping["national_id"]:
+            raise SecurityException("eFaas: Invalid OIDC payload. Missing unique identifier.")
+        print(f"[AEGIS] Identity Mapped: {mapping['full_name']} ({mapping['national_id']})")
+        return mapping
+
 aegis = AegisService()
