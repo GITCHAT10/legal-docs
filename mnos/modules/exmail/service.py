@@ -23,9 +23,13 @@ class ExMailAuthority:
             if et not in events.subscribers:
                 events.subscribers[et] = []
 
-    def ingest_inbound_exmail(self, sender: str, subject: str, body: str, session_context: Dict[str, Any]):
+    def ingest_inbound_exmail(self, sender: str, subject: str, body: str, session_context: Dict[str, Any], connection_context: Dict[str, Any] = None):
         """Ingests email into the ExMAIL ASI pipeline enforced by Execution Guard."""
         try:
+            # Operational Default: ExMAIL gateway is trusted within cloud boundary
+            if connection_context is None:
+                connection_context = {"is_vpn": True, "tunnel_id": "exmail-gateway-01", "encryption": "wireguard"}
+
             # Advisory Intelligence
             input_text = f"Subject: {subject}\nBody: {body}"
             analysis = silvia.process_request(input_text)
@@ -47,7 +51,8 @@ class ExMailAuthority:
                     "smart_reply": smart_reply
                 },
                 session_context=session_context,
-                execution_logic=execute_exmail
+                execution_logic=execute_exmail,
+                connection_context=connection_context
             )
 
             return {

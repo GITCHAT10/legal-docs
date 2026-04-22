@@ -21,6 +21,7 @@ class ShadowLedger:
             "entry_id": 0,
             "timestamp": "2026-04-22T08:00:00Z", # Hardened fixed timestamp for root hash consistency
             "event_type": "GENESIS",
+            "stage": "result",
             "payload": {},
             "previous_hash": config.GENESIS_PREVIOUS_HASH
         }

@@ -20,7 +20,10 @@ class EventBus:
         "network_routing_change",
         "system_shutdown",
         "data_purge",
-        "ucloud.store"
+        "ucloud.store",
+        "ut.booking.created",
+        "ut.cargo.dispatch",
+        "ut.payout.finalized"
     }
 
     def __init__(self):

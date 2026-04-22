@@ -10,7 +10,7 @@ def aegis_sign(payload):
 
 def test_identity_spoof_attack():
     """Simulate session payload tampering."""
-    payload = {"device_id": "nexus-001", "user": "admin", "biometric_verified": True}
+    payload = {"device_id": "nexus-admin-01", "user": "admin", "biometric_verified": True}
     sig = aegis_sign(payload)
 
     # Attack: Change device_id but keep signature
@@ -26,7 +26,7 @@ def test_ledger_tampering_fail_closed():
     shadow.chain = []
     shadow._seed_ledger()
 
-    ctx = {"device_id": "nexus-001", "biometric_verified": True}
+    ctx = {"device_id": "nexus-admin-01", "biometric_verified": True}
     ctx["signature"] = aegis_sign(ctx)
 
     conn = {"is_vpn": True, "tunnel_id": "tun-01", "encryption": "wireguard"}
@@ -47,7 +47,7 @@ def test_partial_transaction_failure_recovery():
     shadow._seed_ledger()
     initial_len = len(shadow.chain)
 
-    ctx = {"device_id": "nexus-001", "biometric_verified": True}
+    ctx = {"device_id": "nexus-admin-01", "biometric_verified": True}
     ctx["signature"] = aegis_sign(ctx)
 
     conn = {"is_vpn": True, "tunnel_id": "tun-01", "encryption": "wireguard"}

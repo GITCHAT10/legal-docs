@@ -8,13 +8,22 @@ class SecurityException(Exception):
     pass
 
 class TrustedDeviceRegistry:
-    """Server-side registry of authorized hardware IDs."""
+    """Server-side registry of authorized hardware IDs and their current status."""
     def __init__(self):
         # In production, this would be backed by a secure DB/HSM
-        self._trusted_devices: Set[str] = {"nexus-001", "nexus-admin-01"}
+        self._trusted_devices: Dict[str, Dict[str, Any]] = {
+            "nexus-001": {"status": "ACTIVE", "tier": 1},
+            "nexus-admin-01": {"status": "ACTIVE", "tier": 3},
+            "ut-dispatch-01": {"status": "ACTIVE", "tier": 2}
+        }
+
+    def get_device_info(self, device_id: str) -> Dict[str, Any]:
+        """Returns trusted server-side data for the device."""
+        return self._trusted_devices.get(device_id)
 
     def is_trusted(self, device_id: str) -> bool:
-        return device_id in self._trusted_devices
+        info = self.get_device_info(device_id)
+        return info is not None and info.get("status") == "ACTIVE"
 
 class AegisService:
     """
@@ -53,8 +62,12 @@ class AegisService:
         # CRITICAL: Do not trust any roles or permissions passed in session_context.
         # Only trust the verified device_id for server-side lookup.
         device_id = payload.get("device_id")
-        if not device_id or not self.registry.is_trusted(device_id):
-            raise SecurityException(f"AEGIS: Unauthorized device {device_id}. Rejecting untrusted hardware.")
+
+        # HARDENED: Validate device binding against trusted server-side registry.
+        # Do not rely solely on payload claims; verify active status and registration.
+        device_info = self.registry.get_device_info(device_id)
+        if not device_info or device_info.get("status") != "ACTIVE":
+            raise SecurityException(f"AEGIS: Unauthorized or inactive device {device_id}. Access denied.")
 
         # NEXTGEN ASI: Biometric / Device-bound Verification
         # In production, this verifies a cryptographically signed biometric token.

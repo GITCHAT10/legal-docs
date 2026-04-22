@@ -11,10 +11,11 @@ class UCloudVault:
     Ensures data is not exposed to public cloud by default.
     """
     def __init__(self):
-        # In-memory mock for demonstration
+        # In-memory mock for demonstration: Aligning with AEGIS device IDs
         self.permissions: Dict[str, List[str]] = {
-            "nexus-admin": ["read", "write", "delete"],
-            "nexus-guest": ["read"]
+            "nexus-admin-01": ["read", "write", "delete"],
+            "ut-dispatch-01": ["read", "write"],
+            "nexus-001": ["read"]
         }
 
     def check_permission(self, identity: str, action: str):
