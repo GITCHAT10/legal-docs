@@ -22,6 +22,7 @@
   ],
   "file_hashes": {
     "mnos/boot_check.py": "5d2483ca0fd037bfd8cdb61548e6160ea14d834ee0429a2519cdf1ea18872b95",
+    "mnos/api.py": "deb95575d86bc60578b00dfed0223a32c13c05ffc34de7c512751bd72ea5fda3",
     "mnos/validate_system.py": "4086277d02bfa530033bea5021d64015472c9f835ea328902ea67befd3bfb6c8",
     "mnos/stress_test.py": "1bc09bbf87b4869fd482c6c02ce8d6634baac28fcb7fbdf81c0fde449ff8ed67",
     "mnos/config.py": "7ce25918fe8d88b6879714640dac32d4a5b28745b2da15c08ccf2555bddfa98f",
@@ -42,6 +43,7 @@
     "mnos/shared/execution_guard.py": "cd8e13d8aec4130b4ff3e59581dfd6865d003b9ee90fac770c57e42a5b1d622c",
     "mnos/interfaces/sky_i/comms/whatsapp.py": "4a8ad7e5b493f526033892413cce796c8aa1d08e31f2da08f74a0dbb52dfa315",
     "mnos/tests/final_hard_verification.py": "f6add48266452c72d447650eb7c5458efe5dd2557e5ec31aca0f95a4e20cf05b",
-    "mnos/tests/rc2_hardening_suite.py": "db6f171ac44d58802a07c8fa21394355b82cc6d885063a784cf26cc9bd3e7cce"
+    "mnos/tests/rc2_hardening_suite.py": "db6f171ac44d58802a07c8fa21394355b82cc6d885063a784cf26cc9bd3e7cce",
+    "mnos/tests/test_api_contract.py": "90a2cda0255035c371f58cb84f43e330bc9e0bf22c81cdcc270cf442ef075425"
   }
 }

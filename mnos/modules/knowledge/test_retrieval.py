@@ -11,12 +11,8 @@ def test_retrieval():
 
     print(f"Query: '{query}'")
     print(f"Results: {results}")
-    if results and "Bookings" in results[0]["text"]:
-        print("Result: OK")
-        return True
-    else:
-        print("Result: FAILED")
-        return False
+    assert results and "Bookings" in results[0]["text"], f"Retrieval failed for {query}"
+    print("Result: OK")
 
 if __name__ == "__main__":
     test_retrieval()

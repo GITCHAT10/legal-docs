@@ -1,4 +1,4 @@
-# NEXUS ASI SKY-i OS — PRODUCTION CERTIFIED BUILD
+# NEXUS ASI SKY-i OS — PRODUCTION CERTIFIED BUILD (FINAL)
 
 ## 🏛️ System Configuration
 - **Jurisdiction**: Maldives (MV)
@@ -15,8 +15,9 @@
 - **SHADOW**: Immutable SHA-256 Chain + Head/Genesis Validation.
 - **FCE**: MIRA-hardened fiscal control (exemptions/transitions).
 - **EVENTS**: Sovereign Orchestration Hub.
+- **API**: Stable Authority Plane Contract exposed via `mnos/api.py`.
 
 ---
-**Build Status**: PRODUCTION CERTIFIED (V1.0.0)
+**Build Status**: PRODUCTION CERTIFIED (V1.0.0 — FINAL)
 **Date**: 2026-04-22
-**Verdict**: APPROVED FOR PRODUCTION MERGE
+**Verdict**: APPROVED FOR FINAL MERGE
