@@ -58,14 +58,18 @@ class ShadowLedger:
 
     def verify_integrity(self) -> bool:
         """Validates the entire hash chain."""
-        for i in range(1, len(self.chain)):
+        for i in range(len(self.chain)):
             current = self.chain[i]
-            previous = self.chain[i-1]
 
-            if current["previous_hash"] != previous["hash"]:
-                return False
+            # 1. Re-calculate hash of current block
             if current["hash"] != self._calculate_hash(current):
                 return False
+
+            # 2. Check link to previous
+            if i > 0:
+                previous = self.chain[i-1]
+                if current["previous_hash"] != previous["hash"]:
+                    return False
         return True
 
 shadow = ShadowLedger()
