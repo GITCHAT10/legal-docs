@@ -12,9 +12,10 @@ def pre_layout_validation(request: BuildingRequest, usable: Dict[str, float]):
     width = usable.get("width", 0)
     depth = usable.get("depth", 0)
 
-    # 1. Depth Guard (CEO PRIORITY 2)
-    if depth <= 10:
-        raise LayoutValidationError(f"Impossible Depth: Usable depth {depth}ft <= 10ft guard.")
+    # 1. Depth Guard (CEO DIRECTIVE v2)
+    # CEO Directive: Usable depth < 12ft (10ft stairs + 2ft landing) is IMPOSSIBLE
+    if depth < 12:
+        raise LayoutValidationError(f"Impossible Depth: Usable depth {depth}ft < 12ft guard.")
 
     # 2. Width Guard (Room + Corridor minimums)
     min_corridor = 4.0
