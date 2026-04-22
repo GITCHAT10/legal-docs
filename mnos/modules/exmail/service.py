@@ -1,15 +1,14 @@
 import uuid
 from datetime import datetime, timezone
 from typing import Dict, Any, List
-from mnos.core.security.aegis import aegis
 from mnos.core.ai.silvia import silvia
 from mnos.core.events.service import events
-from mnos.modules.shadow.service import shadow
+from mnos.shared.execution_guard import guard
 
 class ExMailAuthority:
     """
-    ExMAIL SOVEREIGN INTELLIGENCE: Adopted from Perfex Mailbox with Nextgen ASI.
-    Provides secure, audited, and intelligent email-to-workflow processing.
+    ExMAIL SOVEREIGN INTELLIGENCE (HARDENED).
+    Provides secure, audited, and intelligent email-to-workflow processing via Execution Guard.
     """
     def __init__(self):
         # Taxonomy for ExMAIL
@@ -25,47 +24,34 @@ class ExMailAuthority:
                 events.subscribers[et] = []
 
     def ingest_inbound_exmail(self, sender: str, subject: str, body: str, session_context: Dict[str, Any]):
-        """Ingests email into the ExMAIL ASI pipeline."""
-        trace_id = str(uuid.uuid4())
-
+        """Ingests email into the ExMAIL ASI pipeline enforced by Execution Guard."""
         try:
-            # 1. AEGIS Auth
-            aegis.validate_session(session_context)
-
-            # 2. SILVIA Intelligence
+            # Advisory Intelligence
             input_text = f"Subject: {subject}\nBody: {body}"
             analysis = silvia.process_request(input_text)
-
-            # 3. Nextgen ASI: Sentiment Analysis (Mocked)
             sentiment = self._analyze_sentiment(body)
-
-            # 4. Smart Reply (NEXUS Context)
             smart_reply = self._generate_smart_reply(analysis, sentiment)
 
-            # 5. SHADOW Commit
-            shadow.commit("exmail.received", {
-                "sender": sender,
-                "subject": subject,
-                "sentiment": sentiment,
-                "intent": analysis.get("intent"),
-                "trace_id": trace_id
-            })
+            def execute_exmail(payload):
+                self._handle_asi_conversions(payload["analysis"], payload["sender"], "INTERNAL")
+                return {"processed": True, "sentiment": payload["sentiment"]}
 
-            # 6. Emit Core Events
-            events.publish("exmail.received", {
-                "sender": sender,
-                "subject": subject,
-                "analysis": analysis,
-                "sentiment": sentiment,
-                "smart_reply": smart_reply
-            }, trace_id=trace_id)
-
-            # 7. Nextgen Bridge: Conversion to Task/Ticket
-            self._handle_asi_conversions(analysis, sender, trace_id)
+            # Execute via Sovereign Guard
+            guard.execute_sovereign_action(
+                action_type="exmail.received",
+                payload={
+                    "sender": sender,
+                    "subject": subject,
+                    "analysis": analysis,
+                    "sentiment": sentiment,
+                    "smart_reply": smart_reply
+                },
+                session_context=session_context,
+                execution_logic=execute_exmail
+            )
 
             return {
                 "status": "SUCCESS",
-                "trace_id": trace_id,
                 "sentiment": sentiment,
                 "smart_reply": smart_reply
             }

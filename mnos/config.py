@@ -26,4 +26,8 @@ class Config:
     # Jurisdictions
     DEFAULT_JURISDICTION = "MV"
 
+    # SHADOW Root Anchors
+    GENESIS_PREVIOUS_HASH = "0" * 64
+    CORE_V1_ROOT_HASH = "9ef540d41e470202789a3ef660a9c5fdf897280f61461fa756467a77284f0ba2"
+
 config = Config()

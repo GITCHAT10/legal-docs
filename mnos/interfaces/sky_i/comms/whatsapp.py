@@ -1,46 +1,43 @@
 import uuid
 from typing import Dict, Any
-from mnos.core.security.aegis import aegis
 from mnos.core.ai.silvia import silvia
-from mnos.core.events.service import events
+from mnos.shared.execution_guard import guard
 
 class WhatsAppInterface:
     """
-    SKY-i COMMS: WhatsApp Intelligence Loop integration.
+    SKY-i COMMS (HARDENED): WhatsApp Intelligence Loop.
     Route: SKY-i COMMS → AEGIS → SILVIA → JULES
+    Enforced via Execution Guard.
     """
     def receive_message(self, phone: str, text: str, session_context: Dict[str, Any]):
-        trace_id = str(uuid.uuid4())
-
         try:
-            # 1. AEGIS: Identity/Device binding
-            aegis.validate_session(session_context)
-
-            # 2. SILVIA: Intelligence & Retrieval
+            # Intelligence is advisory
             decision = silvia.process_request(text)
-
             if decision["status"] == "ESCALATE":
-                return self._escalate(trace_id, phone, decision["reason"])
+                return self._escalate("INTEL-ESC", phone, decision["reason"])
 
-            # 3. JULES (Workflows) via EVENTS
-            event_payload = events.publish(
-                event_type=f"nexus.{decision['intent']}",
-                data={
+            def execute_workflow(payload):
+                return {"response": payload["response"], "phone": payload["phone"]}
+
+            # Execute via Sovereign Guard
+            res = guard.execute_sovereign_action(
+                action_type=f"nexus.{decision['intent']}",
+                payload={
                     "phone": phone,
                     "text": text,
                     "response": decision["response"]
                 },
-                trace_id=trace_id
+                session_context=session_context,
+                execution_logic=execute_workflow
             )
 
             return {
                 "status": "PROCESSED",
-                "trace_id": trace_id,
-                "response": decision["response"]
+                "response": res["response"]
             }
 
         except Exception as e:
-            return self._escalate(trace_id, phone, str(e))
+            return self._escalate("GUARD-ESC", phone, str(e))
 
     def _escalate(self, trace_id: str, phone: str, reason: str):
         print(f"[COMMS] ESCALATION Trace: {trace_id} | Reason: {reason}")

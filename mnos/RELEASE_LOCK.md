@@ -1,4 +1,4 @@
-# NEXUS ASI SKY-i OS — RELEASE CANDIDATE 1
+# NEXUS ASI SKY-i OS — RELEASE CANDIDATE 2 (HARDENED)
 
 ## 🏛️ System Configuration
 - **Jurisdiction**: Maldives (MV)
@@ -10,17 +10,11 @@
 - **Min Intent Score**: 0.90
 - **Min Confidence Score**: 0.85
 
-## 🧾 Event Taxonomy
-- `nexus.booking.created`
-- `nexus.guest.arrival`
-- `nexus.payment.received`
-- `nexus.emergency.triggered`
-
-## 🛡️ Audit Schema
-- **Ledger Type**: SHA-256 Hash Chain
-- **Entry Pattern**: `previous_hash + event_type + payload + entry_id → current_hash`
-- **Integrity**: Immutable, Append-Only
+## 🛡️ Security Enforcement
+- **AEGIS**: Server-side TrustedDeviceRegistry + HMAC-signed sessions.
+- **SHADOW**: Genesis-validated SHA-256 chain + Root Anchor verification.
+- **Guard**: ExecutionGuard mandatory flow enforced.
 
 ---
-**Build Status**: LOCKED (Release Candidate 1)
+**Build Status**: LOCKED (Release Candidate 2)
 **Date**: 2026-04-22

@@ -24,10 +24,10 @@
     "mnos/boot_check.py": "5d2483ca0fd037bfd8cdb61548e6160ea14d834ee0429a2519cdf1ea18872b95",
     "mnos/validate_system.py": "4086277d02bfa530033bea5021d64015472c9f835ea328902ea67befd3bfb6c8",
     "mnos/stress_test.py": "1bc09bbf87b4869fd482c6c02ce8d6634baac28fcb7fbdf81c0fde449ff8ed67",
-    "mnos/config.py": "3c213eadc30c701fb117534cad0cfc91c805c42579f7e18ad589e2fe84e00eb6",
-    "mnos/final_sovereign_tests.py": "580dbf06d0e5c9eb4fbaeaaee9dfddefe88ef8d6327a4c53f81b4ed298b662a0",
-    "mnos/modules/shadow/service.py": "b2d77760c05e83a82d02d5ac81cbd69c3e992bd94bba6da46a802539955c9f70",
-    "mnos/modules/exmail/service.py": "6d0e366bd179ca6b0d4740b81447deb8a5797f0cd9616a39b80e9c0ae2e3c7b6",
+    "mnos/config.py": "7ce25918fe8d88b6879714640dac32d4a5b28745b2da15c08ccf2555bddfa98f",
+    "mnos/final_sovereign_tests.py": "16b7e70f2874150a8170e623247b06b10939516f8a404340f4a1a971e48472bf",
+    "mnos/modules/shadow/service.py": "316f6519b39a487dc7cd29af354d755c9d4870157a76731a53f78bd4affd2afd",
+    "mnos/modules/exmail/service.py": "f5f94b35457d86a6a064e91624b4fbce764f4bec1b570c28447cf7e0a674bf72",
     "mnos/modules/workflows/booking.py": "ef8efd65e6ec8f57b829ced6034907d62340713872a6637da7edc54d18ed7bae",
     "mnos/modules/workflows/emergency.py": "de3b6cf87446be9d40e1b9d2f411bb343d078b9aacf78cdd52966e49dcb1484d",
     "mnos/modules/workflows/guest_arrival.py": "51070faabf127a4080a07fe92e32b06dede502198a6a9f7732ddb8e78de92e54",
@@ -35,9 +35,11 @@
     "mnos/modules/knowledge/test_retrieval.py": "4f5a21051522d4f8d174b2382e74b92bdd391334387cf0fee1b682d17cf44502",
     "mnos/modules/knowledge/service.py": "fb901cbe69d5398863822bd9539b997cae83839058edb2d618bd1a998058cb72",
     "mnos/core/events/service.py": "438fd3b37afcb06af051ebcc914bd1151c570631e8d4b937068dfd290586b85f",
-    "mnos/core/security/aegis.py": "6b1931de67df4f41d98a0afcd5ab8188883f9c17e91a206f7969d9c997c04000",
+    "mnos/core/security/aegis.py": "e86ef7c770b79cca1db1960adfde9b7329412604827e24db6e7dd933b6c45b13",
     "mnos/core/resilience/backup.py": "e76380aff3bb1b5fd06490fdce8eb35234ead73684b829b6db6f0cc372a90a23",
     "mnos/core/ai/silvia.py": "95cc7378cba3f166160590f71b63f546eab8f65fff814d274c0f4b2fba7e5a0b",
-    "mnos/interfaces/sky_i/comms/whatsapp.py": "f097bf7f7d49dddef78d5d48a6f71ed56f9d0f13a9c65ee1db7beb2c923158cb"
+    "mnos/shared/execution_guard.py": "cd8e13d8aec4130b4ff3e59581dfd6865d003b9ee90fac770c57e42a5b1d622c",
+    "mnos/interfaces/sky_i/comms/whatsapp.py": "4a8ad7e5b493f526033892413cce796c8aa1d08e31f2da08f74a0dbb52dfa315",
+    "mnos/tests/rc2_hardening_suite.py": "db6f171ac44d58802a07c8fa21394355b82cc6d885063a784cf26cc9bd3e7cce"
   }
 }
