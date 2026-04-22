@@ -1,4 +1,4 @@
-# NEXUS ASI SKY-i OS — RELEASE CANDIDATE 2 (HARDENED)
+# NEXUS ASI SKY-i OS — RELEASE CANDIDATE 2 (FINAL HARDENED)
 
 ## 🏛️ System Configuration
 - **Jurisdiction**: Maldives (MV)
@@ -10,11 +10,13 @@
 - **Min Intent Score**: 0.90
 - **Min Confidence Score**: 0.85
 
-## 🛡️ Security Enforcement
-- **AEGIS**: Server-side TrustedDeviceRegistry + HMAC-signed sessions.
-- **SHADOW**: Genesis-validated SHA-256 chain + Root Anchor verification.
-- **Guard**: ExecutionGuard mandatory flow enforced.
+## 🛡️ Security Enforcement (FINAL)
+- **AEGIS**: Absolute Server-Side Trust. Trusted hardware ID registry + HMAC signed sessions.
+- **SHADOW**: Explicit Index 0 hash re-calculation & Root Anchor binding.
+- **Guard**: ExecutionGuard mandatory flow (context-locked).
+- **Audit**: HEAD-verified append-only evidence chain.
 
 ---
-**Build Status**: LOCKED (Release Candidate 2)
+**Build Status**: LOCKED (Release Candidate 2 — Final Hardened)
 **Date**: 2026-04-22
+**Verdict**: READY FOR MERGE

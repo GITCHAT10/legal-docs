@@ -26,11 +26,12 @@ class ShadowLedger:
         }
         genesis_block["hash"] = self._calculate_hash(genesis_block)
 
-        # Validate against Hardened Root Anchor
+        # MANDATORY: Validate against Hardened Root Anchor
         if genesis_block["hash"] != config.CORE_V1_ROOT_HASH:
-             print(f"!!! ROOT ANCHOR MISMATCH: Got {genesis_block['hash']}, expected {config.CORE_V1_ROOT_HASH} !!!")
-             # In a real environment, we'd halt, but for RC2 we allow the seed if in 'INIT' mode
-             # For production build, this is non-negotiable.
+             print(f"!!! SHADOW ROOT ANCHOR MISMATCH !!!")
+             print(f"Got: {genesis_block['hash']}")
+             print(f"Expected: {config.CORE_V1_ROOT_HASH}")
+             raise RuntimeError("SHADOW: Genesis block validation failed. Root anchor mismatch.")
 
         self.chain.append(genesis_block)
 

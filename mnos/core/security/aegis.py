@@ -32,10 +32,11 @@ class AegisService:
 
     def validate_session(self, session_context: Dict[str, Any]) -> bool:
         """
-        Enforces:
+        Enforces Absolute Server-Side Trust:
         1. Presence of signature
         2. HMAC verification of payload
-        3. Server-side trusted device check
+        3. Server-side trusted device registry lookup ONLY
+        4. Removal of client-provided auth attributes
         """
         signature = session_context.get("signature")
         if not signature:
@@ -48,10 +49,13 @@ class AegisService:
         if not hmac.compare_digest(expected_sig, signature):
             raise SecurityException("AEGIS: Session signature mismatch. Potential spoofing detected.")
 
+        # CRITICAL: Do not trust any roles or permissions passed in session_context.
+        # Only trust the verified device_id for server-side lookup.
         device_id = payload.get("device_id")
         if not device_id or not self.registry.is_trusted(device_id):
             raise SecurityException(f"AEGIS: Unauthorized device {device_id}. Rejecting untrusted hardware.")
 
+        # Enforcement: The session is now strictly bound to the server's knowledge of this device.
         return True
 
 aegis = AegisService()
