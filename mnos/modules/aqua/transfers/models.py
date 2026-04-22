@@ -39,6 +39,7 @@ class TransferRequest(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     created_by = Column(String, default="SYSTEM")
 
+    guest_id = Column(Integer, ForeignKey("guest.id"), index=True) # Global Guest Identity
     external_reservation_id = Column(String, index=True, nullable=False)
     type = Column(Enum(TransferType), nullable=False)
     status = Column(Enum(TransferStatus), default=TransferStatus.PENDING)
@@ -48,6 +49,7 @@ class TransferRequest(Base):
     destination = Column(String)
     vehicle_id = Column(Integer, ForeignKey("vehicle.id"))
 
+    guest = relationship("Guest")
     vehicle = relationship("Vehicle")
     __table_args__ = (UniqueConstraint('tenant_id', 'trace_id', name='_transfer_tenant_trace_uc'),)
 

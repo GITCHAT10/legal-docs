@@ -2,19 +2,19 @@ from typing import List, Optional, Any
 from sqlalchemy.orm import Session
 from mnos.modules.inn.reservations import models, schemas
 from mnos.core.events.dispatcher import event_dispatcher
-from mnos.modules.shadow import service as shadow_service
+from mnos.core.shadow import service as shadow_service
 import uuid
 from datetime import date
 
-def create_reservation(db: Session, *, reservation_in: schemas.ReservationCreate, actor: str = "SYSTEM") -> models.Reservation:
+def create_reservation(db: Session, *, reservation_in: schemas.ReservationCreate, actor: str = 'SYSTEM') -> models.Reservation:
     try:
-        if not reservation_in.trace_id: raise ValueError("trace_id required")
+        if not reservation_in.trace_id: raise ValueError('trace_id required')
 
         # Validate capacity
         for stay_in in reservation_in.stays:
             room = db.query(models.Room).filter(models.Room.id == stay_in.room_id).first()
             if room and (reservation_in.adults + reservation_in.children) > room.capacity:
-                raise ValueError(f"Room {room.room_number} capacity exceeded")
+                raise ValueError(f'Room {room.room_number} capacity exceeded')
 
         # 1. Create Reservation record
         db_reservation = models.Reservation(
@@ -34,7 +34,7 @@ def create_reservation(db: Session, *, reservation_in: schemas.ReservationCreate
         for stay_in in reservation_in.stays:
             db_stay = models.Stay(
                 tenant_id=reservation_in.tenant_id,
-                trace_id=f"STAY-{uuid.uuid4().hex[:8]}",
+                trace_id=f'STAY-{uuid.uuid4().hex[:8]}',
                 reservation_id=db_reservation.id,
                 room_id=stay_in.room_id,
                 check_in_date=stay_in.check_in_date,
@@ -46,24 +46,25 @@ def create_reservation(db: Session, *, reservation_in: schemas.ReservationCreate
         db.flush()
 
         shadow_service.commit_evidence(db, reservation_in.trace_id, {
-            "actor": actor, "action": "CREATE_RESERVATION", "entity_type": "RESERVATION", "entity_id": db_reservation.id,
-            "after_state": {"guest_id": db_reservation.guest_id, "status": db_reservation.status}
+            'actor': actor, 'action': 'CREATE_RESERVATION', 'entity_type': 'RESERVATION', 'entity_id': db_reservation.id,
+            'after_state': {'guest_id': db_reservation.guest_id, 'status': db_reservation.status}
         })
 
         db.commit()
         db.refresh(db_reservation)
-        event_dispatcher.dispatch("reservation_created", {"reservation_id": db_reservation.id})
+        # Sovereign Event Bridge: Auto-trigger FCE Folio creation
+        event_dispatcher.dispatch('reservation_created', {'reservation_id': db_reservation.id})
         return db_reservation
     except Exception:
         db.rollback()
         raise
 
-def change_room(db: Session, reservation_id: int, old_room_id: int, new_room_id: int, actor: str = "SYSTEM") -> models.Stay:
+def change_room(db: Session, reservation_id: int, old_room_id: int, new_room_id: int, actor: str = 'SYSTEM') -> models.Stay:
     try:
         res = db.query(models.Reservation).filter(models.Reservation.id == reservation_id).first()
-        if not res: raise ValueError("Reservation not found")
+        if not res: raise ValueError('Reservation not found')
 
-        trace_id = f"ROOM-CHANGE-{uuid.uuid4().hex[:8]}"
+        trace_id = f'ROOM-CHANGE-{uuid.uuid4().hex[:8]}'
 
         # 1. Close old stay
         old_stay = db.query(models.Stay).filter(
@@ -79,7 +80,7 @@ def change_room(db: Session, reservation_id: int, old_room_id: int, new_room_id:
         # 2. Create new stay
         new_stay = models.Stay(
             tenant_id=res.tenant_id,
-            trace_id=f"STAY-{uuid.uuid4().hex[:8]}",
+            trace_id=f'STAY-{uuid.uuid4().hex[:8]}',
             reservation_id=reservation_id,
             room_id=new_room_id,
             check_in_date=date.today(),
@@ -94,9 +95,9 @@ def change_room(db: Session, reservation_id: int, old_room_id: int, new_room_id:
         update_room_status(db, new_room_id, models.RoomStatus.OCCUPIED, actor)
 
         shadow_service.commit_evidence(db, trace_id, {
-            "actor": actor, "action": "ROOM_CHANGE", "entity_type": "RESERVATION", "entity_id": reservation_id,
-            "before_state": {"room_id": old_room_id},
-            "after_state": {"room_id": new_room_id}
+            'actor': actor, 'action': 'ROOM_CHANGE', 'entity_type': 'RESERVATION', 'entity_id': reservation_id,
+            'before_state': {'room_id': old_room_id},
+            'after_state': {'room_id': new_room_id}
         })
 
         db.commit()
@@ -105,13 +106,13 @@ def change_room(db: Session, reservation_id: int, old_room_id: int, new_room_id:
         db.rollback()
         raise
 
-def update_reservation_status(db: Session, reservation_id: int, status: models.ReservationStatus, actor: str = "SYSTEM") -> Optional[models.Reservation]:
+def update_reservation_status(db: Session, reservation_id: int, status: models.ReservationStatus, actor: str = 'SYSTEM') -> Optional[models.Reservation]:
     try:
         db_reservation = db.query(models.Reservation).filter(models.Reservation.id == reservation_id).first()
         if not db_reservation: return None
 
-        trace_id = f"RES-STATUS-{uuid.uuid4().hex[:8]}"
-        before_state = {"status": db_reservation.status}
+        trace_id = f'RES-STATUS-{uuid.uuid4().hex[:8]}'
+        before_state = {'status': db_reservation.status}
 
         db_reservation.status = status
 
@@ -121,8 +122,8 @@ def update_reservation_status(db: Session, reservation_id: int, status: models.R
 
         db.flush()
         shadow_service.commit_evidence(db, trace_id, {
-            "actor": actor, "action": "UPDATE_RESERVATION_STATUS", "entity_type": "RESERVATION", "entity_id": db_reservation.id,
-            "before_state": before_state, "after_state": {"status": status}
+            'actor': actor, 'action': 'UPDATE_RESERVATION_STATUS', 'entity_type': 'RESERVATION', 'entity_id': db_reservation.id,
+            'before_state': before_state, 'after_state': {'status': status}
         })
 
         db.commit()
@@ -132,17 +133,17 @@ def update_reservation_status(db: Session, reservation_id: int, status: models.R
         db.rollback()
         raise
 
-def update_room_status(db: Session, room_id: int, status: models.RoomStatus, actor: str = "SYSTEM") -> Optional[models.Room]:
+def update_room_status(db: Session, room_id: int, status: models.RoomStatus, actor: str = 'SYSTEM') -> Optional[models.Room]:
     try:
         db_room = db.query(models.Room).filter(models.Room.id == room_id).first()
         if not db_room: return None
-        trace_id = f"ROOM-STATUS-{uuid.uuid4().hex[:8]}"
-        before_state = {"status": db_room.status}
+        trace_id = f'ROOM-STATUS-{uuid.uuid4().hex[:8]}'
+        before_state = {'status': db_room.status}
         db_room.status = status
         db.flush()
         shadow_service.commit_evidence(db, trace_id, {
-            "actor": actor, "action": "UPDATE_ROOM_STATUS", "entity_type": "ROOM", "entity_id": db_room.id,
-            "before_state": before_state, "after_state": {"status": status}
+            'actor': actor, 'action': 'UPDATE_ROOM_STATUS', 'entity_type': 'ROOM', 'entity_id': db_room.id,
+            'before_state': before_state, 'after_state': {'status': status}
         })
         db.commit()
         db.refresh(db_room)
@@ -151,7 +152,55 @@ def update_room_status(db: Session, room_id: int, status: models.RoomStatus, act
         db.rollback()
         raise
 
-def create_room(db: Session, *, room_in: schemas.RoomCreate, actor: str = "SYSTEM") -> models.Room:
+def trigger_protection_mode(db: Session, reservation_id: int, reason: str = 'PROTECTION_MODE', actor: str = 'SYSTEM') -> models.Reservation:
+    try:
+        res = db.query(models.Reservation).filter(models.Reservation.id == reservation_id).first()
+        if not res: raise ValueError('Reservation not found')
+
+        res.protection_mode = True
+        res.repricing_block_reason = reason
+
+        trace_id = f'PROTECT-{uuid.uuid4().hex[:8]}'
+        shadow_service.commit_evidence(db, trace_id, {
+            'actor': actor, 'action': 'TRIGGER_PROTECTION_MODE', 'entity_type': 'RESERVATION', 'entity_id': reservation_id,
+            'after_state': {'protection_mode': True, 'reason': reason}
+        })
+
+        db.commit()
+        db.refresh(res)
+        return res
+    except Exception:
+        db.rollback()
+        raise
+
+def run_night_audit(db: Session, target_date: date, actor: str = 'SYSTEM'):
+    """
+    Sovereign Night Audit: Processes daily charges and rolls the business date.
+    Respects Protection Mode for price freezes.
+    """
+    try:
+        # 1. Process active stays
+        active_stays = db.query(models.Stay).filter(models.Stay.is_active == True).all()
+        for stay in active_stays:
+            res = stay.reservation
+            room = stay.room
+
+            # Skip if room rate should be frozen
+            if res.protection_mode:
+                # Log that we are using protected rate
+                pass
+
+            # Logic to post room charge would go here...
+
+        # 2. Roll business date (simplified)
+        # In a real system, we'd update a BusinessDate config table
+
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+def create_room(db: Session, *, room_in: schemas.RoomCreate, actor: str = 'SYSTEM') -> models.Room:
     try:
         db_room = models.Room(
             tenant_id=room_in.tenant_id,

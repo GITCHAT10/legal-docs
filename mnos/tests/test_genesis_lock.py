@@ -9,7 +9,7 @@ from datetime import date
 from mnos.interfaces.prestige.main import app
 from mnos.core.db.base_class import Base
 from mnos.core.api.deps import get_db
-from mnos.core.security.security import get_password_hash
+from mnos.core.aegis.security.security import get_password_hash
 from mnos.core.models.user import User
 
 # Mock DB for Genesis Verification
@@ -84,7 +84,7 @@ def test_genesis_locked_booking_flow():
     assert res.status_code == 200
 
     # 6. Verify SHADOW evidence chaining
-    from mnos.modules.shadow.models import Evidence
+    from mnos.core.shadow.models import Evidence
     db = TestingSessionLocal()
     # Find evidence for the charge
     evidence = db.query(Evidence).filter(Evidence.trace_id == charge_trace).first()

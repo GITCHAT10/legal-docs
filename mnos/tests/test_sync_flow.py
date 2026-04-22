@@ -3,7 +3,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from mnos.core.db.base_class import Base
 from mnos.core.db.sync_buffer import sync_buffer
-from mnos.modules.shadow.models import Evidence
+from mnos.core.shadow.models import Evidence
 
 # Mock DB
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test_sync.db"

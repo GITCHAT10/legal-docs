@@ -10,7 +10,7 @@ from unittest.mock import patch
 from mnos.interfaces.prestige.main import app
 from mnos.core.db.base_class import Base
 from mnos.core.api.deps import get_db
-from mnos.core.security.security import get_password_hash
+from mnos.core.aegis.security.security import get_password_hash
 from mnos.core.models.user import User
 
 # Mock DB
@@ -86,7 +86,7 @@ def test_fail_closed_shadow_tamper():
     """Failure Scenario: SHADOW failure blocks FCE mutation."""
     headers = get_auth_header()
 
-    with patch("mnos.modules.shadow.service.commit_evidence", side_effect=RuntimeError("BYZANTINE_FAULT")):
+    with patch("mnos.core.shadow.service.commit_evidence", side_effect=RuntimeError("BYZANTINE_FAULT")):
         res = client.post("/api/v1/finance/folios", json={
             "external_reservation_id": "INVESTOR-DEMO",
             "trace_id": f"TR-{uuid.uuid4().hex[:4]}"
@@ -97,6 +97,6 @@ def test_fail_closed_shadow_tamper():
 
         # Verify FCE state is clean (No record created due to rollback)
         db = TestingSessionLocal()
-        from mnos.modules.fce.models import Folio
+        from mnos.core.fce.models import Folio
         f = db.query(Folio).filter(Folio.external_reservation_id == "INVESTOR-DEMO").first()
         assert f is None

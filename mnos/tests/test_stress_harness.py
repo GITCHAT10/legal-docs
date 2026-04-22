@@ -9,9 +9,9 @@ from datetime import date
 from mnos.interfaces.prestige.main import app
 from mnos.core.db.base_class import Base
 from mnos.core.api.deps import get_db
-from mnos.core.security.security import get_password_hash
+from mnos.core.aegis.security.security import get_password_hash
 from mnos.core.models.user import User
-from mnos.core.security.aegis_state import set_system_state, SystemState
+from mnos.core.aegis.security.aegis_state import set_system_state, SystemState
 
 # Mock DB for Stress Test
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test_stress.db"
@@ -80,7 +80,7 @@ def test_broken_bundle_stress_flow():
     assert res.json()["amount"] == 1276.0
 
     # 4. Bundle Split Simulation
-    from mnos.modules.fce.bundle_integrity import split_bundle_contract
+    from mnos.core.fce.bundle_integrity import split_bundle_contract
     line_id = res.json()["id"]
     split_trace = f"STRESS-SPLIT-{uuid.uuid4().hex[:4]}"
     target_res_id = "STRESS-RES-WALKED"
@@ -90,6 +90,6 @@ def test_broken_bundle_stress_flow():
     assert target_folio.total_amount == 1276.0
 
     # 5. Verify Audit Chain (SHADOW)
-    from mnos.modules.shadow.models import Evidence
+    from mnos.core.shadow.models import Evidence
     evidences = db.query(Evidence).filter(Evidence.trace_id.like("STRESS-%")).all()
     assert len(evidences) >= 3 # Folio Open, Charge Post, Bundle Move

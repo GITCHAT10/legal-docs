@@ -10,7 +10,7 @@ import io
 from mnos.interfaces.prestige.main import app
 from mnos.core.db.base_class import Base
 from mnos.core.api.deps import get_db
-from mnos.core.security.security import get_password_hash
+from mnos.core.aegis.security.security import get_password_hash
 from mnos.core.models.user import User
 from mnos.modules.inn.staging import models as staging_models
 

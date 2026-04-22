@@ -50,6 +50,9 @@ class Reservation(Base):
     adults = Column(Integer, default=1)
     children = Column(Integer, default=0)
 
+    protection_mode = Column(Boolean, default=False)
+    repricing_block_reason = Column(String)
+
     guest = relationship("Guest")
     stays = relationship("Stay", back_populates="reservation")
 

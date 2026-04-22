@@ -13,7 +13,7 @@ class MnosClient:
         return SessionLocal()
 
     def commit_evidence(self, trace_id: str, payload: Dict, actor: str = "SYSTEM") -> Dict:
-        from mnos.modules.shadow import service as shadow_service
+        from mnos.core.shadow import service as shadow_service
         db = self._get_db()
         try:
             # SHADOW evidence is the root of law in MNOS
@@ -23,7 +23,7 @@ class MnosClient:
             db.close()
 
     def open_folio(self, reservation_id: str, trace_id: str, tenant_id: str = "default", actor: str = "SYSTEM") -> Dict:
-        from mnos.modules.fce import service as fce_service
+        from mnos.core.fce import service as fce_service
         db = self._get_db()
         try:
             # Delegate to FCE service which already handles SHADOW commit
@@ -33,7 +33,7 @@ class MnosClient:
             db.close()
 
     def post_charge(self, folio_id: int, charge_data: Dict, trace_id: str, tenant_id: str = "default", actor: str = "SYSTEM") -> Dict:
-        from mnos.modules.fce import service as fce_service
+        from mnos.core.fce import service as fce_service
         db = self._get_db()
         try:
             line = fce_service.post_charge(db, folio_id, charge_data, trace_id, tenant_id, actor)
@@ -42,7 +42,7 @@ class MnosClient:
             db.close()
 
     def post_transaction(self, folio_id: int, transaction_data: Dict, trace_id: str, tenant_id: str = "default", actor: str = "SYSTEM") -> Dict:
-        from mnos.modules.fce import service as fce_service
+        from mnos.core.fce import service as fce_service
         db = self._get_db()
         try:
             tx = fce_service.post_transaction(db, folio_id, transaction_data, trace_id, tenant_id, actor)

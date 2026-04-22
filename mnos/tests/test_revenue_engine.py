@@ -9,7 +9,7 @@ from datetime import date
 from mnos.interfaces.prestige.main import app
 from mnos.core.db.base_class import Base
 from mnos.core.api.deps import get_db
-from mnos.core.security.security import get_password_hash
+from mnos.core.aegis.security.security import get_password_hash
 from mnos.core.models.user import User
 
 # Mock DB
@@ -41,7 +41,7 @@ def test_revenue_distribution_authority():
     """Verify the 'Sovereign Profit Loop': Contract -> Sale -> Distribution."""
     db = TestingSessionLocal()
     from mnos.modules.revenue import service as rev_service
-    from mnos.modules.fce import service as fce_service
+    from mnos.core.fce import service as fce_service
 
     # 1. CONTRACT DEFINITION (GOVERN)
     contract = rev_service.create_partner_contract(db, {
@@ -65,7 +65,7 @@ def test_revenue_distribution_authority():
     assert split.resort_amount == 70.0
 
     # 4. SHADOW TRACE
-    from mnos.modules.shadow.models import Evidence
+    from mnos.core.shadow.models import Evidence
     evidence = db.query(Evidence).filter(Evidence.entity_type == "REVENUE_SPLIT", Evidence.entity_id == str(split.id)).first()
     assert evidence is not None
     assert evidence.after_state["partner_amount"] == 30.0

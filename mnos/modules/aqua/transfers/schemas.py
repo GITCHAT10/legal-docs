@@ -28,6 +28,7 @@ class TransferRequestBase(BaseModel):
     destination: Optional[str] = None
     trace_id: str
     tenant_id: str = "default"
+    guest_id: Optional[int] = None
 
 class TransferRequestCreate(TransferRequestBase):
     pass

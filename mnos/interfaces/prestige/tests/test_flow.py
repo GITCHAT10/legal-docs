@@ -7,11 +7,11 @@ from datetime import date, datetime
 from mnos.interfaces.prestige.main import app
 from mnos.core.db.base_class import Base
 from mnos.core.api.deps import get_db
-from mnos.core.security.security import get_password_hash
+from mnos.core.aegis.security.security import get_password_hash
 from mnos.core.models.user import User
 from mnos.modules.inn.reservations.models import ReservationStatus, RoomStatus
 from mnos.modules.aqua.transfers.models import TransferStatus
-from mnos.modules.fce.models import PaymentStatus, ChargeType
+from mnos.core.fce.models import PaymentStatus, ChargeType
 
 # Mock DB for testing
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"

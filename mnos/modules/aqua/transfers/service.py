@@ -1,7 +1,8 @@
 from typing import List, Optional, Any
 from sqlalchemy.orm import Session
 from mnos.modules.aqua.transfers import models, schemas
-from mnos.modules.shadow import service as shadow_service
+from mnos.core.shadow import service as shadow_service
+from mnos.core.events.dispatcher import event_dispatcher
 import uuid
 
 def create_vehicle(db: Session, *, vehicle_in: schemas.VehicleCreate, actor: str = "SYSTEM") -> models.Vehicle:
@@ -28,6 +29,7 @@ def create_transfer_request(db: Session, *, request_in: schemas.TransferRequestC
         db_obj = models.TransferRequest(
             tenant_id=request_in.tenant_id,
             trace_id=request_in.trace_id,
+            guest_id=request_in.guest_id,
             external_reservation_id=request_in.external_reservation_id,
             type=request_in.type,
             status=models.TransferStatus.PENDING,
@@ -38,9 +40,12 @@ def create_transfer_request(db: Session, *, request_in: schemas.TransferRequestC
         db.add(db_obj)
         db.flush()
 
+        # Dispatch XPORT signal
+        event_dispatcher.dispatch("aqua.transfer_created", {"request_id": db_obj.id, "guest_id": db_obj.guest_id})
+
         shadow_service.commit_evidence(db, request_in.trace_id, {
             "actor": actor, "action": "CREATE_TRANSFER", "entity_type": "TRANSFER_REQUEST", "entity_id": db_obj.id,
-            "after_state": {"status": db_obj.status, "type": db_obj.type}
+            "after_state": {"status": db_obj.status, "type": db_obj.type, "guest_id": db_obj.guest_id}
         })
 
         db.commit()
@@ -99,13 +104,3 @@ def update_transfer_status(db: Session, request_id: int, status: models.Transfer
     except Exception:
         db.rollback()
         raise
-
-def handle_reservation_cancellation(db: Session, reservation_id: int, actor: str = "SYSTEM"):
-    # This might need external_reservation_id if we want to be consistent
-    # For now, let's stick to the internal ID or find by external
-    transfers = db.query(models.TransferRequest).filter(
-        models.TransferRequest.external_reservation_id == str(reservation_id),
-        models.TransferRequest.status != models.TransferStatus.COMPLETED
-    ).all()
-    for t in transfers:
-        update_transfer_status(db, request_id=t.id, status=models.TransferStatus.CANCELLED, actor=actor)

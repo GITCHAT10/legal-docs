@@ -9,7 +9,7 @@ import uuid
 from mnos.interfaces.prestige.main import app
 from mnos.core.db.base_class import Base
 from mnos.core.api.deps import get_db
-from mnos.core.security.security import get_password_hash
+from mnos.core.aegis.security.security import get_password_hash
 from mnos.core.models.user import User
 
 # Mock DB for testing
@@ -128,7 +128,7 @@ def test_mnos_sovereign_flow():
 
     # 8. SHADOW AUDIT VERIFICATION
     # Check if SHADOW entries exist for these traces
-    from mnos.modules.shadow import models as shadow_models
+    from mnos.core.shadow import models as shadow_models
     db = TestingSessionLocal()
     audit = db.query(shadow_models.Evidence).filter(shadow_models.Evidence.trace_id == charge_trace).first()
     assert audit is not None

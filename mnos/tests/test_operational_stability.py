@@ -9,9 +9,9 @@ import uuid
 from mnos.interfaces.prestige.main import app
 from mnos.core.db.base_class import Base
 from mnos.core.api.deps import get_db
-from mnos.core.security.security import get_password_hash
+from mnos.core.aegis.security.security import get_password_hash
 from mnos.core.models.user import User
-from mnos.modules.shadow import models as shadow_models
+from mnos.core.shadow import models as shadow_models
 
 # Mock DB
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test_mnos_comprehensive.db"

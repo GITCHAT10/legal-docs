@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from mnos.core.api import deps
-from mnos.interfaces.prestige.guests import models, schemas
+from mnos.core.aegis.models import guest as models, schemas
 
 router = APIRouter()
 

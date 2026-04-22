@@ -2,7 +2,7 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 from . import models, enums
 from mnos.modules.inn.reservations.models import Room, RoomStatus
-from mnos.modules.shadow import service as shadow_service
+from mnos.core.shadow import service as shadow_service
 from datetime import datetime, timedelta
 import uuid
 

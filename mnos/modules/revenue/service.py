@@ -1,8 +1,8 @@
 from typing import Dict, Any, List
 from sqlalchemy.orm import Session
 from mnos.modules.revenue import models
-from mnos.modules.fce.models import FolioLine
-from mnos.modules.shadow import service as shadow_service
+from mnos.core.fce.models import FolioLine
+from mnos.core.shadow import service as shadow_service
 import uuid
 
 def calculate_distribution(db: Session, line_id: int, contract_id: int, trace_id: str, actor: str = "SYSTEM") -> models.RevenueSplit:

@@ -10,7 +10,7 @@ from unittest.mock import patch
 from mnos.interfaces.prestige.main import app
 from mnos.core.db.base_class import Base
 from mnos.core.api.deps import get_db
-from mnos.core.security.security import get_password_hash
+from mnos.core.aegis.security.security import get_password_hash
 from mnos.core.models.user import User
 
 # Mock DB for Forensic Replay
@@ -46,7 +46,7 @@ def test_failure_scenario_broken_shadow():
     headers = get_auth_header()
 
     # 1. Mock SHADOW failure
-    with patch("mnos.modules.shadow.service.commit_evidence", side_effect=RuntimeError("SHADOW_DB_FAILURE")):
+    with patch("mnos.core.shadow.service.commit_evidence", side_effect=RuntimeError("SHADOW_DB_FAILURE")):
         res = client.post("/api/v1/finance/folios", json={
             "external_reservation_id": "RES-FAIL",
             "trace_id": f"TR-{uuid.uuid4().hex[:8]}"
@@ -57,7 +57,7 @@ def test_failure_scenario_broken_shadow():
 
         # 3. Verify no data in FCE (Atomic Rollback)
         db = TestingSessionLocal()
-        from mnos.modules.fce.models import Folio
+        from mnos.core.fce.models import Folio
         folio = db.query(Folio).filter(Folio.external_reservation_id == "RES-FAIL").first()
         assert folio is None
 

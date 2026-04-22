@@ -36,6 +36,28 @@ def get_db_session():
     from mnos.core.db.session import SessionLocal
     return SessionLocal()
 
+def handle_reservation_created(data):
+    try:
+        from mnos.core.fce.service import open_folio
+        from mnos.modules.inn.reservations.models import Reservation
+
+        reservation_id = data.get('reservation_id')
+        db = get_db_session()
+        try:
+            res = db.query(Reservation).filter(Reservation.id == reservation_id).first()
+            if res:
+                open_folio(
+                    db,
+                    reservation_id=str(res.id),
+                    trace_id=f'FOLIO-{res.trace_id}',
+                    tenant_id=res.tenant_id,
+                    guest_id=res.guest_id
+                )
+        finally:
+            db.close()
+    except ImportError:
+        pass
+
 def handle_reservation_confirmed(data):
     # In a real MNOS system, this would go through the event bus (Redis)
     # to avoid direct service dependencies here.
@@ -44,15 +66,15 @@ def handle_reservation_confirmed(data):
         from mnos.modules.aqua.transfers.schemas import TransferRequestCreate
         from mnos.modules.aqua.transfers.models import TransferType
 
-        reservation_id = data.get("reservation_id")
+        reservation_id = data.get('reservation_id')
         db = get_db_session()
         try:
             transfer_in = TransferRequestCreate(
                 external_reservation_id=str(reservation_id),
                 type=TransferType.BOAT,
-                pickup_location="Velana International Airport",
-                destination="Resort Island",
-                trace_id=f"AUTO-TRANS-{uuid.uuid4().hex[:8]}"
+                pickup_location='Velana International Airport',
+                destination='Resort Island',
+                trace_id=f'AUTO-TRANS-{uuid.uuid4().hex[:8]}'
             )
             create_transfer_request(db, request_in=transfer_in)
         finally:
@@ -64,7 +86,7 @@ def handle_housekeeping_completed(data):
     try:
         from mnos.modules.inn.reservations.service import mark_room_ready_from_housekeeping
 
-        room_id = data.get("room_id")
+        room_id = data.get('room_id')
         db = get_db_session()
         try:
             mark_room_ready_from_housekeeping(db, room_id)
@@ -74,5 +96,6 @@ def handle_housekeeping_completed(data):
         pass
 
 # Registering handlers
-event_dispatcher.subscribe("reservation_confirmed", handle_reservation_confirmed)
-event_dispatcher.subscribe("housekeeping_completed", handle_housekeeping_completed)
+event_dispatcher.subscribe('reservation_created', handle_reservation_created)
+event_dispatcher.subscribe('reservation_confirmed', handle_reservation_confirmed)
+event_dispatcher.subscribe('housekeeping_completed', handle_housekeeping_completed)

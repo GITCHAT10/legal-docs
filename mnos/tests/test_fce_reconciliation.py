@@ -1,5 +1,5 @@
 import pytest
-from mnos.modules.fce.service import calculate_maldives_tax
+from mnos.core.fce.service import calculate_maldives_tax
 
 def test_maldives_tax_calculation():
     # Base: 1000

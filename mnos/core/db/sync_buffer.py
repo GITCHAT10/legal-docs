@@ -1,6 +1,6 @@
 from typing import Dict, Any, List
 from sqlalchemy.orm import Session
-from mnos.modules.shadow import service as shadow_service
+from mnos.core.shadow import service as shadow_service
 import json
 
 class SyncBuffer:

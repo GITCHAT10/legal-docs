@@ -6,8 +6,8 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session
 import os
 
-from mnos.core.security.config import settings
-from mnos.core.security import security
+from mnos.core.aegis.security.config import settings
+from mnos.core.aegis.security import security
 from mnos.core.db.session import SessionLocal
 from mnos.core.models.user import User
 from mnos.core.schemas.user import TokenPayload
