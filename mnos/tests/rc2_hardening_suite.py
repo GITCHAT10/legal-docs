@@ -16,7 +16,14 @@ def test_identity_spoof_attack():
     # Attack: Change device_id but keep signature
     bad_payload = {"device_id": "nexus-attacker", "user": "admin", "signature": sig, "biometric_verified": True}
 
-    conn = {"is_vpn": True, "tunnel_id": "tun-01", "encryption": "wireguard"}
+    conn = {
+        "is_vpn": True,
+        "tunnel_id": "tun-01",
+        "encryption": "wireguard",
+        "tunnel": "orban",
+        "source_ip": "10.0.0.1",
+        "node_id": "ATTACK-01"
+    }
 
     with pytest.raises(SecurityException, match="signature mismatch"):
         guard.execute_sovereign_action("test", {}, bad_payload, lambda x: "fail", connection_context=conn)
@@ -29,7 +36,14 @@ def test_ledger_tampering_fail_closed():
     ctx = {"device_id": "nexus-admin-01", "biometric_verified": True}
     ctx["signature"] = aegis_sign(ctx)
 
-    conn = {"is_vpn": True, "tunnel_id": "tun-01", "encryption": "wireguard"}
+    conn = {
+        "is_vpn": True,
+        "tunnel_id": "tun-01",
+        "encryption": "wireguard",
+        "tunnel": "orban",
+        "source_ip": "10.0.0.1",
+        "node_id": "ADMIN-01"
+    }
 
     # 1. Valid commit
     guard.execute_sovereign_action("nexus.booking.created", {}, ctx, lambda x: "ok", connection_context=conn)
@@ -50,7 +64,14 @@ def test_partial_transaction_failure_recovery():
     ctx = {"device_id": "nexus-admin-01", "biometric_verified": True}
     ctx["signature"] = aegis_sign(ctx)
 
-    conn = {"is_vpn": True, "tunnel_id": "tun-01", "encryption": "wireguard"}
+    conn = {
+        "is_vpn": True,
+        "tunnel_id": "tun-01",
+        "encryption": "wireguard",
+        "tunnel": "orban",
+        "source_ip": "10.0.0.1",
+        "node_id": "ADMIN-01"
+    }
 
     def logic_fails(p):
         raise ValueError("EXECUTION CRASHED")

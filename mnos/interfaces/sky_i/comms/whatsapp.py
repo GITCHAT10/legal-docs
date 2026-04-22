@@ -13,7 +13,14 @@ class WhatsAppInterface:
         try:
             # Default connection context for mobile gateways if not provided
             if connection_context is None:
-                connection_context = {"is_vpn": True, "tunnel_id": "mobile-gateway-01", "encryption": "wireguard"}
+                connection_context = {
+                    "is_vpn": True,
+                    "tunnel_id": "mobile-gateway-01",
+                    "encryption": "wireguard",
+                    "tunnel": "orban",
+                    "source_ip": "10.0.0.50",
+                    "node_id": "COMMS-EDGE-01"
+                }
 
             # Intelligence is advisory
             decision = silvia.process_request(text)

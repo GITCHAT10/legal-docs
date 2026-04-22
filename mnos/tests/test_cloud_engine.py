@@ -19,7 +19,14 @@ def valid_session():
 
 @pytest.fixture
 def valid_connection():
-    return {"is_vpn": True, "tunnel_id": "tun-001", "encryption": "wireguard"}
+    return {
+        "is_vpn": True,
+        "tunnel_id": "tun-001",
+        "encryption": "wireguard",
+        "tunnel": "orban",
+        "source_ip": "10.0.0.1",
+        "node_id": "CLOUD-01"
+    }
 
 @pytest.fixture
 def valid_governance():

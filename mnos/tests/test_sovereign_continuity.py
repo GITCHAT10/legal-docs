@@ -14,7 +14,14 @@ def valid_session():
 
 @pytest.fixture
 def valid_connection():
-    return {"is_vpn": True, "tunnel_id": "tun-001", "encryption": "wireguard"}
+    return {
+        "is_vpn": True,
+        "tunnel_id": "tun-001",
+        "encryption": "wireguard",
+        "tunnel": "orban",
+        "source_ip": "10.0.0.2",
+        "node_id": "EDGE-01"
+    }
 
 def test_shadow_sync_flow(valid_session, valid_connection):
     """

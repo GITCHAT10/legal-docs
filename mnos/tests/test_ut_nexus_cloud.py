@@ -14,7 +14,14 @@ def ut_session():
 
 @pytest.fixture
 def ut_connection():
-    return {"is_vpn": True, "tunnel_id": "ut-tunnel-01", "encryption": "wireguard"}
+    return {
+        "is_vpn": True,
+        "tunnel_id": "ut-tunnel-01",
+        "encryption": "wireguard",
+        "tunnel": "orban",
+        "source_ip": "10.0.0.10",
+        "node_id": "UT-EDGE-01"
+    }
 
 def test_ut_booking_flow_success(ut_session, ut_connection):
     """Verify UT booking flow with cloud integration and NEXUS authority."""

@@ -11,16 +11,27 @@ class VSATGenerator:
     def generate_proof(self, trace_id: str, event_hash: str) -> Dict[str, Any]:
         """
         Creates a cryptographic proof of an action for legal or audit purposes.
+        Includes AEGIS identity hash and full action chain links.
         """
         # Find the entry in shadow ledger
-        entry = next((e for e in shadow.chain if e.get("hash") == event_hash), None)
+        entry_index = next((i for i, e in enumerate(shadow.chain) if e.get("hash") == event_hash), None)
 
-        if not entry:
+        if entry_index is None:
             return {"error": "Event not found in SHADOW ledger."}
+
+        entry = shadow.chain[entry_index]
+        prev_hash = entry.get("previous_hash", "0" * 64)
+
+        # Extract AEGIS identity if present in payload (authorized_session is often in event data)
+        # For simulation, we hash the device_id if available
+        actor_id = entry["payload"].get("authorized_session", {}).get("device_id", "SYSTEM")
+        identity_hash = hashlib.sha256(actor_id.encode()).hexdigest()
 
         proof_payload = {
             "trace_id": trace_id,
             "event_hash": event_hash,
+            "previous_hash": prev_hash,
+            "identity_hash": identity_hash,
             "timestamp": entry["timestamp"],
             "event_type": entry["event_type"],
             "payload_summary": str(entry["payload"])[:100],
@@ -33,6 +44,7 @@ class VSATGenerator:
             "vsat_id": f"VSAT-{trace_id[:8]}",
             "proof": proof_payload,
             "signature": proof_signature,
+            "chain_integrity": shadow.verify_integrity(),
             "status": "VERIFIED"
         }
 

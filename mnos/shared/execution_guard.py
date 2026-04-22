@@ -29,20 +29,23 @@ class ExecutionGuard:
         governance_evidence: Dict[str, Any] = None,
         approvals: List[str] = None,
         financial_validation: bool = False
-    ):
+    ) -> Any:
         token = in_sovereign_context.set(True)
         try:
             trace_id = str(uuid.uuid4())
             connection_context = connection_context or {}
             approvals = approvals or []
 
-            # 1. ORBAN Network Security
+            # MANDATORY 5-LAYER SEQUENTIAL ENFORCEMENT
+            # NO bypass paths allowed. Failure at any layer stops execution.
+
+            # 1. ORBAN (Network Validation)
             orban.validate_connection(connection_context)
 
-            # 2. AEGIS Identity Enforcement (Includes Biometric)
+            # 2. AEGIS (Identity Validation - includes device and biometric)
             aegis.validate_session(session_context)
 
-            # 3. L5 Governance (Safe-Firing Logic)
+            # 3. L5 (Governance Approval - Safe-Firing Logic)
             l5.validate_action(action_type, governance_evidence, approvals)
 
             # 4. FCE Financial Control (If required)

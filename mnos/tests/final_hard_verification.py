@@ -34,7 +34,14 @@ def test_ledger_tamper_hard_fail():
     ctx = {"device_id": "nexus-admin-01", "biometric_verified": True}
     ctx["signature"] = aegis_sign(ctx)
 
-    conn = {"is_vpn": True, "tunnel_id": "tun-01", "encryption": "wireguard"}
+    conn = {
+        "is_vpn": True,
+        "tunnel_id": "tun-01",
+        "encryption": "wireguard",
+        "tunnel": "orban",
+        "source_ip": "10.0.0.1",
+        "node_id": "ADMIN-01"
+    }
 
     guard.execute_sovereign_action("nexus.booking.created", {}, ctx, lambda x: "ok", connection_context=conn)
 
