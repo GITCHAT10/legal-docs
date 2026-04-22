@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from mnos.modules.united_transfer import models, schemas
+from united_transfer_system import models, schemas
 from mnos.modules.shadow import service as shadow_service
 import uuid
 
@@ -15,6 +15,7 @@ def create_journey(db: Session, *, obj_in: schemas.JourneyCreate, actor: str) ->
     for leg_in in obj_in.legs:
         db_leg = models.Leg(
             journey_id=db_journey.id,
+            trace_id=f"LEG-{uuid.uuid4().hex[:8]}", # MANDATORY TRACE_ID
             type=leg_in.type,
             origin=leg_in.origin,
             destination=leg_in.destination,
@@ -43,3 +44,24 @@ def get_availability(db: Session, query: schemas.AvailabilityQuery):
         {"type": "air", "provider": "IAS-ATR72", "price": 2500.0},
         {"type": "sea", "provider": "Speedboat-X", "price": 500.0}
     ]
+
+def finalize_invoice(db: Session, journey_id: int, trace_id: str, actor: str):
+    """
+    Finalize the invoice for a completed journey.
+    """
+    journey = db.query(models.Journey).filter(models.Journey.id == journey_id).first()
+    if not journey:
+        raise ValueError("Journey not found")
+
+    # Logic to calculate final amounts and generate invoice
+    # In sandbox, we just update status and commit evidence
+    journey.status = models.JourneyStatus.COMPLETED
+
+    shadow_service.commit_evidence(db, trace_id, {
+        "actor": actor,
+        "action": "FINALIZE_INVOICE",
+        "journey_id": journey_id,
+        "status": "COMPLETED"
+    })
+    db.commit()
+    return {"status": "finalized", "journey_id": journey_id}

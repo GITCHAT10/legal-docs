@@ -8,7 +8,7 @@ from mnos.modules.aqua.transfers.router import router as transfers_router
 from mnos.modules.fce.router import router as finance_router
 from mnos.modules.maintain.router import router as maintenance_router
 from mnos.modules.shadow.router import router as shadow_router
-from mnos.modules.united_transfer.api.router import router as united_transfer_router
+from united_transfer_system.api.router import router as united_transfer_router
 from mnos.core.events.websockets import router as ws_router
 
 app = FastAPI(

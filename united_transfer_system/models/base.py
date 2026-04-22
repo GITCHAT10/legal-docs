@@ -19,7 +19,7 @@ class JourneyStatus(str, enum.Enum):
 class Journey(Base):
     id = Column(Integer, primary_key=True, index=True)
     tenant_id = Column(String, index=True, nullable=False, default="default")
-    trace_id = Column(String, index=True, nullable=False)
+    trace_id = Column(String, index=True, nullable=False) # MANDATORY
     created_at = Column(DateTime, default=lambda: datetime.now(UTC))
 
     external_reference = Column(String, index=True) # TA/DMC ref
@@ -32,6 +32,7 @@ class Journey(Base):
 class Leg(Base):
     id = Column(Integer, primary_key=True, index=True)
     journey_id = Column(Integer, ForeignKey("journey.id"), nullable=False)
+    trace_id = Column(String, index=True, nullable=False) # MANDATORY
 
     type = Column(Enum(LegType), nullable=False)
     provider_id = Column(String) # Driver/Vessel ID
@@ -70,7 +71,7 @@ class Wallet(Base):
 class Transaction(Base):
     id = Column(Integer, primary_key=True, index=True)
     wallet_id = Column(Integer, ForeignKey("wallet.id"), nullable=False)
-    trace_id = Column(String, index=True, nullable=False)
+    trace_id = Column(String, index=True, nullable=False) # MANDATORY
 
     amount = Column(Numeric(12, 2), nullable=False)
     type = Column(String) # PAYOUT, WITHDRAWAL

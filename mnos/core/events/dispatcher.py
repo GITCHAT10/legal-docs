@@ -2,6 +2,7 @@ from typing import Callable, Dict, List, Any
 import asyncio
 import os
 import uuid
+import logging
 
 class EventDispatcher:
     def __init__(self):
@@ -22,10 +23,13 @@ class EventDispatcher:
                             loop.create_task(listener(data))
                         else:
                             loop.run_until_complete(listener(data))
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logging.error(f"Async listener error: {e}")
                 else:
-                    listener(data)
+                    try:
+                        listener(data)
+                    except Exception as e:
+                        logging.error(f"Sync listener error: {e}")
 
 event_dispatcher = EventDispatcher()
 
@@ -37,14 +41,17 @@ def get_db_session():
     return SessionLocal()
 
 def handle_reservation_confirmed(data):
-    # In a real MNOS system, this would go through the event bus (Redis)
-    # to avoid direct service dependencies here.
+    # Fix reservation event mismatch: ensure data keys match expectation
+    reservation_id = data.get("reservation_id") or data.get("id")
+    if not reservation_id:
+        logging.warning("Reservation confirmed event missing ID")
+        return
+
     try:
         from mnos.modules.aqua.transfers.service import create_transfer_request
         from mnos.modules.aqua.transfers.schemas import TransferRequestCreate
         from mnos.modules.aqua.transfers.models import TransferType
 
-        reservation_id = data.get("reservation_id")
         db = get_db_session()
         try:
             transfer_in = TransferRequestCreate(
@@ -61,10 +68,13 @@ def handle_reservation_confirmed(data):
         pass
 
 def handle_housekeeping_completed(data):
+    room_id = data.get("room_id") or data.get("id")
+    if not room_id:
+        return
+
     try:
         from mnos.modules.inn.reservations.service import mark_room_ready_from_housekeeping
 
-        room_id = data.get("room_id")
         db = get_db_session()
         try:
             mark_room_ready_from_housekeeping(db, room_id)

@@ -1,7 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
 from datetime import datetime, UTC, UTC, UTC, UTC, UTC, UTC, UTC, UTC
-from mnos.modules.united_transfer.models.base import LegType, JourneyStatus
+from united_transfer_system.models.base import LegType, JourneyStatus
 
 class LegBase(BaseModel):
     type: LegType

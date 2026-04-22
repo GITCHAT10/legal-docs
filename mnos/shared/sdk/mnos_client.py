@@ -62,4 +62,17 @@ class MnosClient:
         finally:
             db.close()
 
+    def commit_booking(self, booking_data: Dict, trace_id: str, actor: str = "SYSTEM") -> Dict:
+        """SDK integration for United Transfer bookings."""
+        from united_transfer_system.services import booking_service
+        from united_transfer_system.schemas import JourneyCreate
+        from united_transfer_system.db_session import SessionLocal as UtSession
+        db = UtSession()
+        try:
+            obj_in = JourneyCreate(**booking_data, trace_id=trace_id)
+            journey = booking_service.create_journey(db, obj_in=obj_in, actor=actor)
+            return {"id": journey.id, "status": journey.status, "trace_id": journey.trace_id}
+        finally:
+            db.close()
+
 mnos_client = MnosClient()

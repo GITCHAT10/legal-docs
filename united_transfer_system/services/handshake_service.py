@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from mnos.modules.united_transfer import models
+from united_transfer_system import models
 from mnos.modules.fce import service as fce_service
 import uuid
 

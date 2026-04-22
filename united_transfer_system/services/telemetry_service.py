@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from fastapi import BackgroundTasks
-from mnos.modules.united_transfer import models, schemas
-from mnos.modules.united_transfer.services import handshake_service
+from united_transfer_system import models, schemas
+from united_transfer_system.services import handshake_service
 import httpx
 import logging
 
