@@ -1,0 +1,70 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.0.2, pluggy-1.6.0
+rootdir: /app
+configfile: pytest.ini
+collected 10 items
+run-last-failure: no previously failed tests, not deselecting items.
+
+mnos/final_sovereign_tests.py .....                                      [ 50%]
+mnos/tests/sovereign_certification.py .....                              [100%]
+
+============================== 10 passed in 0.07s ==============================
+--- 🏛️ NEXUS ASI SKY-i OS FINAL VALIDATION (ExMAIL ASI) ---
+--- 🏛️ MNOS BOOT INTEGRITY: OK ---
+
+[SCENARIO 1: ExMAIL Positive Booking]
+[WORKFLOW] BOOKING Trace: INTERNAL
+ - FCE Calculated: 649.50 USD
+ - Confirmation dispatched.
+Result: SUCCESS | Sentiment: POSITIVE | Reply: Thank you for contacting NEXUS ASI. We have identified your intent as booking.created. Processing your NEXUS booking.
+
+[SCENARIO 2: ExMAIL Negative Emergency]
+[WORKFLOW] EMERGENCY Trace: INTERNAL
+ !!! SOS DETECTED from None !!!
+ - Dispatching MARS LIFELINE medical response team
+ - Triggering RECONNAISSANCE drone deployment
+ - Escalating to SKY-i COMMAND
+Result: SUCCESS | Sentiment: NEGATIVE | Reply: Thank you for contacting NEXUS ASI. We have identified your intent as emergency.triggered. We apologize for any inconvenience and have prioritized your request for SKY-i COMMAND review.
+
+[AUDIT: SHADOW LEDGER]
+Ledger Size: 8 entries
+Integrity: OK
+
+[RESILIENCE]
+[RESILIENCE] Snapshot snap_20260422_230316 created for nexus-sky-i-backups
+[RESILIENCE] Validating restore from snap_20260422_230316...
+
+--- ✅ VALIDATION COMPLETE ---
+--- 🛡️ NEXUS ASI SKY-i HARDENING STRESS TESTS ---
+
+[TEST 1: Fail-closed FCE]
+SUCCESS: System blocked high-risk transaction: FCE AUTH DENIED: Amount 10000 exceeds limit 100 for folio F-ERR
+
+[TEST 2: Corruption Recovery]
+[WORKFLOW] BOOKING Trace: f3951cc1-0d09-4eed-b28b-1543bdb5296e
+ - FCE Calculated: 649.50 USD
+ - Confirmation dispatched.
+Original Integrity: True
+Tampered Integrity: False
+SUCCESS: Integrity alarm triggered on corruption.
+
+[TEST 3: Threshold Adversarial]
+SILVIA status for unknown: ESCALATE (Should be ESCALATE)
+
+[TEST 4: Concurrency Simulation]
+[WORKFLOW] BOOKING Trace: fa922bd8-b701-4c3a-878d-9d0b780c725d
+ - FCE Calculated: 649.50 USD
+ - Confirmation dispatched.
+[WORKFLOW] GUEST ARRIVAL Trace: 190bb884-f306-4516-9c2b-0b0f14466239
+ - Dispatching MARS AQUA transfer for None
+ - Setting room status to READY in MARS INN
+ - Welcome message sent via SKY-i COMMS
+[WORKFLOW] EMERGENCY Trace: 0a510722-676e-4e67-9a62-c496f017bec9
+ !!! SOS DETECTED from None !!!
+ - Dispatching MARS LIFELINE medical response team
+ - Triggering RECONNAISSANCE drone deployment
+ - Escalating to SKY-i COMMAND
+Final Ledger Size: 5
+Final Integrity: True
+
+--- ✅ STRESS TESTS COMPLETE ---

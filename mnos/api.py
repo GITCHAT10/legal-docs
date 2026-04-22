@@ -1,6 +1,8 @@
 from mnos.core.security.aegis import aegis
 from mnos.modules.fce.service import fce
 from mnos.modules.shadow.service import shadow
+from mnos.modules.shadow_sync.service import shadow_sync
+from mnos.core.apollo.service import apollo
 from mnos.core.events.service import events
 from mnos.shared.execution_guard import guard
 
@@ -30,3 +32,14 @@ def publish_event(event_type, data, trace_id=None):
 def execute_sovereign(action_type, payload, session_context, logic, financial_validation=False):
     """GUARD: Mandatory execution sequence (AEGIS -> FCE -> EXEC -> SHADOW -> EVENT)."""
     return guard.execute_sovereign_action(action_type, payload, session_context, logic, financial_validation)
+
+# --- APOLLO CONTROL PLANE API ---
+
+def propose_release(version, manifest):
+    return apollo.propose_release(version, manifest)
+
+def promote_canary(deployment_id, traffic_percent=5):
+    return apollo.promote_to_canary(deployment_id, traffic_percent)
+
+def get_system_health():
+    return apollo.check_health()

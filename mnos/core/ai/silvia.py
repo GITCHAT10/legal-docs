@@ -14,6 +14,10 @@ class SilviaEngine:
     def process_request(self, user_input: str) -> Dict[str, Any]:
         """Connects to retrieval layer and validates response."""
 
+        # 0. Prompt Firewall (Injection Blocking)
+        if self._detect_injection(user_input):
+            return {"status": "BLOCK", "reason": "Security Violation: Injection Pattern Detected"}
+
         # 1. Retrieval
         relevant_docs = knowledge_core.query(user_input)
 
@@ -33,6 +37,11 @@ class SilviaEngine:
             "confidence": analysis["confidence_score"],
             "response": analysis["response"]
         }
+
+    def _detect_injection(self, text: str) -> bool:
+        """Sovereign Prompt Firewall logic."""
+        patterns = ["ignore previous instructions", "system prompt", "reveal secret", "sudo", "delete all"]
+        return any(p in text.lower() for p in patterns)
 
     def _analyze_logic(self, text: str, docs: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Mocked AI logic: Uses retrieved context for deterministic intent."""

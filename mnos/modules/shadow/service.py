@@ -1,5 +1,6 @@
 import hashlib
 import json
+import copy
 from datetime import datetime, timezone
 from typing import Dict, Any, List
 from mnos.config import config
@@ -41,15 +42,25 @@ class ShadowLedger:
         ensure_sovereign_context()
 
         if not self.verify_integrity():
+            # Debugging code
+            for i, block in enumerate(self.chain):
+                calc = self._calculate_hash(block)
+                if block["hash"] != calc:
+                    print(f"DEBUG: Block {i} hash mismatch!")
+                    print(f"  Stored: {block['hash']}")
+                    print(f"  Calculated: {calc}")
             raise RuntimeError("SHADOW: Chain corruption detected before commit. System Halt.")
 
         try:
             previous_entry = self.chain[-1]
+            # Hardened: Use a snapshot of the payload to prevent post-commit mutation tampering
+            payload_snapshot = copy.deepcopy(payload)
+
             entry = {
                 "entry_id": len(self.chain),
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "event_type": event_type,
-                "payload": payload,
+                "payload": payload_snapshot,
                 "previous_hash": previous_entry["hash"]
             }
             entry["hash"] = self._calculate_hash(entry)
@@ -67,13 +78,14 @@ class ShadowLedger:
             raise
 
     def _calculate_hash(self, entry: Dict[str, Any]) -> str:
-        """previous_hash + event_type + payload + entry_id -> current_hash"""
+        """previous_hash + timestamp + event_type + payload + entry_id -> current_hash"""
         block_string = json.dumps({
             "entry_id": entry["entry_id"],
+            "timestamp": entry.get("timestamp"),
             "event_type": entry["event_type"],
             "payload": entry["payload"],
             "previous_hash": entry["previous_hash"]
-        }, sort_keys=True).encode()
+        }, sort_keys=True, default=str).encode()
         return hashlib.sha256(block_string).hexdigest()
 
     def verify_integrity(self) -> bool:

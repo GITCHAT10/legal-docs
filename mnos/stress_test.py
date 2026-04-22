@@ -36,7 +36,15 @@ def stress_test():
     print("\n[TEST 2: Corruption Recovery]")
     # Clear chain for clean test
     shadow.chain = shadow.chain[:1]
-    events.publish("nexus.booking.created", {"data": "test"})
+
+    # Needs guard context for publish
+    from mnos.shared.execution_guard import in_sovereign_context
+    t = in_sovereign_context.set(True)
+    try:
+        events.publish("nexus.booking.created", {"data": "test"})
+    finally:
+        in_sovereign_context.reset(t)
+
     original_integrity = shadow.verify_integrity()
     print(f"Original Integrity: {original_integrity}")
 
@@ -57,7 +65,11 @@ def stress_test():
 
     # 4. Concurrency Test (Simulated Sequential but overlapping logic)
     print("\n[TEST 4: Concurrency Simulation]")
-    ctx = {"device_id": "nexus-con", "bound_device_id": "nexus-con"}
+    # Use trusted hardware ID from Registry
+    ctx = {"device_id": "nexus-001"}
+    from mnos.core.security.aegis import aegis
+    ctx["signature"] = aegis.sign_session(ctx)
+
     whatsapp.receive_message("+9602", "book room", ctx)
     whatsapp.receive_message("+9603", "arrival at airport", ctx)
     whatsapp.receive_message("+9604", "emergency help", ctx)

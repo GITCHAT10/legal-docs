@@ -13,6 +13,7 @@ class ExecutionGuard:
     """
     Sovereign Execution Guard (HARDENED):
     Enforces mandatory flow: AEGIS → FCE → EXECUTE → SHADOW → EVENT.
+    Linking: Every action produces pre/post commit hashes and AEGIS binding.
     """
     @staticmethod
     def execute_sovereign_action(
@@ -26,10 +27,13 @@ class ExecutionGuard:
         try:
             trace_id = str(uuid.uuid4())
 
-            # 1. AEGIS Identity Enforcement
+            # 1. AEGIS Identity Enforcement (Identity Binding)
             aegis.validate_session(session_context)
 
-            # 2. FCE Financial Control (If required)
+            # Pre-commit Hash Anchor
+            pre_commit_hash = shadow.chain[-1]["hash"] if shadow.chain else "0"*64
+
+            # 2. FCE Financial Control
             if financial_validation:
                 if "amount" in payload and "limit" in payload:
                     fce.validate_pre_auth(payload.get("folio_id", "GEN"), payload["amount"], payload["limit"])
@@ -37,17 +41,20 @@ class ExecutionGuard:
             # 3. EXECUTE Logic
             result = execution_logic(payload)
 
-            # 4 & 5. SHADOW and EVENT (via publish)
-            # The order in events.publish is SHADOW -> SUBSCRIBERS
-            # We include the session_context in the event so downstream can remain authorized
+            # 4. SHADOW & EVENT (Temporal and Identity Binding)
             event_data = {
                 "trace_id": trace_id,
                 "action": action_type,
                 "input": payload,
                 "result": result,
-                "authorized_session": session_context
+                "aegis_binding": {
+                    "device_id": session_context.get("device_id"),
+                    "signature": session_context.get("signature")
+                },
+                "pre_commit_hash": pre_commit_hash
             }
 
+            # 4. EVENT Emission (Authoritative Ledger Write via events.publish)
             events.publish(action_type, event_data, trace_id=trace_id)
 
             return result

@@ -12,16 +12,13 @@ class ExMailAuthority:
     """
     def __init__(self):
         # Taxonomy for ExMAIL
-        self.TAXONOMY = {
+        self.TAXONOMY = [
             "exmail.received",
             "exmail.sent",
             "exmail.task.created",
             "exmail.ticket.created"
-        }
-        for et in self.TAXONOMY:
-            events.TAXONOMY.add(et)
-            if et not in events.subscribers:
-                events.subscribers[et] = []
+        ]
+        events.register_taxonomy(self.TAXONOMY)
 
     def ingest_inbound_exmail(self, sender: str, subject: str, body: str, session_context: Dict[str, Any]):
         """Ingests email into the ExMAIL ASI pipeline enforced by Execution Guard."""

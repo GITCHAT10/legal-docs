@@ -9,6 +9,7 @@ from mnos.boot_check import check_integrity
 from mnos.interfaces.sky_i.comms.whatsapp import whatsapp
 from mnos.modules.exmail.service import exmail_authority
 from mnos.modules.shadow.service import shadow
+from mnos.modules.shadow_sync.service import shadow_sync
 from mnos.modules.knowledge.service import knowledge_core
 from mnos.core.resilience.backup import resilience
 
@@ -29,7 +30,9 @@ def run_validation():
     dna = "NEXUS DNA: Bookings are handled by FCE. Arrivals trigger AQUA. Emergencies trigger LIFELINE."
     knowledge_core.ingest("NEXUS_DNA", dna)
 
-    ctx = {"device_id": "nexus-001", "bound_device_id": "nexus-001"}
+    from mnos.core.security.aegis import aegis
+    ctx = {"device_id": "nexus-001"}
+    ctx["signature"] = aegis.sign_session(ctx)
 
     # 3. ExMAIL Booking (Positive Sentiment -> Task Conversion)
     print("\n[SCENARIO 1: ExMAIL Positive Booking]")

@@ -56,4 +56,11 @@ class EventBus:
             raise ValueError(f"Unknown event type: {event_type}")
         self.subscribers[event_type].append(callback)
 
+    def register_taxonomy(self, event_types: List[str]):
+        """Allows modules to register new event types safely."""
+        for et in event_types:
+            if et not in self.TAXONOMY:
+                self.TAXONOMY.add(et)
+                self.subscribers[et] = []
+
 events = EventBus()
