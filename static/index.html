@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iMOXON | Commerce & Exchange Layer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .glow { box-shadow: 0 0 15px rgba(59, 130, 246, 0.5); }
+        .bg-mnos { background-color: #0f172a; }
+    </style>
+</head>
+<body class="bg-mnos text-slate-100 font-sans min-h-screen">
+
+    <nav class="border-b border-slate-700 p-4 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold tracking-tighter text-blue-400">iMOXON <span class="text-xs text-slate-500 font-mono">v1.0.0-RC1</span></h1>
+            <div id="user-status" class="text-sm font-mono text-emerald-400">Not Logged In</div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Onboarding & Marketplace -->
+        <div class="lg:col-span-2 space-y-6">
+
+            <section id="onboarding-section" class="bg-slate-800/50 p-6 rounded-xl border border-slate-700">
+                <h2 class="text-xl font-semibold mb-4 border-b border-slate-700 pb-2">1. Onboarding</h2>
+                <div class="flex gap-4">
+                    <button onclick="onboardUser()" class="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded font-medium transition">Register as Buyer</button>
+                    <button onclick="onboardMerchant()" class="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded font-medium transition">Register as Merchant</button>
+                </div>
+                <p id="onboarding-result" class="mt-4 text-xs font-mono text-slate-400"></p>
+            </section>
+
+            <section class="bg-slate-800/50 p-6 rounded-xl border border-slate-700">
+                <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-2">
+                    <h2 class="text-xl font-semibold">2. Marketplace</h2>
+                    <button onclick="fetchListings()" class="text-blue-400 text-sm hover:underline">Refresh</button>
+                </div>
+                <div id="marketplace-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Listings populated here -->
+                </div>
+            </section>
+
+            <section class="bg-slate-800/50 p-6 rounded-xl border border-slate-700">
+                <h2 class="text-xl font-semibold mb-4 border-b border-slate-700 pb-2">3. Tourism & Assets</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="p-4 bg-slate-900/50 rounded border border-slate-700">
+                        <h3 class="text-sm font-bold text-blue-300 mb-2">Book Excursion</h3>
+                        <button onclick="bookTourism()" class="w-full bg-slate-700 hover:bg-slate-600 py-2 rounded text-sm">Manta Ray Snorkel ($150)</button>
+                    </div>
+                    <div class="p-4 bg-slate-900/50 rounded border border-slate-700">
+                        <h3 class="text-sm font-bold text-emerald-300 mb-2">Asset Exchange</h3>
+                        <button onclick="transferAsset()" class="w-full bg-slate-700 hover:bg-slate-600 py-2 rounded text-sm">Purchase Villa Token</button>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+
+        <!-- Command Grid (Events & Audit) -->
+        <div class="space-y-6">
+            <section class="bg-slate-900 p-6 rounded-xl border border-blue-500/30 glow h-[80vh] flex flex-col">
+                <h2 class="text-xl font-semibold mb-4 text-blue-400 flex items-center">
+                    <span class="mr-2">📡</span> COMMAND GRID
+                </h2>
+                <div id="event-log" class="flex-grow overflow-y-auto space-y-2 font-mono text-[10px]">
+                    <div class="text-slate-500 italic">Waiting for MNOS events...</div>
+                </div>
+                <div class="mt-4 pt-4 border-t border-slate-800">
+                    <div class="flex justify-between text-[10px] font-mono">
+                        <span>INTEGRITY: <span id="integrity-status" class="text-emerald-400">SECURE</span></span>
+                        <span>SHADOW: <span class="text-blue-400">ACTIVE</span></span>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+    </main>
+
+    <script>
+        let currentUser = null;
+        const API_BASE = "";
+
+        async function onboardUser() {
+            const res = await fetch(`${API_BASE}/onboard/user`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({name: "Guest User", email: "guest@mnos.local"})
+            });
+            const data = await res.json();
+            currentUser = data;
+            document.getElementById('user-status').innerText = `User: ${data.did.slice(0,12)}...`;
+            logEvent("imoxon.user.onboarded", data);
+            fetchListings();
+        }
+
+        async function onboardMerchant() {
+            const res = await fetch(`${API_BASE}/onboard/merchant`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    business_name: "Atoll Express",
+                    registration_number: "MV-999",
+                    bank_account: "BML-0001"
+                })
+            });
+            const data = await res.json();
+            logEvent("imoxon.merchant.onboarded", data);
+
+            // Create a dummy listing for the merchant
+            await fetch(`${API_BASE}/listings`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    title: "Dhoni Rental",
+                    category: "tourism",
+                    price: 250.0,
+                    stock: 5,
+                    merchant_id: data.did
+                })
+            });
+            fetchListings();
+        }
+
+        async function fetchListings() {
+            const res = await fetch(`${API_BASE}/listings`);
+            const listings = await res.json();
+            const container = document.getElementById('marketplace-list');
+            container.innerHTML = '';
+
+            Object.values(listings).forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'p-4 bg-slate-700/50 rounded-lg border border-slate-600 flex justify-between items-center';
+                card.innerHTML = `
+                    <div>
+                        <div class="font-bold">${item.title}</div>
+                        <div class="text-xs text-slate-400">$${item.price} | Stock: ${item.stock}</div>
+                    </div>
+                    <button onclick="buyItem('${item.listing_id}')" class="bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded text-sm">BUY</button>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        async function buyItem(listingId) {
+            if(!currentUser) { alert("Please onboard first!"); return; }
+            const res = await fetch(`${API_BASE}/checkout`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    user_token: currentUser.token,
+                    listing_id: listingId
+                })
+            });
+            const data = await res.json();
+            if(data.status === 'success') {
+                logEvent("imoxon.order.completed", data.order);
+                alert(`Order Complete! Total: $${data.order.pricing.total}`);
+                fetchListings();
+            } else {
+                alert("Transaction Failed: " + (data.detail || "Unknown error"));
+            }
+        }
+
+        async function bookTourism() {
+            if(!currentUser) { alert("Please onboard first!"); return; }
+            const res = await fetch(`${API_BASE}/tourism/book`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    user_token: currentUser.token,
+                    experience_type: "Manta Ray Snorkel",
+                    pax: 2,
+                    nights: 1,
+                    base_price_per_pax: 150.0
+                })
+            });
+            const data = await res.json();
+            logEvent("imoxon.tourism.booked", data.booking);
+            alert("Booking Confirmed!");
+        }
+
+        async function transferAsset() {
+            if(!currentUser) { alert("Please onboard first!"); return; }
+            logEvent("imoxon.asset.transfer_initiated", {asset: "Villa Token"});
+            // In reality, this would call /assets/transfer
+            alert("Asset Transfer Triggered via MNOS SHADOW.");
+        }
+
+        function logEvent(type, payload) {
+            const log = document.getElementById('event-log');
+            const entry = document.createElement('div');
+            entry.className = 'p-2 bg-slate-800 border-l-2 border-blue-500 animate-pulse';
+            entry.innerHTML = `
+                <div class="text-blue-400 font-bold">${type}</div>
+                <div class="text-slate-500 text-[8px]">${new Date().toLocaleTimeString()}</div>
+                <pre class="overflow-hidden text-emerald-500">${JSON.stringify(payload, null, 2)}</pre>
+            `;
+            log.prepend(entry);
+            setTimeout(() => entry.classList.remove('animate-pulse'), 1000);
+        }
+
+        // Poll for backend integrity
+        setInterval(async () => {
+            try {
+                const res = await fetch(`${API_BASE}/health`);
+                const data = await res.json();
+                document.getElementById('integrity-status').innerText = data.integrity ? 'SECURE' : 'COMPROMISED';
+                document.getElementById('integrity-status').className = data.integrity ? 'text-emerald-400' : 'text-red-500';
+            } catch(e) {}
+        }, 5000);
+
+        fetchListings();
+    </script>
+</body>
+</html>
