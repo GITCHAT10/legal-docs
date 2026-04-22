@@ -67,12 +67,16 @@ class ShadowLedger:
             raise
 
     def _calculate_hash(self, entry: Dict[str, Any]) -> str:
-        """previous_hash + event_type + payload + entry_id -> current_hash"""
+        """previous_hash + event_type + payload + entry_id + timestamp -> current_hash"""
+        if "timestamp" not in entry:
+            raise RuntimeError("SHADOW: Missing timestamp in block. Integrity check aborted.")
+
         block_string = json.dumps({
             "entry_id": entry["entry_id"],
             "event_type": entry["event_type"],
             "payload": entry["payload"],
-            "previous_hash": entry["previous_hash"]
+            "previous_hash": entry["previous_hash"],
+            "timestamp": entry["timestamp"]
         }, sort_keys=True).encode()
         return hashlib.sha256(block_string).hexdigest()
 

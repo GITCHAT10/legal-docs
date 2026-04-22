@@ -1,8 +1,6 @@
 import os
 import json
 import time
-import hmac
-import hashlib
 import paho.mqtt.client as mqtt
 from mnos.core.security.aegis import aegis
 from mnos.modules.security.service import security_module
@@ -11,21 +9,18 @@ from mnos.config import config
 IDENTITY = os.getenv("IDENTITY", "MIG-AIGM-2024PV12395H")
 MQTT_SERVER = os.getenv("MQTT_SERVER", "mqtt://10.0.0.5")
 AEGIS_LEVEL = os.getenv("AEGIS_LEVEL", "MIL-SPEC")
-NEXGEN_SECRET = os.getenv("NEXGEN_SECRET", "hardened_secret_placeholder")
 
-def sign_payload(payload: dict) -> str:
-    """Generates an HMAC signature for the session payload."""
-    data = json.dumps(payload, sort_keys=True).encode()
-    return hmac.new(NEXGEN_SECRET.encode(), data, hashlib.sha256).hexdigest()
-
-# Initial payload for the bridge session
-SESSION_PAYLOAD = {
-    "device_id": IDENTITY,
-    "role": "security_bridge"
-}
-# Add signature to session context
-SESSION_CONTEXT = SESSION_PAYLOAD.copy()
-SESSION_CONTEXT["signature"] = sign_payload(SESSION_PAYLOAD)
+def get_signed_session_context():
+    """Generates a signed session context for the bridge."""
+    payload = {
+        "device_id": IDENTITY,
+        "role": "security_bridge"
+    }
+    # Securely sign the payload using AEGIS service
+    signature = aegis.sign_session(payload)
+    context = payload.copy()
+    context["signature"] = signature
+    return context
 
 def on_connect(client, userdata, flags, rc, properties=None):
     print(f"[Jules Bridge] Connected with result code {rc}")
@@ -44,9 +39,12 @@ def on_message(client, userdata, msg):
             "aegis_level": AEGIS_LEVEL
         }
 
-        # 2. Hand over to Security Module for evaluation and action
+        # 2. Get fresh signed context for each submission
+        session_context = get_signed_session_context()
+
+        # 3. Hand over to Security Module for evaluation and action
         # This will route through ExecutionGuard -> AEGIS -> SHADOW
-        security_module.process_security_event(event_data, SESSION_CONTEXT)
+        security_module.process_security_event(event_data, session_context)
 
     except Exception as e:
         print(f"[Jules Bridge] Error processing message: {str(e)}")

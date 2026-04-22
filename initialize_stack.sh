@@ -10,6 +10,7 @@ docker build -t mnos/aegis-bridge:latest -f mnos/modules/aegis_bridge/Dockerfile
 docker network create --internal mnos_darknet 2>/dev/null || true
 
 # 3. Deploy Frigate AI (The Vision)
+# Note: Port 5000 removed for security hardening. Access only via internal network.
 docker run -d \
   --name frigate_mars_recon \
   --restart unless-stopped \
@@ -17,8 +18,7 @@ docker run -d \
   --shm-size=128mb \
   -v /mnt/storage/frigate:/media/frigate \
   -v /etc/mnos/frigate/config.yml:/config/config.yml:ro \
-  -p 5000:5000 \
-  --device /dev/bus/usb:/dev/bus/usb \
+  --device /dev/bus/usb/001/002:/dev/bus/usb/001/002 \
   blakeblackshear/frigate:stable
 
 # 4. Deploy Jules (The AEGIS Sovereign Bridge)
@@ -37,3 +37,4 @@ docker run -d \
 docker ps | grep -E "frigate|jules"
 echo "PERIMETER SECURED: MNOS MARS RECON IS LIVE."
 echo "AUTONOMOUS RESPONSE: ACTIVE (ENTRY RESTRICTION + ALERTS)"
+echo "HARDENING: Direct port exposure REMOVED. Map access limited to internal proxy."

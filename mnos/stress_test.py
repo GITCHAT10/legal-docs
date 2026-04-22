@@ -2,6 +2,9 @@ import sys
 import os
 import uuid
 from decimal import Decimal
+import json
+import hmac
+import hashlib
 
 # Add path
 sys.path.append(os.getcwd())
@@ -12,14 +15,19 @@ from mnos.core.events.service import events
 from mnos.core.ai.silvia import silvia
 from mnos.interfaces.sky_i.comms.whatsapp import whatsapp
 from mnos.modules.knowledge.service import knowledge_core
+from mnos.shared.execution_guard import guard
+from mnos.core.security.aegis import aegis
+from mnos.config import config
 
-# Import workflows
-import mnos.modules.workflows.booking
-import mnos.modules.workflows.guest_arrival
-import mnos.modules.workflows.emergency
+def get_test_session():
+    payload = {"device_id": "nexus-admin-01", "role": "admin"}
+    sig = hmac.new(config.NEXGEN_SECRET.encode(), json.dumps(payload, sort_keys=True).encode(), hashlib.sha256).hexdigest()
+    payload["signature"] = sig
+    return payload
 
 def stress_test():
     print("--- 🛡️ NEXUS ASI SKY-i HARDENING STRESS TESTS ---")
+    session = get_test_session()
 
     # 0. Initialize DNA for tests
     knowledge_core.ingest("TEST_DNA", "Bookings and Arrivals and Emergencies are active.")
@@ -36,12 +44,19 @@ def stress_test():
     print("\n[TEST 2: Corruption Recovery]")
     # Clear chain for clean test
     shadow.chain = shadow.chain[:1]
-    events.publish("nexus.booking.created", {"data": "test"})
+
+    guard.execute_sovereign_action(
+        "nexus.booking.created",
+        {"data": "test"},
+        session,
+        lambda p: "done"
+    )
+
     original_integrity = shadow.verify_integrity()
     print(f"Original Integrity: {original_integrity}")
 
     # Tamper
-    shadow.chain[1]["payload"] = {"TAMPERED": "TRUE"}
+    shadow.chain[1]["timestamp"] = "2026-04-22T09:00:00Z"
     tampered_integrity = shadow.verify_integrity()
     print(f"Tampered Integrity: {tampered_integrity}")
     if not tampered_integrity:
@@ -57,10 +72,9 @@ def stress_test():
 
     # 4. Concurrency Test (Simulated Sequential but overlapping logic)
     print("\n[TEST 4: Concurrency Simulation]")
-    ctx = {"device_id": "nexus-con", "bound_device_id": "nexus-con"}
-    whatsapp.receive_message("+9602", "book room", ctx)
-    whatsapp.receive_message("+9603", "arrival at airport", ctx)
-    whatsapp.receive_message("+9604", "emergency help", ctx)
+    whatsapp.receive_message("+9602", "book room", session)
+    whatsapp.receive_message("+9603", "arrival at airport", session)
+    whatsapp.receive_message("+9604", "emergency help", session)
     print(f"Final Ledger Size: {len(shadow.chain)}")
     print(f"Final Integrity: {shadow.verify_integrity()}")
 

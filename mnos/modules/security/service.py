@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict, Any, List
 from mnos.shared.execution_guard import guard
 from mnos.core.events.service import events
 
@@ -7,25 +7,68 @@ class SecurityModule:
     Sovereign Security Module:
     Handles automated reactions like lockdown, alerts, and door security.
     Enforces 'Never block safe exit from inside'.
+
+    RoE Matrix (Sala Fushi):
+    TL-1 Monitor: Known Staff/Guest
+    TL-2 Verification: Unknown Person
+    TL-3 Alert: Loitering > 180s
+    TL-4 Enforcement: Breach of Restricted Zone
+    TL-5 Critical: System Interference
     """
 
     def evaluate_threat(self, event_payload: Dict[str, Any]) -> int:
         """
-        Evaluates threat level based on event data.
-        TL-1: Monitor, TL-2: Verify, TL-3: Secure Mode, TL-4: Extended Response
+        Evaluates threat level based on event data and RoE logic.
         """
-        confidence = event_payload.get("frigate_event", {}).get("after", {}).get("confidence", 0)
-        label = event_payload.get("frigate_event", {}).get("after", {}).get("label", "")
+        frigate_after = event_payload.get("frigate_event", {}).get("after", {})
+        confidence = frigate_after.get("confidence", 0)
+        label = frigate_after.get("label", "")
+        duration = frigate_after.get("duration", 0) # Assumed field from Frigate
+        zones = frigate_after.get("current_zones", [])
 
-        if confidence > 0.90:
-            return 3 # TL-3 Secure Mode
-        elif confidence > 0.75:
-            return 2 # TL-2 Verify
-        else:
-            return 1 # TL-1 Monitor
+        # TL-5 Critical: Blindness/Jamming (Simplified detection)
+        if frigate_after.get("is_blinded") or frigate_after.get("signal_lost"):
+            return 5
+
+        # TL-4 Enforcement: Breach of Restricted Zone
+        if "Restricted_Staff_Only" in zones:
+            return 4
+
+        # TL-3 Alert: Loitering > 180s in Perimeter
+        if "Sala_Fushi_Perimeter" in zones and duration > 180:
+            return 3
+
+        # TL-2 Verification: Unknown Person (Public Beach/Perimeter)
+        if "Sala_Fushi_Perimeter" in zones and confidence > 0.70:
+            # In a real system, we'd check against a face/ID DB here
+            is_known = frigate_after.get("is_known", False)
+            if not is_known:
+                return 2
+
+        # TL-1 Monitor: Known/General awareness
+        return 1
+
+    def execute_TL3_response(self, payload: Dict[str, Any]):
+        """Toggle Perimeter Lighting to 100%; Audio Warning."""
+        print(f"[Security] TL-3 RESPONSE for zone: {payload.get('zone')}")
+        print(f"[Security] ACTION: Lighting set to 100%. Audio warning broadcast.")
+        return {"lighting": "100%", "audio": "active"}
+
+    def execute_TL4_response(self, payload: Dict[str, Any]):
+        """Lock Guest Wing Elevators; Send Alert; Capture 4K Still."""
+        print(f"[Security] TL-4 RESPONSE for zone: {payload.get('zone')}")
+        print(f"[Security] ACTION: Guest Wing Elevators ENTRY RESTRICTED. EXIT ENABLED.")
+        print(f"[Security] ACTION: 4K Forensic Still captured.")
+        return {"elevators": "restricted_entry", "safe_exit": True, "forensic_still": "captured"}
+
+    def execute_TL5_response(self, payload: Dict[str, Any]):
+        """Total Lockdown: Emergency Egress Alarms; Broadcast to MIG Command Center."""
+        print(f"[Security] TL-5 RESPONSE: SYSTEM INTERFERENCE DETECTED")
+        print(f"[Security] ACTION: TOTAL LOCKDOWN (ENTRY RESTRICTED). EMERGENCY EGRESS ALARMS ACTIVE.")
+        return {"lockdown": "full_perimeter_entry", "alarms": "active"}
 
     def execute_lockdown(self, payload: Dict[str, Any]):
-        """Restricts ENTRY to perimeter doors. PRESERVES SAFE EXIT."""
+        """General Entry Restriction. PRESERVES SAFE EXIT."""
         print(f"[Security] LOCKDOWN INITIATED for zone: {payload.get('zone')}")
         print(f"[Security] ACTION: Perimeter doors ENTRY RESTRICTED. EXIT REMAINS OPEN.")
         return {"status": "locked", "restriction": "entry_only", "safe_exit": True}
@@ -38,29 +81,39 @@ class SecurityModule:
     def process_security_event(self, event_data: Dict[str, Any], session_context: Dict[str, Any]):
         """Main entry point for security events from bridge."""
         threat_level = self.evaluate_threat(event_data)
-        zone = event_data.get("frigate_event", {}).get("after", {}).get("current_zones", ["unknown"])[0]
+        frigate_after = event_data.get("frigate_event", {}).get("after", {})
+        zone = frigate_after.get("current_zones", ["unknown"])[0]
 
-        if threat_level >= 3:
-            # TL-3 Secure Mode Actions
+        if threat_level == 5:
+             guard.execute_sovereign_action(
+                "nexus.security.lockdown",
+                {"zone": "SYSTEM", "threat_level": 5},
+                session_context,
+                self.execute_TL5_response
+            )
+        elif threat_level == 4:
             guard.execute_sovereign_action(
                 "nexus.security.lockdown",
-                {"zone": zone, "threat_level": threat_level},
+                {"zone": zone, "threat_level": 4},
                 session_context,
-                self.execute_lockdown
+                self.execute_TL4_response
             )
-
+        elif threat_level == 3:
             guard.execute_sovereign_action(
                 "nexus.security.alert",
-                {"message": f"Threat Level {threat_level} detected in {zone}. Perimeter secured.", "zone": zone},
+                {"message": f"TL-3 Alert in {zone}. Lighting and Audio active.", "zone": zone},
                 session_context,
-                self.trigger_alert
+                self.execute_TL3_response
             )
         elif threat_level == 2:
             guard.execute_sovereign_action(
                 "nexus.security.alert",
-                {"message": f"Verify activity in {zone}. Level 2 confidence.", "zone": zone},
+                {"message": f"TL-2 Verification needed in {zone}. Person detected.", "zone": zone},
                 session_context,
                 self.trigger_alert
             )
+        else:
+            # TL-1 Monitor
+            print(f"[Security] TL-1: Monitoring {zone}")
 
 security_module = SecurityModule()

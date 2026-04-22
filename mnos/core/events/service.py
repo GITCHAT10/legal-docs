@@ -19,7 +19,8 @@ class EventBus:
         "exmail.ticket.created",
         "nexus.security.lockdown",
         "nexus.security.alert",
-        "nexus.security.door_secured"
+        "nexus.security.door_secured",
+        "nexus.security.handshake"
     }
 
     def __init__(self):

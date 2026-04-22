@@ -11,7 +11,13 @@ class TrustedDeviceRegistry:
     """Server-side registry of authorized hardware IDs."""
     def __init__(self):
         # In production, this would be backed by a secure DB/HSM
-        self._trusted_devices: Set[str] = {"nexus-001", "nexus-admin-01", "MIG-AIGM-2024PV12395H"}
+        self._trusted_devices: Set[str] = {
+            "nexus-001",
+            "nexus-admin-01",
+            "MIG-AIGM-2024PV12395H",
+            "NODE-SALA-FUSHI-001",
+            "MIG-2026-GENESIS-01"
+        }
 
     def is_trusted(self, device_id: str) -> bool:
         return device_id in self._trusted_devices
