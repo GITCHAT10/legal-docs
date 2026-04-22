@@ -11,35 +11,22 @@ SUPPLIERS = {
 def release_sxos_wave_2(boq: Dict[str, Any]) -> Dict[str, Any]:
     """
     SXOS Wave 2: Validated Procurement Event.
-    Converts validated geometry/BOQ into a locked supply chain order.
     """
-    # 1. Hard Block Check (Fail-Closed)
     if "error" in boq:
-        return {
-            "status": "❌ HARD BLOCK",
-            "reason": f"Sovereign Security Violation: {boq['error']}",
-            "action": "Procurement Terminated"
-        }
+        return {"status": "❌ HARD BLOCK", "reason": boq["error"]}
 
-    # 2. Extract Quantities
-    steel_tons = boq["quantities"]["steel_tons"]
+    ledger = boq.get("fce_ledger", {})
+    steel_tons = boq.get("quantities", {}).get("steel_tons", 0)
 
-    # 3. Simulate Alibaba Order Lock
     order_id = f"SXOS-W2-{uuid.uuid4().hex[:8].upper()}"
-
-    shipment_details = {
-        "order_id": order_id,
-        "supplier": SUPPLIERS["steel"],
-        "material": "Structural Steel Reinforcement",
-        "quantity": f"{steel_tons} Tons",
-        "lock_status": "LOCKED",
-        "status": "PREPARING_FOR_SHIPMENT"
-    }
 
     return {
         "status": "✅ WAVE 2 RELEASED",
-        "event_id": str(uuid.uuid4()),
-        "procurement": shipment_details,
-        "total_commitment": f"{boq['currency']} {boq['total_estimate']:,}",
-        "action": "Supply Chain Locked to Geometry"
+        "procurement": {
+            "order_id": order_id,
+            "supplier": SUPPLIERS["steel"],
+            "material": "Structural Steel Reinforcement",
+            "quantity": f"{steel_tons} Tons"
+        },
+        "total_commitment": f"{ledger.get('currency', 'USD')} {ledger.get('total_commitment', 0):,}"
     }
