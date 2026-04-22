@@ -5,7 +5,8 @@ document.getElementById('designForm').addEventListener('submit', async (e) => {
         island_name: document.getElementById('island_name').value,
         plot_width: parseFloat(document.getElementById('plot_width').value),
         plot_depth: parseFloat(document.getElementById('plot_depth').value),
-        target_rooms: parseInt(document.getElementById('target_rooms').value)
+        target_rooms: parseInt(document.getElementById('target_rooms').value),
+        floors: parseInt(document.getElementById('floors').value)
     };
 
     const resultsDiv = document.getElementById('results');
@@ -29,7 +30,7 @@ document.getElementById('designForm').addEventListener('submit', async (e) => {
         const result = await response.json();
 
         // Trigger AquaSync Simulation in parallel
-        const aquaResp = await fetch('/api/v1/aquasync/simulate?tier=Gold');
+        const aquaResp = await fetch('/api/v1/water/aqua/desal-status', { method: 'POST' });
         const aquaResult = await aquaResp.json();
 
         document.getElementById('aquaResults').classList.remove('hidden');
@@ -37,9 +38,10 @@ document.getElementById('designForm').addEventListener('submit', async (e) => {
             <div class="space-y-2">
                 <p><span class="text-slate-500">Membrane:</span> ${aquaResult.membrane}</p>
                 <p><span class="text-slate-500">Recovery:</span> ${(aquaResult.parameters.recovery_rate * 100).toFixed(1)}%</p>
-                <p><span class="text-slate-500">Flux:</span> ${aquaResult.parameters.flux_lmh} LMH</p>
                 <p><span class="text-slate-500">Energy:</span> ${aquaResult.output.power_consumption_kwh_m3} kWh/m³</p>
-                <p class="text-xs text-blue-400 mt-4 italic">${aquaResult.output.status}</p>
+                <p class="text-xs ${aquaResult.output.aquasync_patent_active ? 'text-green-400' : 'text-blue-400'} mt-4 italic">
+                    ${aquaResult.output.aquasync_patent_active ? 'iGEO AquaSync Patent Active' : aquaResult.output.status}
+                </p>
             </div>
         `;
 

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Esri Maldives - NextGen ASI Engine</title>
+    <title>iGEO Sovereign Platform | MIG</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .nextgen-bg { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
@@ -12,18 +12,18 @@
 </head>
 <body class="nextgen-bg text-white min-h-screen">
     <nav class="p-6 border-b border-slate-700 flex justify-between items-center">
-        <h1 class="text-2xl font-bold tracking-tight">Esri <span class="esri-blue">Maldives</span> <span class="text-xs uppercase bg-blue-600 px-2 py-1 rounded ml-2">NextGen ASI</span></h1>
+        <h1 class="text-2xl font-bold tracking-tight">iGEO <span class="esri-blue">Sovereign</span> <span class="text-xs uppercase bg-blue-600 px-2 py-1 rounded ml-2">by MIG</span></h1>
         <div class="space-x-6 text-sm font-medium">
-            <a href="#" class="hover:text-blue-400">GIS Platform</a>
-            <a href="#" class="hover:text-blue-400">ASI Engine</a>
-            <a href="#" class="hover:text-blue-400">Sovereign Core</a>
+            <a href="#" class="hover:text-blue-400">Energy (HACE)</a>
+            <a href="#" class="hover:text-blue-400">Water (Aqua)</a>
+            <a href="#" class="hover:text-blue-400">Asset Vault</a>
         </div>
     </nav>
 
     <main class="max-w-7xl mx-auto p-12 grid grid-cols-1 lg:grid-cols-2 gap-12">
         <section>
-            <h2 class="text-5xl font-extrabold leading-tight mb-6">Mapping the Future of the Maldives.</h2>
-            <p class="text-slate-400 text-lg mb-8">Deploying Hardened Deterministic Geometry Engines and MIRA-compliant fiscal logic for a resilient nation.</p>
+            <h2 class="text-5xl font-extrabold leading-tight mb-6">National Infrastructure. Sovereign Intelligence.</h2>
+            <p class="text-slate-400 text-lg mb-8">Powering the Maldives with Patented HACEOSLAR Sync and iGEO Flow technology. UEI: 2024PV12395H.</p>
 
             <div class="bg-slate-800 p-8 rounded-2xl border border-slate-700">
                 <nav class="flex space-x-4 mb-6 border-b border-slate-700 pb-2">
@@ -51,9 +51,15 @@
                             <input type="number" id="plot_depth" value="50" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white">
                         </div>
                     </div>
-                    <div>
-                        <label class="block text-sm text-slate-500 mb-1">Target Rooms</label>
-                        <input type="number" id="target_rooms" value="10" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm text-slate-500 mb-1">Target Rooms</label>
+                            <input type="number" id="target_rooms" value="10" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-slate-500 mb-1">Floors</label>
+                            <input type="number" id="floors" value="2" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white">
+                        </div>
                     </div>
                     <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg transition">Execute ASI Full Run</button>
                 </form>

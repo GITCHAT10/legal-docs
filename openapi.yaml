@@ -1,0 +1,93 @@
+openapi: 3.0.3
+info:
+  title: iGEO Nexus OS API
+  description: |
+    Sovereign Infrastructure Operating System for the Maldives.
+    Powering automated design, compliance, and fiscal operations for the Maldives International Group (MIG).
+    UEI: 2024PV12395H
+  version: 1.0.0-skyi-core
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+paths:
+  /health:
+    get:
+      summary: System Health Check
+      responses:
+        '200':
+          description: System is online.
+  /api/v1/design:
+    post:
+      summary: Execute ASI Full Design Pipeline
+      description: Generates geometry, verifies compliance, and calculates BOQ.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                plot_width:
+                  type: number
+                plot_depth:
+                  type: number
+                target_rooms:
+                  type: integer
+                island_name:
+                  type: string
+      responses:
+        '200':
+          description: Full design payload.
+  /api/v1/gis/islands:
+    get:
+      summary: List Supported Islands
+      responses:
+        '200':
+          description: List of island names.
+  /api/v1/energy/haceoslar/sync:
+    get:
+      summary: Real-time Hybrid Power Status
+      description: Returns the balance between HACE (Wave) and Ocean Solar.
+      parameters:
+        - name: demand
+          in: query
+          schema:
+            type: number
+        - name: sun
+          in: query
+          schema:
+            type: number
+        - name: wave
+          in: query
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Power distribution state.
+  /api/v1/water/aqua/desal-status:
+    post:
+      summary: RO Membrane Health (Powered by AquaSync™)
+      parameters:
+        - name: tier
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Simulation results and maintenance schedule.
+  /api/v1/fiscal/moats/settle:
+    post:
+      summary: Real-time MIRA/Green Tax Settlement
+      parameters:
+        - name: amount
+          in: query
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Fiscal breakdown.
+components:
+  securitySchemes:
+    AegisBearerAuth:
+      type: http
+      scheme: bearer

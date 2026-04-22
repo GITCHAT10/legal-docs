@@ -15,17 +15,21 @@ from mnos.modules.compliance.checker import compliance
 from mnos.modules.finance.boq import boq_engine
 from mnos.modules.gis.engine import gis_engine
 from mnos.modules.aquasync.engine import aquasync
+from mnos.modules.energy.engine import energy_engine
 
-app = FastAPI(title="MNOS NextGen ASI - Maldives")
+app = FastAPI(title="iGEO Nexus OS - Sovereign Platform (MIG)")
 
 # Serve static files for the frontend
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+import uuid
 
 class DesignRequest(BaseModel):
     plot_width: float
     plot_depth: float
     target_rooms: int
     island_name: str
+    floors: Optional[int] = 2
 
 @app.get("/health")
 def health():
@@ -50,17 +54,19 @@ async def generate_design(req: DesignRequest, request: Request):
         raise HTTPException(status_code=400, detail=str(e))
 
     # Compliance Check (AEGIS)
-    total_area = req.plot_width * req.plot_depth * 2 # assumed 2 floors
-    comp = compliance.verify_compliance(total_area, req.plot_width * req.plot_depth, 2, layout["rooms_per_floor"])
+    floors = req.floors or 2
+    total_area = req.plot_width * req.plot_depth * floors
+    comp = compliance.verify_compliance(total_area, req.plot_width * req.plot_depth, floors, layout["rooms_per_floor"])
 
     # BOQ Generation (FCE + MOATS)
-    boq = boq_engine.generate_boq(layout, 2)
+    boq = boq_engine.generate_boq(layout, floors)
 
     # Event Emission
     await event_engine.emit("nexus.design.created", {"island": req.island_name, "rooms": req.target_rooms})
 
     # Shadow Audit
-    shadow.commit("req_001", "DESIGN_GEN", {"input": req.dict(), "output": layout})
+    request_id = str(uuid.uuid4())
+    shadow.commit(request_id, "DESIGN_GEN", {"input": req.dict(), "output": layout})
 
     # Eleone Decision Log
     eleone.log_decision("DESIGN_GENERATION", req.dict(), layout)
@@ -69,7 +75,10 @@ async def generate_design(req: DesignRequest, request: Request):
         "island": island_info,
         "layout": layout,
         "compliance": comp,
-        "boq": boq
+        "boq": boq,
+        "infrastructure": {
+            "sewer": sewer_engine.calculate_slope(0.2, 0.01)
+        }
     }
 
 @app.get("/api/v1/gis/islands")
@@ -79,6 +88,18 @@ def list_islands():
 @app.get("/api/v1/aquasync/simulate")
 def simulate_aquasync(tier: str = "Bronze"):
     return aquasync.run_simulation(tier, 35000) # Seawater salinity ppm
+
+@app.get("/api/v1/energy/haceoslar/sync")
+def sync_energy(demand: float = 100.0, sun: float = 0.8, wave: float = 1.2):
+    return energy_engine.sync_power(demand, sun, wave)
+
+@app.post("/api/v1/water/aqua/desal-status")
+def desal_status(tier: str = "Gold"):
+    return aquasync.run_simulation(tier, 35000, ac_condensate_flow=5.0)
+
+@app.post("/api/v1/fiscal/moats/settle")
+def settle_fiscal(amount: float):
+    return moats.calculate_bill(amount, 1, 1)
 
 if __name__ == "__main__":
     import uvicorn
