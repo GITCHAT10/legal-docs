@@ -20,22 +20,38 @@ class FceService:
         """Legacy compatibility wrapper."""
         return self.calculate_taxes(base_amount, pax, nights, apply_green_tax=True)
 
-    def calculate_taxes(self, base_amount: Decimal, pax: int = 1, nights: int = 1, apply_green_tax: bool = False) -> Dict[str, Any]:
+    def calculate_taxes(self,
+                        base_amount: Decimal,
+                        pax: int = 1,
+                        nights: int = 1,
+                        apply_green_tax: bool = False,
+                        stay_date: Optional[datetime] = None,
+                        is_guesthouse: bool = False,
+                        pax_under_2: int = 0) -> Dict[str, Any]:
         """
-        Strict MOATS tax logic implementation:
+        Strict NEXUS-MIRA tax logic implementation:
         1. Subtotal = Base
         2. Service Charge = 10% of Subtotal
-        3. TGST = 17% of (Subtotal + Service Charge)
-        4. Green Tax = $6 * pax * nights (if applicable)
+        3. TGST = Transition dependent (17% if stay_date >= 2025-07-01)
+        4. Green Tax = $6 (Resort) or $3 (Guesthouse) * (pax - under_2) * nights
         """
+        if stay_date is None:
+            stay_date = datetime.now()
+
+        # TGST Transition Rule
+        tgst_rate = config.TGST_POST_TRANSITION if stay_date >= config.TGST_TRANSITION_DATE else config.TGST_PRE_TRANSITION
+
         subtotal = base_amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         service_charge = (subtotal * config.SERVICE_CHARGE).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         taxable_amount = subtotal + service_charge
-        tgst = (taxable_amount * config.TGST).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        tgst = (taxable_amount * tgst_rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
         green_tax = Decimal("0.00")
         if apply_green_tax:
-            green_tax = (config.GREEN_TAX_USD * Decimal(pax) * Decimal(nights)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            # Green Tax exemptions: under-2
+            effective_pax = max(0, pax - pax_under_2)
+            gt_rate = config.GREEN_TAX_GUESTHOUSE_USD if is_guesthouse else config.GREEN_TAX_RESORT_USD
+            green_tax = (gt_rate * Decimal(effective_pax) * Decimal(nights)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
         total = taxable_amount + tgst + green_tax
 
@@ -44,10 +60,11 @@ class FceService:
             "service_charge": service_charge,
             "taxable_amount": taxable_amount,
             "tgst": tgst,
+            "tgst_rate": tgst_rate,
             "green_tax": green_tax,
             "total": total,
-            "total_amount": total, # Compatibility
-            "base_amount": subtotal, # Compatibility
+            "total_amount": total,
+            "base_amount": subtotal,
             "currency": "USD"
         }
 

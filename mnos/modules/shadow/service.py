@@ -45,6 +45,10 @@ class ShadowLedger:
             print(f"!!! SHADOW COMMIT FAILURE: {str(e)} !!!")
             raise RuntimeError("Audit seal failure: System Halt mandated.") from e
 
+    def commit_evidence(self, db, trace_id: str, payload: Dict[str, Any]):
+        """Legacy compatibility wrapper for commit."""
+        self.commit("EVIDENCE", {**payload, "trace_id": trace_id})
+
     def _calculate_hash(self, entry: Dict[str, Any]) -> str:
         """previous_hash + event_type + payload + entry_id -> current_hash"""
         block_string = json.dumps({

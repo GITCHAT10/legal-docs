@@ -1,5 +1,6 @@
 import os
 from decimal import Decimal
+from datetime import datetime
 
 class Config:
     # Sovereign Secrets
@@ -11,8 +12,15 @@ class Config:
 
     # Financial Logic (Maldives Doctrine)
     SERVICE_CHARGE = Decimal("0.10") # 10%
-    TGST = Decimal("0.17")           # 17%
-    GREEN_TAX_USD = Decimal("6.00")   # $6/pax/night
+
+    # TGST Transition Rule: 17% from 2025-07-01
+    TGST_TRANSITION_DATE = datetime(2025, 7, 1)
+    TGST_PRE_TRANSITION = Decimal("0.16") # Assuming 16% legacy
+    TGST_POST_TRANSITION = Decimal("0.17")
+
+    GREEN_TAX_RESORT_USD = Decimal("6.00")   # $6/pax/night for resorts/vessels
+    GREEN_TAX_GUESTHOUSE_USD = Decimal("3.00") # $3/pax/night for guesthouses
+    GREEN_TAX_USD = GREEN_TAX_RESORT_USD # Default/Legacy compatibility
 
     # AI Thresholds
     SILVIA_INTENT_MIN = 0.90
