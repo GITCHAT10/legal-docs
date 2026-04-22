@@ -5,3 +5,11 @@ __pycache__/
 *.db
 *.log
 .env
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
