@@ -4,67 +4,63 @@ from mnos.modules.compliance.checker import check_maldives_compliance
 from mnos.modules.layout.generator import generate_layout
 from mnos.modules.finance.boq import calculate_boq_and_cost
 from mnos.modules.finance.sxos_adapter import release_sxos_wave_2
-from mnos.modules.interior.designer import scan_room_ar
 from mnos.modules.orchestrate.engine import generate_island_timeline
 from mnos.modules.orchestrate.asana_adapter import auto_generate_asana_board
 
-def run_demo(label, prompt_or_request, island="Male'"):
-    print(f"\n--- {label} ---")
-    if isinstance(prompt_or_request, str):
-        print(f"Prompt: \"{prompt_or_request}\"")
-        request = parse_prompt_to_request(prompt_or_request)
-    else:
-        request = prompt_or_request
+# Mock MNOS Infrastructure
+class MockBus:
+    def emit(self, event, data): pass
+class MockShadow:
+    def log(self, event, data): pass
 
-    # 1. Compliance
+from mnos.modules.iot.registry import MarsStateManager, MarsDeviceRegistry
+from mnos.modules.iot.context import MarsContextEngine
+from mnos.modules.iot.automation import MarsAutomationEngine
+from mnos.modules.recon.core import MarsReconnaissanceCore
+from mnos.modules.recon.threat import MarsSecurityEvent
+
+def run_mars_integration_demo():
+    print("🏛️ NEXUS ASI — Sovereign Hybrid Intelligence (ABEOS + MARS)")
+
+    # 1. DESIGN PIPELINE
+    prompt = "1500 sqft, 30x50, 3 floors, 5 hotel rooms each floor, terrace"
+    request = parse_prompt_to_request(prompt)
     compliance = check_maldives_compliance(request)
-    if not compliance['is_compliant']:
-        print(f"Compliance: ❌ FAIL")
-        return
-
-    # 2. Geometry + Interiors
     layout = generate_layout(request, compliance)
-    if "error" in layout:
-        print(f"Engine Error: ❌ {layout['error']}")
-        return
-
-    # 3. BOQ
     boq = calculate_boq_and_cost(layout)
 
-    # 4. ORCHESTRATION (Asana-Style Timeline)
-    complexity = (request.floors * 0.5) + (request.rooms_per_floor * 0.1)
-    timeline = generate_island_timeline(island, complexity)
+    print(f"\n[🏗️ ABEOS DESIGN] Omadhoo Project: {boq['quantities']['total_area_sqm']} sqm")
+    print(f"Allocated {len(layout['mars_hardware'])} MARS NEXTGEN Hardware units.")
+    print(f"Total Estimate: ${boq['total_estimate']:,} (Including MARS Systems)")
 
-    # 5. ASANA WORKFLOW ENGINE (NEW: Human coordination layer)
+    # 2. MARS EXECUTION LAYER SIMULATION
+    bus, shadow = MockBus(), MockShadow()
+    registry = MarsDeviceRegistry(shadow)
+    state_manager = MarsStateManager(bus, shadow)
+    context_engine = MarsContextEngine(shadow)
+    automation = MarsAutomationEngine(state_manager, context_engine)
+    recon = MarsReconnaissanceCore(shadow, bus)
+
+    # Scene: Welcome Mode
+    print("\n[🤖 MARS AUTOMATION - GUEST CHECK-IN]")
+    context_engine.update_context("Room_1", user_id="GUEST_007", occupancy=True)
+    automation.add_rule("Welcome Home", "MARS_CHECKIN", {"user_id": "GUEST_007"}, "Room_1_LIGHT", "ON")
+    automation.process_event("MARS_CHECKIN", {"location": "Room_1"})
+
+    # Threat Correlation
+    print("\n[🚨 MARS THREAT CORRELATION - INTRUSION]")
+    recon.threat_engine.process_security_event(MarsSecurityEvent(event_type="MOTION_DETECTED", source_id="CAM_01", location="Lobby"))
+    recon.threat_engine.process_security_event(MarsSecurityEvent(event_type="DOOR_FORCED", source_id="SENS_01", location="Lobby"))
+
+    incident = list(recon.incident_engine.incidents.values())[0]
+    print(f"Status: {incident.status} | Severity: {incident.severity} | Title: {incident.title}")
+
+    # 3. ASANA HANDOVER
     asana_board = auto_generate_asana_board(layout, boq)
-    print(f"\n[📋 ASANA BOARD - {asana_board['board_name']}]")
-    print(f"Human Layer Status: {asana_board['human_layer_status']}")
-    print("Actionable Tasks (Auto-generated from ABEOS):")
-    # Show first task from each phase
-    phases_shown = set()
-    for t in asana_board['tasks']:
-        if t['phase'] not in phases_shown:
-            print(f" - [{t['phase']}] {t['name']} (Assigned: {t['role']})")
-            phases_shown.add(t['phase'])
+    print(f"\n[📋 ASANA HANDOVER] Board Created: {asana_board['board_name']}")
+    print(f"Initial Phase Task: {asana_board['tasks'][0]['name']}")
 
-    # 6. Consolidated Economics
-    print(f"\n[📊 CONSOLIDATED BOQ]")
-    print(f"Steel: {boq['quantities']['steel_tons']} Tons | Furniture: ${boq['costs']['furniture']:,}")
-    print(f"Total Estimate: {boq['currency']} {boq['total_estimate']:,}")
-
-    # 7. SXOS Trigger (Automated Supply Chain)
-    print("\n[🚀 SXOS WAVE 2 TRIGGER]")
-    sxos_result = release_sxos_wave_2(boq)
-    print(f"Status: {sxos_result['status']}")
-
-def main():
-    print("🏛️ NEXUS ASI — Sovereign Construction & Orchestration Intelligence")
-    print("Hybrid Autonomous + Human Pipeline: ABEOS + ASANA")
-
-    # Omadhoo Standard
-    run_demo("OMADHOO PRIME (Design-to-Deployment)",
-             "1500 sqft, 30x50, 3 floors, 5 hotel rooms each floor, terrace",
-             island="Omadhoo")
+    print("\n--- ✅ INTEGRATION COMPLETE ---")
 
 if __name__ == "__main__":
-    main()
+    run_mars_integration_demo()
