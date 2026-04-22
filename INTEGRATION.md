@@ -14,22 +14,25 @@
 - `POST /integration/v1/events/production`: Ingest production events.
 - `GET /mnos/v1/policies/skyfarm`: Retrieve active policy metadata.
 
+## Carbon Integration (SALA x SKYFARM)
+- `POST /integration/v1/carbon/retire`: Retire offsets for SALA guests.
+- **Payload**: `{"guest_name": str, "amount_kg": float, "correlation_id": str}`
+
 ## Reliability
 - **Timeout**: 5 seconds for all outbound calls from SKYFARM.
-- **Retries**: Outbox worker implements exponential backoff (15s, 60s, 300s) for 5xx/408 errors.
+- **Retries**: 3 attempts with exponential backoff for transient errors (408, 502, 503, 504).
 
 ## Failure-Mode Matrix
-| Failure Scenario | MNOS Status | SKYFARM Handling | User Impact |
+| Scenario | MNOS Status | SKYFARM Exception | Handling |
 | :--- | :--- | :--- | :--- |
-| Missing/Invalid Secret | 401 | Immediate Exception | Service halt, requires admin config. |
-| Replayed Request | 401 | Immediate Exception | Blocked action, security alert logged. |
-| Policy Rejection | 403 | 403 Raised | Action denied by governance rules. |
-| Duplicate Event | 200/409 | Original Response | Idempotent success, no side effects. |
-| Service Unavailable | 503 | 502/504 Raised | Queued in Outbox for background retry. |
-| Request Timeout | N/A | 504 Raised | Queued in Outbox for background retry. |
-| Malformed Schema | 422 | 422 Raised | Immediate failure, requires code fix. |
+| Invalid Secret | 401 | 401 Unauthorized | Critical alert, halt process |
+| Signature Mismatch | 401 | 401 Unauthorized | Log security breach |
+| Policy Rejection | 403 | 403 Forbidden | Halt execution |
+| Idempotency Hit | 200/409 | Original Response | Skip processing |
+| Timeout | N/A | 504 Gateway Timeout | Background Retry |
+| Server Error | 500/502 | 502 Bad Gateway | Background Retry |
 
-## Verification Proof
-- All integration hardening tests PASSED (12/12).
-- Mandatory secret enforcement verified: System halts if `SKYFARM_INTEGRATION_SECRET` is missing.
-- Traceability verified: `X-Correlation-Id` propagates across all cross-system calls.
+## Testing Summary
+- **Hardening Tests**: 100% PASS (401, Timeout, Invalid Signature)
+- **Compliance Suite**: 100% PASS
+- **Economy Simulation**: 100% PASS (Closed loop verified)

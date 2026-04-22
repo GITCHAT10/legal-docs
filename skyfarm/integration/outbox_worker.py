@@ -3,6 +3,8 @@ from .models import IntegrationOutboxModel
 from .service import generate_canonical_string, sign_payload_canonical, SECRET_KEY
 from .logging_utils import logger
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util import Retry
 import uuid
 import os
 import json
@@ -10,7 +12,15 @@ from datetime import datetime, timezone, timedelta
 
 MNOS_URL = os.getenv("MNOS_URL", "http://localhost:8000")
 
-# Internal metrics store
+session = requests.Session()
+retry_strategy = Retry(
+    total=3,
+    backoff_factor=1,
+    status_forcelist=[408, 502, 503, 504],
+    allowed_methods=["POST"]
+)
+session.mount("http://", HTTPAdapter(max_retries=retry_strategy))
+
 metrics = {
     "success_count": 0,
     "failure_count": 0,
@@ -20,7 +30,6 @@ metrics = {
 }
 
 def process_outbox(db: Session):
-    """Outbox processor with Phase 5 retry logic and Traceability"""
     now = datetime.utcnow()
     pending_events = db.query(IntegrationOutboxModel).filter(
         IntegrationOutboxModel.status.in_(["pending", "failed"]),
@@ -29,7 +38,6 @@ def process_outbox(db: Session):
     ).all()
 
     for entry in pending_events:
-        event_id = entry.event_id
         try:
             method = "POST"
             path = "/integration/v1/events/production"
@@ -52,63 +60,29 @@ def process_outbox(db: Session):
                 "Content-Type": "application/json"
             }
 
-            if entry.attempt_count > 0:
-                metrics["retry_count"] += 1
-
-            # Standardized 5s timeout
-            resp = requests.post(f"{MNOS_URL}{path}", data=body_bytes, headers=headers, timeout=5)
+            resp = session.post(f"{MNOS_URL}{path}", data=body_bytes, headers=headers, timeout=5)
 
             if 200 <= resp.status_code < 300:
                 entry.status = "sent"
                 metrics["success_count"] += 1
             else:
-                # Exponential backoff retry for 5xx/408
-                if resp.status_code >= 500 or resp.status_code == 408:
-                     error_msg = f"Retryable MNOS Error: {resp.status_code}"
-                     handle_failure(entry, error_msg)
-                else:
-                     # Non-retryable
-                     entry.status = "failed"
-                     entry.last_error = f"Permanent MNOS Error: {resp.status_code} - {resp.text}"
-
+                handle_failure(entry, f"MNOS Error: {resp.status_code}")
                 metrics["failure_count"] += 1
 
             entry.attempt_count += 1
-            metrics["last_processed_at"] = datetime.now(timezone.utc).isoformat()
-            db.commit()
-        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
-            handle_failure(entry, f"Network/Timeout Error: {str(e)}")
-            metrics["failure_count"] += 1
-            entry.attempt_count += 1
             db.commit()
         except Exception as e:
-            entry.status = "failed"
-            entry.last_error = f"System Error: {str(e)}"
-            metrics["failure_count"] += 1
-            entry.attempt_count += 1
+            handle_failure(entry, f"Error: {str(e)}")
             db.commit()
 
 def handle_failure(entry, error_msg):
     entry.status = "failed"
     entry.last_error = error_msg
-
-    # Retry delays (15s, 60s, 300s)
     backoffs = [15, 60, 300]
     if entry.attempt_count < len(backoffs):
         entry.next_attempt_at = datetime.utcnow() + timedelta(seconds=backoffs[entry.attempt_count])
     else:
-        entry.status = "failed"
         metrics["dead_letter_count"] += 1
-
-def run_worker_loop(db_session_factory):
-    import time
-    while True:
-        db = db_session_factory()
-        try:
-            process_outbox(db)
-        finally:
-            db.close()
-        time.sleep(10)
 
 def get_metrics():
     return metrics

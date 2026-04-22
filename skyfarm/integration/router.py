@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Header, Depends
+from fastapi import APIRouter, HTTPException, Header, Depends, Request
 from skyfarm.integration.service import create_integration_event, SECRET_KEY, generate_canonical_string, sign_payload_canonical, verify_signature_v2
 from skyfarm.integration.outbox_worker import get_metrics
 from skyfarm.integration.schemas import MetricsResponse, HealthResponse
@@ -18,11 +18,11 @@ router = APIRouter(prefix="/integration/v1")
 
 MNOS_URL = os.getenv("MNOS_URL", "http://localhost:8000")
 
-# Setup retry-enabled session
+# Setup retry-enabled session (Transient retry logic)
 session = requests.Session()
 retry_strategy = Retry(
     total=3,
-    backoff_factor=0.1, # Short backoff for tests
+    backoff_factor=1,
     status_forcelist=[408, 502, 503, 504],
     allowed_methods=["POST"]
 )
@@ -72,9 +72,11 @@ def send_to_mnos(payload: IntegrationSend, x_correlation_id: Optional[str] = Hea
     }
 
     try:
+        # Enforce 5s timeout and retry strategy
         resp = session.post(endpoint, data=body_bytes, headers=headers, timeout=5)
 
         if resp.status_code >= 400:
+             # Propagate real HTTP error statuses
              raise HTTPException(
                 status_code=resp.status_code,
                 detail=f"MNOS rejected request: {resp.text}"
@@ -92,19 +94,13 @@ def send_to_mnos(payload: IntegrationSend, x_correlation_id: Optional[str] = Hea
 
 @router.post("/carbon/retire")
 async def retire_carbon_credit(
-    event: CarbonRetireEvent,
+    request: Request,
     x_signature: str = Header(...),
     x_timestamp: str = Header(...),
     x_request_id: str = Header(...)
 ):
-    """
-    Retires a SKYFARM carbon credit specifically for a SALA Omagili guest.
-    Ensures the 14.5 kg CO2e is legally and ecologically 'burnt' from the ledger.
-    """
+    body_bytes = await request.body()
     try:
-        # Secure HMAC Signature verification via MNOS_INTEGRATION_SECRET
-        # Phase 1: Robust Aman-standard signature validation
-        body_bytes = json.dumps(event.model_dump(), sort_keys=True).encode()
         if not verify_signature_v2(
             signature=x_signature,
             method="POST",
@@ -116,7 +112,9 @@ async def retire_carbon_credit(
         ):
             raise HTTPException(status_code=401, detail="INVALID_SOVEREIGN_SIGNATURE")
 
-        # Deduct from SKYFARM's regenerative sequestration pool
+        body_json = json.loads(body_bytes)
+        event = CarbonRetireEvent(**body_json)
+
         result = await skyfarm_carbon_engine.retire_credits(
             amount=event.amount_kg,
             beneficiary=event.guest_name
@@ -126,7 +124,6 @@ async def retire_carbon_credit(
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
-        # P1 Fix: Propagate real error statuses to maintain Aman-level reliability
         if isinstance(e, HTTPException):
             raise e
         raise HTTPException(status_code=500, detail=str(e))

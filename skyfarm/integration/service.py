@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional, Union
 from pydantic import BaseModel, Field
 import uuid
 
-# Phase 1: Strict secret handling. App must fail if missing.
+# Mandatory secret handling: Fail if missing.
 if not os.environ.get("SKYFARM_INTEGRATION_SECRET"):
     raise RuntimeError("SKYFARM_INTEGRATION_SECRET NOT CONFIGURED - SYSTEM HALT")
 
@@ -53,7 +53,6 @@ def verify_signature_v2(
     body: Union[Dict[str, Any], bytes],
     secret: str
 ) -> bool:
-    # 1. Strict Timestamp validation (60 seconds per Phase 1)
     try:
         req_time = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
         if abs((datetime.now(timezone.utc) - req_time).total_seconds()) > 60:
@@ -61,7 +60,6 @@ def verify_signature_v2(
     except Exception as e:
         raise ValueError(f"Invalid timestamp format: {str(e)}")
 
-    # 2. Canonical string check
     expected_canonical = generate_canonical_string(method, path, timestamp, request_id, body)
     expected_signature = hmac.new(secret.encode(), expected_canonical.encode(), hashlib.sha256).hexdigest()
 
