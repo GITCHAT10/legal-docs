@@ -35,10 +35,14 @@ class FceService:
             "currency": "USD"
         }
 
-    def validate_pre_auth(self, folio_id: str, amount: Decimal, credit_limit: Decimal) -> bool:
-        """Mandatory validation before commit."""
+    def validate_pre_auth(self, folio_id: str, amount: Decimal, credit_limit: Decimal, legal_anchor_id: str = None) -> bool:
+        """Mandatory validation before commit. Enforces eLEGAL binding."""
+        if not legal_anchor_id:
+             raise FinancialException(f"FCE AUTH DENIED: Missing Legal_Anchor_ID for folio {folio_id}. Contract linkage mandatory.")
+
         if amount > credit_limit:
             raise FinancialException(f"FCE AUTH DENIED: Amount {amount} exceeds limit {credit_limit} for folio {folio_id}")
+
         return True
 
 fce = FceService()

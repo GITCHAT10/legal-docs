@@ -32,6 +32,10 @@ class EventBus:
 
     def publish(self, event_type: str, data: Dict[str, Any], trace_id: str = None) -> Dict[str, Any]:
         """Publishes an event and commits to SHADOW ledger."""
+        # Hardened Routing: Prevent double prefixing
+        if event_type.startswith("nexus.nexus."):
+            event_type = event_type.replace("nexus.nexus.", "nexus.", 1)
+
         if event_type not in self.TAXONOMY:
             raise ValueError(f"Unknown event type: {event_type}")
 

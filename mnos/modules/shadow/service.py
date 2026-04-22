@@ -47,12 +47,13 @@ class ShadowLedger:
             raise RuntimeError("Audit seal failure: System Halt mandated.") from e
 
     def _calculate_hash(self, entry: Dict[str, Any]) -> str:
-        """previous_hash + event_type + payload + entry_id -> current_hash"""
+        """previous_hash + timestamp + event_type + payload + entry_id -> current_hash"""
         # Ensure payload is deep copied or treated as immutable for hash consistency
         payload = entry["payload"]
 
         block_string = json.dumps({
             "entry_id": entry["entry_id"],
+            "timestamp": entry["timestamp"],
             "event_type": entry["event_type"],
             "payload": payload,
             "previous_hash": entry["previous_hash"]
