@@ -6,15 +6,16 @@
     <title>iMOXON | Maldives Local Economy Engine</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .glow { box-shadow: 0 0 15px rgba(59, 130, 246, 0.5); }
+        .glow { box-shadow: 0 0 15px rgba(59, 130, 246, 0.3); }
         .bg-mnos { background-color: #0f172a; }
+        .aman-folio { background-color: #f8f5f0; color: #334155; font-family: 'Georgia', serif; }
     </style>
 </head>
 <body class="bg-mnos text-slate-100 font-sans min-h-screen">
 
     <nav class="border-b border-slate-700 p-4 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50">
         <div class="container mx-auto flex justify-between items-center">
-            <h1 class="text-2xl font-bold tracking-tighter text-blue-400">iMOXON <span class="text-xs text-slate-500 font-mono">v1.0.0-RC1 (SOVEREIGN)</span></h1>
+            <h1 class="text-2xl font-bold tracking-tighter text-blue-400">iMOXON <span class="text-xs text-slate-500 font-mono">v1.1.0 (SALA 2026)</span></h1>
             <div id="user-status" class="text-sm font-mono text-emerald-400">Not Logged In</div>
         </div>
     </nav>
@@ -32,27 +33,25 @@
             </section>
 
             <section class="bg-slate-800/50 p-6 rounded-xl border border-slate-700">
-                <h2 class="text-xl font-semibold mb-4 border-b border-slate-700 pb-2">2. iMOXON MOVE (Transport)</h2>
+                <h2 class="text-xl font-semibold mb-4 border-b border-slate-700 pb-2">2. iMOXON MOVE (SALA 2026 Tracking)</h2>
                 <div class="grid grid-cols-1 gap-4">
-                    <button onclick="requestRide()" class="bg-slate-700 hover:bg-slate-600 py-3 rounded-lg text-lg font-bold">Request Local Taxi (MVR 15 base)</button>
+                    <button onclick="requestRide()" class="bg-slate-700 hover:bg-slate-600 py-3 rounded-lg text-lg font-bold flex justify-between px-6 items-center">
+                        <span>Request Local Taxi</span>
+                        <span class="text-xs text-emerald-400 border border-emerald-400/30 px-2 py-1 rounded">ECO-TRACK ACTIVE</span>
+                    </button>
+                </div>
+                <div id="latest-folio" class="mt-4 hidden animate-in fade-in zoom-in duration-500">
+                    <!-- Aman-style Folio rendered here -->
                 </div>
             </section>
 
             <section class="bg-slate-800/50 p-6 rounded-xl border border-slate-700">
-                <h2 class="text-xl font-semibold mb-4 border-b border-slate-700 pb-2">3. Services & Governance</h2>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <button onclick="enrollEdu()" class="bg-slate-700 p-4 rounded border border-slate-600 hover:border-blue-400 transition">
-                        <div class="text-sm font-bold">iMOXON LEARN</div>
-                        <div class="text-xs text-slate-400 mt-1">Enroll in Course</div>
-                    </button>
-                    <button onclick="activateHMS()" class="bg-slate-700 p-4 rounded border border-slate-600 hover:border-emerald-400 transition">
-                        <div class="text-sm font-bold">iSKY CLOUD HMS</div>
-                        <div class="text-xs text-slate-400 mt-1">Activate SaaS</div>
-                    </button>
-                    <button onclick="triggerDeen()" class="bg-slate-700 p-4 rounded border border-slate-600 hover:border-amber-400 transition">
-                        <div class="text-sm font-bold">iMOXON DEEN</div>
-                        <div class="text-xs text-slate-400 mt-1">Faith Reminder</div>
-                    </button>
+                <h2 class="text-xl font-semibold mb-4 border-b border-slate-700 pb-2">3. Marketplace</h2>
+                <div class="flex gap-4 mb-4">
+                    <input id="list-title" placeholder="Product Title" class="bg-slate-900 border border-slate-700 px-3 py-1 rounded text-sm w-full">
+                    <input id="list-price" placeholder="Price" type="number" class="bg-slate-900 border border-slate-700 px-3 py-1 rounded text-sm w-32">
+                    <input id="list-carbon" placeholder="CO2 (kg)" type="number" class="bg-slate-900 border border-slate-700 px-3 py-1 rounded text-sm w-32">
+                    <button onclick="createListing()" class="bg-emerald-600 px-4 py-1 rounded text-sm">LIST</button>
                 </div>
             </section>
 
@@ -99,6 +98,17 @@
             } catch(e) { console.error(e); }
         }
 
+        async function createListing() {
+            if(!currentUser) return alert("Onboard first!");
+            const title = document.getElementById('list-title').value;
+            const price = document.getElementById('list-price').value;
+            const carbon = document.getElementById('list-carbon').value;
+
+            await fetch(`${API_BASE}/market/listing?vendor_id=${currentUser.did}&title=${title}&price=${price}&carbon_footprint_kg=${carbon}`, {method: 'POST'});
+            logEvent("IMOXON.MARKET.LISTING_CREATED", {title, carbon_footprint_kg: carbon});
+            alert("Product Listed with Carbon Data.");
+        }
+
         async function requestRide() {
             if(!currentUser) return alert("Onboard first!");
             const res = await fetch(`${API_BASE}/transport/ride`, {
@@ -114,38 +124,56 @@
             });
             const data = await res.json();
             logEvent("IMOXON.MOVE.RIDE_REQUESTED", data.ride);
-            alert(`Ride Matched! Fare: ${data.ride.fare.total} MVR`);
+            renderFolio(data.ride);
         }
 
-        async function enrollEdu() {
-            if(!currentUser) return alert("Onboard first!");
-            const res = await fetch(`${API_BASE}/edu/enroll`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    student_id: currentUser.did,
-                    institute_id: "inst_1",
-                    course_id: "python_101",
-                    fee: 500.0
-                })
-            });
-            const data = await res.json();
-            logEvent("IMOXON.LEARN.ENROLLED", data.enrollment);
-            alert("Enrolled successfully via FCE Authority.");
-        }
+        function renderFolio(ride) {
+            const container = document.getElementById('latest-folio');
+            container.classList.remove('hidden');
+            container.innerHTML = `
+                <div class="aman-folio p-8 rounded shadow-2xl border-t-4 border-slate-400">
+                    <div class="flex justify-between items-start mb-8">
+                        <div>
+                            <div class="text-xs uppercase tracking-widest text-slate-500 mb-1">Transaction Folio</div>
+                            <div class="text-xl font-serif">iMOXON MOVE</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs text-slate-400">SALA 2026 Compliant</div>
+                            <div class="text-emerald-700 font-bold">● ACTIVE</div>
+                        </div>
+                    </div>
 
-        async function activateHMS() {
-            if(!currentUser) return alert("Onboard first!");
-            const res = await fetch(`${API_BASE}/isky/activate?operator_id=${currentUser.did}`, {method: 'POST'});
-            const data = await res.json();
-            logEvent("ISKY.HMS_ACTIVATED", data.activation);
-            alert("iSKY Cloud HMS Activated ($100 Setup).");
-        }
+                    <div class="border-y border-slate-200 py-6 mb-6">
+                        <div class="flex justify-between mb-2">
+                            <span class="text-sm">Base Fare</span>
+                            <span class="font-bold">${ride.fare.base_price} MVR</span>
+                        </div>
+                        <div class="flex justify-between mb-2 text-slate-500 italic">
+                            <span class="text-sm">Service Charge (10%)</span>
+                            <span class="text-sm">${ride.fare.service_charge} MVR</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-sm">GGST (8%)</span>
+                            <span class="text-sm">${ride.fare.tax} MVR</span>
+                        </div>
+                    </div>
 
-        async function triggerDeen() {
-            await fetch(`${API_BASE}/faith/reminder?prayer=Isha&island=Male`, {method: 'POST'});
-            logEvent("IMOXON.DEEN.REMINDER", {prayer: "Isha"});
-            alert("Deen Reminder Emitted via EVENTS.");
+                    <div class="flex justify-between items-center mb-8">
+                        <span class="text-lg font-serif">Total Settlement</span>
+                        <span class="text-2xl font-serif">${ride.fare.total} MVR</span>
+                    </div>
+
+                    <div class="bg-emerald-50 p-4 rounded border border-emerald-100">
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl">🌱</span>
+                            <div>
+                                <div class="text-xs uppercase tracking-wider text-emerald-800 font-bold">Carbon Impact Tracking</div>
+                                <div class="text-sm text-emerald-700">${ride.carbon_footprint_kg} kg CO2 emissions recorded to SHADOW.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
         }
 
         function logEvent(type, payload) {

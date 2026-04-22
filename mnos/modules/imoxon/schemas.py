@@ -28,6 +28,7 @@ class OrderItem(BaseModel):
     name: str
     price: float
     quantity: int
+    carbon_footprint_kg: float = 0.0
 
 class OrderRequest(BaseModel):
     user_id: str
@@ -35,3 +36,11 @@ class OrderRequest(BaseModel):
     vendor_id: str
     items: List[OrderItem]
     coupon_code: Optional[str] = None
+
+class TransactionRecord(BaseModel):
+    transaction_id: str
+    user_id: str
+    total_amount: float
+    carbon_footprint_kg: float
+    sala_compliant: bool = True
+    timestamp: str

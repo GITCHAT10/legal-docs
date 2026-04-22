@@ -1,5 +1,6 @@
 import os
 from fastapi import FastAPI, HTTPException, Header, Depends, Query
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List, Optional, Dict
 from decimal import Decimal
@@ -39,6 +40,8 @@ from mnos.modules.imoxon.engines.installment.engine import InstallmentEngine
 from mnos.modules.isky_hms.connector import iSkyCloudHMSConnector
 
 app = FastAPI(title="iMOXON Sovereign Local Economy Engine")
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # --- System Law (Initialization) ---
 os.environ["NEXGEN_SECRET"] = os.environ.get("NEXGEN_SECRET", "mnos-sovereign-2024")
@@ -118,14 +121,20 @@ async def onboard(data: OnboardRequest, idempotency_key: Optional[str] = Header(
 async def request_ride(data: RideRequest, idempotency_key: Optional[str] = Header(None)):
     if cached := check_idempotency(idempotency_key): return cached
     ride = engines["transport"].request_ride(data.user_id, data.device_id, data.role, data.pickup, data.destination)
+    # SALA 2026: Add simulated carbon footprint for the ride
+    ride["carbon_footprint_kg"] = 2.5
     res = {"status": "success", "ride": ride}
     if idempotency_key: idempotency_cache[idempotency_key] = res
     return res
 
-@app.post("/logistics/ship")
-async def create_shipment(sender_id: str, origin: str, destination: str, items: List[str] = Query(...)):
-    shipment = engines["logistics"].create_shipment(sender_id, origin, destination, items)
-    return {"status": "success", "shipment": shipment}
+@app.post("/market/listing")
+async def create_listing(vendor_id: str, title: str, price: float, carbon_footprint_kg: float = 0.0):
+    engines["commerce"].create_listing(vendor_id, {
+        "title": title,
+        "price": price,
+        "carbon_footprint_kg": carbon_footprint_kg
+    })
+    return {"status": "success"}
 
 @app.post("/isky/activate")
 async def activate_hms(operator_id: str):

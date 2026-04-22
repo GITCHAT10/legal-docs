@@ -16,7 +16,10 @@ class CommerceEngine:
         return True
 
     def create_listing(self, vendor_id: str, listing: dict):
+        # SALA 2026: Include carbon footprint for local product tracking
         if vendor_id in self.stores:
+            if "carbon_footprint_kg" not in listing:
+                listing["carbon_footprint_kg"] = 0.0
             self.stores[vendor_id]["inventory"].append(listing)
             self.shadow.record_action("listing.created", listing)
             return True
