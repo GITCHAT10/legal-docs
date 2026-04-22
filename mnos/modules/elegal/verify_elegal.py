@@ -15,6 +15,9 @@ from mnos.modules.elegal.cases import matter_manager, CaseCategory, CaseStatus
 from mnos.modules.elegal.clients import client_manager
 from mnos.modules.elegal.finance import legal_finance
 from mnos.modules.elegal.documents import document_manager
+from mnos.modules.elegal.packs.tenancy import tenancy_engine
+from mnos.modules.elegal.packs.tenancy_finance import tenancy_finance
+from mnos.modules.elegal.packs.tenancy_notices import tenancy_notices
 from mnos.modules.shadow.service import shadow
 
 def run_verification():
@@ -65,8 +68,19 @@ def run_verification():
     signed_doc = document_manager.sign_document(doc["doc_id"], "CEO-MIG")
     print(f"Document Signed: {signed_doc['doc_id']} by {signed_doc['signed_by']}")
 
-    # 7. Verify Patents
-    print("\n[7/7] Testing Patentable MOATS...")
+    # 7. Verify Tenancy Pack (IMXON)
+    print("\n[7/8] Testing Maldives Tenancy Pack (IMXON)...")
+    lease = tenancy_engine.create_lease("LANDLORD-001", "TENANT-001", "PROP-MAL-99", 1500.0, 3000.0)
+    print(f"Lease Created: {lease['lease_id']} bound to {lease['anchor_id']}")
+
+    payment = tenancy_finance.process_rent_payment(lease["lease_id"], Decimal("1500.00"))
+    print(f"Rent Payment Processed: {payment['amount']} USD - Folio Total: {payment['folio']['total']}")
+
+    notice = tenancy_notices.issue_late_rent_notice(lease["lease_id"], 5)
+    print(f"Late Rent Notice: {notice['type']} issued.")
+
+    # 8. Verify Patents
+    print("\n[8/8] Testing Patentable MOATS...")
     p1 = elegal_patents.sovereign_contextual_ingestion({"title": "New Resort Lease Regulation 2024", "date": "2024-04-20"})
     print(f"   P1 Result: {p1['status']}")
     p2 = elegal_patents.multi_brand_ip_sentry("fushigili", {"source": "fake-fushigili-domain.com"})

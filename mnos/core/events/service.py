@@ -24,7 +24,11 @@ class EventBus:
         "elegal.appointment.scheduled",
         "elegal.billing.processed",
         "elegal.entity.registered",
-        "elegal.document.generated"
+        "elegal.document.generated",
+        "elegal.tenancy.lease_created",
+        "elegal.tenancy.rent_received",
+        "elegal.tenancy.notice_issued",
+        "elegal.tenancy.dispute_triggered"
     }
 
     def __init__(self):
