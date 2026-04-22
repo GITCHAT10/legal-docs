@@ -12,7 +12,11 @@ class EventBus:
         "nexus.booking.created",
         "nexus.guest.arrival",
         "nexus.payment.received",
-        "nexus.emergency.triggered"
+        "nexus.emergency.triggered",
+        "exmail.received",
+        "exmail.sent",
+        "exmail.task.created",
+        "exmail.ticket.created"
     }
 
     def __init__(self):

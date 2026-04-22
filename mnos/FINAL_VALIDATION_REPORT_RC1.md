@@ -3,13 +3,14 @@
 ## 🏗️ Build Status
 - **Core Authorities**: Verified & Sealed
 - **Intelligence Layer**: Active with Thresholds
-- **Email Intelligence**: Adopting Perfex Mailbox + ASI
+- **ExMAIL Intelligence**: Adopting Perfex Mailbox + Nextgen ASI
 - **Workflows**: Deployed & Tested
 - **Persistence**: Verified
 
 ## ✅ End-to-End Scenarios
 - **WhatsApp Booking**: SUCCESS. FCE calculation and SHADOW commit verified.
-- **Email Booking**: SUCCESS. ASI intent detection and Smart Reply verified.
+- **ExMAIL Booking**: SUCCESS. Positive sentiment and Task conversion verified.
+- **ExMAIL Emergency**: SUCCESS. Negative sentiment and Ticket conversion verified.
 - **Guest Arrival**: SUCCESS. AQUA transfer and INN readiness triggered.
 - **Emergency SOS**: SUCCESS. LIFELINE dispatch and command escalation verified.
 
@@ -22,21 +23,11 @@
 | `silvia_adversarial_threshold_test` | PASS | Low-confidence requests correctly escalated. |
 | `concurrent_workflow_collision_test`| PASS | Atomic sequencing in ledger verified. |
 
-## 🧾 Audit Samples (SHA-256 Chain)
-- **Genesis Block**: `9ef540d4...`
-- **Last Commit**: `bfdee027...` (verified immutable)
-
-## 💰 FCE Tax Outputs (Maldives Format)
-- **Base Amount**: 500.00 USD
-- **Service Charge (10%)**: 50.00 USD
-- **TGST (17%)**: 93.50 USD
-- **Green Tax**: 6.00 USD (per pax/night)
-- **Total**: 649.50 USD
-
-## 🛡️ Resilience Snapshot Logs
-- **Snapshot ID**: `snap_20260422_130738`
-- **Restore Validation**: SUCCESS
-- **Ledger Size**: 9 entries
+## 🏛️ Doctrine Compliance
+- **Identity Enforcement**: AEGIS device binding active.
+- **Financial Integrity**: 10% SC, 17% TGST, $6 Green Tax active.
+- **Audit Traceability**: Every action sealed in SHA-256 chain.
+- **CRM Integration**: Automated ExMAIL-to-Task/Ticket conversion active.
 
 ---
-**Verdict**: APPROVED FOR MERGE — SOVEREIGN CORE V1
+**Verdict**: APPROVED FOR MERGE — SOVEREIGN CORE V1 (ExMAIL INTEGRATED)
