@@ -28,6 +28,21 @@ document.getElementById('designForm').addEventListener('submit', async (e) => {
 
         const result = await response.json();
 
+        // Trigger AquaSync Simulation in parallel
+        const aquaResp = await fetch('/api/v1/aquasync/simulate?tier=Gold');
+        const aquaResult = await aquaResp.json();
+
+        document.getElementById('aquaResults').classList.remove('hidden');
+        document.getElementById('aquaOutput').innerHTML = `
+            <div class="space-y-2">
+                <p><span class="text-slate-500">Membrane:</span> ${aquaResult.membrane}</p>
+                <p><span class="text-slate-500">Recovery:</span> ${(aquaResult.parameters.recovery_rate * 100).toFixed(1)}%</p>
+                <p><span class="text-slate-500">Flux:</span> ${aquaResult.parameters.flux_lmh} LMH</p>
+                <p><span class="text-slate-500">Energy:</span> ${aquaResult.output.power_consumption_kwh_m3} kWh/m³</p>
+                <p class="text-xs text-blue-400 mt-4 italic">${aquaResult.output.status}</p>
+            </div>
+        `;
+
         outputDiv.innerHTML = `
             <div class="border-l-2 border-blue-500 pl-4 py-2">
                 <p class="text-blue-400 font-bold underline mb-2">MNOS SHADOW COMMIT SUCCESS</p>
