@@ -1,0 +1,12 @@
+Traceback (most recent call last):
+  File "/app/scripts/nexama_validation_rc1.py", line 6, in <module>
+    from mnos.modules.nexama.services.clinical import clinical_service
+  File "/app/mnos/modules/nexama/services/clinical.py", line 4, in <module>
+    from mnos.core.ai.silvia import silvia
+  File "/app/mnos/core/ai/silvia.py", line 2, in <module>
+    from mnos.config import config
+  File "/app/mnos/config.py", line 5, in <module>
+    class Config:
+  File "/app/mnos/config.py", line 9, in Config
+    raise RuntimeError("NEXGEN_SECRET environment variable is MANDATORY.")
+RuntimeError: NEXGEN_SECRET environment variable is MANDATORY.
