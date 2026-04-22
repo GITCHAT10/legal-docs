@@ -23,8 +23,12 @@ class WhatsAppInterface:
                 return self._escalate(trace_id, phone, decision["reason"])
 
             # 3. JULES (Workflows) via EVENTS
+            intent = decision['intent']
+            # Hardened Routing: Prevent double-prefixing of legal or nexus intents
+            event_type = intent if intent.startswith("elegal.") or intent.startswith("nexus.") else f"nexus.{intent}"
+
             event_payload = events.publish(
-                event_type=f"nexus.{decision['intent']}",
+                event_type=event_type,
                 data={
                     "phone": phone,
                     "text": text,

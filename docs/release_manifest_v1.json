@@ -42,6 +42,6 @@
         "mnos/core/security/aegis.py": "a7504bdb3ae135976bc9f8027e558c78c3b6f47b56af4ba1f8915f4eba65d533",
         "mnos/core/resilience/backup.py": "2c46a8dfec585be52fe3f5bce45fdb19c2cb481915b611cce8333297e94ce4e9",
         "mnos/core/ai/silvia.py": "8e0ecc18f29106a9b93faa18d2782a83eca21e6b7397255de44472aa109aa183",
-        "mnos/interfaces/sky_i/comms/whatsapp.py": "fcad0b78d328e626f9129624059ffd8974edb6089560887cde0ee6fad3e504e9"
+        "mnos/interfaces/sky_i/comms/whatsapp.py": "d2f68c7e43dba8d9f632ab835d6a14bac6604ffd91e72c151c0ec705bd360cd2"
     }
 }
