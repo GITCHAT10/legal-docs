@@ -5,7 +5,7 @@ from mnos.core.auth.router import router as auth_router
 from mnos.interfaces.prestige.guests.router import router as guests_router
 from mnos.modules.inn.reservations.router import router as reservations_router
 from mnos.modules.aqua.transfers.router import router as transfers_router
-from mnos.modules.fce.router import router as finance_router
+from mnos.modules.fce.router.router import router as finance_router
 from mnos.modules.inn.housekeeping.router import router as housekeeping_router
 from mnos.modules.inn.maintenance.router import router as maintenance_router
 from mnos.modules.inn.laundry.router import router as laundry_router

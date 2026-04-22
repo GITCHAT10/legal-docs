@@ -1,0 +1,52 @@
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 0.001s
+
+OK
+!!! INTEGRITY BREAK at Index 0: Hash mismatch. !!!
+....
+----------------------------------------------------------------------
+Ran 4 tests in 0.000s
+
+OK
+[TEST] fail_closed_authority_test
+ -> PASSED: FCE blocked unauthorized amount.
+!!! SHADOW COMMIT FAILURE: 'NoneType' object is not subscriptable !!!
+ -> PASSED: SHADOW halted system on commit failure.
+[TEST] idempotency_replay_test
+[WORKFLOW] BOOKING Trace: 66b04bc1-5e8f-4dfb-9891-06f16194b666
+ - FCE Calculated: 649.50 USD
+ - Confirmation dispatched.
+[WORKFLOW] BOOKING Trace: 66b04bc1-5e8f-4dfb-9891-06f16194b666
+ - FCE Calculated: 649.50 USD
+ - Confirmation dispatched.
+ -> PASSED: Audit trail captured replay.
+[TEST] shadow_integrity_break_test
+[WORKFLOW] BOOKING Trace: 689168e1-2298-49b9-909f-c4e24a3f6c3b
+ - FCE Calculated: 649.50 USD
+ - Confirmation dispatched.
+!!! INTEGRITY BREAK at Index 0: Hash mismatch. !!!
+ -> PASSED: Integrity break detected.
+[TEST] silvia_adversarial_threshold_test
+ -> PASSED: Silvia escalated low-intent request.
+[TEST] concurrent_workflow_collision_test
+[WORKFLOW] BOOKING Trace: acaeeeae-1156-4fb8-bbdc-f7b54b42718a
+ - FCE Calculated: 649.50 USD
+ - Confirmation dispatched.
+[WORKFLOW] GUEST ARRIVAL Trace: 83b57b72-5cc0-46a3-ad13-155e50717a2e
+ - Dispatching MARS AQUA transfer for +9602
+ - Setting room status to READY in MARS INN
+ - Welcome message sent via SKY-i COMMS
+[WORKFLOW] EMERGENCY Trace: 6fdc0a97-65d8-47ba-a779-29198e9867c3
+ !!! SOS DETECTED from +9603 !!!
+ - Dispatching MARS LIFELINE medical response team
+ - Triggering RECONNAISSANCE drone deployment
+ - Escalating to SKY-i COMMAND
+ -> PASSED: Concurrent sequence finalized in SHADOW.
+
+--- RC FINAL TEST MATRIX ---
+[PASS] fail_closed_authority_test
+[PASS] idempotency_replay_test
+[PASS] shadow_integrity_break_test
+[PASS] silvia_adversarial_threshold_test
+[PASS] concurrent_workflow_collision_test

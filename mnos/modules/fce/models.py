@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, Numeric, ForeignKey, Enum, Boole
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 import enum
-from mnos.core.db.base import Base
+from mnos.core.db.base_class import Base
 
 class FolioStatus(str, enum.Enum):
     OPEN = "OPEN"

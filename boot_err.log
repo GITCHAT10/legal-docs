@@ -1,0 +1,67 @@
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/pydantic/networks.py", line 966, in import_email_validator
+    import email_validator
+ModuleNotFoundError: No module named 'email_validator'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/app/mnos/interfaces/prestige/main.py", line 4, in <module>
+    from mnos.core.auth.router import router as auth_router
+  File "/app/mnos/core/auth/router.py", line 11, in <module>
+    from mnos.core.schemas.user import Token
+  File "/app/mnos/core/schemas/user.py", line 4, in <module>
+    class UserBase(BaseModel):
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/pydantic/_internal/_model_construction.py", line 256, in __new__
+    complete_model_class(
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/pydantic/_internal/_model_construction.py", line 667, in complete_model_class
+    schema = gen_schema.generate_schema(cls)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py", line 744, in generate_schema
+    schema = self._generate_schema_inner(obj)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py", line 1028, in _generate_schema_inner
+    return self._model_schema(obj)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py", line 858, in _model_schema
+    {k: self._generate_md_field_schema(k, v, decorators) for k, v in fields.items()},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py", line 1235, in _generate_md_field_schema
+    schema, metadata = self._common_field_schema(name, field_info, decorators)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py", line 1289, in _common_field_schema
+    schema = self._apply_annotations(
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py", line 2242, in _apply_annotations
+    schema = get_inner_schema(source_type)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/pydantic/_internal/_schema_generation_shared.py", line 83, in __call__
+    schema = self._handler(source_type)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py", line 2221, in inner_handler
+    schema = self._generate_schema_inner(obj)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py", line 1033, in _generate_schema_inner
+    return self.match_type(obj)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py", line 1151, in match_type
+    return self._match_generic_type(obj, origin)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py", line 1174, in _match_generic_type
+    return self._union_schema(obj)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py", line 1334, in _union_schema
+    choices.append(self.generate_schema(arg))
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py", line 741, in generate_schema
+    schema = self._generate_schema_from_get_schema_method(obj, obj)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py", line 921, in _generate_schema_from_get_schema_method
+    schema = get_schema(
+             ^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/pydantic/networks.py", line 1006, in __get_pydantic_core_schema__
+    import_email_validator()
+  File "/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/pydantic/networks.py", line 968, in import_email_validator
+    raise ImportError("email-validator is not installed, run `pip install 'pydantic[email]'`") from e
+ImportError: email-validator is not installed, run `pip install 'pydantic[email]'`
