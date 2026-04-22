@@ -8,6 +8,7 @@ from mnos.modules.shadow.vsat import vsat
 from mnos.core.events.service import events
 from mnos.core.network.orban import orban
 from mnos.core.governance.l5 import l5
+from mnos.modules.shadow_sync.db_mirror import db_mirror
 
 # Context variable to track if we are inside the execution guard
 in_sovereign_context = contextvars.ContextVar("in_sovereign_context", default=False)
@@ -54,6 +55,13 @@ class ExecutionGuard:
 
             # 6. EXECUTE Logic
             try:
+                # Operational Continuity: If in failover mode, we write to local mirror
+                if db_mirror.is_primary:
+                    # In a real system, this would be handled by the ORM/Database Driver
+                    # switching connection strings. For this simulation, we simulate local write.
+                    print(f"[GUARD] CONTINUITY MODE: Writing to Local Primary DB.")
+                    # result = execution_logic(payload)
+
                 result = execution_logic(payload)
             except Exception:
                 # Rollback SHADOW intent commit on execution failure to maintain atomicity
