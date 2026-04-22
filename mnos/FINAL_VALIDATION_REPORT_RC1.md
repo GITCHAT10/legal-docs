@@ -3,8 +3,15 @@
 ## 🏗️ Build Status
 - **Core Authorities**: Verified & Sealed
 - **Intelligence Layer**: Active with Thresholds
+- **Email Intelligence**: Adopting Perfex Mailbox + ASI
 - **Workflows**: Deployed & Tested
 - **Persistence**: Verified
+
+## ✅ End-to-End Scenarios
+- **WhatsApp Booking**: SUCCESS. FCE calculation and SHADOW commit verified.
+- **Email Booking**: SUCCESS. ASI intent detection and Smart Reply verified.
+- **Guest Arrival**: SUCCESS. AQUA transfer and INN readiness triggered.
+- **Emergency SOS**: SUCCESS. LIFELINE dispatch and command escalation verified.
 
 ## 🧪 Hardening Test Matrix (100% PASS)
 | Test Case | Status | Result |
@@ -27,9 +34,9 @@
 - **Total**: 649.50 USD
 
 ## 🛡️ Resilience Snapshot Logs
-- **Snapshot ID**: `snap_20260422_083052`
+- **Snapshot ID**: `snap_20260422_130738`
 - **Restore Validation**: SUCCESS
-- **Ledger Size**: 5 entries
+- **Ledger Size**: 9 entries
 
 ---
 **Verdict**: APPROVED FOR MERGE — SOVEREIGN CORE V1

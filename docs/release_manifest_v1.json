@@ -17,11 +17,12 @@
   ],
   "file_hashes": {
     "mnos/boot_check.py": "5d2483ca0fd037bfd8cdb61548e6160ea14d834ee0429a2519cdf1ea18872b95",
-    "mnos/validate_system.py": "64659cb32d6750ce1fddfe8cc69e4868b5614e97870a9076bfee288ae844cad3",
+    "mnos/validate_system.py": "a7bff6b4f3478238c92afb8f806737440df3108ac73e1f6556b976b0dd7c4806",
     "mnos/stress_test.py": "1bc09bbf87b4869fd482c6c02ce8d6634baac28fcb7fbdf81c0fde449ff8ed67",
     "mnos/config.py": "3c213eadc30c701fb117534cad0cfc91c805c42579f7e18ad589e2fe84e00eb6",
     "mnos/final_sovereign_tests.py": "580dbf06d0e5c9eb4fbaeaaee9dfddefe88ef8d6327a4c53f81b4ed298b662a0",
     "mnos/modules/shadow/service.py": "b2d77760c05e83a82d02d5ac81cbd69c3e992bd94bba6da46a802539955c9f70",
+    "mnos/modules/email/service.py": "be7bbcba392e47b55750f0abf24c3be0c9a530a2c793029fec1a8311869e04a1",
     "mnos/modules/workflows/booking.py": "ef8efd65e6ec8f57b829ced6034907d62340713872a6637da7edc54d18ed7bae",
     "mnos/modules/workflows/emergency.py": "de3b6cf87446be9d40e1b9d2f411bb343d078b9aacf78cdd52966e49dcb1484d",
     "mnos/modules/workflows/guest_arrival.py": "51070faabf127a4080a07fe92e32b06dede502198a6a9f7732ddb8e78de92e54",
