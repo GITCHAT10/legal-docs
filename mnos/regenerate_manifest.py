@@ -11,7 +11,7 @@ def calculate_sha256(filepath):
 
 def regenerate_manifest():
     manifest = {
-        "version": "1.0.0-skyi-core-rc1",
+        "version": "1.0.0-skyi-core-rc2",
         "release_date": "2024-04-22",
         "files": {}
     }
