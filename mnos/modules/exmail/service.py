@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Dict, Any, List
 from mnos.core.ai.silvia import silvia
-from mnos.core.events.service import events
+from mnos.infrastructure.mig_event_spine.service import events
 from mnos.shared.execution_guard import guard
 
 class ExMailAuthority:
@@ -26,13 +26,13 @@ class ExMailAuthority:
     def ingest_inbound_exmail(self, sender: str, subject: str, body: str, session_context: Dict[str, Any], connection_context: Dict[str, Any] = None):
         """Ingests email into the ExMAIL ASI pipeline enforced by Execution Guard."""
         try:
-            # Operational Hardening: Ensure full connection context for ORBAN validation
+            # Operational Hardening: Ensure full connection context for AIG_TUNNEL validation
             if connection_context is None:
                 connection_context = {
                     "is_vpn": True,
                     "tunnel_id": "exmail-gateway-01",
                     "encryption": "wireguard",
-                    "tunnel": "orban",
+                    "tunnel": "aig_tunnel",
                     "source_ip": "10.0.0.5",
                     "node_id": "EDGE-01"
                 }

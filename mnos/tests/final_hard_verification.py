@@ -1,12 +1,12 @@
 import pytest
 from decimal import Decimal
 from mnos.modules.fce.service import fce
-from mnos.modules.shadow.service import shadow
+from mnos.modules.aig_shadow.service import aig_shadow
 from mnos.shared.execution_guard import guard
-from mnos.core.security.aegis import aegis
+from mnos.core.aig_aegis.service import aig_aegis
 
-def aegis_sign(payload):
-    return aegis.sign_session(payload)
+def aig_aegis_sign(payload):
+    return aig_aegis.sign_session(payload)
 
 def test_tax_edge_case_zero_base():
     """Verify FCE handles zero base amount correctly."""
@@ -29,16 +29,16 @@ def test_tax_edge_case_high_pax():
 
 def test_ledger_tamper_hard_fail():
     """Verify that tampering with any block prevents further commits."""
-    shadow.chain = []
-    shadow._seed_ledger()
+    aig_shadow.chain = []
+    aig_shadow._seed_ledger()
     ctx = {"device_id": "nexus-admin-01", "biometric_verified": True}
-    ctx["signature"] = aegis_sign(ctx)
+    ctx["signature"] = aig_aegis_sign(ctx)
 
     conn = {
         "is_vpn": True,
         "tunnel_id": "tun-01",
         "encryption": "wireguard",
-        "tunnel": "orban",
+        "tunnel": "aig_tunnel",
         "source_ip": "10.0.0.1",
         "node_id": "ADMIN-01"
     }
@@ -47,7 +47,7 @@ def test_ledger_tamper_hard_fail():
 
     # Tamper with block 1 hash in head's previous_hash link
     # This simulates a direct DB mutation of a sealed link
-    shadow.chain[1]["previous_hash"] = "CORRUPT"
+    aig_shadow.chain[1]["previous_hash"] = "CORRUPT"
 
     with pytest.raises(RuntimeError, match="Chain corruption detected"):
         guard.execute_sovereign_action("nexus.booking.created", {}, ctx, lambda x: "ok", connection_context=conn)

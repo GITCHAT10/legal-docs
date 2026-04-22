@@ -1,10 +1,10 @@
 from typing import Dict, Any
-from mnos.core.events.service import events
+from mnos.infrastructure.mig_event_spine.service import events
 
 def handle_emergency(payload: Dict[str, Any]):
     """
     Sovereign Emergency Response Workflow.
-    Proves: MARS LIFELINE dispatch, SHADOW logging, Escalation.
+    Proves: MARS LIFELINE dispatch, AIGShadow logging, Escalation.
     """
     data = payload["data"]
     trace_id = payload["trace_id"]

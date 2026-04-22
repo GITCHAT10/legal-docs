@@ -1,12 +1,12 @@
 from decimal import Decimal
 from typing import Dict, Any
-from mnos.core.events.service import events
+from mnos.infrastructure.mig_event_spine.service import events
 from mnos.modules.fce.service import fce
 
 def handle_booking(payload: Dict[str, Any]):
     """
     Booking → Payment → Confirmation Workflow.
-    Proves: FCE validation, SHADOW logging, Event emission.
+    Proves: FCE validation, AIGShadow logging, Event emission.
     """
     data = payload["data"]
     trace_id = payload["trace_id"]

@@ -1,10 +1,10 @@
 from typing import Dict, Any
-from mnos.core.events.service import events
+from mnos.infrastructure.mig_event_spine.service import events
 
 def handle_guest_arrival(payload: Dict[str, Any]):
     """
     Autonomous Guest Arrival Workflow.
-    Proves: AQUA transfer dispatch, INN readiness, SHADOW logging.
+    Proves: AQUA transfer dispatch, INN readiness, AIGShadow logging.
     """
     data = payload["data"]
     trace_id = payload["trace_id"]

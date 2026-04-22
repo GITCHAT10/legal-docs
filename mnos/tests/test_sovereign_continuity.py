@@ -1,14 +1,14 @@
 import pytest
-from mnos.modules.shadow_sync.service import sync_agent
-from mnos.modules.shadow_sync.db_mirror import db_mirror
-from mnos.core.resilience.sentinel import sentinel
+from mnos.modules.aig_shadow_sync.service import sync_agent
+from mnos.modules.aig_shadow_sync.db_mirror import db_mirror
+from mnos.modules.aig_sentinel.service import aig_sentinel
 from mnos.shared.execution_guard import guard
-from mnos.core.security.aegis import aegis
+from mnos.core.aig_aegis.service import aig_aegis
 
 @pytest.fixture
 def valid_session():
     payload = {"device_id": "nexus-admin-01", "biometric_verified": True}
-    sig = aegis.sign_session(payload)
+    sig = aig_aegis.sign_session(payload)
     payload["signature"] = sig
     return payload
 
@@ -18,12 +18,12 @@ def valid_connection():
         "is_vpn": True,
         "tunnel_id": "tun-001",
         "encryption": "wireguard",
-        "tunnel": "orban",
+        "tunnel": "aig_tunnel",
         "source_ip": "10.0.0.2",
         "node_id": "EDGE-01"
     }
 
-def test_shadow_sync_flow(valid_session, valid_connection):
+def test_aig_shadow_sync_flow(valid_session, valid_connection):
     """
     Simulates:
     1. Normal operation (cloud active)
@@ -40,9 +40,9 @@ def test_shadow_sync_flow(valid_session, valid_connection):
     assert db_mirror.is_primary is False
 
     # 2 & 3. Trigger Failover (CABLE_CUT + Promotion)
-    sentinel.trigger_failover("CABLE_CUT", valid_session)
+    aig_sentinel.trigger_failover("CABLE_CUT", valid_session)
     assert db_mirror.is_primary is True
-    assert sentinel.cloud_reachable is False
+    assert aig_sentinel.cloud_reachable is False
 
     # 4. Perform local transaction
     def local_action(p):
@@ -62,7 +62,7 @@ def test_shadow_sync_flow(valid_session, valid_connection):
     assert len(sync_agent.local_queue) == 1
 
     # 5 & 6. Restore Connection + Reconciliation
-    sentinel.restore_connection()
-    assert sentinel.cloud_reachable is True
+    aig_sentinel.restore_connection()
+    assert aig_sentinel.cloud_reachable is True
     assert db_mirror.is_primary is False
     assert len(sync_agent.local_queue) == 0 # Should be cleared after reconciliation

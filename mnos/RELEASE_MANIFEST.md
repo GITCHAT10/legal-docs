@@ -3,17 +3,17 @@
 ## 📦 Core Modules
 - `mnos/config.py`: System-wide sovereign configurations.
 - `mnos/boot_check.py`: Startup integrity validation.
-- `mnos/core/security/aegis.py`: Identity & session authority.
+- `mnos.core.aig_aegis.service.py`: Identity & session authority.
 - `mnos/modules/fce/service.py`: Financial Control Engine (MIRA compliant).
-- `mnos/modules/shadow/service.py`: Immutable Evidence Chain.
-- `mnos/core/events/service.py`: Orchestration Hub.
+- `mnos/modules/aig_shadow/service.py`: Immutable Evidence Chain.
+- `mnos.infrastructure.mig_event_spine.service/service.py`: Orchestration Hub.
 
 ## 🧠 Intelligence Layer
 - `mnos/modules/knowledge/service.py`: SKY-i Knowledge Core.
 - `mnos/core/ai/silvia.py`: Silvia Intelligence Engine.
 
 ## 📲 Interfaces & Workflows
-- `mnos/interfaces/sky_i/comms/whatsapp.py`: WhatsApp Intelligence Loop.
+- `mnos.interface.mig_tactical_panel.service/sky_i/comms/whatsapp.py`: WhatsApp Intelligence Loop.
 - `mnos/modules/workflows/booking.py`: Booking -> Payment flow.
 - `mnos/modules/workflows/guest_arrival.py`: Autonomous Arrival flow.
 - `mnos/modules/workflows/emergency.py`: Emergency Response flow.

@@ -1,12 +1,12 @@
 from typing import Dict, Any, List
-from mnos.modules.shadow_sync.service import sync_agent
-from mnos.modules.shadow.service import shadow
+from mnos.modules.aig_shadow_sync.service import sync_agent
+from mnos.modules.aig_shadow.service import aig_shadow
 
 class ReconciliationEngine:
     """
     Reconciliation Engine:
     Pushes local changes back to cloud and resolves conflicts.
-    Logs all events to SHADOW for audit.
+    Logs all events to AIGShadow for audit.
     """
     def reconcile_all(self):
         """
@@ -29,7 +29,7 @@ class ReconciliationEngine:
         # and resolve conflicts (Last-Write-Wins or manual)
         print(f" - Reconciling {change['table']} ID {change['data'].get('id')} -> CLOUD")
 
-        # Log reconciliation event to SHADOW
-        # shadow.commit("shadow_sync.reconciled", change)
+        # Log reconciliation event to AIGShadow
+        # aig_shadow.commit("aig_shadow_sync.reconciled", change)
 
 reconciliation_engine = ReconciliationEngine()

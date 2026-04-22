@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Dict, Any, List
 from mnos.config import config
 
-class ShadowLedger:
+class AIGShadowLedger:
     """
     Immutable Audit Ledger (HARDENED):
     SHA-256 hash chaining with genesis integrity and root anchoring.
@@ -13,7 +13,7 @@ class ShadowLedger:
         self.chain: List[Dict[str, Any]] = []
         self._seed_ledger()
         if not self.verify_integrity():
-            raise RuntimeError("SHADOW: Boot integrity failure. Genesis/Root anchor compromised.")
+            raise RuntimeError("AIGShadow: Boot integrity failure. Genesis/Root anchor compromised.")
 
     def _seed_ledger(self):
         """Initialize the chain with a genesis block and validate against root anchor."""
@@ -29,10 +29,10 @@ class ShadowLedger:
 
         # MANDATORY: Validate against Hardened Root Anchor
         if genesis_block["hash"] != config.CORE_V1_ROOT_HASH:
-             print(f"!!! SHADOW ROOT ANCHOR MISMATCH !!!")
+             print(f"!!! AIGShadow ROOT ANCHOR MISMATCH !!!")
              print(f"Got: {genesis_block['hash']}")
              print(f"Expected: {config.CORE_V1_ROOT_HASH}")
-             raise RuntimeError("SHADOW: Genesis block validation failed. Root anchor mismatch.")
+             raise RuntimeError("AIGShadow: Genesis block validation failed. Root anchor mismatch.")
 
         self.chain.append(genesis_block)
 
@@ -45,7 +45,7 @@ class ShadowLedger:
         ensure_sovereign_context()
 
         if not self.verify_integrity():
-            raise RuntimeError("SHADOW: Chain corruption detected before commit. System Halt.")
+            raise RuntimeError("AIGShadow: Chain corruption detected before commit. System Halt.")
 
         try:
             previous_entry = self.chain[-1]
@@ -62,12 +62,12 @@ class ShadowLedger:
 
             if not self.verify_integrity():
                 self.chain.pop() # Rollback non-persistent state
-                raise RuntimeError("SHADOW: Post-commit integrity failure. Chain could not be sealed.")
+                raise RuntimeError("AIGShadow: Post-commit integrity failure. Chain could not be sealed.")
 
             return entry["hash"]
         except Exception as e:
             if not isinstance(e, RuntimeError):
-                print(f"!!! SHADOW COMMIT FAILURE: {str(e)} !!!")
+                print(f"!!! AIGShadow COMMIT FAILURE: {str(e)} !!!")
                 raise RuntimeError("Audit seal failure: System Halt mandated.") from e
             raise
 
@@ -101,4 +101,4 @@ class ShadowLedger:
                 return False
         return True
 
-shadow = ShadowLedger()
+aig_shadow = AIGShadowLedger()

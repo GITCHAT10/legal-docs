@@ -50,14 +50,14 @@ class AegisService:
         """
         signature = session_context.get("signature")
         if not signature:
-            raise SecurityException("AEGIS: Missing session signature. Rejecting unsigned context.")
+            raise SecurityException("AIGAegis: Missing session signature. Rejecting unsigned context.")
 
         # Extract payload without signature for verification
         payload = {k: v for k, v in session_context.items() if k != "signature"}
         expected_sig = self.sign_session(payload)
 
         if not hmac.compare_digest(expected_sig, signature):
-            raise SecurityException("AEGIS: Session signature mismatch. Potential spoofing detected.")
+            raise SecurityException("AIGAegis: Session signature mismatch. Potential spoofing detected.")
 
         # CRITICAL: Do not trust any roles or permissions passed in session_context.
         # Only trust the verified device_id for server-side lookup.
@@ -67,15 +67,15 @@ class AegisService:
         # Do not rely solely on payload claims; verify active status and registration.
         device_info = self.registry.get_device_info(device_id)
         if not device_info or device_info.get("status") != "ACTIVE":
-            raise SecurityException(f"AEGIS: Unauthorized or inactive device {device_id}. Access denied.")
+            raise SecurityException(f"AIGAegis: Unauthorized or inactive device {device_id}. Access denied.")
 
         # NEXTGEN ASI: Biometric / Device-bound Verification
         # In production, this verifies a cryptographically signed biometric token.
         biometric_verified = payload.get("biometric_verified", False)
         if not biometric_verified:
-             raise SecurityException("AEGIS: Biometric verification required for authority layer.")
+             raise SecurityException("AIGAegis: Biometric verification required for authority layer.")
 
         # Enforcement: The session is now strictly bound to the server's knowledge of this device.
         return True
 
-aegis = AegisService()
+aig_aegis = AegisService()

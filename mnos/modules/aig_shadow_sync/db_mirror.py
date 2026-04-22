@@ -36,7 +36,7 @@ class DatabaseMirror:
         self.data[table][record_id] = data
 
         # Track for reconciliation
-        from mnos.modules.shadow_sync.service import sync_agent
+        from mnos.modules.aig_shadow_sync.service import sync_agent
         sync_agent.queue_local_change({"table": table, "data": data, "operation": "UPSERT"})
 
     def promote(self):

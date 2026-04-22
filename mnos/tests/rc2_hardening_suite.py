@@ -1,17 +1,17 @@
 import pytest
 from decimal import Decimal
 from mnos.modules.fce.service import fce, FinancialException
-from mnos.modules.shadow.service import shadow
+from mnos.modules.aig_shadow.service import aig_shadow
 from mnos.shared.execution_guard import guard
-from mnos.core.security.aegis import aegis, SecurityException
+from mnos.core.aig_aegis.service import aig_aegis, SecurityException
 
-def aegis_sign(payload):
-    return aegis.sign_session(payload)
+def aig_aegis_sign(payload):
+    return aig_aegis.sign_session(payload)
 
 def test_identity_spoof_attack():
     """Simulate session payload tampering."""
     payload = {"device_id": "nexus-admin-01", "user": "admin", "biometric_verified": True}
-    sig = aegis_sign(payload)
+    sig = aig_aegis_sign(payload)
 
     # Attack: Change device_id but keep signature
     bad_payload = {"device_id": "nexus-attacker", "user": "admin", "signature": sig, "biometric_verified": True}
@@ -20,7 +20,7 @@ def test_identity_spoof_attack():
         "is_vpn": True,
         "tunnel_id": "tun-01",
         "encryption": "wireguard",
-        "tunnel": "orban",
+        "tunnel": "aig_tunnel",
         "source_ip": "10.0.0.1",
         "node_id": "ATTACK-01"
     }
@@ -30,17 +30,17 @@ def test_identity_spoof_attack():
 
 def test_ledger_tampering_fail_closed():
     """Simulate head block tampering before next commit."""
-    shadow.chain = []
-    shadow._seed_ledger()
+    aig_shadow.chain = []
+    aig_shadow._seed_ledger()
 
     ctx = {"device_id": "nexus-admin-01", "biometric_verified": True}
-    ctx["signature"] = aegis_sign(ctx)
+    ctx["signature"] = aig_aegis_sign(ctx)
 
     conn = {
         "is_vpn": True,
         "tunnel_id": "tun-01",
         "encryption": "wireguard",
-        "tunnel": "orban",
+        "tunnel": "aig_tunnel",
         "source_ip": "10.0.0.1",
         "node_id": "ADMIN-01"
     }
@@ -49,7 +49,7 @@ def test_ledger_tampering_fail_closed():
     guard.execute_sovereign_action("nexus.booking.created", {}, ctx, lambda x: "ok", connection_context=conn)
 
     # 2. Tamper
-    shadow.chain[1]["payload"]["result"] = "TAMPERED"
+    aig_shadow.chain[1]["payload"]["result"] = "TAMPERED"
 
     # 3. Next attempt should fail CLOSED
     with pytest.raises(RuntimeError, match="Chain corruption detected"):
@@ -57,18 +57,18 @@ def test_ledger_tampering_fail_closed():
 
 def test_partial_transaction_failure_recovery():
     """Verify system remains atomic even if execution logic fails."""
-    shadow.chain = []
-    shadow._seed_ledger()
-    initial_len = len(shadow.chain)
+    aig_shadow.chain = []
+    aig_shadow._seed_ledger()
+    initial_len = len(aig_shadow.chain)
 
     ctx = {"device_id": "nexus-admin-01", "biometric_verified": True}
-    ctx["signature"] = aegis_sign(ctx)
+    ctx["signature"] = aig_aegis_sign(ctx)
 
     conn = {
         "is_vpn": True,
         "tunnel_id": "tun-01",
         "encryption": "wireguard",
-        "tunnel": "orban",
+        "tunnel": "aig_tunnel",
         "source_ip": "10.0.0.1",
         "node_id": "ADMIN-01"
     }
@@ -77,8 +77,8 @@ def test_partial_transaction_failure_recovery():
         raise ValueError("EXECUTION CRASHED")
 
     with pytest.raises(ValueError, match="EXECUTION CRASHED"):
-        guard.execute_sovereign_action("ucloud.store", {}, ctx, logic_fails, connection_context=conn)
+        guard.execute_sovereign_action("aig_vault.store", {}, ctx, logic_fails, connection_context=conn)
 
     # Audit trail should NOT have commit for failed execution (Execution Guard Order)
-    assert len(shadow.chain) == initial_len
-    assert shadow.verify_integrity() is True
+    assert len(aig_shadow.chain) == initial_len
+    assert aig_shadow.verify_integrity() is True

@@ -1,6 +1,6 @@
 from typing import Dict, Any, List
 import datetime
-from mnos.modules.shadow.service import shadow
+from mnos.modules.aig_shadow.service import aig_shadow
 
 class SyncAgent:
     """
@@ -30,10 +30,10 @@ class SyncAgent:
         }
 
         # Apply to local mirror (Simulation)
-        from mnos.modules.shadow_sync.db_mirror import db_mirror
+        from mnos.modules.aig_shadow_sync.db_mirror import db_mirror
         db_mirror.apply_change(event)
 
-        # Audit state change in SHADOW
+        # Audit state change in AIGShadow
         # Use ensures_sovereign_context by calling via guard or similar?
         # For now, we simulate the CDC as an authorized system process
         return event

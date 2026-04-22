@@ -1,8 +1,8 @@
 from typing import Dict, Any, List
 from mnos.shared.execution_guard import guard
-from mnos.modules.ucloud.service import ucloud
+from mnos.modules.aig_vault.service import aig_vault
 from mnos.modules.fce.service import fce
-from mnos.core.events.service import events
+from mnos.infrastructure.mig_event_spine.service import events
 from decimal import Decimal
 
 class UnitedTransferService:
@@ -13,7 +13,7 @@ class UnitedTransferService:
     def create_booking(self, booking_data: Dict[str, Any], session_context: Dict[str, Any], connection_context: Dict[str, Any]):
         """
         Creates a transport booking.
-        Enforces: AEGIS Identity -> ORBAN Network -> NEXUS Authority (FCE) -> SHADOW Audit.
+        Enforces: AIGAegis Identity -> AIG_TUNNEL Network -> NEXUS Authority (FCE) -> AIGShadow Audit.
         """
         def booking_logic(p):
             # 1. NEXUS Authority: Pre-authorize payment via FCE
@@ -25,8 +25,8 @@ class UnitedTransferService:
             # 2. Standalone UT logic
             booking_id = f"UT-{p['customer_id']}-101"
 
-            # 3. Connect to uCloud for manifest storage
-            path = ucloud.secure_storage_path(f"manifest_{booking_id}")
+            # 3. Connect to AIGVault for manifest storage
+            path = aig_vault.secure_storage_path(f"manifest_{booking_id}")
 
             return {"status": "BOOKED", "booking_id": booking_id, "manifest_path": path, "amount_authorized": str(amount)}
 

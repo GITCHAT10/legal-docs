@@ -6,7 +6,7 @@ from mnos.shared.execution_guard import guard
 class WhatsAppInterface:
     """
     SKY-i COMMS (HARDENED): WhatsApp Intelligence Loop.
-    Route: SKY-i COMMS → AEGIS → SILVIA → JULES
+    Route: SKY-i COMMS → AIGAegis → SILVIA → JULES
     Enforced via Execution Guard.
     """
     def receive_message(self, phone: str, text: str, session_context: Dict[str, Any], connection_context: Dict[str, Any] = None):
@@ -17,7 +17,7 @@ class WhatsAppInterface:
                     "is_vpn": True,
                     "tunnel_id": "mobile-gateway-01",
                     "encryption": "wireguard",
-                    "tunnel": "orban",
+                    "tunnel": "aig_tunnel",
                     "source_ip": "10.0.0.50",
                     "node_id": "COMMS-EDGE-01"
                 }

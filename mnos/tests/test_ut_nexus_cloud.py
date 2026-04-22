@@ -1,14 +1,14 @@
 import pytest
 from decimal import Decimal
 from mnos.modules.ut.service import ut_service
-from mnos.core.security.aegis import aegis, SecurityException
+from mnos.core.aig_aegis.service import aig_aegis, SecurityException
 from mnos.modules.fce.service import FinancialException
 
 @pytest.fixture
 def ut_session():
     # Valid dispatch session
     payload = {"device_id": "ut-dispatch-01", "biometric_verified": True}
-    sig = aegis.sign_session(payload)
+    sig = aig_aegis.sign_session(payload)
     payload["signature"] = sig
     return payload
 
@@ -18,7 +18,7 @@ def ut_connection():
         "is_vpn": True,
         "tunnel_id": "ut-tunnel-01",
         "encryption": "wireguard",
-        "tunnel": "orban",
+        "tunnel": "aig_tunnel",
         "source_ip": "10.0.0.10",
         "node_id": "UT-EDGE-01"
     }
@@ -50,7 +50,7 @@ def test_ut_dispatch_governance_success(ut_session, ut_connection):
 def test_ut_security_failure_untrusted_device(ut_connection):
     """Verify UT fails if an untrusted device attempts access."""
     bad_payload = {"device_id": "attacker-device", "biometric_verified": True}
-    sig = aegis.sign_session(bad_payload)
+    sig = aig_aegis.sign_session(bad_payload)
     bad_payload["signature"] = sig
 
     with pytest.raises(SecurityException, match="Unauthorized or inactive device"):

@@ -11,8 +11,8 @@
 - **Min Confidence Score**: 0.85
 
 ## 🛡️ Security Enforcement (FINAL)
-- **AEGIS**: Absolute Server-Side Trust. Trusted hardware ID registry + HMAC signed sessions.
-- **SHADOW**: Explicit Index 0 hash re-calculation & Root Anchor binding.
+- **AIGAegis**: Absolute Server-Side Trust. Trusted hardware ID registry + HMAC signed sessions.
+- **AIGShadow**: Explicit Index 0 hash re-calculation & Root Anchor binding.
 - **Guard**: ExecutionGuard mandatory flow (context-locked).
 - **Audit**: HEAD-verified append-only evidence chain.
 

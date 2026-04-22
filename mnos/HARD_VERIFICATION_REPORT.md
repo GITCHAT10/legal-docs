@@ -1,11 +1,11 @@
 # NEXUS ASI SKY-i OS — FINAL HARD VERIFICATION REPORT
 
 ## 🏛️ Resolved P1 Issues
-1. **AEGIS Absolute Trust**:
+1. **AIGAegis Absolute Trust**:
    - Removed all client-provided auth attributes.
    - Enforced strict server-side `TrustedDeviceRegistry` lookup.
    - Verified that tampered session payloads are rejected.
-2. **SHADOW Genesis Integrity**:
+2. **AIGShadow Genesis Integrity**:
    - Added explicit re-calculation and validation of genesis block against `CORE_V1_ROOT_HASH`.
    - Verified fail-closed behavior on genesis hash mismatch.
 3. **Test System Hardening**:
@@ -20,11 +20,11 @@
 | Audit | `test_ledger_tamper_hard_fail` | PASS | Prevented commits after chain link mutation. |
 | Finance | `test_tax_edge_case_zero_base` | PASS | Correctly calculated Green Tax with zero base. |
 | Intelligence | `test_silvia_intelligence_thresholds`| PASS | Enforced 0.90/0.85 intent/confidence gates. |
-| Core | `test_shadow_genesis_integrity` | PASS | Genesis block validated against root anchor. |
+| Core | `test_aig_shadow_genesis_integrity` | PASS | Genesis block validated against root anchor. |
 
 ## 🛠️ Patched Core Files
-- `mnos/core/security/aegis.py`
-- `mnos/modules/shadow/service.py`
+- `mnos.core.aig_aegis.service.py`
+- `mnos/modules/aig_shadow/service.py`
 - `mnos/config.py`
 - `mnos/shared/execution_guard.py`
 - `mnos/final_sovereign_tests.py`

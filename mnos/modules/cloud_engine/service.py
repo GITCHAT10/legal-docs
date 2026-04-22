@@ -40,18 +40,18 @@ class CloudEngine:
         connection_context: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
-        Stores data securely in the uCloud Vault.
+        Stores data securely in the AIGVault Vault.
         """
-        from mnos.modules.ucloud.service import ucloud
+        from mnos.modules.aig_vault.service import aig_vault
 
         def storage_logic(p):
             identity = session_context.get("device_id")
-            ucloud.check_permission(identity, "write")
-            path = ucloud.secure_storage_path(p["file_id"])
+            aig_vault.check_permission(identity, "write")
+            path = aig_vault.secure_storage_path(p["file_id"])
             return {"status": "STORED", "path": path}
 
         return guard.execute_sovereign_action(
-            action_type="ucloud.store",
+            action_type="aig_vault.store",
             payload={"file_id": file_id},
             session_context=session_context,
             execution_logic=storage_logic,

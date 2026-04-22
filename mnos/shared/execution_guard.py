@@ -1,14 +1,14 @@
 import uuid
 import contextvars
 from typing import Dict, Any, Callable, List
-from mnos.core.security.aegis import aegis
+from mnos.core.aig_aegis.service import aig_aegis
 from mnos.modules.fce.service import fce
-from mnos.modules.shadow.service import shadow
-from mnos.modules.shadow.vsat import vsat
-from mnos.core.events.service import events
-from mnos.core.network.orban import orban
-from mnos.core.governance.l5 import l5
-from mnos.modules.shadow_sync.db_mirror import db_mirror
+from mnos.modules.aig_shadow.service import aig_shadow
+from mnos.modules.aig_proof.service import aig_proof
+from mnos.infrastructure.mig_event_spine.service import events
+from mnos.core.aig_tunnel.service import aig_tunnel
+from mnos.core.aig_l5_control.service import aig_l5
+from mnos.modules.aig_shadow_sync.db_mirror import db_mirror
 
 # Context variable to track if we are inside the execution guard
 in_sovereign_context = contextvars.ContextVar("in_sovereign_context", default=False)
@@ -17,7 +17,7 @@ class ExecutionGuard:
     """
     Sovereign Execution Guard (HARDENED):
     Enforces mandatory 5-layer flow:
-    VPN (Network) → AEGIS (Identity) → L5 (Governance) → SHADOW (Audit Intent) → EXECUTE → SHADOW (Audit Result) → VSAT (Proof)
+    VPN (Network) → AIGAegis (Identity) → L5 (Governance) → AIGShadow (Audit Intent) → EXECUTE → AIGShadow (Audit Result) → AIGProof (Proof)
     """
     @staticmethod
     def execute_sovereign_action(
@@ -39,22 +39,22 @@ class ExecutionGuard:
             # MANDATORY 5-LAYER SEQUENTIAL ENFORCEMENT
             # NO bypass paths allowed. Failure at any layer stops execution.
 
-            # 1. ORBAN (Network Validation)
-            orban.validate_connection(connection_context)
+            # 1. AIG_TUNNEL (Network Validation)
+            aig_tunnel.validate_connection(connection_context)
 
-            # 2. AEGIS (Identity Validation - includes device and biometric)
-            aegis.validate_session(session_context)
+            # 2. AIGAegis (Identity Validation - includes device and biometric)
+            aig_aegis.validate_session(session_context)
 
             # 3. L5 (Governance Approval - Safe-Firing Logic)
-            l5.validate_action(action_type, governance_evidence, approvals)
+            aig_l5.validate_action(action_type, governance_evidence, approvals)
 
             # 4. FCE Financial Control (If required)
             if financial_validation:
                 if "amount" in payload and "limit" in payload:
                     fce.validate_pre_auth(payload.get("folio_id", "GEN"), payload["amount"], payload["limit"])
 
-            # 5. SHADOW Audit (Intent)
-            shadow.commit(action_type, {"intent": payload, "trace_id": trace_id}, stage="intent")
+            # 5. AIGShadow Audit (Intent)
+            aig_shadow.commit(action_type, {"intent": payload, "trace_id": trace_id}, stage="intent")
 
             # 6. EXECUTE Logic
             try:
@@ -67,16 +67,16 @@ class ExecutionGuard:
 
                 result = execution_logic(payload)
             except Exception:
-                # Rollback SHADOW intent commit on execution failure to maintain atomicity
-                if shadow.chain and shadow.chain[-1]["stage"] == "intent":
-                    shadow.chain.pop()
+                # Rollback AIGShadow intent commit on execution failure to maintain atomicity
+                if aig_shadow.chain and aig_shadow.chain[-1]["stage"] == "intent":
+                    aig_shadow.chain.pop()
                 raise
 
-            # 7. SHADOW Audit (Result)
-            result_hash = shadow.commit(action_type, {"result": result, "trace_id": trace_id}, stage="result")
+            # 7. AIGShadow Audit (Result)
+            result_hash = aig_shadow.commit(action_type, {"result": result, "trace_id": trace_id}, stage="result")
 
-            # 8. VSAT Proof Generation
-            proof = vsat.generate_proof(trace_id, result_hash)
+            # 8. AIGProof Proof Generation
+            proof = aig_proof.generate_proof(trace_id, result_hash)
 
             # 9. EVENT Publishing
             event_data = {

@@ -1,12 +1,12 @@
 import uuid
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Callable
-from mnos.modules.shadow.service import shadow
+from mnos.modules.aig_shadow.service import aig_shadow
 
 class EventBus:
     """
     MNOS Orchestration Core: Manages event lifecycle and n8n bridge.
-    Ensures routing through SHADOW for immutable evidence.
+    Ensures routing through AIGShadow for immutable evidence.
     """
     TAXONOMY = {
         "nexus.booking.created",
@@ -20,7 +20,7 @@ class EventBus:
         "network_routing_change",
         "system_shutdown",
         "data_purge",
-        "ucloud.store",
+        "aig_vault.store",
         "ut.booking.created",
         "ut.cargo.dispatch",
         "ut.payout.finalized"
@@ -30,7 +30,7 @@ class EventBus:
         self.subscribers: Dict[str, List[Callable]] = {event: [] for event in self.TAXONOMY}
 
     def publish(self, event_type: str, data: Dict[str, Any], trace_id: str = None) -> Dict[str, Any]:
-        """Publishes an event and commits to SHADOW ledger."""
+        """Publishes an event and commits to AIGShadow ledger."""
         if event_type not in self.TAXONOMY:
             raise ValueError(f"Unknown event type: {event_type}")
 
@@ -44,9 +44,9 @@ class EventBus:
             "data": data
         }
 
-        # Doctrine: n8n → MNOS EVENTS → AEGIS → FCE → SHADOW
-        # All events MUST be recorded in SHADOW for sovereign truth
-        shadow.commit(event_type, payload)
+        # Doctrine: n8n → MNOS EVENTS → AIGAegis → FCE → AIGShadow
+        # All events MUST be recorded in AIGShadow for sovereign truth
+        aig_shadow.commit(event_type, payload)
 
         # Trigger subscribers
         for callback in self.subscribers.get(event_type, []):
@@ -54,7 +54,7 @@ class EventBus:
                 callback(payload)
             except Exception as e:
                 print(f"!!! EVENT SUBSCRIBER FAILURE: {str(e)} !!!")
-                # We log but continue, the truth is already in SHADOW
+                # We log but continue, the truth is already in AIGShadow
 
         return payload
 

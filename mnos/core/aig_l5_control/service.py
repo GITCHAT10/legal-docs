@@ -3,9 +3,9 @@ from typing import Dict, Any, List
 class GovernanceException(Exception):
     pass
 
-class L5SafeFiringLogic:
+class AIGL5Control:
     """
-    Governance Security Layer (L5 Safe-Firing Logic):
+    Governance Security Layer (AIGL5Control Logic):
     Ensures no critical action happens automatically.
     Requires evidence, approval, and confirmation.
     """
@@ -33,4 +33,4 @@ class L5SafeFiringLogic:
 
         return True
 
-l5 = L5SafeFiringLogic()
+aig_l5 = AIGL5Control()
