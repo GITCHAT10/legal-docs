@@ -15,7 +15,7 @@
 
     <nav class="border-b border-slate-700 p-4 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50">
         <div class="container mx-auto flex justify-between items-center">
-            <h1 class="text-2xl font-bold tracking-tighter text-blue-400">iMOXON <span class="text-xs text-slate-500 font-mono">v1.1.0 (SALA 2026)</span></h1>
+            <h1 class="text-2xl font-bold tracking-tighter text-blue-400">iMOXON <span class="text-xs text-slate-500 font-mono">v1.2.0 (PRODUCTION AUDIT)</span></h1>
             <div id="user-status" class="text-sm font-mono text-emerald-400">Not Logged In</div>
         </div>
     </nav>
@@ -33,25 +33,22 @@
             </section>
 
             <section class="bg-slate-800/50 p-6 rounded-xl border border-slate-700">
-                <h2 class="text-xl font-semibold mb-4 border-b border-slate-700 pb-2">2. iMOXON MOVE (SALA 2026 Tracking)</h2>
-                <div class="grid grid-cols-1 gap-4">
-                    <button onclick="requestRide()" class="bg-slate-700 hover:bg-slate-600 py-3 rounded-lg text-lg font-bold flex justify-between px-6 items-center">
-                        <span>Request Local Taxi</span>
-                        <span class="text-xs text-emerald-400 border border-emerald-400/30 px-2 py-1 rounded">ECO-TRACK ACTIVE</span>
-                    </button>
-                </div>
-                <div id="latest-folio" class="mt-4 hidden animate-in fade-in zoom-in duration-500">
-                    <!-- Aman-style Folio rendered here -->
-                </div>
+                <h2 class="text-xl font-semibold mb-4 border-b border-slate-700 pb-2">2. iMOXON MOVE (Transport)</h2>
+                <button onclick="requestRide()" class="w-full bg-slate-700 hover:bg-slate-600 py-3 rounded-lg text-lg font-bold">Request Local Taxi</button>
+                <div id="latest-folio" class="mt-4 hidden"></div>
             </section>
 
             <section class="bg-slate-800/50 p-6 rounded-xl border border-slate-700">
-                <h2 class="text-xl font-semibold mb-4 border-b border-slate-700 pb-2">3. Marketplace</h2>
-                <div class="flex gap-4 mb-4">
-                    <input id="list-title" placeholder="Product Title" class="bg-slate-900 border border-slate-700 px-3 py-1 rounded text-sm w-full">
-                    <input id="list-price" placeholder="Price" type="number" class="bg-slate-900 border border-slate-700 px-3 py-1 rounded text-sm w-32">
-                    <input id="list-carbon" placeholder="CO2 (kg)" type="number" class="bg-slate-900 border border-slate-700 px-3 py-1 rounded text-sm w-32">
-                    <button onclick="createListing()" class="bg-emerald-600 px-4 py-1 rounded text-sm">LIST</button>
+                <h2 class="text-xl font-semibold mb-4 border-b border-slate-700 pb-2">3. Sovereign Infrastructure</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button onclick="signLease()" class="bg-slate-700 p-4 rounded border border-slate-600 hover:border-blue-400 transition">
+                        <div class="text-sm font-bold text-blue-300">IMOXON LEX</div>
+                        <div class="text-xs text-slate-400 mt-1">Sign Lease Agreement</div>
+                    </button>
+                    <button onclick="activateHMS()" class="bg-slate-700 p-4 rounded border border-slate-600 hover:border-emerald-400 transition">
+                        <div class="text-sm font-bold text-emerald-300">iSKY HMS</div>
+                        <div class="text-xs text-slate-400 mt-1">Activate Hospitality SaaS</div>
+                    </button>
                 </div>
             </section>
 
@@ -62,12 +59,11 @@
                 <h2 class="text-xl font-semibold mb-4 text-blue-400 flex items-center">
                     <span class="mr-2">📡</span> AEGIS DOME
                 </h2>
-                <div id="event-log" class="flex-grow overflow-y-auto space-y-2 font-mono text-[10px]">
-                </div>
+                <div id="event-log" class="flex-grow overflow-y-auto space-y-2 font-mono text-[10px]"></div>
                 <div class="mt-4 pt-4 border-t border-slate-800">
                     <div class="flex justify-between text-[10px] font-mono">
                         <span>INTEGRITY: <span id="integrity-status" class="text-emerald-400">SECURE</span></span>
-                        <span>SHADOW: <span class="text-blue-400">ACTIVE</span></span>
+                        <span>FCE: <span class="text-blue-400">MIRA COMPLIANT</span></span>
                     </div>
                 </div>
             </section>
@@ -80,98 +76,69 @@
         const API_BASE = "";
 
         async function onboard(role) {
-            try {
-                const res = await fetch(`${API_BASE}/auth/onboard`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json', 'Idempotency-Key': Date.now().toString()},
-                    body: JSON.stringify({name: "Maldivian User", role: role, device_id: "trusted-device-101"})
-                });
-                const data = await res.json();
-                if(res.ok) {
-                    currentUser = {did: data.did, role: role, device_id: "trusted-device-101"};
-                    document.getElementById('user-status').innerText = `${role}: ${data.did.slice(0,8)}`;
-                    logEvent("AEGIS.ACTOR_ONBOARDED", data);
-                } else {
-                    alert(`AEGIS BLOCK: ${data.detail || 'Access Denied'}`);
-                    logEvent("AEGIS.DENIED", data);
-                }
-            } catch(e) { console.error(e); }
-        }
-
-        async function createListing() {
-            if(!currentUser) return alert("Onboard first!");
-            const title = document.getElementById('list-title').value;
-            const price = document.getElementById('list-price').value;
-            const carbon = document.getElementById('list-carbon').value;
-
-            await fetch(`${API_BASE}/market/listing?vendor_id=${currentUser.did}&title=${title}&price=${price}&carbon_footprint_kg=${carbon}`, {method: 'POST'});
-            logEvent("IMOXON.MARKET.LISTING_CREATED", {title, carbon_footprint_kg: carbon});
-            alert("Product Listed with Carbon Data.");
+            const res = await fetch(`${API_BASE}/auth/onboard?name=Adam&role=${role}&device_id=trusted-101`, {method: 'POST'});
+            const data = await res.json();
+            if(res.ok) {
+                currentUser = {did: data.did, role: role, device_id: "trusted-101"};
+                document.getElementById('user-status').innerText = `${role}: ${data.did.slice(0,8)}`;
+                logEvent("AEGIS.ACTOR_ONBOARDED", data);
+            } else {
+                alert(`AEGIS BLOCK: ${data.detail}`);
+                logEvent("AEGIS.DENIED", data);
+            }
         }
 
         async function requestRide() {
             if(!currentUser) return alert("Onboard first!");
-            const res = await fetch(`${API_BASE}/transport/ride`, {
+            const res = await fetch(`${API_BASE}/move/ride?user=${currentUser.did}&dev=${currentUser.device_id}&role=${currentUser.role}&src=Male&dst=Airport`, {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    user_id: currentUser.did,
-                    device_id: currentUser.device_id,
-                    role: currentUser.role,
-                    pickup: "Male",
-                    destination: "Airport"
-                })
+                headers: {
+                    'X-MNOS-USER': currentUser.did,
+                    'X-MNOS-DEVICE': currentUser.device_id,
+                    'X-MNOS-ROLE': currentUser.role
+                }
             });
             const data = await res.json();
-            logEvent("IMOXON.MOVE.RIDE_REQUESTED", data.ride);
             renderFolio(data.ride);
+            logEvent("IMOXON.MOVE.RIDE", data.ride);
+        }
+
+        async function signLease() {
+            if(!currentUser) return alert("Onboard first!");
+            const res = await fetch(`${API_BASE}/lex/lease?landlord=${currentUser.did}&tenant=did:mnos:tenant&prop=villa-7`, {
+                method: 'POST',
+                headers: {
+                    'X-MNOS-USER': currentUser.did,
+                    'X-MNOS-DEVICE': currentUser.device_id,
+                    'X-MNOS-ROLE': currentUser.role
+                }
+            });
+            const data = await res.json();
+            logEvent("IMOXON.LEX.LEASE", data.lease);
+            alert("Lease Signed via IMOXON LEX.");
+        }
+
+        async function activateHMS() {
+            if(!currentUser) return alert("Onboard first!");
+            const res = await fetch(`${API_BASE}/isky/activate?operator=${currentUser.did}`, {method: 'POST'});
+            const data = await res.json();
+            logEvent("ISKY.HMS_ACTIVATED", data.activation);
+            alert("iSKY Cloud HMS Active.");
         }
 
         function renderFolio(ride) {
             const container = document.getElementById('latest-folio');
             container.classList.remove('hidden');
             container.innerHTML = `
-                <div class="aman-folio p-8 rounded shadow-2xl border-t-4 border-slate-400">
-                    <div class="flex justify-between items-start mb-8">
-                        <div>
-                            <div class="text-xs uppercase tracking-widest text-slate-500 mb-1">Transaction Folio</div>
-                            <div class="text-xl font-serif">iMOXON MOVE</div>
-                        </div>
-                        <div class="text-right">
-                            <div class="text-xs text-slate-400">SALA 2026 Compliant</div>
-                            <div class="text-emerald-700 font-bold">● ACTIVE</div>
-                        </div>
+                <div class="aman-folio p-6 mt-4 rounded shadow-xl border-t-2 border-slate-300 text-xs">
+                    <div class="font-serif text-lg mb-4">Transaction Folio</div>
+                    <div class="flex justify-between mb-1"><span>Base Fare</span><span>${ride.pricing.base_price} MVR</span></div>
+                    <div class="flex justify-between mb-1"><span>Service Charge</span><span>${ride.pricing.service_charge} MVR</span></div>
+                    <div class="flex justify-between mb-1"><span>GGST (8%)</span><span>${ride.pricing.tax} MVR</span></div>
+                    <div class="border-t border-slate-300 mt-2 pt-2 flex justify-between font-bold">
+                        <span>Total Settlement</span><span>${ride.pricing.total} MVR</span>
                     </div>
-
-                    <div class="border-y border-slate-200 py-6 mb-6">
-                        <div class="flex justify-between mb-2">
-                            <span class="text-sm">Base Fare</span>
-                            <span class="font-bold">${ride.fare.base_price} MVR</span>
-                        </div>
-                        <div class="flex justify-between mb-2 text-slate-500 italic">
-                            <span class="text-sm">Service Charge (10%)</span>
-                            <span class="text-sm">${ride.fare.service_charge} MVR</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-sm">GGST (8%)</span>
-                            <span class="text-sm">${ride.fare.tax} MVR</span>
-                        </div>
-                    </div>
-
-                    <div class="flex justify-between items-center mb-8">
-                        <span class="text-lg font-serif">Total Settlement</span>
-                        <span class="text-2xl font-serif">${ride.fare.total} MVR</span>
-                    </div>
-
-                    <div class="bg-emerald-50 p-4 rounded border border-emerald-100">
-                        <div class="flex items-center gap-3">
-                            <span class="text-2xl">🌱</span>
-                            <div>
-                                <div class="text-xs uppercase tracking-wider text-emerald-800 font-bold">Carbon Impact Tracking</div>
-                                <div class="text-sm text-emerald-700">${ride.carbon_footprint_kg} kg CO2 emissions recorded to SHADOW.</div>
-                            </div>
-                        </div>
-                    </div>
+                    <div class="mt-4 text-[10px] text-slate-400">TXN: ${ride.pricing.transaction_id} | MIRA Compliant</div>
                 </div>
             `;
         }
@@ -179,11 +146,8 @@
         function logEvent(type, payload) {
             const log = document.getElementById('event-log');
             const entry = document.createElement('div');
-            entry.className = 'p-2 bg-slate-800 border-l-2 border-blue-500';
-            entry.innerHTML = `
-                <div class="text-blue-400 font-bold">${type}</div>
-                <pre class="text-emerald-500 overflow-hidden text-[8px]">${JSON.stringify(payload, null, 2)}</pre>
-            `;
+            entry.className = 'p-2 bg-slate-800 border-l-2 border-blue-500 mb-2';
+            entry.innerHTML = `<div class="text-blue-400 font-bold">${type}</div><pre class="text-emerald-500 overflow-hidden text-[8px]">${JSON.stringify(payload, null, 2)}</pre>`;
             log.prepend(entry);
         }
 
@@ -192,7 +156,6 @@
                 const res = await fetch(`${API_BASE}/health`);
                 const data = await res.json();
                 document.getElementById('integrity-status').innerText = data.shadow_integrity ? 'SECURE' : 'COMPROMISED';
-                document.getElementById('integrity-status').className = data.shadow_integrity ? 'text-emerald-400' : 'text-red-500';
             } catch(e) {}
         }, 5000);
     </script>
