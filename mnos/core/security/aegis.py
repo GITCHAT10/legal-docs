@@ -17,7 +17,9 @@ class TrustedDeviceRegistry:
             "MIG-AIGM-2024PV12395H",
             "NODE-SALA-FUSHI-001",
             "MIG-2026-GENESIS-01",
-            "2024PV12395H" # HSM Root UEI
+            "2024PV12395H", # HSM Root UEI
+            "MIG-2026-GENESIS-APOLLO-01",
+            "MIG-MARS-LOCAL-GENESIS-2026-01"
         }
 
     def is_trusted(self, device_id: str) -> bool:
@@ -41,6 +43,10 @@ class AegisService:
         clean_payload = {k: v for k, v in payload.items() if k not in ["signature", "bound_device_id"]}
         data = json.dumps(clean_payload, sort_keys=True, separators=(',', ':')).encode()
         return hmac.new(self.secret, data, hashlib.sha256).hexdigest()
+
+    def sign_context(self, payload: Dict[str, Any]) -> str:
+        """Alias for sign_session to match MARS RECON hardening directives."""
+        return self.sign_session(payload)
 
     def validate_session(self, session_context: Dict[str, Any]) -> bool:
         """

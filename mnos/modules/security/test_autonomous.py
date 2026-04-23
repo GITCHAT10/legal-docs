@@ -19,7 +19,7 @@ class TestSecurityAutonomousResponse(unittest.TestCase):
             "role": "security_bridge"
         }
         # Real signature for tests
-        data = json.dumps(self.session_context, sort_keys=True).encode()
+        data = json.dumps(self.session_context, sort_keys=True, separators=(',', ':')).encode()
         self.session_context["signature"] = hmac.new(config.NEXGEN_SECRET.encode(), data, hashlib.sha256).hexdigest()
 
     @patch("mnos.core.security.aegis.AegisService.validate_session", return_value=True)
@@ -29,10 +29,11 @@ class TestSecurityAutonomousResponse(unittest.TestCase):
             "frigate_event": {
                 "after": {
                     "is_blinded": True,
-                    "confidence": 0.995, # Required by APOLLO for TL-5
+                    "confidence": 0.995,
                     "current_zones": ["Sala_Fushi_Perimeter"]
                 }
-            }
+            },
+            "multi_signal_vetted": True
         }
         with patch("builtins.print") as mock_print:
             security_module.process_security_event(event_data, self.session_context)
@@ -45,10 +46,11 @@ class TestSecurityAutonomousResponse(unittest.TestCase):
         event_data = {
             "frigate_event": {
                 "after": {
-                    "confidence": 0.96, # Required by APOLLO for TL-4
+                    "confidence": 0.96,
                     "current_zones": ["Restricted_Staff_Only"]
                 }
-            }
+            },
+            "aegis_staff_auth": True
         }
         with patch("builtins.print") as mock_print:
             security_module.process_security_event(event_data, self.session_context)
@@ -62,10 +64,11 @@ class TestSecurityAutonomousResponse(unittest.TestCase):
             "frigate_event": {
                 "after": {
                     "duration": 200,
-                    "confidence": 0.91, # Required by APOLLO for TL-3
+                    "confidence": 0.93,
                     "current_zones": ["Sala_Fushi_Perimeter"]
                 }
-            }
+            },
+            "multi_signal_vetted": True
         }
         with patch("builtins.print") as mock_print:
             security_module.process_security_event(event_data, self.session_context)
@@ -95,7 +98,7 @@ class TestSecurityAutonomousResponse(unittest.TestCase):
             "frigate_event": {
                 "after": {
                     "duration": 200,
-                    "confidence": 0.80, # Below 0.90 for TL-3
+                    "confidence": 0.80, # Below 0.92 for TL-3
                     "current_zones": ["Sala_Fushi_Perimeter"]
                 }
             }

@@ -31,9 +31,9 @@ def run_validation():
     knowledge_core.ingest("NEXUS_DNA", dna)
 
     # SECURE: All contexts must be signed before execution
-    ctx_payload = {"device_id": "nexus-001", "bound_device_id": "nexus-001"}
+    ctx_payload = {"device_id": "nexus-001"}
     ctx = ctx_payload.copy()
-    ctx["signature"] = aegis.sign_session(ctx_payload)
+    ctx["signature"] = aegis.sign_context(ctx_payload)
 
     # 3. ExMAIL Booking (Positive Sentiment -> Task Conversion)
     print("\n[SCENARIO 1: ExMAIL Positive Booking]")

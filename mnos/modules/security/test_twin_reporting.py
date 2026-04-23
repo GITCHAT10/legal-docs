@@ -25,6 +25,7 @@ class TestTwinReporting(unittest.TestCase):
                     "duration": 200
                 }
             },
+            "multi_signal_vetted": True, # Required by APOLLO
             "reporting_metadata": {
                 "reporting_currency_usd": "USD",
                 "reporting_currency_local": "MVR",
@@ -36,19 +37,6 @@ class TestTwinReporting(unittest.TestCase):
         }
 
         security_module.process_security_event(event_data, self.session_context)
-
-        # Verify SHADOW entry for TL-3 Alert
-        # Entry 0: Genesis
-        # Entry 1: nexus.security.alert (Intent)
-        # Entry 2: nexus.security.alert (Result) -> This is how ExecutionGuard works
-
-        # Actually in our implementation, ExecutionGuard calls events.publish which calls shadow.commit
-        # It happens once per publish.
-        # But wait, does it commit twice?
-        # In current ExecutionGuard:
-        # events.publish(action_type, event_data, trace_id=trace_id)
-        # In EventBus.publish:
-        # shadow.commit(event_type, payload)
 
         alert_entry = [e for e in shadow.chain if e["event_type"] == "nexus.security.alert"][0]
         metadata = alert_entry["payload"]["data"]["input"]["reporting_metadata"]

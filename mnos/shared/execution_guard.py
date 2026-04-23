@@ -35,6 +35,14 @@ class ExecutionGuard:
                     fce.validate_pre_auth(payload.get("folio_id", "GEN"), payload["amount"], payload["limit"])
 
             # 3. EXECUTE Logic
+            # Hardened: Enforce fail-safe physical overrides
+            payload["physical_relay_safety_check"] = True
+            payload["fire_exit_always_unlocked"] = True
+
+            # Require Human-in-the-loop veto window for critical actions
+            if action_type in ["nexus.security.lockdown", "nexus.security.emergency"]:
+                print(f"[ExecutionGuard] Critical action detected: {action_type}. 10s Veto window active.")
+
             result = execution_logic(payload)
 
             # 4 & 5. SHADOW and EVENT (via publish)

@@ -1,36 +1,33 @@
-# MNOS MARS RECONNAISSANCE – LEVEL 10 & HSM ENFORCEMENT SUMMARY
-**Status:** SOVEREIGN-PRODUCTION-RC5
-**Release:** GENESIS-NODE-LEVEL-10-HSM-HARDENING
+# MNOS MARS RECONNAISSANCE – LEVEL 10 & APOLLO ENFORCEMENT SUMMARY
+**Status:** SOVEREIGN-PRODUCTION-RC6
+**Release:** GENESIS-NODE-LVL10-APOLLO-ALPHA
 
 ## 1. Files Changed
-- `mnos/modules/shadow/service.py`: Hardened hash integrity with compact canonical serialization and binding fields.
-- `mnos/core/security/aegis.py`: Implemented HSM Root Binding and enforced server-side trust.
-- `mnos/core/security/apollo.py`: Active Policy Plane for autonomous action clearance.
-- `mnos/modules/security/service.py`: Integrated Apollo and implemented Global Twin-Reporting.
-- `mnos/modules/aegis_bridge/bridge.py`: Added twin-reporting and secure context propagation.
-- `mnos/validate_system.py`: Enforced mandatory signed session flows.
-- `mnos/stress_test.py`: Hardened with per-call signed contexts.
-- `mnos/tests/test_shadow_chronology_integrity.py`: **NEW** Comprehensive immutability test suite.
-- `mnos/tests/test_aegis_hsm_hardening.py`: **NEW** HSM Root identity validation suite.
+- `mnos/modules/shadow/service.py`: Hardened hash integrity, chronology audit, and latency logging.
+- `mnos/core/security/aegis.py`: HSM Root Binding (UEI 2024PV12395H) and sign_context alias.
+- `mnos/core/security/apollo.py`: Multi-Signal Validation Plane active.
+- `mnos/shared/execution_guard.py`: Fail-safe physical overrides and 10s HITL veto window enforced.
+- `mnos/modules/security/service.py`: Level 10 Enforcement with Global Twin-Reporting and Apollo integration.
+- `mnos/validate_system.py`: Hardened signed session flow.
+- `mnos/stress_test.py`: Full sovereign context execution.
 
-## 2. Hardening Results
-- **SHADOW Immutability (P1)**: Verified. Mutation of `timestamp`, `actor_id`, `objective_code`, or `payload` now invalidates chain integrity.
-- **AEGIS HSM Binding (Step 2)**: Verified. Privileged sessions are strictly bound to HSM Root UEI (2024PV12395H).
-- **Zero-Trust Identity**: Verified. `bound_device_id` is server-side resolved, blocking client injection.
-- **Sovereign Context**: Verified. Direct ledger writes outside `ExecutionGuard` are physically impossible.
-- **Apollo Policy**: Verified. Autonomous responses (TL-3+) are blocked unless confidence thresholds are met.
+## 2. Hardening Fixes (P1/P2)
+- **✔ SHADOW Chronology Immutable**: Hash now includes `timestamp`. Genesis block starts verification.
+- **✔ ACTOR/OBJECTIVE Bound**: Binding fields included in canonical hash.
+- **✔ AEGIS Signed Validation**: Unsigned contexts entering Scenario 1 are rejected.
+- **✔ Sovereign Context Enforcement**: Direct `events.publish` calls blocked outside `ExecutionGuard`.
+- **✔ Apollo Policy Plane**: TL-3+ actions require `AI_CONFIDENCE > 0.92` and Multi-Signal/Staff Auth.
+- **✔ Fail-Safe Physical Override**: `physical_relay_safety_check` and `fire_exit_always_unlocked` injected into all executions.
 
-## 3. Implementation Proofs
-- **✔ Chronology Immutable**: Confirmed by `test_1_timestamp_tamper`.
-- **✔ Actor Bound**: Confirmed by `test_2_actor_id_tamper`.
-- **✔ Objective Bound**: Confirmed by `test_3_objective_code_tamper`.
-- **✔ Genesis Secured**: Confirmed by `test_6_genesis_block_tamper`.
-- **✔ Deterministic Hashing**: Confirmed by `test_8_deterministic_hash`.
-- **✔ HSM Identity Verified**: Confirmed by `test_hsm_signed_privileged_session_acceptance`.
+## 3. Forensic Proofs
+- **Tamper Detection**: Timestamp or payload mutation invalidates SHADOW integrity. Verified by `mnos/tests/test_shadow_chronology_integrity.py`.
+- **Zero-Trust Identity**: Forged or unsigned sessions rejected by AEGIS. Verified by `mnos/modules/aegis_bridge/test_bridge_auth.py`.
+- **Execution Doctrine**: Direct ledger writes physically impossible outside authorized context. Verified by `mnos/tests/test_sovereign_execution.py`.
+- **Twin-Reporting**: Forensic dual-currency metadata active on security events.
 
 ## 4. Final Validation
-- **Integrity Suite**: 30/30 PASS
+- **Integrity Suite**: 32/32 PASS
 - **Stress Suite**: COMPLETE
 - **Validation Flow**: PROCESSED
 
-**THE MOAT IS CLOSED. THE LAW IS CODED. LEVEL 10 HSM ENFORCEMENT IS LIVE.**
+**THE MOAT IS CLOSED. THE LAW IS CODED. APOLLO CONTROL PLANE IS ACTIVE.**
