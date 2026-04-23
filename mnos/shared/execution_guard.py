@@ -29,6 +29,15 @@ class ExecutionGuard:
             # 1. AEGIS Identity Enforcement
             aegis.validate_session(session_context)
 
+            # RISK SCORING ANALYSIS (Level 10)
+            intent_confidence = payload.get("intent_confidence", 1.0)
+            anomaly_score = payload.get("anomaly_score", 0.0)
+
+            if anomaly_score > 0.8 and intent_confidence < 0.9:
+                print(f"[ExecutionGuard] RISK DETECTED: Anomaly {anomaly_score}. Isolating action {action_type}.")
+                if not payload.get("human_override"):
+                     return {"status": "ISOLATED", "reason": "High risk anomaly"}
+
             # 2. FCE Financial Control (If required)
             if financial_validation:
                 if "amount" in payload and "limit" in payload:
@@ -38,6 +47,19 @@ class ExecutionGuard:
             # Hardened: Enforce fail-safe physical overrides
             payload["physical_relay_safety_check"] = True
             payload["fire_exit_always_unlocked"] = True
+
+            # SAFE STATE FALLBACK / HUMAN OVERRIDE
+            if payload.get("operator_hold"):
+                print(f"[ExecutionGuard] SAFE STATE FALLBACK: Action {action_type} placed on HOLD.")
+                return {"status": "HOLD", "reason": "Operator request"}
+
+            # TEMPORAL CHRONOS QUERY ENFORCEMENT
+            if "temporal_query" in action_type:
+                # Range verification logic
+                if payload.get("range_hours", 0) > 48:
+                    print(f"[ExecutionGuard] High-range temporal query: {payload.get('range_hours')}h. Dual-approval required.")
+                    if not payload.get("dual_approval_vetted"):
+                        raise RuntimeError("AEGIS: Dual approval required for temporal queries > 48h.")
 
             # RISK MONITOR ADVISORY ENFORCEMENT
             if "risk_monitor" in action_type or "aether" in action_type:
