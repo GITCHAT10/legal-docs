@@ -1,5 +1,6 @@
 import hashlib
 import json
+import copy
 from datetime import datetime, timezone
 from typing import Dict, Any, List
 from mnos.config import config
@@ -59,6 +60,8 @@ class AIGShadowLedger:
 
         try:
             previous_entry = self.chain[-1]
+            # Enforce immutability by deep-copying the payload
+            safe_payload = copy.deepcopy(payload)
             entry = {
                 "entry_id": len(self.chain),
                 "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -66,7 +69,7 @@ class AIGShadowLedger:
                 "stage": stage,
                 "actor_id": actor_id,
                 "objective_code": objective_code,
-                "payload": payload,
+                "payload": safe_payload,
                 "previous_hash": previous_entry["hash"]
             }
             entry["hash"] = self._calculate_hash(entry)
@@ -85,11 +88,12 @@ class AIGShadowLedger:
 
     def _calculate_hash(self, entry: Dict[str, Any]) -> str:
         """
-        Dual-Truth Ledger Hash:
+        Dual-Truth Ledger Hash (FORTRESS BUILD):
         previous_hash + event_type + stage + actor_id + objective_code + payload + entry_id + timestamp -> current_hash
-        Enforces absolute chronology and identity-bound temporal immutability.
+        Enforces absolute chronology and identity-bound temporal immutability using deterministic JSON.
         """
-        block_string = json.dumps({
+        # Ensure payload is also deterministic
+        block_data = {
             "entry_id": entry["entry_id"],
             "event_type": entry["event_type"],
             "stage": entry.get("stage", "result"),
@@ -98,7 +102,8 @@ class AIGShadowLedger:
             "payload": entry["payload"],
             "previous_hash": entry["previous_hash"],
             "timestamp": entry["timestamp"]
-        }, sort_keys=True, default=str).encode()
+        }
+        block_string = json.dumps(block_data, sort_keys=True, separators=(',', ':'), default=str).encode()
         return hashlib.sha256(block_string).hexdigest()
 
     def verify_integrity(self, start_index: int = 0) -> bool:

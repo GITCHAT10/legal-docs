@@ -10,9 +10,17 @@ from mnos.shared.guard.service import guard
 # Initialize workflow for the test
 from mnos.modules.workflows.reservation import reservation_workflow
 
+import time
+
 @pytest.fixture
 def vvvip_session():
-    payload = {"device_id": "nexus-admin-01", "biometric_verified": True, "mission_scope": "V1"}
+    payload = {
+        "device_id": "nexus-admin-01",
+        "biometric_verified": True,
+        "mission_scope": "V1",
+        "nonce": str(time.time()),
+        "timestamp": int(time.time())
+    }
     sig = aig_aegis.sign_session(payload)
     payload["signature"] = sig
     return payload
@@ -72,6 +80,8 @@ def test_sala_live_cycle_e2e(vvvip_session, orban_context):
     assert "ut.booking.created" in event_types
 
     # 4. FCE Invoice Finalization
+    vvvip_session["nonce"] = "new-nonce-invoice"
+    vvvip_session["signature"] = aig_aegis.sign_session(vvvip_session)
     res_invoice = fce.finalize_invoice(
         folio_id="F-SALA-101",
         base_amount=Decimal("1000.00"),

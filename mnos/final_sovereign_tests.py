@@ -35,32 +35,60 @@ def test_silvia_intelligence_thresholds():
     res = silvia.process_request("I want to order food")
     assert res["status"] == "ESCALATE"
 
+import time
+
 def test_whatsapp_hardened_flow():
     """Verify end-to-end WhatsApp flow via Execution Guard with signed session."""
-    ctx = {"device_id": "nexus-001", "biometric_verified": True}
+    ctx = {
+        "device_id": "nexus-001",
+        "biometric_verified": True,
+        "nonce": str(time.time()),
+        "timestamp": int(time.time())
+    }
     ctx["signature"] = aig_aegis_sign(ctx)
 
-    conn = {"is_vpn": True, "tunnel_id": "tun-01", "encryption": "wireguard"}
+    # Mock connection context for guard
+    conn = {
+        "is_vpn": True,
+        "tunnel_id": "tun-01",
+        "encryption": "wireguard",
+        "tunnel": "aig_tunnel",
+        "source_ip": "10.0.0.1",
+        "node_id": "SALA-EDGE-01"
+    }
 
-    # Mock the receive_message to pass connection context if it were real,
-    # but since whatsapp.py doesn't take it yet, we might need to update it or
-    # update the guard to have defaults for legacy calls.
-    # Actually, I'll update the test to pass it if I update whatsapp.py.
-    # For now, let's update whatsapp.py to be aware of the new guard requirements.
+    # Pass connection_context in context for testing purposes if whatsapp.py supports it
+    ctx["connection_context"] = conn
+    # RE-SIGN after adding connection_context
+    ctx["signature"] = aig_aegis_sign(ctx)
 
     res = whatsapp.receive_message("+9601112222", "I want to book a room", ctx)
-    # This will still fail until whatsapp.py is updated to pass connection_context
     assert res["status"] == "PROCESSED"
     assert "NEXUS booking" in res["response"]
     assert aig_shadow.verify_integrity() is True
 
 def test_concurrent_integrity_sim():
     """Verify multiple workflows maintain immutable chain integrity."""
-    ctx = {"device_id": "nexus-001", "biometric_verified": True}
+    ctx = {
+        "device_id": "nexus-001",
+        "biometric_verified": True,
+        "nonce": "nonce-1",
+        "timestamp": int(time.time())
+    }
+    ctx["signature"] = aig_aegis_sign(ctx)
+
+    conn = {
+        "is_vpn": True, "tunnel_id": "tun-01", "encryption": "wireguard",
+        "tunnel": "aig_tunnel", "source_ip": "10.0.0.1", "node_id": "SALA-EDGE-01"
+    }
+    ctx["connection_context"] = conn
     ctx["signature"] = aig_aegis_sign(ctx)
 
     # Sequence of events
     whatsapp.receive_message("+9601", "Book room", ctx)
+
+    ctx["nonce"] = "nonce-2"
+    ctx["signature"] = aig_aegis_sign(ctx)
     whatsapp.receive_message("+9602", "Arrival", ctx)
 
     # Analysis:

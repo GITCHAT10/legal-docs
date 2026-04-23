@@ -13,6 +13,7 @@ from mnos.shared import constants
 
 # Context variable to track if we are inside the execution guard
 in_sovereign_context = contextvars.ContextVar("in_sovereign_context", default=False)
+current_trace_id = contextvars.ContextVar("current_trace_id", default=None)
 
 class ExecutionGuard:
     """
@@ -40,8 +41,9 @@ class ExecutionGuard:
         Enforces Zero-Trust mandatory validation chain.
         """
         token = in_sovereign_context.set(True)
+        trace_id = str(uuid.uuid4())
+        trace_token = current_trace_id.set(trace_id)
         try:
-            trace_id = str(uuid.uuid4())
             connection_context = connection_context or {}
             approvals = approvals or []
 
@@ -62,7 +64,7 @@ class ExecutionGuard:
             # MANDATORY: Require ORBAN context for all external ingress.
             if not connection_context:
                  raise SecurityException("Missing ORBAN context")
-            aig_tunnel.validate_connection(connection_context)
+            aig_tunnel.validate_connection(connection_context, session_context=session_context)
 
             # 2. AIG AEGIS (Identity Validation - Mandatory Signed Session)
             # Enforces AEGIS_DEVICE_BINDING and BIOMETRIC_HANDSHAKE
@@ -94,6 +96,9 @@ class ExecutionGuard:
 
             # 5. AIGShadow Audit (Intent)
             actor_id = session_context.get("device_id", "SYSTEM")
+            # In MNOS 10.0, we no longer do double commits here to avoid redundant chain expansion
+            # if the event bus also commits.
+            # However, for fortress-build we want the INTENT specifically logged.
             aig_shadow.commit(action_type, {"intent": payload, "trace_id": trace_id}, stage="intent", actor_id=actor_id, objective_code=objective_code)
 
             # 6. EXECUTE Logic
@@ -112,23 +117,30 @@ class ExecutionGuard:
                     aig_shadow.chain.pop()
                 raise
 
-            # 7. AIGShadow Audit (Result)
-            result_hash = aig_shadow.commit(action_type, {"result": result, "trace_id": trace_id}, stage="result", actor_id=actor_id, objective_code=objective_code)
+            # 7. EXECUTION PROOF & EVENT PUBLISHING
+            # In MNOS 10.0, event.publish() is the AUTHORITATIVE result commit to Shadow.
+            # We do NOT call shadow.commit() separately for the result here.
 
-            # 8. AIGProof Proof Generation
-            proof = aig_proof.generate_proof(trace_id, result_hash)
-
-            # 9. EVENT Publishing
             event_data = {
                 "trace_id": trace_id,
                 "action": action_type,
                 "input": payload,
                 "result": result,
-                "proof": proof,
                 "authorized_session": session_context
             }
 
+            # Events.publish will call shadow.commit(action_type, payload) with stage="result"
+            # ensuring a single authoritative entry for the execution outcome.
             events.publish(action_type, event_data, trace_id=trace_id)
+
+            # The last entry in shadow should now be the result commit
+            result_entry = aig_shadow.chain[-1]
+            result_hash = result_entry["hash"]
+
+            # 8. AIGProof Proof Generation
+            proof = aig_proof.generate_proof(trace_id, result_hash)
+            if isinstance(result, dict):
+                 result["proof"] = proof
 
             return result
         except Exception as e:
@@ -136,6 +148,7 @@ class ExecutionGuard:
             raise
         finally:
             in_sovereign_context.reset(token)
+            current_trace_id.reset(trace_token)
 
 guard = ExecutionGuard()
 

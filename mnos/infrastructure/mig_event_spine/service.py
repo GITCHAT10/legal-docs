@@ -31,6 +31,8 @@ class EventBus:
         "nexus.guest.created",
         "nexus.reservation.confirmed",
         "FINALIZE_INVOICE_PROCESS",
+        "apollo.deploy",
+        "SYSTEM_OVERRIDE",
         "test"
     }
 
@@ -40,17 +42,23 @@ class EventBus:
     def publish(self, event_type: str, data: Dict[str, Any], trace_id: str = None) -> Dict[str, Any]:
         """
         Publishes an event and commits to AIGShadow ledger.
-        MIG EVENT LAW: Blocks direct publish outside ExecutionGuard context.
+        MIG EVENT LAW (FORTRESS BUILD):
+        1. Blocks direct publish outside ExecutionGuard context.
+        2. Prohibits raw event emission.
+        3. Enforces trace_id persistence.
         """
-        from mnos.shared.guard.service import in_sovereign_context
+        from mnos.shared.guard.service import in_sovereign_context, current_trace_id
         if not in_sovereign_context.get():
             raise RuntimeError("EVENT_SPINE: Direct publish blocked. Operation must go through ExecutionGuard.")
 
         if event_type not in self.TAXONOMY:
             raise ValueError(f"Unknown event type: {event_type}")
 
+        # In MNOS 10.0, we reject events without a valid trace_id
+        # ensuring everything is part of a guarded chain.
+        trace_id = trace_id or current_trace_id.get()
         if not trace_id:
-            trace_id = str(uuid.uuid4())
+            raise RuntimeError("EVENT_SPINE: Trace_id is mandatory for all sovereign events.")
 
         payload = {
             "event_id": str(uuid.uuid4()),
