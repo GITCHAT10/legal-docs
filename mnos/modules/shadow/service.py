@@ -28,11 +28,13 @@ class ShadowLedger:
         genesis_block["hash"] = self._calculate_hash(genesis_block)
 
         # MANDATORY: Validate against Hardened Root Anchor
-        if genesis_block["hash"] != config.CORE_V1_ROOT_HASH:
+        # Re-verify genesis against its own computed hash to ensure seed parameters match doctrine
+        computed_root = self._calculate_hash(genesis_block)
+        if computed_root != config.CORE_V1_ROOT_HASH:
              print(f"!!! SHADOW ROOT ANCHOR MISMATCH !!!")
-             print(f"Got: {genesis_block['hash']}")
+             print(f"Got: {computed_root}")
              print(f"Expected: {config.CORE_V1_ROOT_HASH}")
-             raise RuntimeError("SHADOW: Genesis block validation failed. Root anchor mismatch.")
+             raise RuntimeError("SHADOW: Genesis block parameters deviate from root anchor.")
 
         self.chain.append(genesis_block)
 
@@ -79,13 +81,14 @@ class ShadowLedger:
 
     def _calculate_hash(self, entry: Dict[str, Any]) -> str:
         """previous_hash + timestamp + event_type + payload + entry_id -> current_hash"""
+        # Fortress Build: Enforce absolute determinism with fixed separators and sorted keys
         block_string = json.dumps({
             "entry_id": entry["entry_id"],
             "timestamp": entry.get("timestamp"),
             "event_type": entry["event_type"],
             "payload": entry["payload"],
             "previous_hash": entry["previous_hash"]
-        }, sort_keys=True, default=str).encode()
+        }, sort_keys=True, separators=(',', ':'), default=str).encode()
         return hashlib.sha256(block_string).hexdigest()
 
     def verify_integrity(self) -> bool:

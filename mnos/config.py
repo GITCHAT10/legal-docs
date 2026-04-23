@@ -28,6 +28,6 @@ class Config:
 
     # SHADOW Root Anchors
     GENESIS_PREVIOUS_HASH = "0" * 64
-    CORE_V1_ROOT_HASH = "0523eb51ec9316bf71eab2a83b18e6e7791a4db99c63ebaef3cb67e19840b0e4"
+    CORE_V1_ROOT_HASH = "64320e34458b11226bc720f69a96ccd75d74f6ef7137cc3e26a532d64703ccdf"
 
 config = Config()

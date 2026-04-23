@@ -41,4 +41,7 @@ def test_ledger_tamper_hard_fail():
     shadow.chain[1]["previous_hash"] = "CORRUPT"
 
     with pytest.raises(RuntimeError, match="Chain corruption detected"):
-        guard.execute_sovereign_action("nexus.booking.created", {}, ctx, lambda x: "ok")
+        # Re-sign for next action to avoid AEGIS failure due to mutated ctx
+        new_ctx = {"device_id": "nexus-001"}
+        new_ctx["signature"] = aegis_sign(new_ctx)
+        guard.execute_sovereign_action("nexus.booking.created", {}, new_ctx, lambda x: "ok")

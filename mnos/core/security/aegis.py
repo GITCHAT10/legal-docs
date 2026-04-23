@@ -67,6 +67,7 @@ class AegisService:
 
         # Cleanse and Bind: Remove any other client-provided auth attributes
         session_context.pop("roles", None)
+        session_context.pop("bound_device_id", None)
 
         # Inject server-verified device ID as the ONLY proof for downstream execution
         session_context["verified_device_id"] = client_device_id

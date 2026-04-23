@@ -35,7 +35,10 @@ def test_ledger_tampering_fail_closed():
 
     # 3. Next attempt should fail CLOSED
     with pytest.raises(RuntimeError, match="Chain corruption detected"):
-        guard.execute_sovereign_action("nexus.booking.created", {}, ctx, lambda x: "ok")
+        # Re-sign for next action to avoid AEGIS failure due to mutated ctx
+        new_ctx = {"device_id": "nexus-001"}
+        new_ctx["signature"] = aegis_sign(new_ctx)
+        guard.execute_sovereign_action("nexus.booking.created", {}, new_ctx, lambda x: "ok")
 
 def test_partial_transaction_failure_recovery():
     """Verify system remains atomic even if execution logic fails."""
