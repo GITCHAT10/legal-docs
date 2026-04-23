@@ -1,3 +1,4 @@
+from decimal import Decimal
 class TransportEngine:
     def __init__(self, guard, fce, shadow, events):
         self.guard = guard
@@ -29,4 +30,3 @@ class TransportEngine:
         }
         self.events.publish("transport.booked", entry)
         return entry
-from decimal import Decimal

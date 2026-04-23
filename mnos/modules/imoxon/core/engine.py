@@ -1,3 +1,4 @@
+import uuid
 class CommerceEngine:
     def __init__(self, guard, fce, shadow, events):
         self.guard = guard
@@ -55,4 +56,3 @@ class CommerceEngine:
         self.orders[order_id] = order
         self.events.publish("order.created", order)
         return order
-import uuid
