@@ -66,13 +66,35 @@ def stress_test():
     # 4. Concurrency Test (Simulated Sequential but overlapping logic)
     print("\n[TEST 4: Concurrency Simulation]")
     # Use trusted hardware ID from Registry
-    ctx = {"device_id": "nexus-001"}
+    ctx = {
+        "user_id": "STRESS-01",
+        "session_id": "S-STRESS-01",
+        "device_id": "nexus-001",
+        "issued_at": 1700000000,
+        "nonce": "N-STRESS-01"
+    }
     from mnos.core.security.aegis import aegis
     ctx["signature"] = aegis.sign_session(ctx)
 
-    whatsapp.receive_message("+9602", "book room", ctx)
-    whatsapp.receive_message("+9603", "arrival at airport", ctx)
-    whatsapp.receive_message("+9604", "emergency help", ctx)
+    whatsapp.receive_message("+9602", "book room", ctx.copy())
+
+    # 3rd and 4th calls need fresh signatures and context snapshots
+    ctx_base = {
+        "user_id": "STRESS-01",
+        "session_id": "S-STRESS-01",
+        "device_id": "nexus-001",
+        "issued_at": 1700000000
+    }
+
+    ctx3 = ctx_base.copy()
+    ctx3["nonce"] = "N-STRESS-02"
+    ctx3["signature"] = aegis.sign_session(ctx3)
+    whatsapp.receive_message("+9603", "arrival at airport", ctx3)
+
+    ctx4 = ctx_base.copy()
+    ctx4["nonce"] = "N-STRESS-03"
+    ctx4["signature"] = aegis.sign_session(ctx4)
+    whatsapp.receive_message("+9604", "emergency help", ctx4)
     print(f"Final Ledger Size: {len(shadow.chain)}")
     print(f"Final Integrity: {shadow.verify_integrity()}")
 

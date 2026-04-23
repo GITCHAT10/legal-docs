@@ -43,7 +43,12 @@ class EventBus:
 
         # Doctrine: n8n → MNOS EVENTS → AEGIS → FCE → SHADOW
         # All events MUST be recorded in SHADOW for sovereign truth
-        shadow.commit(event_type, payload)
+        shadow.commit(
+            event_type,
+            payload,
+            actor_id=data.get("actor_id", "SYSTEM"),
+            objective_code=data.get("objective_code", "GENERIC")
+        )
 
         # Trigger subscribers
         for callback in self.subscribers.get(event_type, []):

@@ -37,7 +37,13 @@ def test_silvia_intelligence_thresholds():
 
 def test_whatsapp_hardened_flow():
     """Verify end-to-end WhatsApp flow via Execution Guard with signed session."""
-    ctx = {"device_id": "nexus-001"}
+    ctx = {
+        "user_id": "GUEST-01",
+        "session_id": "SESS-101",
+        "device_id": "nexus-001",
+        "issued_at": 1700000000,
+        "nonce": "N-101"
+    }
     ctx["signature"] = aegis_sign(ctx)
 
     res = whatsapp.receive_message("+9601112222", "I want to book a room", ctx)
@@ -48,8 +54,14 @@ def test_whatsapp_hardened_flow():
 def test_concurrent_integrity_sim():
     """Verify multiple workflows maintain immutable chain integrity."""
     # Use different phone numbers to avoid any caching side effects if they existed
-    ctx = {"device_id": "nexus-001"}
-    ctx["signature"] = aegis_sign({"device_id": "nexus-001"})
+    ctx = {
+        "user_id": "GUEST-01",
+        "session_id": "SESS-102",
+        "device_id": "nexus-001",
+        "issued_at": 1700000000,
+        "nonce": "N-102"
+    }
+    ctx["signature"] = aegis_sign(ctx)
 
     # 1. Book Room (Triggers 2 entries: exmail/whatsapp received + payment received)
     whatsapp.receive_message("+9601001", "Book room", ctx.copy())

@@ -16,7 +16,7 @@ class SilviaUiBinder:
 
         # Enforce Stage 6+ requirement: Reasoning Trace
         if "shadow_reasoning_trace" not in decision:
-            print("[SALA-SILVIA] WARNING: Missing reasoning trace for UI injection.")
+            raise RuntimeError("SALA-SILVIA: Reasoning trace mandatory for UI injection. Blocked.")
 
         print(f"[SALA-SILVIA] Injecting alert into {self.display_location}")
         return {

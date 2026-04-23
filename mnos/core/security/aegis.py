@@ -32,44 +32,46 @@ class AegisService:
 
     def validate_session(self, session_context: Dict[str, Any]) -> bool:
         """
-        Enforces Absolute Server-Side Trust:
-        1. HMAC-SHA256 verification of session context.
-        2. REJECT unsigned or forged contexts.
-        3. REJECT sessions where client-provided 'bound_device_id' is the only proof.
+        Enforces Absolute Server-Side Trust (SKY-i v1.2 Hardening):
+        1. HMAC-SHA256 verification of session context (mandatory fields).
+        2. REJECT unsigned, forged, malformed, or incomplete contexts.
+        3. REJECT sessions where client-provided 'bound_device_id' is present.
         4. MANDATORY: Validate 'device_id' against server-side 'HARDWARE_REGISTRY'.
+        5. FAIL-CLOSED: Halt on any registry or signature failure.
         """
         signature = session_context.get("signature")
         if not signature:
             raise SecurityException("AEGIS: Missing session signature. Rejecting unsigned context.")
 
-        # Extract payload without signature for verification
+        # P1: Required signed fields audit
+        required_fields = ["user_id", "session_id", "device_id", "issued_at", "nonce"]
+        for field in required_fields:
+            if field not in session_context:
+                raise SecurityException(f"AEGIS: Missing required field '{field}' in session context.")
+
+        # Extract payload for verification (excluding signature)
         payload = {k: v for k, v in session_context.items() if k != "signature"}
 
-        # P1: Reject sessions where 'bound_device_id' is provided as a client-side proof
+        # P1: Absolute Trust Boundary - No client-provided binding fields allowed
         if "bound_device_id" in payload:
-            # We explicitly reject client-provided bound_device_id in the payload itself
-            # as it shouldn't be part of the signed authority from the client.
-            raise SecurityException("AEGIS: Client-provided 'bound_device_id' rejected. Use 'device_id' for lookup.")
+            raise SecurityException("AEGIS: Legacy anti-pattern detected. Client-provided 'bound_device_id' REJECTED.")
 
         expected_sig = self.sign_session(payload)
         if not hmac.compare_digest(expected_sig, signature):
             raise SecurityException("AEGIS: Session signature mismatch. Potential spoofing/forgery detected.")
 
-        # P1: Hardware-DNA Verification - Trust ONLY server-side Hardware Registry.
+        # Hardware-DNA Verification - Trust ONLY server-side Hardware Registry.
         client_device_id = payload.get("device_id")
 
-        if not client_device_id:
-            raise SecurityException("AEGIS: Missing 'device_id'. Cannot perform hardware DNA verification.")
-
-        # Server-trusted bound_device lookup
+        # Server-trusted bound_device lookup (Authority Gate)
         if not self.registry.verify_device(client_device_id):
-            raise SecurityException(f"AEGIS: Unauthorized device {client_device_id}. Rejecting untrusted hardware DNA.")
+            raise SecurityException(f"AEGIS: Unauthorized device {client_device_id}. Access Denied (Fail-Closed).")
 
-        # Cleanse and Bind: Remove any other client-provided auth attributes
+        # Context Cleansing: Remove unverified/privileged client fields
         session_context.pop("roles", None)
         session_context.pop("bound_device_id", None)
 
-        # Inject server-verified device ID as the ONLY proof for downstream execution
+        # Inject server-verified binding ID as the ONLY proof for execution
         session_context["verified_device_id"] = client_device_id
 
         return True

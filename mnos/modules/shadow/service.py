@@ -38,7 +38,7 @@ class ShadowLedger:
 
         self.chain.append(genesis_block)
 
-    def commit(self, event_type: str, payload: Dict[str, Any]) -> str:
+    def commit(self, event_type: str, payload: Dict[str, Any], actor_id: str = "SYSTEM", objective_code: str = "GENERIC") -> str:
         """Appends a new entry. Verifies full chain before and after commit."""
         from mnos.shared.execution_guard import ensure_sovereign_context
         ensure_sovereign_context()
@@ -63,7 +63,9 @@ class ShadowLedger:
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "event_type": event_type,
                 "payload": payload_snapshot,
-                "previous_hash": previous_entry["hash"]
+                "previous_hash": previous_entry["hash"],
+                "actor_id": actor_id,
+                "objective_code": objective_code
             }
             entry["hash"] = self._calculate_hash(entry)
             self.chain.append(entry)
@@ -80,40 +82,43 @@ class ShadowLedger:
             raise
 
     def _calculate_hash(self, entry: Dict[str, Any]) -> str:
-        """previous_hash + timestamp + event_type + payload + entry_id -> current_hash"""
-        # Fortress Build: Enforce absolute determinism with fixed separators and sorted keys
+        """previous_hash + timestamp + event_type + payload + actor_id + objective_code + entry_id -> current_hash"""
+        # Fortress Build (Go-Live Validation Lock): Enforce absolute determinism
         block_string = json.dumps({
             "entry_id": entry["entry_id"],
             "timestamp": entry.get("timestamp"),
             "event_type": entry["event_type"],
             "payload": entry["payload"],
-            "previous_hash": entry["previous_hash"]
+            "previous_hash": entry["previous_hash"],
+            "actor_id": entry.get("actor_id"),
+            "objective_code": entry.get("objective_code")
         }, sort_keys=True, separators=(',', ':'), default=str).encode()
         return hashlib.sha256(block_string).hexdigest()
 
     def verify_integrity(self) -> bool:
-        """Validates the entire hash chain from genesis to head (Fortress Build)."""
+        """Validates the entire hash chain from genesis to head (Go-Live Validation Lock)."""
         if not self.chain:
             return False
 
-        # P1: Explicit Genesis Block Protection (Index 0)
+        # P0: Final Ledger Integrity Audit (Index 0 Genesis)
         genesis = self.chain[0]
 
-        # 1. Recompute and verify Genesis Block linkage and hash
+        # 1. Recompute and verify Genesis Block details
         recomputed_genesis_hash = self._calculate_hash(genesis)
         if genesis["hash"] != recomputed_genesis_hash:
-             print("!!! SHADOW: Genesis Hash Recomputation Mismatch. Payload or Timestamp tampered !!!")
+             print("!!! SHADOW: Genesis Hash Recomputation Mismatch. Identity/Timeline compromised !!!")
              return False
 
-        # 2. Verify Genesis payload and linkage
+        # 2. Verify Genesis semantics
         if genesis["entry_id"] != 0 or genesis["previous_hash"] != config.GENESIS_PREVIOUS_HASH:
-             print("!!! SHADOW: Genesis Linkage Corruption Detected !!!")
+             print("!!! SHADOW: Genesis Semantic Corruption Detected !!!")
              return False
 
         if genesis["hash"] != config.CORE_V1_ROOT_HASH:
-             print(f"!!! SHADOW: Genesis Root Anchor Mismatch !!!")
+             print(f"!!! SHADOW: Genesis Root Anchor Violation !!!")
              return False
 
+        # 3. Verify Full Chain Linkage
         for i in range(1, len(self.chain)):
             current = self.chain[i]
             previous = self.chain[i-1]

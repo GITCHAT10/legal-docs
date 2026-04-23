@@ -31,17 +31,29 @@ def test_ledger_tamper_hard_fail():
     """Verify that tampering with any block prevents further commits."""
     shadow.chain = []
     shadow._seed_ledger()
-    ctx = {"device_id": "nexus-001"}
+    ctx = {
+        "user_id": "CEO-01",
+        "session_id": "S-99",
+        "device_id": "nexus-001",
+        "issued_at": 1700000000,
+        "nonce": "N-99"
+    }
     ctx["signature"] = aegis_sign(ctx)
 
-    guard.execute_sovereign_action("nexus.booking.created", {}, ctx, lambda x: "ok")
+    guard.execute_sovereign_action("nexus.booking.created", {}, ctx.copy(), lambda x: "ok")
 
     # Tamper with block 1 hash in head's previous_hash link
     # This simulates a direct DB mutation of a sealed link
     shadow.chain[1]["previous_hash"] = "CORRUPT"
 
     with pytest.raises(RuntimeError, match="Chain corruption detected"):
-        # Re-sign for next action to avoid AEGIS failure due to mutated ctx
-        new_ctx = {"device_id": "nexus-001"}
+        # Re-sign for next action to avoid AEGIS failure
+        new_ctx = {
+            "user_id": "CEO-01",
+            "session_id": "S-100",
+            "device_id": "nexus-001",
+            "issued_at": 1700000000,
+            "nonce": "N-100"
+        }
         new_ctx["signature"] = aegis_sign(new_ctx)
         guard.execute_sovereign_action("nexus.booking.created", {}, new_ctx, lambda x: "ok")

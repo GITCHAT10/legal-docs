@@ -14,7 +14,13 @@ def validate_sala_os_deployment():
     print("--- 🏛️ SALA-OS UI INTERFACE VALIDATION ---")
 
     # 1. Security Context
-    ctx = {"device_id": "nexus-001"}
+    ctx = {
+        "user_id": "VAL-UI-01",
+        "session_id": "S-UI-01",
+        "device_id": "nexus-001",
+        "issued_at": 1700000000,
+        "nonce": "N-UI-01"
+    }
     ctx["signature"] = aegis.sign_session(ctx)
 
     # 2. Build & Serve

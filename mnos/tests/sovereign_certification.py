@@ -13,7 +13,13 @@ def aegis_sign(payload):
 def test_aegis_spoof_attack():
     """Verify spoofing fails (server-side hardware binding only)."""
     # Hardware not in registry
-    ctx = {"device_id": "nexus-SPOOFED-ID"}
+    ctx = {
+        "user_id": "ATTACKER",
+        "session_id": "S-ROGUE",
+        "device_id": "nexus-SPOOFED-ID",
+        "issued_at": 1700000000,
+        "nonce": "N-BAD"
+    }
     ctx["signature"] = aegis_sign(ctx)
     with pytest.raises(SecurityException, match="Unauthorized device"):
         guard.execute_sovereign_action("test", {}, ctx, lambda x: "fail")
@@ -43,7 +49,13 @@ def test_shadow_sync_disconnection_lifecycle():
     assert shadow_sync.mode == "READ_ONLY"
 
     # 2. Trigger CABLE_CUT via Guard (Authorized trigger)
-    ctx = {"device_id": "nexus-001"}
+    ctx = {
+        "user_id": "CEO-01",
+        "session_id": "S-01",
+        "device_id": "nexus-001",
+        "issued_at": 1700000000,
+        "nonce": "N-SYNC"
+    }
     ctx["signature"] = aegis_sign(ctx)
     guard.execute_sovereign_action(
         "nexus.emergency.triggered",

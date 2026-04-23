@@ -51,7 +51,9 @@ class ExecutionGuard:
                     "device_id": session_context.get("device_id"),
                     "signature": session_context.get("signature")
                 },
-                "pre_commit_hash": pre_commit_hash
+                "pre_commit_hash": pre_commit_hash,
+                "actor_id": session_context.get("user_id", "SYSTEM"),
+                "objective_code": payload.get("objective_code", "GENERIC")
             }
 
             # 4. EVENT Emission (Authoritative Ledger Write via events.publish)

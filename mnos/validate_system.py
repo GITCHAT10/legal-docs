@@ -31,7 +31,13 @@ def run_validation():
     knowledge_core.ingest("NEXUS_DNA", dna)
 
     from mnos.core.security.aegis import aegis
-    ctx = {"device_id": "nexus-001"}
+    ctx = {
+        "user_id": "GUEST-VAL-01",
+        "session_id": "SESS-VAL-01",
+        "device_id": "nexus-001",
+        "issued_at": 1700000000,
+        "nonce": "N-VAL-01"
+    }
     ctx["signature"] = aegis.sign_session(ctx)
 
     # 3. ExMAIL Booking (Positive Sentiment -> Task Conversion)
@@ -46,7 +52,13 @@ def run_validation():
 
     # 4. ExMAIL Emergency (Negative Sentiment -> Ticket Conversion)
     print("\n[SCENARIO 2: ExMAIL Negative Emergency]")
-    ctx2 = {"device_id": "nexus-001"}
+    ctx2 = {
+        "user_id": "GUEST-VAL-02",
+        "session_id": "SESS-VAL-02",
+        "device_id": "nexus-001",
+        "issued_at": 1700000000,
+        "nonce": "N-VAL-02"
+    }
     ctx2["signature"] = aegis.sign_session(ctx2)
     res_mail2 = exmail_authority.ingest_inbound_exmail(
         "angry.guest@example.com",
