@@ -23,7 +23,8 @@ class TrustedDeviceRegistry:
             "MIG-ASI-MRCRAB-2026",
             "MIG-MONITOR-CORE-2026",
             "MIG-AETHER-CIVIL-2026",
-            "MIG-HUBBLE-I-2026-INIT"
+            "MIG-HUBBLE-I-2026-INIT",
+            "MIG-ASI-MRCRAB-2026-SAFE"
         }
 
     def is_trusted(self, device_id: str) -> bool:

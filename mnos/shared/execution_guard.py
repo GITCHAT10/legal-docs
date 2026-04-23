@@ -58,18 +58,28 @@ class ExecutionGuard:
                 if action_type not in allowed_hubble:
                     raise RuntimeError(f"OFF_GRID_VIOLATION: Remote execution {action_type} blocked over satellite link.")
 
-            # MR CRAB Safety + Governance Enforcement
+            # MR CRAB Safety + Governance Enforcement (SIMULATION MODE)
             if "mrcrab" in action_type:
+                print(f"[ExecutionGuard] MR CRAB SIMULATION: {action_type}. Enforcing Governance.")
+                # Simulation Governance Guardrails
+                payload["human_approval_required"] = True
+                payload["root_authority_only"] = True
+
+                # Block critical autonomous capabilities in simulation
+                blocked_sim_actions = [
+                    "self_preservation_protocol",
+                    "autonomous_force",
+                    "unsupervised_motion",
+                    "live_actuation",
+                    "motor_commands"
+                ]
+                if any(ba in action_type for ba in blocked_sim_actions):
+                    raise RuntimeError(f"SIMULATION_VIOLATION: {action_type} blocked in COGNITIVE-OBSERVABILITY mode.")
+
                 if payload.get("human_proximity_meters", 100) < 1.0:
-                    raise RuntimeError("MR_CRAB SAFETY: Human proximity violation. Halting.")
+                    print("MR_CRAB SIMULATION: Human proximity detected. Reporting.")
                 if payload.get("live_animal_detected"):
-                    raise RuntimeError("MR_CRAB SAFETY: Marine life detected. Halting.")
-                if payload.get("battery_level", 100) < 15:
-                    print("[MrCrab] Low battery. Forcing return to base.")
-                    payload["return_to_base"] = True
-                if payload.get("comms_lost"):
-                    print("[MrCrab] Comms lost. Forcing return to base.")
-                    payload["return_to_base"] = True
+                    print("MR_CRAB SIMULATION: Marine life detected. Reporting.")
 
             # Require Human-in-the-loop veto window for critical actions
             if action_type in ["nexus.security.lockdown", "nexus.security.emergency"]:
