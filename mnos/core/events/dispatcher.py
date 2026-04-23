@@ -3,7 +3,7 @@ import asyncio
 import os
 import uuid
 import logging
-from united_transfer_system.services.execution_guard import guard
+from mnos.core.security.guard import guard
 
 class EventDispatcher:
     def __init__(self):

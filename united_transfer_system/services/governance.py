@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from united_transfer_system import models
 from united_transfer_system.integrations import weather, nexus_client
-from united_transfer_system.services.execution_guard import guard
+from mnos.core.security.guard import guard
 from functools import wraps
 from fastapi import HTTPException
 import logging

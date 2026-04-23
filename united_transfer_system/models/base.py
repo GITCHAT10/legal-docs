@@ -56,6 +56,8 @@ class Leg(Base):
     id = Column(Integer, primary_key=True, index=True)
     journey_id = Column(Integer, ForeignKey("journey.id"), nullable=False)
     trace_id = Column(String, index=True, nullable=False) # MANDATORY
+    aegis_id = Column(String, index=True)
+    device_id = Column(String, index=True)
 
     type = Column(Enum(LegType), nullable=False)
     provider_id = Column(String) # Driver/Vessel ID
@@ -99,6 +101,8 @@ class Transaction(Base):
     id = Column(Integer, primary_key=True, index=True)
     wallet_id = Column(Integer, ForeignKey("wallet.id"), nullable=False)
     trace_id = Column(String, index=True, nullable=False) # MANDATORY
+    aegis_id = Column(String, index=True)
+    device_id = Column(String, index=True)
 
     amount = Column(Numeric(12, 2), nullable=False)
     type = Column(String) # PAYOUT, WITHDRAWAL

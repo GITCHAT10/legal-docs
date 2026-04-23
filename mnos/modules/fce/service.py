@@ -53,16 +53,21 @@ def finalize_invoice(db: Session, folio_id: int, trace_id: Optional[str] = None,
             raise HTTPException(status_code=404, detail="Folio not found")
 
         # idempotency / guard against double-finalization
+        # LAW: assert invoice.status != "FINALIZED"
         if folio.status == models.FolioStatus.FINALIZED:
             existing_invoice = db.query(models.Invoice).filter(models.Invoice.folio_id == folio_id).first()
             if existing_invoice:
                 return existing_invoice
+            # If status is finalized but no invoice found, we still block to maintain integrity
+            raise HTTPException(status_code=400, detail="Folio already finalized")
 
         # 1. Lock Exchange Rate (Mock for sandbox)
         exchange_rate = 15.42 # USD/MVR
 
         # 2. Update Folio Status
         folio.status = models.FolioStatus.FINALIZED
+        folio.finalized_by = actor
+        folio.finalized_at = datetime.now(UTC)
 
         # 3. Create Invoice
         invoice = models.Invoice(
@@ -75,10 +80,14 @@ def finalize_invoice(db: Session, folio_id: int, trace_id: Optional[str] = None,
         db.add(invoice)
         db.flush()
 
-        # 4. Generate SHADOW Audit entry
+        # 4. COMMIT BEFORE SHADOW LOG
+        db.commit()
+        db.refresh(invoice)
+
+        # 5. Generate SHADOW Audit entry
         shadow_service.commit_evidence(db, trace_id, {
             "actor": actor,
-            "action": "FINALIZE_INVOICE",
+            "action": "invoice_finalized",
             "entity_type": "INVOICE",
             "entity_id": invoice.id,
             "financial_lock": {
@@ -87,9 +96,8 @@ def finalize_invoice(db: Session, folio_id: int, trace_id: Optional[str] = None,
                 "currency": folio.currency
             }
         })
-
         db.commit()
-        db.refresh(invoice)
+
         return invoice
     except HTTPException:
         db.rollback()

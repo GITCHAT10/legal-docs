@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from united_transfer_system import models, schemas
 from mnos.modules.shadow import service as shadow_service
-from united_transfer_system.services.execution_guard import guard
+from mnos.core.security.guard import guard
 from united_transfer_system.integrations.nexus_client import nexus_client
 import uuid
 import logging

@@ -32,6 +32,8 @@ class Folio(Base):
 
     external_reservation_id = Column(String, index=True, nullable=False)
     status = Column(Enum(FolioStatus), default=FolioStatus.OPEN)
+    finalized_by = Column(String)
+    finalized_at = Column(DateTime)
     total_amount = Column(Float, default=0.0)
     paid_amount = Column(Float, default=0.0)
     currency = Column(String, default="USD")
