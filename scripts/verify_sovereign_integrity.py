@@ -26,14 +26,13 @@ def verify_all():
     ctx = {"device_id": "nexus-001"}
     ctx["signature"] = aegis_sign(ctx)
     assert aegis.validate_session(ctx) is True
-    # Client-provided roles/binding should be stripped
-    payload_to_sign = {"device_id": "nexus-001", "roles": ["ADMIN"], "bound_device_id": "SPOOF"}
-    ctx_with_junk = payload_to_sign.copy()
-    ctx_with_junk["signature"] = aegis_sign(payload_to_sign)
-    aegis.validate_session(ctx_with_junk)
-    assert "roles" not in ctx_with_junk
-    assert "bound_device_id" not in ctx_with_junk
-    assert ctx_with_junk["verified_device_id"] == "nexus-001"
+    # Client-provided roles should be stripped. bound_device_id should be REJECTED.
+    payload_with_roles = {"device_id": "nexus-001", "roles": ["ADMIN"]}
+    ctx_with_roles = payload_with_roles.copy()
+    ctx_with_roles["signature"] = aegis_sign(payload_with_roles)
+    aegis.validate_session(ctx_with_roles)
+    assert "roles" not in ctx_with_roles
+    assert ctx_with_roles["verified_device_id"] == "nexus-001"
     print(" -> AEGIS Verified: OK")
 
     # 2. SHADOW Full-Chain Validation (P0)

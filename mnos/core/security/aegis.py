@@ -7,36 +7,36 @@ from mnos.config import config
 class SecurityException(Exception):
     pass
 
-class TrustedDeviceRegistry:
-    """Server-side registry of authorized hardware IDs."""
+class HardwareRegistry:
+    """Server-side registry of authorized hardware IDs (Fortress Build)."""
     def __init__(self):
         # In production, this would be backed by a secure DB/HSM
-        self._trusted_devices: Set[str] = {"nexus-001", "nexus-admin-01"}
+        self._registry: Set[str] = {"nexus-001", "nexus-admin-01"}
 
-    def is_trusted(self, device_id: str) -> bool:
-        return device_id in self._trusted_devices
+    def verify_device(self, device_id: str) -> bool:
+        return device_id in self._registry
 
 class AegisService:
     """
-    Sovereign Identity Layer (HARDENED):
-    Enforces server-side trusted device registry and signed sessions.
+    Sovereign Identity Layer (SKY-i OS v1.1 Fortress Build):
+    Enforces server-side hardware-DNA verification and signed sessions.
     """
     def __init__(self):
         self.secret = config.NEXGEN_SECRET.encode()
-        self.registry = TrustedDeviceRegistry()
+        self.registry = HardwareRegistry()
 
     def sign_session(self, payload: Dict[str, Any]) -> str:
-        """Generates an HMAC signature for a session payload."""
+        """Generates an HMAC-SHA256 signature for a session payload."""
         data = json.dumps(payload, sort_keys=True).encode()
         return hmac.new(self.secret, data, hashlib.sha256).hexdigest()
 
     def validate_session(self, session_context: Dict[str, Any]) -> bool:
         """
-        Enforces Absolute Server-Side Trust (HARDENED):
-        1. Presence of signature
-        2. HMAC verification of payload
-        3. MANDATORY: Fetch bound_device_id from server-side registry only
-        4. REJECT: Any client-provided binding fields or roles
+        Enforces Absolute Server-Side Trust:
+        1. HMAC-SHA256 verification of session context.
+        2. REJECT unsigned or forged contexts.
+        3. REJECT sessions where client-provided 'bound_device_id' is the only proof.
+        4. MANDATORY: Validate 'device_id' against server-side 'HARDWARE_REGISTRY'.
         """
         signature = session_context.get("signature")
         if not signature:
@@ -44,24 +44,31 @@ class AegisService:
 
         # Extract payload without signature for verification
         payload = {k: v for k, v in session_context.items() if k != "signature"}
+
+        # P1: Reject sessions where 'bound_device_id' is provided as a client-side proof
+        if "bound_device_id" in payload:
+            # We explicitly reject client-provided bound_device_id in the payload itself
+            # as it shouldn't be part of the signed authority from the client.
+            raise SecurityException("AEGIS: Client-provided 'bound_device_id' rejected. Use 'device_id' for lookup.")
+
         expected_sig = self.sign_session(payload)
-
         if not hmac.compare_digest(expected_sig, signature):
-            raise SecurityException("AEGIS: Session signature mismatch. Potential spoofing detected.")
+            raise SecurityException("AEGIS: Session signature mismatch. Potential spoofing/forgery detected.")
 
-        # CRITICAL (P0): Hardware Binding - Trust ONLY server-side registry.
+        # P1: Hardware-DNA Verification - Trust ONLY server-side Hardware Registry.
         client_device_id = payload.get("device_id")
 
-        # Registry lookup (Server-side truth)
-        if not client_device_id or not self.registry.is_trusted(client_device_id):
-            raise SecurityException(f"AEGIS: Unauthorized device {client_device_id}. Rejecting untrusted hardware.")
+        if not client_device_id:
+            raise SecurityException("AEGIS: Missing 'device_id'. Cannot perform hardware DNA verification.")
 
-        # RE-ENFORCEMENT: Remove any client-provided roles or bound_device_id from context
-        # In a real system, we would inject server-side attributes here.
+        # Server-trusted bound_device lookup
+        if not self.registry.verify_device(client_device_id):
+            raise SecurityException(f"AEGIS: Unauthorized device {client_device_id}. Rejecting untrusted hardware DNA.")
+
+        # Cleanse and Bind: Remove any other client-provided auth attributes
         session_context.pop("roles", None)
-        session_context.pop("bound_device_id", None)
 
-        # Bind context to server-side verified ID
+        # Inject server-verified device ID as the ONLY proof for downstream execution
         session_context["verified_device_id"] = client_device_id
 
         return True

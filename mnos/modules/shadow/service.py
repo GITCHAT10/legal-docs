@@ -89,15 +89,22 @@ class ShadowLedger:
         return hashlib.sha256(block_string).hexdigest()
 
     def verify_integrity(self) -> bool:
-        """Validates the entire hash chain from genesis to head (HARDENED)."""
+        """Validates the entire hash chain from genesis to head (Fortress Build)."""
         if not self.chain:
             return False
 
-        # P0: Explicit Genesis Block Validation (Index 0)
+        # P1: Explicit Genesis Block Protection (Index 0)
         genesis = self.chain[0]
-        recomputed_genesis_hash = self._calculate_hash(genesis)
 
+        # 1. Recompute and verify Genesis Block linkage and hash
+        recomputed_genesis_hash = self._calculate_hash(genesis)
         if genesis["hash"] != recomputed_genesis_hash:
+             print("!!! SHADOW: Genesis Hash Recomputation Mismatch. Payload or Timestamp tampered !!!")
+             return False
+
+        # 2. Verify Genesis payload and linkage
+        if genesis["entry_id"] != 0 or genesis["previous_hash"] != config.GENESIS_PREVIOUS_HASH:
+             print("!!! SHADOW: Genesis Linkage Corruption Detected !!!")
              return False
 
         if genesis["hash"] != config.CORE_V1_ROOT_HASH:
