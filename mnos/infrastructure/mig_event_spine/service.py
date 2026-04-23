@@ -23,7 +23,9 @@ class EventBus:
         "aig_vault.store",
         "ut.booking.created",
         "ut.cargo.dispatch",
-        "ut.payout.finalized"
+        "ut.payout.finalized",
+        "payment.received",
+        "test"
     }
 
     def __init__(self):

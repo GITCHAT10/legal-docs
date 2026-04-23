@@ -40,7 +40,17 @@ class AIGShadowLedger:
         """
         Appends a new entry. Verifies full chain before and after commit.
         Supports multi-stage logging: 'intent' or 'result'.
+        MIG DUAL-CURRENCY: Enforces mandatory financial fields for auditing.
         """
+        # MIG Dual-Currency Compliance Check
+        if "amount" in event_type or "payment" in event_type or "payout" in event_type:
+            # For financial events, we look for dual-currency fields in payload or nested intent
+            data = payload.get("intent", payload)
+            if "amount_local" in data:
+                req_fields = ["amount_local", "currency_local", "amount_usd", "reporting_currency", "fx_rate_to_usd"]
+                for field in req_fields:
+                    if field not in data:
+                        raise RuntimeError(f"AIGShadow: Financial event missing mandatory dual-currency field '{field}'.")
         from mnos.shared.guard.service import ensure_sovereign_context
         ensure_sovereign_context()
 

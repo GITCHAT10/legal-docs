@@ -9,6 +9,7 @@ from mnos.infrastructure.mig_event_spine.service import events
 from mnos.core.aig_tunnel.service import aig_tunnel
 from mnos.core.aig_l5_control.service import aig_l5
 from mnos.modules.aig_shadow_sync.db_mirror import db_mirror
+from mnos.shared import constants
 
 # Context variable to track if we are inside the execution guard
 in_sovereign_context = contextvars.ContextVar("in_sovereign_context", default=False)
@@ -28,7 +29,8 @@ class ExecutionGuard:
         connection_context: Dict[str, Any] = None,
         governance_evidence: Dict[str, Any] = None,
         approvals: List[str] = None,
-        financial_validation: bool = False
+        financial_validation: bool = False,
+        financial_intent: Dict[str, Any] = None
     ) -> Any:
         """
         NEXUS-SKYI-APOLLO Sovereign Execution Guard:
@@ -53,8 +55,18 @@ class ExecutionGuard:
             # 3. L5 (Governance Approval - Safe-Firing Logic)
             aig_l5.validate_action(action_type, governance_evidence, approvals)
 
-            # 4. FCE Financial Control (If required)
+            # 4. FCE Financial Control & Dual-Currency Validation
             if financial_validation:
+                if financial_intent:
+                    # Enforce Dual-Reporting Requirements
+                    req_fields = ["amount_local", "currency_local", "fx_rate_to_usd", "fx_timestamp", "fx_source", "amount_usd"]
+                    for field in req_fields:
+                        if field not in financial_intent:
+                            raise RuntimeError(f"MIG_FINANCE: Missing dual-currency field '{field}' at intent.")
+
+                    if constants.FX_LOCK_AT_INTENT:
+                        print(f"[GUARD] MIG DUAL-REPORTING: FX Rate {financial_intent['fx_rate_to_usd']} Locked at Intent.")
+
                 if "amount" in payload and "limit" in payload:
                     fce.validate_pre_auth(payload.get("folio_id", "GEN"), payload["amount"], payload["limit"])
 
