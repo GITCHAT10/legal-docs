@@ -41,4 +41,33 @@ class FceService:
             raise FinancialException(f"FCE AUTH DENIED: Amount {amount} exceeds limit {credit_limit} for folio {folio_id}")
         return True
 
+    def finalize_invoice(self, folio_id: str, base_amount: Decimal, pax: int, nights: int, session_context: Dict[str, Any], connection_context: Dict[str, Any]):
+        """
+        Finalizes invoice with twin reporting and SHADOW logging.
+        MIG HARDENING: Finalization must be explicitly audited.
+        """
+        from mnos.shared.guard.service import guard
+        from mnos.infrastructure.mig_event_spine.service import events
+
+        def execution_logic(payload):
+            folio_data = self.calculate_folio(payload["base_amount"], payload["pax"], payload["nights"])
+            # Twin Reporting: USD + MVR (Fixed rate simulation)
+            mvr_rate = Decimal("15.42")
+            folio_data["mvr_total"] = (folio_data["total"] * mvr_rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+            events.publish("sala.invoice.finalized", {
+                "folio_id": payload["folio_id"],
+                "data": folio_data
+            })
+            return folio_data
+
+        return guard.execute_sovereign_action(
+            action_type="FINALIZE_INVOICE_PROCESS",
+            payload={"folio_id": folio_id, "base_amount": base_amount, "pax": pax, "nights": nights},
+            session_context=session_context,
+            execution_logic=execution_logic,
+            connection_context=connection_context,
+            tenant="MIG-GENESIS"
+        )
+
 fce = FceService()

@@ -28,6 +28,9 @@ class EventBus:
         "sala.invoice.finalized",
         "sala.guest.checkin",
         "sala.folio.updated",
+        "nexus.guest.created",
+        "nexus.reservation.confirmed",
+        "FINALIZE_INVOICE_PROCESS",
         "test"
     }
 

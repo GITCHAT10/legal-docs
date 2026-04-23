@@ -97,7 +97,13 @@ class ExMailAuthority:
         # Scenario: Booking becomes a Task
         if intent == "booking.created":
             events.publish("exmail.task.created", {"type": "RESERVATION_PROC", "sender": sender}, trace_id=trace_id)
-            events.publish("nexus.booking.created", {"sender": sender, "source": "ExMAIL"}, trace_id=trace_id)
+            # Provision Guest Data for the Reservation Pipeline
+            events.publish("nexus.booking.created", {
+                "sender": sender,
+                "source": "ExMAIL",
+                "guest_name": analysis.get("extracted_data", {}).get("guest_name", "Unknown Guest"),
+                "dates": analysis.get("extracted_data", {}).get("dates", "TBD")
+            }, trace_id=trace_id)
 
         # Scenario: Emergency becomes a Ticket
         elif intent == "emergency.triggered":
