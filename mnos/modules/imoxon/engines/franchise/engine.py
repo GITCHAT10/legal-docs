@@ -10,8 +10,11 @@ class FranchiseEngine:
 
     def process_payout_split(self, amount: float, vendor_id: str):
         pricing = self.fce.price_order(amount)
-        platform_fee = pricing["service_charge"]
-        vendor_net = pricing["base_price"]
+        # Fix: Mismatch in dictionary keys from FCE pricing output
+        # FCE returns {'transaction_id', 'total', 'base'}
+        # But we need platform fee (which is total - base)
+        vendor_net = pricing["base"]
+        platform_fee = pricing["total"] - pricing["base"]
 
         split = {
             "vendor_id": vendor_id,

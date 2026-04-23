@@ -26,7 +26,12 @@ class ShadowLedger:
             "event_type": event_type,
             "payload": safe_payload,
             "entry_id": entry_id,
-            "timestamp": timestamp
+            "timestamp": timestamp,
+            "actor_identity_id": safe_payload.get("actor_identity_id"),
+            "actor_device_id": safe_payload.get("actor_device_id"),
+            "actor_role": safe_payload.get("actor_role"),
+            "location_tag": safe_payload.get("location_tag"),
+            "source_mode": safe_payload.get("source_mode", "SYSTEM")
         }
 
         block_string = json.dumps(data_to_hash, sort_keys=True)
