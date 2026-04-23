@@ -39,6 +39,19 @@ class ExecutionGuard:
             payload["physical_relay_safety_check"] = True
             payload["fire_exit_always_unlocked"] = True
 
+            # MR CRAB Safety + Governance Enforcement
+            if "mrcrab" in action_type:
+                if payload.get("human_proximity_meters", 100) < 1.0:
+                    raise RuntimeError("MR_CRAB SAFETY: Human proximity violation. Halting.")
+                if payload.get("live_animal_detected"):
+                    raise RuntimeError("MR_CRAB SAFETY: Marine life detected. Halting.")
+                if payload.get("battery_level", 100) < 15:
+                    print("[MrCrab] Low battery. Forcing return to base.")
+                    payload["return_to_base"] = True
+                if payload.get("comms_lost"):
+                    print("[MrCrab] Comms lost. Forcing return to base.")
+                    payload["return_to_base"] = True
+
             # Require Human-in-the-loop veto window for critical actions
             if action_type in ["nexus.security.lockdown", "nexus.security.emergency"]:
                 print(f"[ExecutionGuard] Critical action detected: {action_type}. 10s Veto window active.")

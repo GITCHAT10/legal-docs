@@ -20,7 +20,9 @@ class EventBus:
         "nexus.security.lockdown",
         "nexus.security.alert",
         "nexus.security.door_secured",
-        "nexus.security.handshake"
+        "nexus.security.handshake",
+        "mrcrab.remediation.collect",
+        "mrcrab.status.update"
     }
 
     def __init__(self):

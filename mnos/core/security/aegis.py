@@ -19,7 +19,8 @@ class TrustedDeviceRegistry:
             "MIG-2026-GENESIS-01",
             "2024PV12395H", # HSM Root UEI
             "MIG-2026-GENESIS-APOLLO-01",
-            "MIG-MARS-LOCAL-GENESIS-2026-01"
+            "MIG-MARS-LOCAL-GENESIS-2026-01",
+            "MIG-ASI-MRCRAB-2026"
         }
 
     def is_trusted(self, device_id: str) -> bool:

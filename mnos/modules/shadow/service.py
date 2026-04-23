@@ -71,7 +71,10 @@ class ShadowLedger:
             raise
 
     def _calculate_hash(self, entry: Dict[str, Any]) -> str:
-        """entry_id + event_type + payload + previous_hash + timestamp [+ actor_id + objective_code] -> current_hash"""
+        """
+        entry_id + event_type + payload + previous_hash + timestamp
+        [+ actor_id + objective_code + latency_audit + remediation_audit] -> current_hash
+        """
         if "timestamp" not in entry:
             raise RuntimeError("SHADOW: Missing timestamp in block. Integrity check aborted.")
 
@@ -84,13 +87,10 @@ class ShadowLedger:
             "timestamp": entry["timestamp"]
         }
 
-        # Optional binding fields
-        if "actor_id" in entry:
-            data["actor_id"] = entry["actor_id"]
-        if "objective_code" in entry:
-            data["objective_code"] = entry["objective_code"]
-        if "latency_audit" in entry:
-            data["latency_audit"] = entry["latency_audit"]
+        # Extended forensic/audit fields
+        for field in ["actor_id", "objective_code", "latency_audit", "remediation_audit"]:
+            if field in entry:
+                data[field] = entry[field]
 
         block_string = json.dumps(data, sort_keys=True, separators=(',', ':')).encode()
         return hashlib.sha256(block_string).hexdigest()

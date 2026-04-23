@@ -13,6 +13,9 @@ class SilviaEngine:
 
     def process_request(self, user_input: str) -> Dict[str, Any]:
         """Connects to retrieval layer and validates response."""
+        # APOLLO integration: Suggestion mode only for environmental forecasts
+        if any(w in user_input.lower() for w in ["forecast", "load", "readiness"]):
+            print(f"[SILVIA] Suggestion Mode Active for forecast: {user_input}")
 
         # 1. Retrieval
         relevant_docs = knowledge_core.query(user_input)
