@@ -1,6 +1,7 @@
 import hmac
 import hashlib
 import json
+from datetime import datetime, timezone
 from typing import Dict, Any, Set
 from mnos.config import config
 
@@ -44,6 +45,7 @@ class AegisService:
         self.registry = TrustedDeviceRegistry()
         # Simulated HSM Root Profile
         self.hsm_root_uei = "2024PV12395H"
+        self._nonce_cache = set() # Replay protection
 
     def sign_session(self, payload: Dict[str, Any]) -> str:
         """Generates an HMAC signature for a session payload."""
@@ -66,33 +68,52 @@ class AegisService:
     def validate_session(self, session_context: Dict[str, Any]) -> bool:
         """
         Enforces Absolute Server-Side Trust:
-        1. Presence of signature
+        1. Presence of signature (HMAC-SHA256)
         2. HMAC verification of payload
         3. Server-side trusted device registry lookup ONLY
         4. Removal of client-provided auth attributes
+        5. Replay Protection (Nonce + Timestamp)
         """
         if not session_context:
             raise SecurityException("AEGIS: Null context rejected.")
 
+        # v9.5 Enforcement: Require mandatory fields
+        required_fields = ["device_id", "timestamp", "signature"]
+        # session_id OR nonce required
+        if "session_id" not in session_context and "nonce" not in session_context:
+             raise SecurityException("AEGIS: Missing session_id or nonce.")
+
+        for field in required_fields:
+            if field not in session_context:
+                raise SecurityException(f"AEGIS: Missing required field: {field}")
+
         signature = session_context.get("signature")
-        if not signature:
-            raise SecurityException("AEGIS: Missing session signature. Rejecting unsigned context.")
 
-        # Extract payload without signature and bound_device_id for verification
-        # as bound_device_id is a server-side side-effect.
+        # 1. Replay Protection: Timestamp check (allow 60s skew)
+        try:
+            ts = datetime.fromisoformat(session_context["timestamp"])
+            if (datetime.now(timezone.utc) - ts).total_seconds() > 60:
+                raise SecurityException("AEGIS: Session signature expired.")
+        except ValueError:
+            raise SecurityException("AEGIS: Invalid timestamp format.")
+
+        # 2. Replay Protection: Nonce check
+        nonce = session_context.get("nonce") or session_context.get("session_id")
+        if nonce in self._nonce_cache:
+            raise SecurityException("AEGIS: Replay detected. Nonce already used.")
+        self._nonce_cache.add(nonce)
+
+        # 3. HMAC verification
         expected_sig = self.sign_session(session_context)
-
         if not hmac.compare_digest(expected_sig, signature):
             raise SecurityException("AEGIS: Session signature mismatch. Potential spoofing detected.")
 
-        # CRITICAL: Do not trust any roles or permissions passed in session_context.
-        # Only trust the verified device_id for server-side lookup.
+        # 4. Device validation (Server-side Registry ONLY)
         device_id = session_context.get("device_id")
         if not device_id or not self.registry.is_trusted(device_id):
             raise SecurityException(f"AEGIS: Unauthorized device {device_id}. Rejecting untrusted hardware.")
 
         # SECURE: Resolve bound_device_id only from trusted server-side registry.
-        # Overwrite any client-provided bound_device_id with the trusted mapping.
         session_context["bound_device_id"] = device_id
 
         # HSM ROOT BINDING: Privileged sessions must match HSM Root UEI
@@ -100,7 +121,6 @@ class AegisService:
             if device_id != self.hsm_root_uei and device_id != "MD_A096158_ROOT":
                  raise SecurityException(f"AEGIS: Privileged session rejected. Identity {device_id} not HSM-bound.")
 
-        # Enforcement: The session is now strictly bound to the server's knowledge of this device.
         return True
 
     def get_bound_device_id(self, session_context: Dict[str, Any]) -> str:

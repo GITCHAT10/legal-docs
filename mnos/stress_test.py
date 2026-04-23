@@ -5,6 +5,7 @@ from decimal import Decimal
 import json
 import hmac
 import hashlib
+from datetime import datetime, timezone
 
 # Add path
 sys.path.append(os.getcwd())
@@ -19,8 +20,13 @@ from mnos.shared.execution_guard import guard
 from mnos.core.security.aegis import aegis
 from mnos.config import config
 
-def get_test_session():
-    payload = {"device_id": "nexus-admin-01", "role": "admin"}
+def get_test_session(nonce=None):
+    payload = {
+        "device_id": "nexus-admin-01",
+        "role": "admin",
+        "nonce": nonce or str(uuid.uuid4()),
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
     sig = aegis.sign_session(payload)
     payload["signature"] = sig
     return payload
@@ -73,10 +79,9 @@ def stress_test():
     # 4. Concurrency Test (Simulated Sequential but overlapping logic)
     print("\n[TEST 4: Concurrency Simulation]")
 
-    session = get_test_session()
-    whatsapp.receive_message("+9602", "book room", session)
-    whatsapp.receive_message("+9603", "arrival at airport", session)
-    whatsapp.receive_message("+9604", "emergency help", session)
+    whatsapp.receive_message("+9602", "book room", get_test_session())
+    whatsapp.receive_message("+9603", "arrival at airport", get_test_session())
+    whatsapp.receive_message("+9604", "emergency help", get_test_session())
     print(f"Final Ledger Size: {len(shadow.chain)}")
     print(f"Final Integrity: {shadow.verify_integrity()}")
 

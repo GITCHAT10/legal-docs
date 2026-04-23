@@ -103,7 +103,13 @@ class SecurityModule:
         Main entry point for security events from bridge.
         Route: Bridge -> SecurityModule -> APOLLO -> ExecutionGuard
         """
-        threat_level = self.evaluate_threat(event_data)
+        try:
+            threat_level = self.evaluate_threat(event_data)
+        except Exception as e:
+            # P1: Fail-Closed Default
+            print(f"[Security] EVALUATION FAILURE: {e}. Defaulting to TL-4 Restricted Zone Lockdown.")
+            threat_level = 4
+
         frigate_after = event_data.get("frigate_event", {}).get("after", {})
         zone = frigate_after.get("current_zones", ["unknown"])[0]
 
@@ -125,6 +131,10 @@ class SecurityModule:
                 {
                     "zone": "SYSTEM",
                     "threat_level": 5,
+                    "detection_source": "Frigate_v1",
+                    "evaluated_rule": "System_Interference",
+                    "chosen_action": "TL5_Lockdown",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                     "reporting_metadata": reporting_metadata
                 },
                 session_context,
@@ -136,6 +146,10 @@ class SecurityModule:
                 {
                     "zone": zone,
                     "threat_level": 4,
+                    "detection_source": "Frigate_v1",
+                    "evaluated_rule": "Restricted_Zone_Breach",
+                    "chosen_action": "TL4_Elevator_Restriction",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                     "reporting_metadata": reporting_metadata
                 },
                 session_context,
@@ -147,6 +161,10 @@ class SecurityModule:
                 {
                     "message": f"TL-3 Alert in {zone}. Lighting and Audio active.",
                     "zone": zone,
+                    "detection_source": "Frigate_v1",
+                    "evaluated_rule": "Loitering_Threshold",
+                    "chosen_action": "TL3_Deterrence",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                     "reporting_metadata": reporting_metadata
                 },
                 session_context,

@@ -36,14 +36,17 @@ class EventBus:
         self.subscribers: Dict[str, List[Callable]] = {event: [] for event in self.TAXONOMY}
 
     def publish(self, event_type: str, data: Dict[str, Any] = None, trace_id: str = None) -> Dict[str, Any]:
-        """Publishes an event and commits to SHADOW ledger."""
+        """
+        Publishes an event and commits to SHADOW ledger.
+        Hard-locked to sovereign context only. Bypasses are REJECTED.
+        """
         t = threading.current_thread()
-        if not getattr(t, 'in_sovereign_guard', False) or not getattr(t, 'sovereign_guard', False):
-            # FALLBACK: DEGRADED_MODE_IF_CRITICAL
-            if event_type == "nexus.emergency.triggered":
-                print(f"[EventBus] CRITICAL EMERGENCY DETECTED OUTSIDE GUARD. Allowing degraded-mode emission.")
-            else:
-                raise RuntimeError('SOVEREIGN_CONTEXT_REQUIRED: Access Denied to UEI 2024PV12395H')
+        in_guard = getattr(t, 'in_sovereign_guard', False)
+        has_flag = getattr(t, 'sovereign_guard', False)
+
+        if not in_guard or not has_flag:
+            # v9.5 Court-Valid Lockdown: No bypasses allowed for audit-critical events
+            raise RuntimeError('SOVEREIGN_CONTEXT_REQUIRED: Direct publish bypass detected. Execution HALT.')
 
         if event_type not in self.TAXONOMY:
             # Allow stress test events if they start with event_
