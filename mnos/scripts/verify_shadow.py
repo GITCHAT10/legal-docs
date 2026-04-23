@@ -19,8 +19,8 @@ def verify_shadow_chain(chain: List[Dict[str, Any]]) -> bool:
             "previous_hash": entry["previous_hash"],
             "timestamp": entry["timestamp"]
         }
-        # Extended fields if present
-        for field in ["actor_id", "objective_code", "latency_audit", "remediation_audit", "deterministic_audit"]:
+        # P1 Enforcement: Include actor and objective in hash if present
+        for field in ["actor_id", "objective_code"]:
             if field in entry:
                 data[field] = entry[field]
 

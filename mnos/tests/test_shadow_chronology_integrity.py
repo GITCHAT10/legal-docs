@@ -1,6 +1,7 @@
 import unittest
 import json
 import hashlib
+import threading
 from mnos.modules.shadow.service import shadow
 from mnos.shared.execution_guard import in_sovereign_context
 
@@ -10,9 +11,13 @@ class TestShadowChronologyIntegrity(unittest.TestCase):
         shadow.chain = []
         shadow._seed_ledger()
         self.token = in_sovereign_context.set(True)
+        self.t = threading.current_thread()
+        self.orig_flag = getattr(self.t, 'sovereign_guard', False)
+        self.t.sovereign_guard = True
 
     def tearDown(self):
         in_sovereign_context.reset(self.token)
+        self.t.sovereign_guard = self.orig_flag
 
     def test_1_timestamp_tamper(self):
         """Mandatory Hardening: Verify chain failure on timestamp mutation."""

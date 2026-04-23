@@ -87,6 +87,7 @@ class ShadowLedger:
         """
         Hardened v9.5 Forensic Hash Calculation:
         entry_id + event_type + payload + timestamp + previous_hash
+        [+ actor_id + objective_code]
         Enforces deterministic sort_keys=True.
         """
         if "timestamp" not in entry:
@@ -101,8 +102,11 @@ class ShadowLedger:
             "previous_hash": entry["previous_hash"]
         }
 
-        # Extended audit fields are stored but NOT in the core Forensic Hash to maintain
-        # compatibility with standard v9.5 witness validators.
+        # P1 Enforcement: Include actor and objective in hash if present
+        for field in ["actor_id", "objective_code"]:
+            if field in entry:
+                data[field] = entry[field]
+
         block_string = json.dumps(data, sort_keys=True, separators=(',', ':')).encode()
         return hashlib.sha256(block_string).hexdigest()
 
