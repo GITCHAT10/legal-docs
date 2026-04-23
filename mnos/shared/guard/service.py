@@ -52,6 +52,7 @@ class ExecutionGuard:
                 raise RuntimeError("EXECUTION_GUARD: Mandatory Tenant context is missing.")
 
             # 1. AIG TUNNEL (Network Validation) - AIG-ORBAN Enforced
+            # MANDATORY: Require ORBAN context for all external ingress.
             aig_tunnel.validate_connection(connection_context)
 
             # 2. AIG AEGIS (Identity Validation - Mandatory Signed Session)
@@ -64,7 +65,11 @@ class ExecutionGuard:
             aig_l5.validate_action(action_type, governance_evidence, approvals)
 
             # 4. FCE Financial Control & Dual-Currency Validation
-            if financial_validation:
+            if financial_validation or action_type == "aig_vault.store":
+                # MANDATORY: AEGIS signature required for Vault writes (Ingress Hardening)
+                if not session_context.get("signature"):
+                     raise RuntimeError("AEGIS_SIGNATURE_MANDATORY_FOR_UCLOUD_WRITE")
+
                 if financial_intent:
                     # Enforce Dual-Reporting Requirements
                     req_fields = ["amount_local", "currency_local", "fx_rate_to_usd", "fx_timestamp", "fx_source", "amount_usd"]
