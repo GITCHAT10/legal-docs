@@ -16,6 +16,21 @@ class JourneyStatus(str, enum.Enum):
     CANCELLED = "cancelled"
     REROUTED = "rerouted"
 
+class PartnerTier(str, enum.Enum):
+    ELITE = "elite"
+    HARDENED = "hardened"
+    STABILIZING = "stabilizing"
+    RESTRICTED = "restricted"
+
+class Partner(Base):
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True)
+    tier = Column(Enum(PartnerTier), default=PartnerTier.STABILIZING)
+    trust_score = Column(Float, default=0.5)
+    max_daily_volume = Column(Integer, default=10)
+
+    legs = relationship("Leg", back_populates="partner")
+
 class Journey(Base):
     id = Column(Integer, primary_key=True, index=True)
     tenant_id = Column(String, index=True, nullable=False, default="default")
@@ -36,6 +51,7 @@ class Leg(Base):
 
     type = Column(Enum(LegType), nullable=False)
     provider_id = Column(String) # Driver/Vessel ID
+    partner_id = Column(Integer, ForeignKey("partner.id"))
 
     origin = Column(String, nullable=False)
     destination = Column(String, nullable=False)
@@ -46,6 +62,7 @@ class Leg(Base):
     master_voucher_code = Column(String, index=True) # The QR code
 
     journey = relationship("Journey", back_populates="legs")
+    partner = relationship("Partner", back_populates="legs")
     telemetry = relationship("Telemetry", back_populates="leg")
 
 class Telemetry(Base):

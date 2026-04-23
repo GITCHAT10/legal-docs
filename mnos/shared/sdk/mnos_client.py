@@ -71,7 +71,12 @@ class MnosClient:
         try:
             obj_in = JourneyCreate(**booking_data, trace_id=trace_id)
             journey = booking_service.create_journey(db, obj_in=obj_in, actor=actor)
-            return {"id": journey.id, "status": journey.status, "trace_id": journey.trace_id}
+            return {
+                "id": journey.id,
+                "status": journey.status,
+                "trace_id": journey.trace_id,
+                "reservation_id": str(journey.id) # Interface compatibility
+            }
         finally:
             db.close()
 

@@ -4,10 +4,27 @@ from typing import List, Any, Optional
 
 from united_transfer_system.db_session import get_ut_db
 from united_transfer_system import schemas, models
-from united_transfer_system.services import booking_service, telemetry_service, governance
+from united_transfer_system.services import booking_service, telemetry_service, governance, pulse, trust_lock, apollo_engine, valuation
 from united_transfer_system.integrations.nexus_client import nexus_client
 
 router = APIRouter()
+
+@router.get("/v1/pulse", response_model=Any)
+def get_pulse_metrics(db: Session = Depends(get_ut_db)):
+    return pulse_service.get_current_metrics(db)
+
+@router.get("/v1/trust/{partner_id}")
+def get_partner_trust(partner_id: int, db: Session = Depends(get_ut_db)):
+    partner = db.query(models.Partner).filter(models.Partner.id == partner_id).first()
+    if not partner:
+        raise HTTPException(status_code=404, detail="Partner not found")
+    return partner
+
+@router.post("/v1/apollo/override")
+@governance.fail_closed_operation
+def apollo_priority_override(journey_id: int, db: Session = Depends(get_ut_db)):
+    """APOLLO Priority Override: No human delay allowed."""
+    return {"status": "overridden", "journey_id": journey_id}
 
 @router.get("/v1/availability", response_model=List[Any])
 @governance.fail_closed_async_operation
@@ -50,6 +67,10 @@ async def create_booking(
     # 2. FCE Preauth
     if not await nexus_client.preauthorize_payment(100.0, booking_in.trace_id):
         raise HTTPException(status_code=402, detail="FCE Preauth Failed")
+
+    # 2.5 Scale Lock Enforcement
+    if pulse_service.is_scale_locked(db):
+        raise HTTPException(status_code=429, detail="Sovereign Scale Lock: GAN-50 Targets Not Met")
 
     # 3. Execute UT Write
     journey = booking_service.create_journey(db, obj_in=booking_in, actor="PARTNER")
