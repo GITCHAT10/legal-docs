@@ -1,12 +1,12 @@
 import uuid
 import contextvars
 from typing import Dict, Any, Callable, List
-from mnos.core.aig_aegis.service import aig_aegis
+from mnos.core.aig_aegis.service import aig_aegis, SecurityException
 from mnos.modules.fce.service import fce
 from mnos.modules.aig_shadow.service import aig_shadow
 from mnos.modules.aig_proof.service import aig_proof
 from mnos.infrastructure.mig_event_spine.service import events
-from mnos.core.aig_tunnel.service import aig_tunnel
+from mnos.core.aig_tunnel.service import aig_tunnel, NetworkSecurityException
 from mnos.core.aig_l5_control.service import aig_l5
 from mnos.modules.aig_shadow_sync.db_mirror import db_mirror
 from mnos.shared import constants
@@ -53,6 +53,8 @@ class ExecutionGuard:
 
             # 1. AIG TUNNEL (Network Validation) - AIG-ORBAN Enforced
             # MANDATORY: Require ORBAN context for all external ingress.
+            if not connection_context:
+                 raise SecurityException("Missing ORBAN context")
             aig_tunnel.validate_connection(connection_context)
 
             # 2. AIG AEGIS (Identity Validation - Mandatory Signed Session)

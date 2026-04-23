@@ -23,23 +23,18 @@ class ExMailAuthority:
             if et not in events.subscribers:
                 events.subscribers[et] = []
 
-    def ingest_inbound_exmail(self, sender: str, subject: str, body: str, session_context: Dict[str, Any], connection_context: Dict[str, Any] = None):
+    def ingest_inbound_exmail(self, sender: str, subject: str, body: str, session_context: Dict[str, Any], request_data: Dict[str, Any] = None):
         """
         Ingests email into the ExMAIL ASI pipeline enforced by Execution Guard.
         MIG HARDENING: Mandatory network context and session validation.
         """
         try:
+            # Extract connection_context from request or context
+            connection_context = (request_data or {}).get("connection_context") or session_context.get("connection_context")
+
             # Operational Hardening: Ensure full connection context for AIG_TUNNEL validation
             if not connection_context:
-                connection_context = {
-                    "is_vpn": True,
-                    "tunnel_id": "exmail-gateway-01",
-                    "encryption": "wireguard",
-                    "tunnel": "aig_tunnel",
-                    "source_ip": "10.0.0.5",
-                    "session_id": str(uuid.uuid4()),
-                    "node_id": "EDGE-01"
-                }
+                raise RuntimeError("EXMAIL: Mandatory connection_context is missing.")
 
             # Advisory Intelligence
             input_text = f"Subject: {subject}\nBody: {body}"

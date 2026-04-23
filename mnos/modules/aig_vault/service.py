@@ -13,9 +13,9 @@ class AIGVault:
     def __init__(self):
         # AIG APOLLO ACL: Role-based alignment with AIG AEGIS
         self.permissions: Dict[str, List[str]] = {
-            "nexus-admin-01": ["*"], # Full Sovereign Control
-            "ut-dispatch-01": ["read", "write"],
-            "nexus-001": ["read", "write"]
+            "nexus-admin-01": ["read", "write", "delete"],
+            "nexus-001": ["read", "write"],
+            "nexus-readonly": ["read"]
         }
 
     def check_permission(self, identity: str, action: str, session_context: Dict[str, Any] = None):
