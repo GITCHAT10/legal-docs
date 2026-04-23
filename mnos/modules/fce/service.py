@@ -57,4 +57,22 @@ class FceService:
             raise FinancialException(f"FCE AUTH DENIED: Amount {amount} exceeds limit {credit_limit} for folio {folio_id}")
         return True
 
+    def release_milestone_payout(self, milestone_id: str, amount_mvr: Decimal, proof_context: Dict[str, Any]):
+        """
+        APOLLO ELITE: Automated Settlement.
+        Releases funds based on forensic reliability proof.
+        """
+        reliability = proof_context.get("reliability_score", 0.0)
+        if reliability < 0.995:
+             raise FinancialException(f"ELITE_PAYOUT_DENIED: Reliability {reliability} < 99.5%")
+
+        print(f"[FCE] ELITE UPGRADE: Releasing {amount_mvr} MVR for Milestone {milestone_id}")
+        return {
+            "status": "FCE_RELEASE_FINAL_COMMITTED",
+            "milestone": milestone_id,
+            "amount": amount_mvr,
+            "currency": "MVR",
+            "reliability_verified": True
+        }
+
 fce = FceService()

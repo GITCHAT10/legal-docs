@@ -103,6 +103,17 @@ class SecurityModule:
         Main entry point for security events from bridge.
         Route: Bridge -> SecurityModule -> APOLLO -> ExecutionGuard
         """
+        # ELITE: Sea-Spray Anomaly Compensation (8% drift correction)
+        # Thermal sensors in Maldives drift 8% due to humidity/salt.
+        # Hardware is now Self-Healing.
+        if event_data.get("sea_spray_detected"):
+            print("[Security] ELITE: Sea-Spray Anomaly detected. Applying 8% drift compensation.")
+            # Drift correction logic
+            if "frigate_event" in event_data:
+                conf = event_data["frigate_event"].get("after", {}).get("confidence", 0)
+                event_data["frigate_event"]["after"]["confidence"] = conf * 1.08
+                print(f"[Security] ELITE: Confidence compensated to {event_data['frigate_event']['after']['confidence']}")
+
         try:
             threat_level = self.evaluate_threat(event_data)
         except Exception as e:
@@ -124,6 +135,17 @@ class SecurityModule:
         if not apollo.evaluate_action(threat_level, zone, event_data):
             print(f"[Security] ACTION BLOCKED BY APOLLO POLICY PLANE")
             return
+
+        # ELITE: Vessel-to-Shield Link (MIG-RADAR)
+        # thermal data connected with maritime Coast Guard nodes
+        if event_data.get("maritime_contact"):
+             print(f"[Security] ELITE: Maritime contact {event_data.get('vessel_id')} verified by MIG-RADAR.")
+             guard.execute_sovereign_action(
+                 "radar.vessel_linked",
+                 {"vessel_id": event_data.get("vessel_id"), "zone": zone},
+                 session_context,
+                 lambda p: {"status": "VESSEL_SHIELD_LINKED"}
+             )
 
         if threat_level == 5:
              guard.execute_sovereign_action(

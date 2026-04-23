@@ -33,7 +33,9 @@ class ExecutionGuard:
 
         token = in_sovereign_context.set(True)
         t = threading.current_thread()
-        prev_guard = getattr(t, 'in_sovereign_guard', False)
+        prev_in_guard = getattr(t, 'in_sovereign_guard', False)
+        prev_guard_flag = getattr(t, 'sovereign_guard', False)
+
         t.in_sovereign_guard = True
         t.sovereign_guard = True # P2: Enforce sovereign_guard=True
         try:
@@ -140,7 +142,8 @@ class ExecutionGuard:
             return result
         finally:
             in_sovereign_context.reset(token)
-            t.in_sovereign_guard = prev_guard
+            t.in_sovereign_guard = prev_in_guard
+            t.sovereign_guard = prev_guard_flag
 
 guard = ExecutionGuard()
 

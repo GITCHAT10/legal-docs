@@ -13,6 +13,8 @@ class Config:
     SERVICE_CHARGE = Decimal("0.10") # 10%
     TGST = Decimal("0.17")           # 17%
     GREEN_TAX_USD = Decimal("6.00")   # $6/pax/night
+    ELITE_MILESTONE_MVR = Decimal("45000.00")
+    APOLLO_VERSION = "MIG-APOLLO-SKYI-2026-ELITE"
 
     # AI Thresholds
     SILVIA_INTENT_MIN = 0.90

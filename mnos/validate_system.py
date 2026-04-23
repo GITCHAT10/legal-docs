@@ -35,7 +35,7 @@ def run_validation():
     def get_signed_ctx(session_id):
         ctx_payload = {
             "device_id": "nexus-001",
-            "session_id": session_id,
+            "nonce": session_id,
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
         ctx = ctx_payload.copy()

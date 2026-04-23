@@ -39,11 +39,11 @@ class ShadowLedger:
 
     def commit(self, event_type: str, payload: Dict[str, Any], actor_id: str = "SYSTEM", objective_code: str = "EXEC") -> str:
         """Appends a new entry. Verifies full chain before and after commit."""
-        if getattr(self, "witness_mode", False):
-            raise RuntimeError("SHADOW_READ_ONLY: Commit blocked in Witness Mode.")
-
         from mnos.shared.execution_guard import ensure_sovereign_context
         ensure_sovereign_context()
+
+        if getattr(self, "witness_mode", False):
+            raise RuntimeError("SHADOW_READ_ONLY: Commit blocked in Witness Mode.")
 
         if not self.verify_integrity():
             raise RuntimeError("SHADOW: Chain corruption detected before commit. System Halt.")

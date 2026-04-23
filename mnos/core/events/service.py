@@ -46,6 +46,7 @@ class EventBus:
 
         if not in_guard or not has_flag:
             # v9.5 Court-Valid Lockdown: No bypasses allowed for audit-critical events
+            print(f"!!! KERNEL SECURITY VIOLATION: Blocked direct publish of {event_type} !!!")
             raise RuntimeError('SOVEREIGN_CONTEXT_REQUIRED: Direct publish bypass detected. Execution HALT.')
 
         if event_type not in self.TAXONOMY:
