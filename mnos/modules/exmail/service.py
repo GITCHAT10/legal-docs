@@ -25,6 +25,14 @@ class ExMailAuthority:
 
     def ingest_inbound_exmail(self, sender: str, subject: str, body: str, session_context: Dict[str, Any]):
         """Ingests email into the ExMAIL ASI pipeline enforced by Execution Guard."""
+        # Hardened Ingress: Require signed context and valid ORBAN context
+        if not session_context or not session_context.get("signature"):
+             raise RuntimeError("EXMAIL_INGRESS_FAILURE: Unsigned request rejected.")
+
+        from mnos.core.comms.orban import orban_comms
+        if not getattr(orban_comms, "active_secure_tunnel", True):
+             raise RuntimeError("EXMAIL_INGRESS_FAILURE: Missing secure network context.")
+
         try:
             # Advisory Intelligence
             input_text = f"Subject: {subject}\nBody: {body}"

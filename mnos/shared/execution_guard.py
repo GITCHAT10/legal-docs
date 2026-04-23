@@ -3,6 +3,7 @@ import threading
 import contextvars
 from typing import Dict, Any, Callable
 from mnos.core.security.aegis import aegis
+from mnos.core.comms.orban import orban_comms
 from mnos.modules.fce.service import fce
 from mnos.modules.shadow.service import shadow
 from mnos.core.events.service import events
@@ -23,6 +24,13 @@ class ExecutionGuard:
         execution_logic: Callable[[Dict[str, Any]], Any],
         financial_validation: bool = False
     ):
+        # Mandatory Requirement: AEGIS Signature and ORBAN Context
+        if not session_context.get("signature"):
+            raise RuntimeError("AEGIS_SIGNATURE_REQUIRED: Execution blocked.")
+
+        if not getattr(orban_comms, "active_secure_tunnel", True):
+             raise RuntimeError("ORBAN_CONNECTION_REQUIRED: Execution blocked.")
+
         token = in_sovereign_context.set(True)
         t = threading.current_thread()
         prev_guard = getattr(t, 'in_sovereign_guard', False)

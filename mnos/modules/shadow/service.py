@@ -22,7 +22,9 @@ class ShadowLedger:
             "timestamp": "2026-04-22T08:00:00Z", # Hardened fixed timestamp for root hash consistency
             "event_type": "GENESIS",
             "payload": {},
-            "previous_hash": config.GENESIS_PREVIOUS_HASH
+            "previous_hash": config.GENESIS_PREVIOUS_HASH,
+            "actor_id": "SYSTEM",
+            "objective_code": "GENESIS"
         }
         genesis_block["hash"] = self._calculate_hash(genesis_block)
 
@@ -35,7 +37,7 @@ class ShadowLedger:
 
         self.chain.append(genesis_block)
 
-    def commit(self, event_type: str, payload: Dict[str, Any]) -> str:
+    def commit(self, event_type: str, payload: Dict[str, Any], actor_id: str = "SYSTEM", objective_code: str = "EXEC") -> str:
         """Appends a new entry. Verifies full chain before and after commit."""
         if getattr(self, "witness_mode", False):
             raise RuntimeError("SHADOW_READ_ONLY: Commit blocked in Witness Mode.")
@@ -54,6 +56,8 @@ class ShadowLedger:
                 "event_type": event_type,
                 "payload": payload,
                 "previous_hash": previous_entry["hash"],
+                "actor_id": actor_id,
+                "objective_code": objective_code,
                 "latency_audit": {
                     "detection_to_action_ms": 12, # Simulated
                     "relay_response_confirmation": "VERIFIED"
@@ -87,13 +91,13 @@ class ShadowLedger:
             "event_type": entry["event_type"],
             "payload": entry["payload"],
             "previous_hash": entry["previous_hash"],
-            "timestamp": entry["timestamp"]
+            "timestamp": entry["timestamp"],
+            "actor_id": entry.get("actor_id", "SYSTEM"),
+            "objective_code": entry.get("objective_code", "EXEC")
         }
 
         # Extended forensic/audit fields (SIMULATION DETERMINISTIC AUDIT)
         audit_fields = [
-            "actor_id",
-            "objective_code",
             "latency_audit",
             "remediation_audit",
             "deterministic_audit"
