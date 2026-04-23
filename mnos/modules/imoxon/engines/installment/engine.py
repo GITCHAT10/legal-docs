@@ -20,7 +20,7 @@ class InstallmentEngine:
             "status": "ACTIVE"
         }
 
-        self.shadow.record_action("installment.created", plan)
-        self.events.trigger("INSTALLMENT_CREATED", plan)
+        self.shadow.commit("installment.created", plan)
+        self.events.publish("INSTALLMENT_CREATED", plan)
         self.plans[plan_id] = plan
         return plan

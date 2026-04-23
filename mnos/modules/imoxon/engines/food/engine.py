@@ -17,6 +17,6 @@ class FoodEngine:
             "status": "ORDERED"
         }
 
-        self.shadow.record_action("food.order.created", order)
-        self.events.trigger("ORDER_CREATED", order)
+        self.shadow.commit("food.order.created", order)
+        self.events.publish("ORDER_CREATED", order)
         return order

@@ -17,13 +17,13 @@ class SkygodownEngine:
             "status": "RECEIVED",
             "qc_passed": False
         }
-        self.shadow.record_action("supply.lot_received", lot)
-        self.events.trigger("SKYGODOWN_RECEIVED", lot)
+        self.shadow.commit("supply.lot_received", lot)
+        self.events.publish("SKYGODOWN_RECEIVED", lot)
         self.lots[lot_id] = lot
         return lot
 
     def allocate_to_resort(self, lot_id: str, resort_id: str, quantities: dict):
         allocation = {"lot_id": lot_id, "resort_id": resort_id, "quantities": quantities, "status": "ALLOCATED"}
-        self.shadow.record_action("supply.lot_allocated", allocation)
-        self.events.trigger("LOT_ALLOCATED", allocation)
+        self.shadow.commit("supply.lot_allocated", allocation)
+        self.events.publish("LOT_ALLOCATED", allocation)
         return allocation

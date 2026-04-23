@@ -11,6 +11,6 @@ class CommunicationEngine:
             "context": context,
             "timestamp": "now"
         }
-        self.shadow.record_action("comm.message_sent", {"from": sender_id, "to": receiver_id, "context": context})
-        self.events.trigger("MESSAGE_SENT", message)
+        self.shadow.commit("comm.message_sent", {"from": sender_id, "to": receiver_id, "context": context})
+        self.events.publish("MESSAGE_SENT", message)
         return message

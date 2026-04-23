@@ -15,6 +15,13 @@ class ShadowLedger:
         self.last_hash = self.GENESIS_PREV_HASH
 
     def commit(self, event_type: str, payload: dict) -> str:
+        from mnos.shared.execution_guard import ExecutionGuard
+        if not ExecutionGuard.is_authorized():
+             # Exception for internal bootstrap or initial identity creation if needed,
+             # but per policy, everything must be guarded.
+             if "identity.created" not in event_type and "identity.device.bound" not in event_type:
+                raise PermissionError(f"FAIL CLOSED: Direct SHADOW commit blocked for {event_type}. Must use ExecutionGuard.")
+
         entry_id = len(self.chain) + 1
         timestamp = datetime.now(UTC).isoformat()
 

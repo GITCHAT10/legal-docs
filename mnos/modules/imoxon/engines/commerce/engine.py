@@ -1,43 +1,58 @@
 class CommerceEngine:
-    def __init__(self, fce, shadow, events):
+    def __init__(self, guard, fce, shadow, events):
+        self.guard = guard
         self.fce = fce
         self.shadow = shadow
         self.events = events
-        self.stores = {}
+        self.vendors = {} # vendor_id -> details
+        self.orders = {}
 
-    def onboard_vendor(self, vendor_data: dict):
+    def approve_vendor(self, actor_ctx: dict, vendor_data: dict):
+        return self.guard.execute_sovereign_action(
+            "imoxon.vendor.approve",
+            actor_ctx,
+            self._internal_approve_vendor,
+            vendor_data
+        )
+
+    def _internal_approve_vendor(self, vendor_data: dict):
         vendor_id = vendor_data.get("did")
-        self.stores[vendor_id] = {
-            "name": vendor_data.get("business_name"),
-            "inventory": [],
-            "type": "island_store"
+        self.vendors[vendor_id] = {
+            "did": vendor_id,
+            "business_name": vendor_data.get("business_name"),
+            "kyc_status": "APPROVED",
+            "risk_score": 0.05,
+            "approved_by": self.guard.get_actor().get("identity_id"),
+            "status": "ACTIVE"
         }
-        self.shadow.record_action("vendor.onboarded", vendor_data)
-        self.events.trigger("VENDOR_APPROVED", vendor_id)
-        return True
+        self.events.publish("vendor.approved", self.vendors[vendor_id])
+        return self.vendors[vendor_id]
 
-    def create_listing(self, vendor_id: str, listing: dict):
-        if vendor_id in self.stores:
-            self.stores[vendor_id]["inventory"].append(listing)
-            self.shadow.record_action("listing.created", listing)
-            return True
-        return False
+    def create_order(self, actor_ctx: dict, order_data: dict):
+        return self.guard.execute_sovereign_action(
+            "imoxon.order.create",
+            actor_ctx,
+            self._internal_create_order,
+            order_data
+        )
 
-    def process_order(self, user_id: str, listing_id: str, vendor_id: str, amount: float):
-        # 1. Financial calculation strictly via FCE
-        pricing = self.fce.price_order(amount)
+    def _internal_create_order(self, order_data: dict):
+        vendor_id = order_data.get("vendor_id")
+        if vendor_id not in self.vendors or self.vendors[vendor_id]["kyc_status"] != "APPROVED":
+            raise ValueError("FAIL CLOSED: Vendor not approved or missing KYC")
 
+        # Central FCE Pricing
+        pricing = self.fce.price_order(order_data.get("amount"))
+
+        order_id = f"ord_{uuid.uuid4().hex[:6]}"
         order = {
-            "user": user_id,
-            "listing": listing_id,
+            "id": order_id,
+            "user": self.guard.get_actor().get("identity_id"),
             "vendor": vendor_id,
             "pricing": pricing,
-            "status": "PAID"
+            "status": "CREATED"
         }
-
-        # 2. Immutable record
-        self.shadow.record_action("order.completed", order)
-
-        # 3. Side effects only after commit
-        self.events.trigger("ORDER_CREATED", order)
+        self.orders[order_id] = order
+        self.events.publish("order.created", order)
         return order
+import uuid

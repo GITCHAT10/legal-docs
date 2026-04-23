@@ -27,11 +27,11 @@ class RentEngine:
         }
 
         # 2. Commit & Record
-        self.shadow.record_action("homes.tenancy_created", tenancy)
+        self.shadow.commit("homes.tenancy_created", tenancy)
         self.tenancies[tenancy_id] = tenancy
 
         # 3. Trigger events
-        self.events.trigger("RENT_BILL_CREATED", {"tenancy_id": tenancy_id, "amount": monthly_rent})
+        self.events.publish("RENT_BILL_CREATED", {"tenancy_id": tenancy_id, "amount": monthly_rent})
         return tenancy
 
     def record_rent_payment(self, tenancy_id: str, amount: float):
@@ -44,6 +44,6 @@ class RentEngine:
             "status": "PAID",
             "timestamp": "now"
         }
-        self.shadow.record_action("homes.rent_paid", payment)
-        self.events.trigger("RENT_PAID", payment)
+        self.shadow.commit("homes.rent_paid", payment)
+        self.events.publish("RENT_PAID", payment)
         return payment

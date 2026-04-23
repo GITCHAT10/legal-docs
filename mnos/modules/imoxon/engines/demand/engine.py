@@ -17,8 +17,8 @@ class DemandEngine:
             "urgency": urgency,
             "status": "VALIDATED"
         }
-        self.shadow.record_action("supply.demand_signal", signal)
-        self.events.trigger("DEMAND_SIGNAL_VALIDATED", signal)
+        self.shadow.commit("supply.demand_signal", signal)
+        self.events.publish("DEMAND_SIGNAL_VALIDATED", signal)
         self.signals.append(signal)
         return signal
 
@@ -29,7 +29,7 @@ class DemandEngine:
             items.extend([s["items"] for s in self.signals if s["id"] == sid])
 
         batch = {"id": batch_id, "signals": signal_ids, "aggregated_items": items, "status": "LOCKED"}
-        self.shadow.record_action("supply.batch_locked", batch)
-        self.events.trigger("DEMAND_BATCH_LOCKED", batch)
+        self.shadow.commit("supply.batch_locked", batch)
+        self.events.publish("DEMAND_BATCH_LOCKED", batch)
         self.batches[batch_id] = batch
         return batch

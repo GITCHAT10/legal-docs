@@ -16,10 +16,10 @@ class EducationEngine:
             "pricing": pricing,
             "status": "ENROLLED"
         }
-        self.shadow.record_action("edu.enrollment", enrollment)
-        self.events.trigger("CLASS_SCHEDULED", enrollment)
+        self.shadow.commit("edu.enrollment", enrollment)
+        self.events.publish("CLASS_SCHEDULED", enrollment)
         return enrollment
 
     def log_attendance(self, student_id: str, course_id: str):
         # Delivery layer logic
-        self.shadow.record_action("edu.attendance", {"student": student_id, "course": course_id})
+        self.shadow.commit("edu.attendance", {"student": student_id, "course": course_id})

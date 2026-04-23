@@ -9,9 +9,9 @@ class AffiliateEngine:
             "link": product_link,
             "timestamp": "now"
         }
-        self.shadow.record_action("affiliate.clicked", event)
+        self.shadow.commit("affiliate.clicked", event)
         return True
 
     def record_external_commission(self, affiliate_id: str, sale_amount: float):
         commission = sale_amount * 0.05
-        self.shadow.record_action("affiliate.commission", {"id": affiliate_id, "amount": commission})
+        self.shadow.commit("affiliate.commission", {"id": affiliate_id, "amount": commission})

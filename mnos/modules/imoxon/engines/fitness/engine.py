@@ -13,10 +13,10 @@ class FitnessEngine:
             "plan": plan,
             "status": "ACTIVE"
         }
-        self.shadow.record_action("fitness.membership", membership)
-        self.events.trigger("MEMBERSHIP_STARTED", membership)
+        self.shadow.commit("fitness.membership", membership)
+        self.events.publish("MEMBERSHIP_STARTED", membership)
         return membership
 
     def log_workout(self, user_id: str, workout_details: dict):
         # PreFit mobile experience logic
-        self.shadow.record_action("fitness.workout", {"user": user_id, **workout_details})
+        self.shadow.commit("fitness.workout", {"user": user_id, **workout_details})

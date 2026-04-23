@@ -21,8 +21,8 @@ class TransportEngine:
         }
 
         # 3. SHADOW: Mandatory Record
-        self.shadow.record_action("ride.requested", ride)
+        self.shadow.commit("ride.requested", ride)
 
         # 4. EVENTS: Async trigger
-        self.events.trigger("RIDE_REQUESTED", ride)
+        self.events.publish("RIDE_REQUESTED", ride)
         return ride

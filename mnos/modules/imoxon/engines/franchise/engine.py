@@ -6,7 +6,7 @@ class FranchiseEngine:
 
     def create_atoll_hub(self, hub_id: str, location: str):
         self.hubs[hub_id] = {"location": location, "stores": []}
-        self.shadow.record_action("hub.created", {"hub_id": hub_id, "location": location})
+        self.shadow.commit("hub.created", {"hub_id": hub_id, "location": location})
 
     def process_payout_split(self, amount: float, vendor_id: str):
         pricing = self.fce.price_order(amount)
@@ -22,5 +22,5 @@ class FranchiseEngine:
             "vendor_net": vendor_net,
             "platform_fee": platform_fee
         }
-        self.shadow.record_action("payout.split", split)
+        self.shadow.commit("payout.split", split)
         return split

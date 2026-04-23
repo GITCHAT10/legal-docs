@@ -14,7 +14,7 @@ class HealthEngine:
             "time": time,
             "status": "BOOKED"
         }
-        self.shadow.record_action("appointment.booked", appointment)
-        self.events.trigger("APPOINTMENT_BOOKED", appointment)
+        self.shadow.commit("appointment.booked", appointment)
+        self.events.publish("APPOINTMENT_BOOKED", appointment)
         self.appointments[apt_id] = appointment
         return appointment

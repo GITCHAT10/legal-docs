@@ -17,8 +17,8 @@ class EscrowEngine:
             "conditions": conditions,
             "status": "LOCKED"
         }
-        self.shadow.record_action("escrow.locked", hold)
-        self.events.trigger("PAYMENT_AUTHORIZED", hold)
+        self.shadow.commit("escrow.locked", hold)
+        self.events.publish("PAYMENT_AUTHORIZED", hold)
         self.escrows[escrow_id] = hold
         return hold
 
@@ -26,6 +26,6 @@ class EscrowEngine:
         if escrow_id not in self.escrows: return False
         status = "DISPUTED" if dispute else "RELEASED"
         self.escrows[escrow_id]["status"] = status
-        self.shadow.record_action("escrow.released", {"id": escrow_id, "status": status})
-        self.events.trigger("PAYMENT_CAPTURED", {"id": escrow_id})
+        self.shadow.commit("escrow.released", {"id": escrow_id, "status": status})
+        self.events.publish("PAYMENT_CAPTURED", {"id": escrow_id})
         return True

@@ -12,6 +12,6 @@ class CareServicesEngine:
             "hours": hours,
             "status": "ASSIGNED"
         }
-        self.shadow.record_action("care.assigned", assignment)
-        self.events.trigger("CARE_ASSIGNED", assignment)
+        self.shadow.commit("care.assigned", assignment)
+        self.events.publish("CARE_ASSIGNED", assignment)
         return assignment

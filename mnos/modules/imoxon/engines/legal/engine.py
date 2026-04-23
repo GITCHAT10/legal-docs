@@ -17,8 +17,8 @@ class LegalEngine:
             "signed_at": "now",
             "compliance": "TENANCY_ACT_2021"
         }
-        self.shadow.record_action("lex.lease_signed", lease)
-        self.events.trigger("LEASE_SIGNED", lease)
+        self.shadow.commit("lex.lease_signed", lease)
+        self.events.publish("LEASE_SIGNED", lease)
         return lease
 
     def issue_legal_notice(self, from_user: str, to_user: str, reason: str):
@@ -29,6 +29,6 @@ class LegalEngine:
             "type": "FINAL_NOTICE",
             "timestamp": "now"
         }
-        self.shadow.record_action("lex.notice_issued", notice)
-        self.events.trigger("LEGAL_NOTICE_GENERATED", notice)
+        self.shadow.commit("lex.notice_issued", notice)
+        self.events.publish("LEGAL_NOTICE_GENERATED", notice)
         return notice

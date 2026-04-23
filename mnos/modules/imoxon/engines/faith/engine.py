@@ -9,7 +9,7 @@ class FaithEngine:
 
     def trigger_prayer_reminder(self, prayer_name: str, island: str):
         payload = {"prayer": prayer_name, "island": island, "timestamp": "now"}
-        self.events.trigger("PRAYER_REMINDER_TRIGGERED", payload)
+        self.events.publish("PRAYER_REMINDER_TRIGGERED", payload)
 
     def log_progress(self, user_id: str, activity_type: str, details: dict):
         # Progress for Quran, Tasbih, etc.
@@ -19,5 +19,5 @@ class FaithEngine:
             "details": details,
             "timestamp": "now"
         }
-        self.shadow.record_action("faith.progress", log)
+        self.shadow.commit("faith.progress", log)
         return True

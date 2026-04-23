@@ -13,6 +13,10 @@ class EventBus:
         self.subscribers[event_type].append(callback)
 
     def publish(self, event_type: str, payload: dict):
+        from mnos.shared.execution_guard import ExecutionGuard
+        if not ExecutionGuard.is_authorized():
+            raise PermissionError(f"FAIL CLOSED: Direct event publish blocked for {event_type}. Must use ExecutionGuard.")
+
         event = {
             "type": event_type,
             "payload": payload,

@@ -16,15 +16,15 @@ class LogisticsEngine:
             "status": "CREATED"
         }
 
-        self.shadow.record_action("shipment.created", shipment)
-        self.events.trigger("SHIPMENT_CREATED", shipment)
+        self.shadow.commit("shipment.created", shipment)
+        self.events.publish("SHIPMENT_CREATED", shipment)
         self.shipments[shipment_id] = shipment
         return shipment
 
     def deliver_shipment(self, shipment_id: str):
         if shipment_id in self.shipments:
             self.shipments[shipment_id]["status"] = "DELIVERED"
-            self.shadow.record_action("shipment.delivered", {"id": shipment_id})
-            self.events.trigger("SHIPMENT_DELIVERED", {"id": shipment_id})
+            self.shadow.commit("shipment.delivered", {"id": shipment_id})
+            self.events.publish("SHIPMENT_DELIVERED", {"id": shipment_id})
             return True
         return False

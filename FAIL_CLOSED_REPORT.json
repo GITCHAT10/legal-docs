@@ -1,0 +1,37 @@
+{
+  "system": "iMOXON Sovereign Commerce",
+  "version": "1.0-HARDENED",
+  "status": "FAIL_CLOSED_ACTIVE",
+  "blocked_paths": [
+    {
+      "vector": "Direct API Route (No Headers)",
+      "protection": "ExecutionGuardMiddleware",
+      "result": "403 REJECTION"
+    },
+    {
+      "vector": "Direct Service Mutation",
+      "protection": "ExecutionGuard Context Check",
+      "result": "PermissionError (Runtime)"
+    },
+    {
+      "vector": "Direct Event Publish",
+      "protection": "EventBus Guard Check",
+      "result": "PermissionError (Runtime)"
+    },
+    {
+      "vector": "Direct Shadow Commit",
+      "protection": "ShadowLedger Guard Check",
+      "result": "PermissionError (Runtime)"
+    },
+    {
+      "vector": "Milestone Payout (No Proof)",
+      "protection": "Apollo Proof Verification",
+      "result": "PermissionError (Runtime)"
+    },
+    {
+      "vector": "Unapproved Vendor Order",
+      "protection": "Commerce KYC Check",
+      "result": "ValueError (Runtime)"
+    }
+  ]
+}

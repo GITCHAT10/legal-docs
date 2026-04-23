@@ -20,6 +20,6 @@ class BillPayEngine:
             "status": "SETTLED",
             "rail": "FAVARA_RTGS"
         }
-        self.shadow.record_action("pay.bill_paid", payment)
-        self.events.trigger("PAYMENT_CAPTURED", payment)
+        self.shadow.commit("pay.bill_paid", payment)
+        self.events.publish("PAYMENT_CAPTURED", payment)
         return payment

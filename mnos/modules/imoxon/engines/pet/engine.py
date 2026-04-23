@@ -11,9 +11,9 @@ class PetEngine:
             "time": time,
             "status": "BOOKED"
         }
-        self.shadow.record_action("pet.vet_booked", booking)
-        self.events.trigger("VET_BOOKED", booking)
+        self.shadow.commit("pet.vet_booked", booking)
+        self.events.publish("VET_BOOKED", booking)
         return booking
 
     def aquarium_fish_care_log(self, user_id: str, task: str):
-        self.shadow.record_action("pet.fish_care", {"user": user_id, "task": task})
+        self.shadow.commit("pet.fish_care", {"user": user_id, "task": task})

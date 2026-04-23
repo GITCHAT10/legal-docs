@@ -10,6 +10,6 @@ class CreatorEngine:
             "metadata": metadata,
             "status": "PUBLISHED"
         }
-        self.shadow.record_action("creator.content_published", content)
-        self.events.trigger("CONTENT_PUBLISHED", content)
+        self.shadow.commit("creator.content_published", content)
+        self.events.publish("CONTENT_PUBLISHED", content)
         return content

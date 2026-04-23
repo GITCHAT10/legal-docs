@@ -13,6 +13,6 @@ class EnforcementEngine:
             "level": "LEGAL_CASE",
             "court_ready": True
         }
-        self.shadow.record_action("lex.case_escalated", case)
-        self.events.trigger("CASE_CREATED", case)
+        self.shadow.commit("lex.case_escalated", case)
+        self.events.publish("CASE_CREATED", case)
         return case
