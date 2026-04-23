@@ -36,7 +36,8 @@ class UnitedTransferService:
             session_context=session_context,
             execution_logic=booking_logic,
             connection_context=connection_context,
-            financial_validation=True
+            financial_validation=True,
+            tenant="MIG-GENESIS"
         )
 
     def dispatch_cargo(self, cargo_id: str, session_context: Dict[str, Any], connection_context: Dict[str, Any], evidence: Dict[str, Any], approvals: List[str]):
@@ -53,7 +54,8 @@ class UnitedTransferService:
             execution_logic=dispatch_logic,
             connection_context=connection_context,
             governance_evidence=evidence,
-            approvals=approvals
+            approvals=approvals,
+            tenant="MIG-GENESIS"
         )
 
     def finalize_payout(self, booking_id: str, amount: Decimal, session_context: Dict[str, Any], connection_context: Dict[str, Any]):
@@ -71,7 +73,8 @@ class UnitedTransferService:
             session_context=session_context,
             execution_logic=payout_logic,
             connection_context=connection_context,
-            financial_validation=True
+            financial_validation=True,
+            tenant="MIG-GENESIS"
         )
 
 ut_service = UnitedTransferService()

@@ -54,8 +54,8 @@ def test_aig_shadow_sync_flow(valid_session, valid_connection):
         {},
         valid_session,
         local_action,
-        connection_context=valid_connection
-    )
+        connection_context=valid_connection,
+        tenant="MIG-GENESIS")
 
     assert res == "SUCCESS"
     assert db_mirror.data["transactions"]["TX-99"]["amount"] == 500

@@ -32,7 +32,14 @@ class EventBus:
         self.subscribers: Dict[str, List[Callable]] = {event: [] for event in self.TAXONOMY}
 
     def publish(self, event_type: str, data: Dict[str, Any], trace_id: str = None) -> Dict[str, Any]:
-        """Publishes an event and commits to AIGShadow ledger."""
+        """
+        Publishes an event and commits to AIGShadow ledger.
+        MIG EVENT LAW: Blocks direct publish outside ExecutionGuard context.
+        """
+        from mnos.shared.guard.service import in_sovereign_context
+        if not in_sovereign_context.get():
+            raise RuntimeError("EVENT_SPINE: Direct publish blocked. Operation must go through ExecutionGuard.")
+
         if event_type not in self.TAXONOMY:
             raise ValueError(f"Unknown event type: {event_type}")
 

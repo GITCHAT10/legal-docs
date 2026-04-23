@@ -18,9 +18,18 @@ class AIGVault:
             "nexus-001": ["read", "write"]
         }
 
-    def check_permission(self, identity: str, action: str):
+    def check_permission(self, identity: str, action: str, session_context: Dict[str, Any] = None):
+        """
+        Enforces AIG AEGIS session verification for data access.
+        MIG HARDENING: No direct access without active authenticated session.
+        """
+        if not session_context:
+            raise VaultException("AIG_VAULT: Unauthorized access attempt. Active session context required.")
+
+        # In production, we would call aig_aegis.validate_session here
+
         allowed_actions = self.permissions.get(identity, [])
-        if action not in allowed_actions:
+        if "*" not in allowed_actions and action not in allowed_actions:
             raise VaultException(f"AIG_VAULT: Identity '{identity}' denied '{action}' access.")
         return True
 

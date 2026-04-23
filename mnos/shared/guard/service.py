@@ -30,7 +30,9 @@ class ExecutionGuard:
         governance_evidence: Dict[str, Any] = None,
         approvals: List[str] = None,
         financial_validation: bool = False,
-        financial_intent: Dict[str, Any] = None
+        financial_intent: Dict[str, Any] = None,
+        objective_code: str = "J5", # Constitutional Default
+        tenant: str = None
     ) -> Any:
         """
         NEXUS-SKYI-APOLLO Sovereign Execution Guard:
@@ -45,14 +47,20 @@ class ExecutionGuard:
             # MANDATORY 5-LAYER SEQUENTIAL ENFORCEMENT
             # NO bypass paths allowed. Failure at any layer stops execution.
 
+            # MANDATORY BINDING: No unverified deploy, no direct client override.
+            if not tenant:
+                raise RuntimeError("EXECUTION_GUARD: Mandatory Tenant context is missing.")
+
             # 1. AIG TUNNEL (Network Validation) - AIG-ORBAN Enforced
             aig_tunnel.validate_connection(connection_context)
 
             # 2. AIG AEGIS (Identity Validation - Mandatory Signed Session)
             # Enforces AEGIS_DEVICE_BINDING and BIOMETRIC_HANDSHAKE
+            # Rejects forged device binding and unsigned contexts.
             aig_aegis.validate_session(session_context)
 
-            # 3. L5 (Governance Approval - Safe-Firing Logic)
+            # 3. AIG L5 CONTROL (Governance Approval - Safe-Firing Logic)
+            # Validates against objective codes [J5, N4, V1, V3, H2, H3]
             aig_l5.validate_action(action_type, governance_evidence, approvals)
 
             # 4. FCE Financial Control & Dual-Currency Validation
@@ -71,7 +79,8 @@ class ExecutionGuard:
                     fce.validate_pre_auth(payload.get("folio_id", "GEN"), payload["amount"], payload["limit"])
 
             # 5. AIGShadow Audit (Intent)
-            aig_shadow.commit(action_type, {"intent": payload, "trace_id": trace_id}, stage="intent")
+            actor_id = session_context.get("device_id", "SYSTEM")
+            aig_shadow.commit(action_type, {"intent": payload, "trace_id": trace_id}, stage="intent", actor_id=actor_id, objective_code=objective_code)
 
             # 6. EXECUTE Logic
             try:
@@ -90,7 +99,7 @@ class ExecutionGuard:
                 raise
 
             # 7. AIGShadow Audit (Result)
-            result_hash = aig_shadow.commit(action_type, {"result": result, "trace_id": trace_id}, stage="result")
+            result_hash = aig_shadow.commit(action_type, {"result": result, "trace_id": trace_id}, stage="result", actor_id=actor_id, objective_code=objective_code)
 
             # 8. AIGProof Proof Generation
             proof = aig_proof.generate_proof(trace_id, result_hash)
@@ -108,6 +117,9 @@ class ExecutionGuard:
             events.publish(action_type, event_data, trace_id=trace_id)
 
             return result
+        except Exception as e:
+            print(f"!!! FAIL-CLOSED ALERT: {action_type} aborted. Notifying MIG_SIGNAL_COMMAND. Error: {str(e)}")
+            raise
         finally:
             in_sovereign_context.reset(token)
 

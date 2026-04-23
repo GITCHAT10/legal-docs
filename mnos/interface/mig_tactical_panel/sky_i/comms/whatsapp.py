@@ -40,7 +40,8 @@ class WhatsAppInterface:
                 },
                 session_context=session_context,
                 execution_logic=execute_workflow,
-                connection_context=connection_context
+                connection_context=connection_context,
+                tenant="MIG-GENESIS"
             )
 
             return {

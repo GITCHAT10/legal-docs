@@ -48,8 +48,8 @@ def test_dual_reporting_flow(valid_session, valid_connection):
         process_payment,
         connection_context=valid_connection,
         financial_validation=True,
-        financial_intent=intent
-    )
+        financial_intent=intent,
+        tenant="MIG-GENESIS")
 
     assert res["status"] == "PAID"
 
@@ -90,5 +90,5 @@ def test_th_regional_tunnel_warning(valid_session):
 
     # Should pass without error but check logic path
     def mock_logic(p): return "OK"
-    res = guard.execute_sovereign_action("test", {}, valid_session, mock_logic, connection_context=conn)
+    res = guard.execute_sovereign_action("test", {}, valid_session, mock_logic, connection_context=conn, tenant="MIG-GENESIS")
     assert res == "OK"

@@ -29,7 +29,8 @@ class CloudEngine:
             execution_logic=operation_logic,
             connection_context=connection_context,
             governance_evidence=evidence,
-            approvals=approvals
+            approvals=approvals,
+            tenant="MIG-GENESIS"
         )
 
     def store_sovereign_data(
@@ -46,7 +47,7 @@ class CloudEngine:
 
         def storage_logic(p):
             identity = session_context.get("device_id")
-            aig_vault.check_permission(identity, "write")
+            aig_vault.check_permission(identity, "write", session_context=session_context)
             path = aig_vault.secure_storage_path(p["file_id"])
             return {"status": "STORED", "path": path}
 
@@ -55,7 +56,8 @@ class CloudEngine:
             payload={"file_id": file_id},
             session_context=session_context,
             execution_logic=storage_logic,
-            connection_context=connection_context
+            connection_context=connection_context,
+            tenant="MIG-GENESIS"
         )
 
 cloud_engine = CloudEngine()

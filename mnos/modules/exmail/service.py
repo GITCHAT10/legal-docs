@@ -24,10 +24,13 @@ class ExMailAuthority:
                 events.subscribers[et] = []
 
     def ingest_inbound_exmail(self, sender: str, subject: str, body: str, session_context: Dict[str, Any], connection_context: Dict[str, Any] = None):
-        """Ingests email into the ExMAIL ASI pipeline enforced by Execution Guard."""
+        """
+        Ingests email into the ExMAIL ASI pipeline enforced by Execution Guard.
+        MIG HARDENING: Mandatory network context and session validation.
+        """
         try:
             # Operational Hardening: Ensure full connection context for AIG_TUNNEL validation
-            if connection_context is None:
+            if not connection_context:
                 connection_context = {
                     "is_vpn": True,
                     "tunnel_id": "exmail-gateway-01",
@@ -60,7 +63,8 @@ class ExMailAuthority:
                 },
                 session_context=session_context,
                 execution_logic=execute_exmail,
-                connection_context=connection_context
+                connection_context=connection_context,
+                tenant="MIG-GENESIS"
             )
 
             return {

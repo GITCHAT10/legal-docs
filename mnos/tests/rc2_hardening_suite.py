@@ -26,7 +26,7 @@ def test_identity_spoof_attack():
     }
 
     with pytest.raises(SecurityException, match="signature mismatch"):
-        guard.execute_sovereign_action("test", {}, bad_payload, lambda x: "fail", connection_context=conn)
+        guard.execute_sovereign_action("test", {}, bad_payload, lambda x: "fail", connection_context=conn, tenant="MIG-GENESIS")
 
 def test_ledger_tampering_fail_closed():
     """Simulate head block tampering before next commit."""
@@ -46,14 +46,14 @@ def test_ledger_tampering_fail_closed():
     }
 
     # 1. Valid commit
-    guard.execute_sovereign_action("nexus.booking.created", {}, ctx, lambda x: "ok", connection_context=conn)
+    guard.execute_sovereign_action("nexus.booking.created", {}, ctx, lambda x: "ok", connection_context=conn, tenant="MIG-GENESIS")
 
     # 2. Tamper
     aig_shadow.chain[1]["payload"]["result"] = "TAMPERED"
 
     # 3. Next attempt should fail CLOSED
     with pytest.raises(RuntimeError, match="Chain corruption detected"):
-        guard.execute_sovereign_action("nexus.booking.created", {}, ctx, lambda x: "ok", connection_context=conn)
+        guard.execute_sovereign_action("nexus.booking.created", {}, ctx, lambda x: "ok", connection_context=conn, tenant="MIG-GENESIS")
 
 def test_partial_transaction_failure_recovery():
     """Verify system remains atomic even if execution logic fails."""
@@ -77,7 +77,7 @@ def test_partial_transaction_failure_recovery():
         raise ValueError("EXECUTION CRASHED")
 
     with pytest.raises(ValueError, match="EXECUTION CRASHED"):
-        guard.execute_sovereign_action("aig_vault.store", {}, ctx, logic_fails, connection_context=conn)
+        guard.execute_sovereign_action("aig_vault.store", {}, ctx, logic_fails, connection_context=conn, tenant="MIG-GENESIS")
 
     # Audit trail should NOT have commit for failed execution (Execution Guard Order)
     assert len(aig_shadow.chain) == initial_len

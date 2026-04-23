@@ -36,7 +36,7 @@ class AIGShadowLedger:
 
         self.chain.append(genesis_block)
 
-    def commit(self, event_type: str, payload: Dict[str, Any], stage: str = "result") -> str:
+    def commit(self, event_type: str, payload: Dict[str, Any], stage: str = "result", actor_id: str = "SYSTEM", objective_code: str = "J5") -> str:
         """
         Appends a new entry. Verifies full chain before and after commit.
         Supports multi-stage logging: 'intent' or 'result'.
@@ -64,6 +64,8 @@ class AIGShadowLedger:
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "event_type": event_type,
                 "stage": stage,
+                "actor_id": actor_id,
+                "objective_code": objective_code,
                 "payload": payload,
                 "previous_hash": previous_entry["hash"]
             }
@@ -83,22 +85,27 @@ class AIGShadowLedger:
 
     def _calculate_hash(self, entry: Dict[str, Any]) -> str:
         """
-        Legal-Grade Audit Hash:
-        previous_hash + event_type + stage + payload + entry_id + timestamp -> current_hash
-        Enforces absolute chronology and temporal immutability.
+        Dual-Truth Ledger Hash:
+        previous_hash + event_type + stage + actor_id + objective_code + payload + entry_id + timestamp -> current_hash
+        Enforces absolute chronology and identity-bound temporal immutability.
         """
         block_string = json.dumps({
             "entry_id": entry["entry_id"],
             "event_type": entry["event_type"],
             "stage": entry.get("stage", "result"),
+            "actor_id": entry.get("actor_id", "SYSTEM"),
+            "objective_code": entry.get("objective_code", "J5"),
             "payload": entry["payload"],
             "previous_hash": entry["previous_hash"],
             "timestamp": entry["timestamp"]
         }, sort_keys=True, default=str).encode()
         return hashlib.sha256(block_string).hexdigest()
 
-    def verify_integrity(self) -> bool:
-        """Validates the entire hash chain from genesis to head."""
+    def verify_integrity(self, start_index: int = 0) -> bool:
+        """
+        Validates the entire hash chain from genesis to head.
+        Mandatory start_index=0 for production integrity.
+        """
         if not self.chain:
             return False
 

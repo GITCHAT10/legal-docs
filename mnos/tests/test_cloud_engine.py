@@ -40,7 +40,7 @@ def test_full_security_stack_success(valid_session, valid_connection, valid_gove
         session_context=valid_session,
         connection_context=valid_connection,
         evidence=valid_governance,
-        approvals=["nexus-admin-01"]
+        approvals=["nexus-admin-01"],
     )
 
     assert result["status"] == "SUCCESS"
@@ -100,5 +100,5 @@ def test_aig_vault_permission_failure(valid_connection):
             file_id="top-secret.doc",
             data="...",
             session_context=payload,
-            connection_context=valid_connection
+            connection_context=valid_connection,
         )

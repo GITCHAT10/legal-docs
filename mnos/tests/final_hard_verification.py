@@ -43,11 +43,11 @@ def test_ledger_tamper_hard_fail():
         "node_id": "ADMIN-01"
     }
 
-    guard.execute_sovereign_action("nexus.booking.created", {}, ctx, lambda x: "ok", connection_context=conn)
+    guard.execute_sovereign_action("nexus.booking.created", {}, ctx, lambda x: "ok", connection_context=conn, tenant="MIG-GENESIS")
 
     # Tamper with block 1 hash in head's previous_hash link
     # This simulates a direct DB mutation of a sealed link
     aig_shadow.chain[1]["previous_hash"] = "CORRUPT"
 
     with pytest.raises(RuntimeError, match="Chain corruption detected"):
-        guard.execute_sovereign_action("nexus.booking.created", {}, ctx, lambda x: "ok", connection_context=conn)
+        guard.execute_sovereign_action("nexus.booking.created", {}, ctx, lambda x: "ok", connection_context=conn, tenant="MIG-GENESIS")

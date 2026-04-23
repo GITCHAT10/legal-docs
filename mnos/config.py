@@ -28,6 +28,6 @@ class Config:
 
     # AIGShadow Root Anchors
     GENESIS_PREVIOUS_HASH = "0" * 64
-    CORE_V1_ROOT_HASH = "e25b3be3307c7bbee56930e2c384daee061d8a71e14571dd5be2467803b62e78"
+    CORE_V1_ROOT_HASH = "9f92f77a89c6c5e5ad289fd790b195c48c52fc763f8fd8a71936d5c924315f89"
 
 config = Config()
