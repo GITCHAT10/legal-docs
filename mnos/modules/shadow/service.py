@@ -122,6 +122,10 @@ class ShadowLedger:
         if not self.chain:
             return False
 
+        # Hardened Level 10: Verify Genesis at index 0 first
+        if self.chain[0]["entry_id"] != 0 or self.chain[0]["event_type"] != "GENESIS":
+            return False
+
         # Start verification from index 0
         for i in range(len(self.chain)):
             current = self.chain[i]

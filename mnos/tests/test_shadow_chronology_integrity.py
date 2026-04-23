@@ -15,13 +15,22 @@ class TestShadowChronologyIntegrity(unittest.TestCase):
         in_sovereign_context.reset(self.token)
 
     def test_1_timestamp_tamper(self):
+        """Mandatory Hardening: Verify chain failure on timestamp mutation."""
         shadow.commit("TEST_EVENT", {"data": "test"})
         original_ts = shadow.chain[1]["timestamp"]
+
+        # Tamper
         shadow.chain[1]["timestamp"] = "2026-04-23T10:00:00Z"
         self.assertFalse(shadow.verify_integrity(), "Integrity should fail on timestamp tamper")
+
+        # Restore and verify
         shadow.chain[1]["timestamp"] = original_ts
         self.assertTrue(shadow.verify_integrity())
         print("✔ chronology immutable")
+
+    def test_shadow_integrity_with_timestamp_tamper(self):
+        """Explicitly required named test for timestamp tamper validation."""
+        self.test_1_timestamp_tamper()
 
     def test_2_actor_id_tamper(self):
         # We simulate actor_id if supported

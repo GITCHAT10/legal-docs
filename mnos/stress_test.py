@@ -72,9 +72,10 @@ def stress_test():
     # 4. Concurrency Test (Simulated Sequential but overlapping logic)
     print("\n[TEST 4: Concurrency Simulation]")
 
-    whatsapp.receive_message("+9602", "book room", get_test_session())
-    whatsapp.receive_message("+9603", "arrival at airport", get_test_session())
-    whatsapp.receive_message("+9604", "emergency help", get_test_session())
+    session = get_test_session()
+    whatsapp.receive_message("+9602", "book room", session)
+    whatsapp.receive_message("+9603", "arrival at airport", session)
+    whatsapp.receive_message("+9604", "emergency help", session)
     print(f"Final Ledger Size: {len(shadow.chain)}")
     print(f"Final Integrity: {shadow.verify_integrity()}")
 
