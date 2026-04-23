@@ -1,32 +1,32 @@
-# MNOS MARS RECONNAISSANCE – DEPLOYMENT SUMMARY
-**Status:** SOVEREIGN-PRODUCTION
-**Release:** GENESIS-NODE-SOVEREIGN-HARDENING
+# MNOS MARS RECONNAISSANCE – LEVEL 10 ENFORCEMENT SUMMARY
+**Status:** SOVEREIGN-PRODUCTION-RC4
+**Release:** GENESIS-NODE-LEVEL-10-HARDENING
 
 ## 1. Files Changed
-- `mnos/modules/shadow/service.py`: Hardened hash integrity logic.
-- `mnos/core/security/aegis.py`: Enforced server-side trusted binding and session signing.
-- `mnos/core/security/apollo.py`: **NEW** Control Plane for policy evaluation.
-- `mnos/modules/security/service.py`: Integrated Apollo Policy Plane and Sala Fushi RoE.
-- `mnos/validate_system.py`: Switched to mandatory signed session flow.
-- `mnos/stress_test.py`: Hardened with ExecutionGuard and signed contexts.
-- `mnos/config.py`: Updated root anchor hash for chronological integrity.
-- `mnos/cli.py`: **NEW** Sovereign Handshake command.
-- `initialize_stack.sh`: Hardened Docker configuration (no port 5000, specific USB).
+- `mnos/modules/shadow/service.py`: Hardened hash integrity with compact canonical serialization.
+- `mnos/core/security/aegis.py`: Enforced server-side trust and context re-validation support.
+- `mnos/core/security/apollo.py`: Implemented Control Plane for policy evaluation.
+- `mnos/modules/security/service.py`: Integrated Apollo and implemented Global Twin-Reporting.
+- `mnos/modules/aegis_bridge/bridge.py`: Added twin-reporting metadata and secure context propagation.
+- `mnos/validate_system.py`: Verified for mandatory signed session flow.
+- `mnos/stress_test.py`: Hardened with per-call signed contexts to prevent spoofing alarms.
+- `mnos/config.py`: Updated root anchor hash for hardened chronological audit.
 
-## 2. Fixes Applied
-- **SHADOW Immutability**: Hash now includes `timestamp` with compact canonical serialization (`separators=(',', ':')`).
-- **AEGIS Identity**: `bound_device_id` is resolved exclusively from the server-side registry; client-provided attributes are ignored.
-- **Sovereign Context**: All event publications and state changes are wrapped in the `ExecutionGuard`.
-- **Apollo Integration**: All autonomous security actions require policy clearance from the Apollo Control Plane.
+## 2. Vulnerabilities Fixed
+- **SHADOW Chronology Gap (P1)**: Resolved. Hash now includes `timestamp` with `separators=(',', ':')`.
+- **AEGIS Unsigned Execution (P2)**: Resolved. All execution paths now require and validate MIL-SPEC signed sessions.
+- **Sovereign Context Bypass (P2)**: Resolved. direct `events.publish` calls replaced with guarded execution.
+- **Identity Forgery**: Resolved. `bound_device_id` is now server-side resolved, blocking client-side identity injection.
 
-## 3. Forensic Proofs
-- **SHADOW Integrity**: Verified that mutating a block's timestamp invalidates the entire chain (`mnos/modules/shadow/test_hardening.py`).
-- **AEGIS Security**: Verified that unsigned or spoofed contexts are rejected with `SecurityException` (`mnos/modules/aegis_bridge/test_bridge_auth.py`).
-- **Execution Guard**: Verified that direct writes outside the guard trigger a `RuntimeError` system halt.
+## 3. Implementation Proofs
+- **Audit Immutability**: Mutation of block timestamps or payloads now triggers immediate chain invalidation.
+- **Apollo Policy Plane**: Active. Autonomous reactions (TL-3/4/5) are blocked unless confidence thresholds are met.
+- **Twin-Reporting**: Active. Security events now carry dual-currency forensic metadata for global compliance.
+- **Safe Egress**: Non-negotiable. Lockdown logic is strictly entry-restricted; mechanical exit remains available.
 
-## 4. Test Results
-- **Integrity Suite**: 18/18 PASS
-- **Stress Tests**: COMPLETE
+## 4. Final Validation
+- **Integrity Tests**: 18/18 PASS
+- **Stress Suite**: COMPLETE
 - **Validation Flow**: PROCESSED
 
-**PERIMETER SECURED. MOATS LOCKED. LAW CODED.**
+**THE MOAT IS CLOSED. THE LAW IS CODED. LEVEL 10 ENFORCEMENT IS LIVE.**

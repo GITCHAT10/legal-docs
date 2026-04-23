@@ -53,20 +53,39 @@ class SecurityModule:
         """Toggle Perimeter Lighting to 100%; Audio Warning."""
         print(f"[Security] TL-3 RESPONSE for zone: {payload.get('zone')}")
         print(f"[Security] ACTION: Lighting set to 100%. Audio warning broadcast.")
-        return {"lighting": "100%", "audio": "active"}
+
+        # Level 10 Enforcement: Twin-Reporting Metadata
+        return {
+            "lighting": "100%",
+            "audio": "active",
+            "reporting_metadata": payload.get("reporting_metadata")
+        }
 
     def execute_TL4_response(self, payload: Dict[str, Any]):
         """Lock Guest Wing Elevators; Send Alert; Capture 4K Still."""
         print(f"[Security] TL-4 RESPONSE for zone: {payload.get('zone')}")
         print(f"[Security] ACTION: Guest Wing Elevators ENTRY RESTRICTED. EXIT ENABLED.")
         print(f"[Security] ACTION: 4K Forensic Still captured.")
-        return {"elevators": "restricted_entry", "safe_exit": True, "forensic_still": "captured"}
+
+        # Level 10 Enforcement: Twin-Reporting Metadata
+        return {
+            "elevators": "restricted_entry",
+            "safe_exit": True,
+            "forensic_still": "captured",
+            "reporting_metadata": payload.get("reporting_metadata")
+        }
 
     def execute_TL5_response(self, payload: Dict[str, Any]):
         """Total Lockdown: Emergency Egress Alarms; Broadcast to MIG Command Center."""
         print(f"[Security] TL-5 RESPONSE: SYSTEM INTERFERENCE DETECTED")
         print(f"[Security] ACTION: TOTAL LOCKDOWN (ENTRY RESTRICTED). EMERGENCY EGRESS ALARMS ACTIVE.")
-        return {"lockdown": "full_perimeter_entry", "alarms": "active"}
+
+        # Level 10 Enforcement: Twin-Reporting Metadata
+        return {
+            "lockdown": "full_perimeter_entry",
+            "alarms": "active",
+            "reporting_metadata": payload.get("reporting_metadata")
+        }
 
     def execute_lockdown(self, payload: Dict[str, Any]):
         """General Entry Restriction. PRESERVES SAFE EXIT."""
@@ -88,6 +107,13 @@ class SecurityModule:
         frigate_after = event_data.get("frigate_event", {}).get("after", {})
         zone = frigate_after.get("current_zones", ["unknown"])[0]
 
+        # Level 10 Enforcement: Twin-Reporting Metadata support
+        reporting_metadata = event_data.get("reporting_metadata", {
+            "reporting_currency_usd": "USD",
+            "reporting_currency_local": "MVR",
+            "reporting_jurisdiction": "MV"
+        })
+
         # Mandatory Policy Evaluation via APOLLO Control Plane
         if not apollo.evaluate_action(threat_level, zone, event_data):
             print(f"[Security] ACTION BLOCKED BY APOLLO POLICY PLANE")
@@ -96,21 +122,33 @@ class SecurityModule:
         if threat_level == 5:
              guard.execute_sovereign_action(
                 "nexus.security.lockdown",
-                {"zone": "SYSTEM", "threat_level": 5},
+                {
+                    "zone": "SYSTEM",
+                    "threat_level": 5,
+                    "reporting_metadata": reporting_metadata
+                },
                 session_context,
                 self.execute_TL5_response
             )
         elif threat_level == 4:
             guard.execute_sovereign_action(
                 "nexus.security.lockdown",
-                {"zone": zone, "threat_level": 4},
+                {
+                    "zone": zone,
+                    "threat_level": 4,
+                    "reporting_metadata": reporting_metadata
+                },
                 session_context,
                 self.execute_TL4_response
             )
         elif threat_level == 3:
             guard.execute_sovereign_action(
                 "nexus.security.alert",
-                {"message": f"TL-3 Alert in {zone}. Lighting and Audio active.", "zone": zone},
+                {
+                    "message": f"TL-3 Alert in {zone}. Lighting and Audio active.",
+                    "zone": zone,
+                    "reporting_metadata": reporting_metadata
+                },
                 session_context,
                 self.execute_TL3_response
             )

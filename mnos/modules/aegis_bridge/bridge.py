@@ -36,7 +36,15 @@ def on_message(client, userdata, msg):
             "source": "frigate_mars_recon",
             "frigate_event": payload,
             "identity": IDENTITY,
-            "aegis_level": AEGIS_LEVEL
+            "aegis_level": AEGIS_LEVEL,
+            "reporting_metadata": {
+                "reporting_currency_usd": "USD",
+                "reporting_currency_local": "MVR",
+                "reporting_amount_usd": 0.0,
+                "reporting_amount_local": 0.0,
+                "reporting_fx_rate_locked": 15.42,
+                "reporting_jurisdiction": "MV"
+            }
         }
 
         # 2. Get fresh signed context for each submission
