@@ -24,6 +24,10 @@ class EventBus:
 
     def publish(self, event_type: str, data: Dict[str, Any], trace_id: str = None) -> Dict[str, Any]:
         """Publishes an event and commits to SHADOW ledger."""
+        # Enforce MIG EVENT LAW (Singularity Core)
+        from mnos.infrastructure.mig_event_spine.service import event_spine
+        event_spine.enforce_event_law(event_type, data)
+
         if event_type not in self.TAXONOMY:
             raise ValueError(f"Unknown event type: {event_type}")
 

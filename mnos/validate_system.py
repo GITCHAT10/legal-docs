@@ -46,11 +46,13 @@ def run_validation():
 
     # 4. ExMAIL Emergency (Negative Sentiment -> Ticket Conversion)
     print("\n[SCENARIO 2: ExMAIL Negative Emergency]")
+    ctx2 = {"device_id": "nexus-001"}
+    ctx2["signature"] = aegis.sign_session(ctx2)
     res_mail2 = exmail_authority.ingest_inbound_exmail(
         "angry.guest@example.com",
         "HELP NOW",
         "This is the worst! Everything is slow and failing. SOS EMERGENCY!",
-        ctx
+        ctx2
     )
     print(f"Result: {res_mail2['status']} | Sentiment: {res_mail2['sentiment']} | Reply: {res_mail2['smart_reply']}")
 

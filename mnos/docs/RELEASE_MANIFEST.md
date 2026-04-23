@@ -10,7 +10,7 @@
 
 ## 🧠 Intelligence Layer
 - `mnos/modules/knowledge/service.py`: SKY-i Knowledge Core.
-- `mnos/core/ai/silvia.py`: Silvia Intelligence Engine.
+- `mnos.core.asi.silvia.py`: Silvia Intelligence Engine.
 
 ## 📲 Interfaces & Workflows
 - `mnos/interfaces/sky_i/comms/whatsapp.py`: WhatsApp Intelligence Loop.

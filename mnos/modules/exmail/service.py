@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 from typing import Dict, Any, List
-from mnos.core.ai.silvia import silvia
+from mnos.core.asi.silvia import silvia
 from mnos.core.events.service import events
 from mnos.shared.execution_guard import guard
 

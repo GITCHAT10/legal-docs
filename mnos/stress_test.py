@@ -9,7 +9,7 @@ sys.path.append(os.getcwd())
 from mnos.modules.fce.service import fce, FinancialException
 from mnos.modules.shadow.service import shadow
 from mnos.core.events.service import events
-from mnos.core.ai.silvia import silvia
+from mnos.core.asi.silvia import silvia
 from mnos.interfaces.sky_i.comms.whatsapp import whatsapp
 from mnos.modules.knowledge.service import knowledge_core
 

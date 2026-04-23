@@ -1,6 +1,6 @@
 import uuid
 from typing import Dict, Any
-from mnos.core.ai.silvia import silvia
+from mnos.core.asi.silvia import silvia
 from mnos.shared.execution_guard import guard
 
 class WhatsAppInterface:
