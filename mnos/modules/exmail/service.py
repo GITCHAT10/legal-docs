@@ -79,17 +79,22 @@ class ExMailAuthority:
         return f"{base_reply} {analysis.get('response')}"
 
     def _handle_asi_conversions(self, analysis: Dict[str, Any], sender: str, trace_id: str):
-        """Nextgen ASI: Automatically converts emails into actionable CRM entities."""
+        """
+        Nextgen ASI: Automatically converts emails into actionable CRM entities.
+        Doctrine: All publications must happen within the current sovereign context.
+        """
         intent = analysis.get("intent")
 
         # Scenario: Booking becomes a Task
         if intent == "booking.created":
             events.publish("exmail.task.created", {"type": "RESERVATION_PROC", "sender": sender}, trace_id=trace_id)
+            # nexus.booking.created triggers SHADOW commit
             events.publish("nexus.booking.created", {"sender": sender, "source": "ExMAIL"}, trace_id=trace_id)
 
         # Scenario: Emergency becomes a Ticket
         elif intent == "emergency.triggered":
             events.publish("exmail.ticket.created", {"severity": "CRITICAL", "sender": sender}, trace_id=trace_id)
+            # nexus.emergency.triggered triggers SHADOW commit
             events.publish("nexus.emergency.triggered", {"sender": sender, "source": "ExMAIL"}, trace_id=trace_id)
 
 exmail_authority = ExMailAuthority()

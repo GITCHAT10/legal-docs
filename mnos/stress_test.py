@@ -21,13 +21,12 @@ from mnos.config import config
 
 def get_test_session():
     payload = {"device_id": "nexus-admin-01", "role": "admin"}
-    sig = hmac.new(config.NEXGEN_SECRET.encode(), json.dumps(payload, sort_keys=True).encode(), hashlib.sha256).hexdigest()
+    sig = aegis.sign_session(payload)
     payload["signature"] = sig
     return payload
 
 def stress_test():
     print("--- 🛡️ NEXUS ASI SKY-i HARDENING STRESS TESTS ---")
-    session = get_test_session()
 
     # 0. Initialize DNA for tests
     knowledge_core.ingest("TEST_DNA", "Bookings and Arrivals and Emergencies are active.")
@@ -48,7 +47,7 @@ def stress_test():
     guard.execute_sovereign_action(
         "nexus.booking.created",
         {"data": "test"},
-        session,
+        get_test_session(),
         lambda p: "done"
     )
 
@@ -72,9 +71,10 @@ def stress_test():
 
     # 4. Concurrency Test (Simulated Sequential but overlapping logic)
     print("\n[TEST 4: Concurrency Simulation]")
-    whatsapp.receive_message("+9602", "book room", session)
-    whatsapp.receive_message("+9603", "arrival at airport", session)
-    whatsapp.receive_message("+9604", "emergency help", session)
+
+    whatsapp.receive_message("+9602", "book room", get_test_session())
+    whatsapp.receive_message("+9603", "arrival at airport", get_test_session())
+    whatsapp.receive_message("+9604", "emergency help", get_test_session())
     print(f"Final Ledger Size: {len(shadow.chain)}")
     print(f"Final Integrity: {shadow.verify_integrity()}")
 

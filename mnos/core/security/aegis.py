@@ -33,7 +33,9 @@ class AegisService:
 
     def sign_session(self, payload: Dict[str, Any]) -> str:
         """Generates an HMAC signature for a session payload."""
-        data = json.dumps(payload, sort_keys=True).encode()
+        # Filter out existing signature and side-effect fields to allow re-signing
+        clean_payload = {k: v for k, v in payload.items() if k not in ["signature", "bound_device_id"]}
+        data = json.dumps(clean_payload, sort_keys=True, separators=(',', ':')).encode()
         return hmac.new(self.secret, data, hashlib.sha256).hexdigest()
 
     def validate_session(self, session_context: Dict[str, Any]) -> bool:
@@ -48,21 +50,42 @@ class AegisService:
         if not signature:
             raise SecurityException("AEGIS: Missing session signature. Rejecting unsigned context.")
 
-        # Extract payload without signature for verification
-        payload = {k: v for k, v in session_context.items() if k != "signature"}
-        expected_sig = self.sign_session(payload)
+        # Extract payload without signature and bound_device_id for verification
+        # as bound_device_id is a server-side side-effect.
+        expected_sig = self.sign_session(session_context)
 
         if not hmac.compare_digest(expected_sig, signature):
             raise SecurityException("AEGIS: Session signature mismatch. Potential spoofing detected.")
 
         # CRITICAL: Do not trust any roles or permissions passed in session_context.
         # Only trust the verified device_id for server-side lookup.
-        device_id = payload.get("device_id")
+        device_id = session_context.get("device_id")
         if not device_id or not self.registry.is_trusted(device_id):
             raise SecurityException(f"AEGIS: Unauthorized device {device_id}. Rejecting untrusted hardware.")
 
+        # SECURE: Resolve bound_device_id only from trusted server-side registry.
+        # Overwrite any client-provided bound_device_id with the trusted mapping.
+        # IMPORTANT: We use dict.get for lookup to avoid mutating the context during validation if possible,
+        # or we accept that validation of the same context object twice will fail if we mutate it.
+        # For now, we allow the side-effect but ensure it doesn't break successive calls in tests.
+        session_context["bound_device_id"] = device_id
+
         # Enforcement: The session is now strictly bound to the server's knowledge of this device.
         return True
+
+    def get_bound_device_id(self, session_context: Dict[str, Any]) -> str:
+        """
+        SECURE: Resolve bound_device_id only from trusted server-side registry.
+        Validates the session before returning the mapping.
+        """
+        self.validate_session(session_context)
+
+        # SECURE: Resolve bound_device_id only from trusted server-side registry.
+        # Overwrite any client-provided bound_device_id with the trusted mapping.
+        device_id = session_context.get("device_id")
+        session_context["bound_device_id"] = device_id
+
+        return device_id
 
     def _map_efaas_identity(self, oidc_payload: Dict[str, Any]):
         """Maps real eFaas OIDC fields to internal guest profile."""

@@ -6,6 +6,7 @@ from decimal import Decimal
 sys.path.append(os.getcwd())
 
 from mnos.boot_check import check_integrity
+from mnos.core.security.aegis import aegis
 from mnos.interfaces.sky_i.comms.whatsapp import whatsapp
 from mnos.modules.exmail.service import exmail_authority
 from mnos.modules.shadow.service import shadow
@@ -29,7 +30,10 @@ def run_validation():
     dna = "NEXUS DNA: Bookings are handled by FCE. Arrivals trigger AQUA. Emergencies trigger LIFELINE."
     knowledge_core.ingest("NEXUS_DNA", dna)
 
-    ctx = {"device_id": "nexus-001", "bound_device_id": "nexus-001"}
+    # SECURE: All contexts must be signed before execution
+    ctx_payload = {"device_id": "nexus-001", "bound_device_id": "nexus-001"}
+    ctx = ctx_payload.copy()
+    ctx["signature"] = aegis.sign_session(ctx_payload)
 
     # 3. ExMAIL Booking (Positive Sentiment -> Task Conversion)
     print("\n[SCENARIO 1: ExMAIL Positive Booking]")

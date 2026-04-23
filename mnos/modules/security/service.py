@@ -1,6 +1,7 @@
 from typing import Dict, Any, List
 from mnos.shared.execution_guard import guard
 from mnos.core.events.service import events
+from mnos.core.security.apollo import apollo
 
 class SecurityModule:
     """
@@ -79,10 +80,18 @@ class SecurityModule:
         return {"status": "alerted", "notified": ["staff", "operators"]}
 
     def process_security_event(self, event_data: Dict[str, Any], session_context: Dict[str, Any]):
-        """Main entry point for security events from bridge."""
+        """
+        Main entry point for security events from bridge.
+        Route: Bridge -> SecurityModule -> APOLLO -> ExecutionGuard
+        """
         threat_level = self.evaluate_threat(event_data)
         frigate_after = event_data.get("frigate_event", {}).get("after", {})
         zone = frigate_after.get("current_zones", ["unknown"])[0]
+
+        # Mandatory Policy Evaluation via APOLLO Control Plane
+        if not apollo.evaluate_action(threat_level, zone, event_data):
+            print(f"[Security] ACTION BLOCKED BY APOLLO POLICY PLANE")
+            return
 
         if threat_level == 5:
              guard.execute_sovereign_action(

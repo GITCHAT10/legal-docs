@@ -77,7 +77,7 @@ class ShadowLedger:
             "payload": entry["payload"],
             "previous_hash": entry["previous_hash"],
             "timestamp": entry["timestamp"]
-        }, sort_keys=True).encode()
+        }, sort_keys=True, separators=(',', ':')).encode()
         return hashlib.sha256(block_string).hexdigest()
 
     def verify_integrity(self) -> bool:
