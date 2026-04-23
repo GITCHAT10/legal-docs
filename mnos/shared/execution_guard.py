@@ -1,4 +1,5 @@
 import uuid
+import threading
 import contextvars
 from typing import Dict, Any, Callable
 from mnos.core.security.aegis import aegis
@@ -23,6 +24,9 @@ class ExecutionGuard:
         financial_validation: bool = False
     ):
         token = in_sovereign_context.set(True)
+        t = threading.current_thread()
+        prev_guard = getattr(t, 'in_sovereign_guard', False)
+        t.in_sovereign_guard = True
         try:
             trace_id = str(uuid.uuid4())
 
@@ -127,6 +131,7 @@ class ExecutionGuard:
             return result
         finally:
             in_sovereign_context.reset(token)
+            t.in_sovereign_guard = prev_guard
 
 guard = ExecutionGuard()
 

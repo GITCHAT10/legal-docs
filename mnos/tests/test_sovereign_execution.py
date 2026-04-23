@@ -16,7 +16,8 @@ class TestSovereignExecution(unittest.TestCase):
         # Direct publish outside sovereign context MUST fail
         with self.assertRaises(RuntimeError) as cm:
             events.publish("nexus.booking.created", {"data": "direct"})
-        self.assertIn("Write attempted outside Execution Guard", str(cm.exception))
+        # Hardened message
+        self.assertIn("SOVEREIGN_CONTEXT_REQUIRED", str(cm.exception))
 
     def test_guarded_publish_accepted(self):
         # Guarded execution inside sovereign context MUST succeed

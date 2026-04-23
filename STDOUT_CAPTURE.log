@@ -1,0 +1,20 @@
+Traceback (most recent call last):
+  File "/app/guard_probe.py", line 8, in <module>
+    events.publish('rogue.event', {})
+  File "/app/mnos/core/events/service.py", line 40, in publish
+    raise RuntimeError('SOVEREIGN_CONTEXT_REQUIRED: Access Denied to UEI 2024PV12395H')
+RuntimeError: SOVEREIGN_CONTEXT_REQUIRED: Access Denied to UEI 2024PV12395H
+=== TEST 1: ROGUE CALL (NO GUARD) ===
+✅ PASS: Rogue call blocked
+
+=== TEST 2: GUARDED CALL ===
+✅ PASS: Guarded publish succeeded
+
+=== TEST 3: STRESS RUN (1000 EVENTS) ===
+Events Success: 1000
+Events Failed: 0
+
+=== TEST 4: SHADOW AUDIT ===
+stress_event_count: 1001
+stress_shadow_block_count: 1001
+✅ PASS: No silent execution
