@@ -1,0 +1,1 @@
+class RollbackEngine: pass
