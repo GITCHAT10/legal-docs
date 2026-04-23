@@ -89,14 +89,20 @@ class ShadowLedger:
         return hashlib.sha256(block_string).hexdigest()
 
     def verify_integrity(self) -> bool:
-        """Validates the entire hash chain from genesis to head."""
+        """Validates the entire hash chain from genesis to head (HARDENED)."""
         if not self.chain:
             return False
 
-        # Check Genesis Root
+        # P0: Explicit Genesis Block Validation (Index 0)
         genesis = self.chain[0]
-        if genesis["hash"] != self._calculate_hash(genesis):
-            return False
+        recomputed_genesis_hash = self._calculate_hash(genesis)
+
+        if genesis["hash"] != recomputed_genesis_hash:
+             return False
+
+        if genesis["hash"] != config.CORE_V1_ROOT_HASH:
+             print(f"!!! SHADOW: Genesis Root Anchor Mismatch !!!")
+             return False
 
         for i in range(1, len(self.chain)):
             current = self.chain[i]

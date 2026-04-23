@@ -47,18 +47,21 @@ def test_whatsapp_hardened_flow():
 
 def test_concurrent_integrity_sim():
     """Verify multiple workflows maintain immutable chain integrity."""
+    # Use different phone numbers to avoid any caching side effects if they existed
     ctx = {"device_id": "nexus-001"}
-    ctx["signature"] = aegis_sign(ctx)
+    ctx["signature"] = aegis_sign({"device_id": "nexus-001"})
 
-    # Sequence of events
-    whatsapp.receive_message("+9601", "Book room", ctx)
-    whatsapp.receive_message("+9602", "Arrival", ctx)
+    # 1. Book Room (Triggers 2 entries: exmail/whatsapp received + payment received)
+    whatsapp.receive_message("+9601001", "Book room", ctx.copy())
 
-    # Analysis:
-    # 1. Genesis (1)
-    # 2. WhatsApp:Book -> Guard -> Logic -> Shadow (2)
-    # 3. HandleBooking -> Events.Publish(Payment) -> Shadow (3)
-    # 4. WhatsApp:Arrival -> Guard -> Logic -> Shadow (4)
-    # Total: 4 entries
-    assert len(shadow.chain) >= 4
+    # 2. Arrival (Triggers 1 entry)
+    whatsapp.receive_message("+9601002", "Arrival", ctx.copy())
+
+    # Chain:
+    # [0] GENESIS
+    # [1] nexus.booking.created (via whatsapp)
+    # [2] nexus.payment.received (via handle_booking subscriber)
+    # [3] nexus.guest.arrival (via whatsapp)
+
+    assert len(shadow.chain) == 4
     assert shadow.verify_integrity() is True

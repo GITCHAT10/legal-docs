@@ -60,7 +60,8 @@ def run_proof():
 
     mira_ok = (res1["green_tax"] > 0 and res2["green_tax"] == 0 and res3["green_tax"] == 0)
     print(f" -> MIRA Rules Validated: {mira_ok}")
-    proof_results["mira_compliance"] = "PASS" if mira_ok else "FAIL"
+    assert mira_ok is True
+    proof_results["mira_compliance"] = "PASS"
 
     # 4. eFaas: Identity Mapping
     print("\n[PROOF: eFaas IDENTITY]")
@@ -73,7 +74,8 @@ def run_proof():
     mapping = aegis._map_efaas_identity(oidc_sample)
     efaas_ok = (mapping["national_id"] == "A999999" and mapping["full_name"] == "Certified Resident")
     print(f" -> Identity fields confirmed: {efaas_ok}")
-    proof_results["efaas_mapping"] = "PASS" if efaas_ok else "FAIL"
+    assert efaas_ok is True
+    proof_results["efaas_mapping"] = "PASS"
 
     print("\n--- PROOF SUMMARY ---")
     print(json.dumps(proof_results, indent=2))
