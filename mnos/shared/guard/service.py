@@ -32,7 +32,8 @@ class ExecutionGuard:
         financial_validation: bool = False,
         financial_intent: Dict[str, Any] = None,
         objective_code: str = "J5", # Constitutional Default
-        tenant: str = None
+        tenant: str = None,
+        mission_scope: str = None
     ) -> Any:
         """
         NEXUS-SKYI-APOLLO Sovereign Execution Guard:
@@ -50,6 +51,12 @@ class ExecutionGuard:
             # MANDATORY BINDING: No unverified deploy, no direct client override.
             if not tenant:
                 raise RuntimeError("EXECUTION_GUARD: Mandatory Tenant context is missing.")
+
+            # UI Actuation Hook: Mission Scope Validation
+            current_scope = mission_scope or session_context.get("mission_scope")
+            if action_type in ["FINALIZE_INVOICE", "SEND_GUEST_REPLY", "CHECK_IN_GUEST"]:
+                 if current_scope != "V1":
+                      raise RuntimeError(f"LAW_OF_THE_BUTTON: UI action '{action_type}' denied. Mission Scope 'V1' required.")
 
             # 1. AIG TUNNEL (Network Validation) - AIG-ORBAN Enforced
             # MANDATORY: Require ORBAN context for all external ingress.

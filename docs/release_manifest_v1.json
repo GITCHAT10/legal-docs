@@ -1,13 +1,14 @@
 {
-  "release": "v1.0.0-skyi-core",
-  "doctrine": "MNOS",
+  "release": "v1.0.0-aig-genesis",
+  "doctrine": "MNOS-SOVEREIGN",
   "modules": {
-    "AEGIS": "mnos/core/security/aegis.py",
+    "AEGIS": "mnos/core/aig_aegis/service.py",
     "FCE": "mnos/modules/fce/service.py",
-    "SHADOW": "mnos/modules/shadow/service.py",
-    "EVENTS": "mnos/core/events/service.py",
-    "SILVIA": "mnos/core/ai/silvia.py",
-    "KNOWLEDGE": "mnos/modules/knowledge/service.py",
+    "SHADOW": "mnos/modules/aig_shadow/service.py",
+    "EVENTS": "mnos/infrastructure/mig_event_spine/service.py",
+    "TUNNEL": "mnos/core/aig_tunnel/service.py",
+    "GOVERNANCE": "mnos/core/aig_l5_control/service.py",
+    "GUARD": "mnos/shared/guard/service.py",
     "ExMAIL": "mnos/modules/exmail/service.py"
   },
   "event_taxonomy": [
@@ -18,29 +19,23 @@
     "exmail.received",
     "exmail.sent",
     "exmail.task.created",
-    "exmail.ticket.created"
+    "exmail.ticket.created",
+    "sala.invoice.finalized",
+    "sala.guest.checkin",
+    "sala.folio.updated"
   ],
   "file_hashes": {
-    "mnos/boot_check.py": "5d2483ca0fd037bfd8cdb61548e6160ea14d834ee0429a2519cdf1ea18872b95",
-    "mnos/validate_system.py": "4086277d02bfa530033bea5021d64015472c9f835ea328902ea67befd3bfb6c8",
-    "mnos/stress_test.py": "1bc09bbf87b4869fd482c6c02ce8d6634baac28fcb7fbdf81c0fde449ff8ed67",
-    "mnos/config.py": "7ce25918fe8d88b6879714640dac32d4a5b28745b2da15c08ccf2555bddfa98f",
-    "mnos/final_sovereign_tests.py": "1f20061ebf39af5bfba0cf167cc41a03ea77ce8863d686e20de853486eaa22c9",
-    "mnos/modules/shadow/service.py": "107ba02936396e63d6c4d035e1688ac0bb8b9ef94daf1e3b23d59c8442dcbdc4",
-    "mnos/modules/exmail/service.py": "f5f94b35457d86a6a064e91624b4fbce764f4bec1b570c28447cf7e0a674bf72",
-    "mnos/modules/workflows/booking.py": "ef8efd65e6ec8f57b829ced6034907d62340713872a6637da7edc54d18ed7bae",
-    "mnos/modules/workflows/emergency.py": "de3b6cf87446be9d40e1b9d2f411bb343d078b9aacf78cdd52966e49dcb1484d",
-    "mnos/modules/workflows/guest_arrival.py": "51070faabf127a4080a07fe92e32b06dede502198a6a9f7732ddb8e78de92e54",
-    "mnos/modules/fce/service.py": "57dc054dc6cd97bfed12a057ae786178deebd620a08f6ff144af0ce9d0e8622e",
-    "mnos/modules/knowledge/test_retrieval.py": "4f5a21051522d4f8d174b2382e74b92bdd391334387cf0fee1b682d17cf44502",
-    "mnos/modules/knowledge/service.py": "fb901cbe69d5398863822bd9539b997cae83839058edb2d618bd1a998058cb72",
-    "mnos/core/events/service.py": "438fd3b37afcb06af051ebcc914bd1151c570631e8d4b937068dfd290586b85f",
-    "mnos/core/security/aegis.py": "460e7982c785db53e8a4204ad81f0b14430c0e1eec444e19372fcabd37621c0d",
-    "mnos/core/resilience/backup.py": "e76380aff3bb1b5fd06490fdce8eb35234ead73684b829b6db6f0cc372a90a23",
-    "mnos/core/ai/silvia.py": "95cc7378cba3f166160590f71b63f546eab8f65fff814d274c0f4b2fba7e5a0b",
-    "mnos/shared/execution_guard.py": "cd8e13d8aec4130b4ff3e59581dfd6865d003b9ee90fac770c57e42a5b1d622c",
-    "mnos/interfaces/sky_i/comms/whatsapp.py": "4a8ad7e5b493f526033892413cce796c8aa1d08e31f2da08f74a0dbb52dfa315",
-    "mnos/tests/final_hard_verification.py": "f6add48266452c72d447650eb7c5458efe5dd2557e5ec31aca0f95a4e20cf05b",
-    "mnos/tests/rc2_hardening_suite.py": "db6f171ac44d58802a07c8fa21394355b82cc6d885063a784cf26cc9bd3e7cce"
+    "mnos/config.py": "c6477e8c46821d9f5141c131e4df563d9600461ed18e1ac90a6d84768bb09f27",
+    "mnos/core/aig_aegis/service.py": "4d086500067fbb9a9357bfb2961938c3871ef153de2102723875b5946990cc0f",
+    "mnos/core/aig_tunnel/service.py": "b031812016d151e11f790fb2074eb8b90535e1e82d4b51e5bda57ba50e95732b",
+    "mnos/core/aig_l5_control/service.py": "8669259bae2a37e9be836c1783058a1c0f11d6ab941d209f5a69552e6ddda7a4",
+    "mnos/infrastructure/mig_event_spine/service.py": "92b62fdddb732377e479ad1ff7d6adf1442594e72eca0bd824ca043741de6d3e",
+    "mnos/shared/guard/service.py": "0c3d3375afcb59c61ccae453403a013bddba0b44eb568c19f5644627f3fceb3c",
+    "mnos/modules/fce/service.py": "13d16826d005ed7a0347fc49c1eb0884c9001397f84a844d17a160f145cc1295",
+    "mnos/modules/exmail/service.py": "0c10429126ed1153191cdf762d9b2b507879e70d37b81d3e99ef98a5195d2401",
+    "mnos/modules/aig_vault/service.py": "1137720641f6eb8516d161b54e6a8cb002bf9c260bbc94324e068f573a58d288",
+    "mnos/final_sovereign_tests.py": "bca3aa6186e252e703154bdf7e1a7474038653a0249a1ace43ac0bc01cea145c",
+    "mnos/tests/rc2_hardening_suite.py": "0ac3ad22673e6c3396f1a54da927af09ec90d6668923656045d934b3e0c8f952",
+    "mnos/tests/test_sala_ui_live_cycle.py": "c70d1d98180ec75001c52e32dd5390d47a12d462e16d93c824613f2cebcd23e4"
   }
 }

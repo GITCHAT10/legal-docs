@@ -25,6 +25,9 @@ class EventBus:
         "ut.cargo.dispatch",
         "ut.payout.finalized",
         "payment.received",
+        "sala.invoice.finalized",
+        "sala.guest.checkin",
+        "sala.folio.updated",
         "test"
     }
 
