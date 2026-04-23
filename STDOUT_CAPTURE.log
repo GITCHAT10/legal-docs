@@ -1,7 +1,7 @@
 Traceback (most recent call last):
   File "/app/guard_probe.py", line 8, in <module>
     events.publish('rogue.event', {})
-  File "/app/mnos/core/events/service.py", line 40, in publish
+  File "/app/mnos/core/events/service.py", line 44, in publish
     raise RuntimeError('SOVEREIGN_CONTEXT_REQUIRED: Access Denied to UEI 2024PV12395H')
 RuntimeError: SOVEREIGN_CONTEXT_REQUIRED: Access Denied to UEI 2024PV12395H
 === TEST 1: ROGUE CALL (NO GUARD) ===

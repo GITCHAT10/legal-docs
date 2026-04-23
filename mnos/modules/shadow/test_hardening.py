@@ -38,5 +38,20 @@ class TestShadowHardening(unittest.TestCase):
         shadow.chain[1]["previous_hash"] = "tampered_hash"
         self.assertFalse(shadow.verify_integrity())
 
+    def test_witness_mode_read_only(self):
+        # 1. Enable witness mode
+        shadow.enable_witness_mode()
+
+        # 2. Attempt commit inside sovereign context
+        token = in_sovereign_context.set(True)
+        try:
+            with self.assertRaises(RuntimeError) as cm:
+                shadow.commit("nexus.guest.arrival", {"v": 1})
+            self.assertIn("SHADOW_READ_ONLY", str(cm.exception))
+        finally:
+            in_sovereign_context.reset(token)
+            # Disable for other tests
+            shadow.witness_mode = False
+
 if __name__ == "__main__":
     unittest.main()

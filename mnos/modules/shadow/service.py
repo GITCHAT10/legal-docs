@@ -37,6 +37,9 @@ class ShadowLedger:
 
     def commit(self, event_type: str, payload: Dict[str, Any]) -> str:
         """Appends a new entry. Verifies full chain before and after commit."""
+        if getattr(self, "witness_mode", False):
+            raise RuntimeError("SHADOW_READ_ONLY: Commit blocked in Witness Mode.")
+
         from mnos.shared.execution_guard import ensure_sovereign_context
         ensure_sovereign_context()
 
@@ -101,6 +104,11 @@ class ShadowLedger:
 
         block_string = json.dumps(data, sort_keys=True, separators=(',', ':')).encode()
         return hashlib.sha256(block_string).hexdigest()
+
+    def enable_witness_mode(self):
+        """Enables Read-Only Witness Node support."""
+        print("[SHADOW] Witness Mode ENABLED. Cross-validation active.")
+        self.witness_mode = True
 
     def verify_integrity(self) -> bool:
         """

@@ -37,7 +37,11 @@ class EventBus:
     def publish(self, event_type: str, data: Dict[str, Any] = None, trace_id: str = None) -> Dict[str, Any]:
         """Publishes an event and commits to SHADOW ledger."""
         if not getattr(threading.current_thread(), 'in_sovereign_guard', False):
-            raise RuntimeError('SOVEREIGN_CONTEXT_REQUIRED: Access Denied to UEI 2024PV12395H')
+            # FALLBACK: DEGRADED_MODE_IF_CRITICAL
+            if event_type == "nexus.emergency.triggered":
+                print(f"[EventBus] CRITICAL EMERGENCY DETECTED OUTSIDE GUARD. Allowing degraded-mode emission.")
+            else:
+                raise RuntimeError('SOVEREIGN_CONTEXT_REQUIRED: Access Denied to UEI 2024PV12395H')
 
         if event_type not in self.TAXONOMY:
             # Allow stress test events if they start with event_
