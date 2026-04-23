@@ -1,5 +1,5 @@
 from typing import Dict, Any, List
-from mnos.shared.execution_guard import guard
+from mnos.shared.guard.service import guard
 from mnos.modules.aig_vault.service import aig_vault
 from mnos.modules.fce.service import fce
 from mnos.infrastructure.mig_event_spine.service import events

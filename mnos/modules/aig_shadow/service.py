@@ -41,7 +41,7 @@ class AIGShadowLedger:
         Appends a new entry. Verifies full chain before and after commit.
         Supports multi-stage logging: 'intent' or 'result'.
         """
-        from mnos.shared.execution_guard import ensure_sovereign_context
+        from mnos.shared.guard.service import ensure_sovereign_context
         ensure_sovereign_context()
 
         if not self.verify_integrity():
@@ -72,14 +72,19 @@ class AIGShadowLedger:
             raise
 
     def _calculate_hash(self, entry: Dict[str, Any]) -> str:
-        """previous_hash + event_type + stage + payload + entry_id -> current_hash"""
+        """
+        Legal-Grade Audit Hash:
+        previous_hash + event_type + stage + payload + entry_id + timestamp -> current_hash
+        Enforces absolute chronology and temporal immutability.
+        """
         block_string = json.dumps({
             "entry_id": entry["entry_id"],
             "event_type": entry["event_type"],
             "stage": entry.get("stage", "result"),
             "payload": entry["payload"],
-            "previous_hash": entry["previous_hash"]
-        }, sort_keys=True).encode()
+            "previous_hash": entry["previous_hash"],
+            "timestamp": entry["timestamp"]
+        }, sort_keys=True, default=str).encode()
         return hashlib.sha256(block_string).hexdigest()
 
     def verify_integrity(self) -> bool:

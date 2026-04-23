@@ -8,7 +8,7 @@ from mnos.interface.mig_tactical_panel.sky_i.comms.whatsapp import whatsapp
 import mnos.modules.workflows.booking
 import mnos.modules.workflows.guest_arrival
 from mnos.modules.knowledge.service import knowledge_core
-from mnos.shared.execution_guard import guard
+from mnos.shared.guard.service import guard
 from mnos.core.aig_aegis.service import aig_aegis
 
 @pytest.fixture(autouse=True)

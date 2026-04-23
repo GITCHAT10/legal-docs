@@ -13,6 +13,7 @@ class TrustedDeviceRegistry:
         # In production, this would be backed by a secure DB/HSM
         self._trusted_devices: Dict[str, Dict[str, Any]] = {
             "nexus-001": {"status": "ACTIVE", "tier": 1},
+            "nexus-002": {"status": "ACTIVE", "tier": 1},
             "nexus-admin-01": {"status": "ACTIVE", "tier": 3},
             "ut-dispatch-01": {"status": "ACTIVE", "tier": 2}
         }

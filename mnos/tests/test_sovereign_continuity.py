@@ -2,7 +2,7 @@ import pytest
 from mnos.modules.aig_shadow_sync.service import sync_agent
 from mnos.modules.aig_shadow_sync.db_mirror import db_mirror
 from mnos.modules.aig_sentinel.service import aig_sentinel
-from mnos.shared.execution_guard import guard
+from mnos.shared.guard.service import guard
 from mnos.core.aig_aegis.service import aig_aegis
 
 @pytest.fixture

@@ -2,7 +2,7 @@ import pytest
 from decimal import Decimal
 from mnos.modules.fce.service import fce, FinancialException
 from mnos.modules.aig_shadow.service import aig_shadow
-from mnos.shared.execution_guard import guard
+from mnos.shared.guard.service import guard
 from mnos.core.aig_aegis.service import aig_aegis, SecurityException
 
 def aig_aegis_sign(payload):

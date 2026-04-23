@@ -30,6 +30,10 @@ class ExecutionGuard:
         approvals: List[str] = None,
         financial_validation: bool = False
     ) -> Any:
+        """
+        NEXUS-SKYI-APOLLO Sovereign Execution Guard:
+        Enforces Zero-Trust mandatory validation chain.
+        """
         token = in_sovereign_context.set(True)
         try:
             trace_id = str(uuid.uuid4())
@@ -39,10 +43,11 @@ class ExecutionGuard:
             # MANDATORY 5-LAYER SEQUENTIAL ENFORCEMENT
             # NO bypass paths allowed. Failure at any layer stops execution.
 
-            # 1. AIG_TUNNEL (Network Validation)
+            # 1. AIG TUNNEL (Network Validation) - AIG-ORBAN Enforced
             aig_tunnel.validate_connection(connection_context)
 
-            # 2. AIGAegis (Identity Validation - includes device and biometric)
+            # 2. AIG AEGIS (Identity Validation - Mandatory Signed Session)
+            # Enforces AEGIS_DEVICE_BINDING and BIOMETRIC_HANDSHAKE
             aig_aegis.validate_session(session_context)
 
             # 3. L5 (Governance Approval - Safe-Firing Logic)

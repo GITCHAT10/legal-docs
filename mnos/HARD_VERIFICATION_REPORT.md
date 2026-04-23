@@ -26,7 +26,7 @@
 - `mnos.core.aig_aegis.service.py`
 - `mnos/modules/aig_shadow/service.py`
 - `mnos/config.py`
-- `mnos/shared/execution_guard.py`
+- `mnos.shared.guard.service.py`
 - `mnos/final_sovereign_tests.py`
 
 ## ⚠️ Remaining Risks

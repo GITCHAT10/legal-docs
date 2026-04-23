@@ -88,16 +88,14 @@ def test_aig_l5_governance_failure(valid_session, valid_connection):
 def test_aig_vault_permission_failure(valid_connection):
     """Layer 2: Data Security check (AIGVault Vault)."""
     # Guest session (no write permission)
-    payload = {"device_id": "nexus-001", "biometric_verified": True}
-    # nexus-001 is trusted in Registry but not given write in aig_vault mock permissions in service.py
-    # Wait, in aig_vault mock, nexus-admin has write, nexus-guest has read.
-    # mnos.core.aig_aegis.service.py TrustedDeviceRegistry has {"nexus-001", "nexus-admin-01"}
+    payload = {"device_id": "nexus-002", "biometric_verified": True}
+    # nexus-002 is trusted in Registry but NOT given ANY permissions in aig_vault mock
 
-    # Let's use nexus-001 which is trusted device but not in aig_vault's admin list
+    # Let's use nexus-002 which is trusted device but not in aig_vault's admin list
     sig = aig_aegis.sign_session(payload)
     payload["signature"] = sig
 
-    with pytest.raises(VaultException, match="AIG_VAULT: Identity 'nexus-001' denied 'write' access"):
+    with pytest.raises(VaultException, match="AIG_VAULT: Identity 'nexus-002' denied 'write' access"):
         cloud_engine.store_sovereign_data(
             file_id="top-secret.doc",
             data="...",

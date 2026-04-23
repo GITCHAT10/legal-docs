@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from typing import Dict, Any, List
 from mnos.core.ai.silvia import silvia
 from mnos.infrastructure.mig_event_spine.service import events
-from mnos.shared.execution_guard import guard
+from mnos.shared.guard.service import guard
 
 class ExMailAuthority:
     """
@@ -34,6 +34,7 @@ class ExMailAuthority:
                     "encryption": "wireguard",
                     "tunnel": "aig_tunnel",
                     "source_ip": "10.0.0.5",
+                    "session_id": str(uuid.uuid4()),
                     "node_id": "EDGE-01"
                 }
 

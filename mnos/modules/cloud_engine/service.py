@@ -1,5 +1,5 @@
 from typing import Dict, Any, List
-from mnos.shared.execution_guard import guard
+from mnos.shared.guard.service import guard
 
 class CloudEngine:
     """

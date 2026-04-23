@@ -11,11 +11,11 @@ class AIGVault:
     Ensures data is not exposed to public cloud by default.
     """
     def __init__(self):
-        # In-memory mock for demonstration: Aligning with AIGAegis device IDs
+        # AIG APOLLO ACL: Role-based alignment with AIG AEGIS
         self.permissions: Dict[str, List[str]] = {
-            "nexus-admin-01": ["read", "write", "delete"],
+            "nexus-admin-01": ["*"], # Full Sovereign Control
             "ut-dispatch-01": ["read", "write"],
-            "nexus-001": ["read"]
+            "nexus-001": ["read", "write"]
         }
 
     def check_permission(self, identity: str, action: str):

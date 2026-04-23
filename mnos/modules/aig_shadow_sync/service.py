@@ -18,25 +18,31 @@ class SyncAgent:
     def process_cdc_event(self, table: str, operation: str, data: Dict[str, Any]):
         """
         Processes a Change Data Capture event from the cloud.
+        NEXUS-SKYI-APOLLO: Enforces fail-closed sync integrity.
         """
-        layer = self._get_data_layer(table)
+        try:
+            layer = self._get_data_layer(table)
 
-        event = {
-            "table": table,
-            "operation": operation,
-            "data": data,
-            "layer": layer,
-            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat()
-        }
+            event = {
+                "table": table,
+                "operation": operation,
+                "data": data,
+                "layer": layer,
+                "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat()
+            }
 
-        # Apply to local mirror (Simulation)
-        from mnos.modules.aig_shadow_sync.db_mirror import db_mirror
-        db_mirror.apply_change(event)
+            # Apply to local mirror (Simulation)
+            from mnos.modules.aig_shadow_sync.db_mirror import db_mirror
+            db_mirror.apply_change(event)
 
-        # Audit state change in AIGShadow
-        # Use ensures_sovereign_context by calling via guard or similar?
-        # For now, we simulate the CDC as an authorized system process
-        return event
+            # APOLLO: Deferred Commit Logic (Simulation)
+            # In a real edge node, this would queue the commit for the next heartbeat
+
+            return event
+        except Exception as e:
+            # FAIL-CLOSED: If sync fails, the edge node must enter emergency mode
+            print(f"[AIGShadowSync] FAIL-CLOSED: Sync disruption detected: {str(e)}")
+            raise RuntimeError("Sovereign Sync Failure: System Halt mandated.") from e
 
     def _get_data_layer(self, table: str) -> str:
         for layer, tables in self.priority_layers.items():
