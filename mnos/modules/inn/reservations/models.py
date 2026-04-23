@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Date, ForeignKey, Enum, Float, DateTime, UniqueConstraint, Boolean
 from sqlalchemy.orm import relationship
 import enum
-from datetime import datetime
+from datetime import datetime, UTC
 from mnos.core.db.base_class import Base
 
 class ReservationStatus(str, enum.Enum):
@@ -24,7 +24,7 @@ class Room(Base):
     tenant_id = Column(String, index=True, nullable=False, default="default")
     trace_id = Column(String, index=True, nullable=False)
     version = Column(Integer, default=1, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
     created_by = Column(String, default="SYSTEM")
 
     room_number = Column(String, index=True, nullable=False)
@@ -41,7 +41,7 @@ class Reservation(Base):
     tenant_id = Column(String, index=True, nullable=False, default="default")
     trace_id = Column(String, index=True, nullable=False)
     version = Column(Integer, default=1, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
     created_by = Column(String, default="SYSTEM")
 
     guest_id = Column(Integer, ForeignKey("guest.id"), nullable=False)
@@ -60,7 +60,7 @@ class Stay(Base):
     tenant_id = Column(String, index=True, nullable=False, default="default")
     trace_id = Column(String, index=True, nullable=False)
     version = Column(Integer, default=1, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
     created_by = Column(String, default="SYSTEM")
 
     reservation_id = Column(Integer, ForeignKey("reservation.id"), nullable=False)

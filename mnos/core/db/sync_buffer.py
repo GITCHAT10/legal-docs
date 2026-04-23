@@ -20,23 +20,26 @@ class SyncBuffer:
         })
 
     def process_sync(self, db: Session) -> List[str]:
-        """Seal all buffered transactions in SHADOW before clearing."""
+        """Seal all buffered transactions in SHADOW before clearing memory."""
         sealed_traces = []
         try:
             for tx in self._buffer:
-                # MANDATORY SHADOW COMMIT BEFORE CLEARING
+                # 1. Commit Evidence to SHADOW
                 shadow_service.commit_evidence(db, tx["trace_id"], {
                     "action": "OFFLINE_SYNC",
                     "original_payload": tx["payload"],
                     "offline_at": tx["offline_timestamp"]
                 })
                 sealed_traces.append(tx["trace_id"])
+
+            # 2. COMMIT DB
             db.commit()
+
+            # 3. Clear Buffer only if commit succeeds
+            self._buffer.clear()
+            return sealed_traces
         except Exception as e:
             db.rollback()
             raise e
-
-        self._buffer.clear()
-        return sealed_traces
 
 sync_buffer = SyncBuffer()

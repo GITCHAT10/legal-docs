@@ -2,9 +2,10 @@ from typing import Dict, Optional, Any, List
 from sqlalchemy.orm import Session
 from mnos.modules.fce import models
 import uuid
-from datetime import datetime, date
+from datetime import datetime, date, UTC
 from .tax_logic import calculate_maldives_taxes
 from mnos.modules.shadow import service as shadow_service
+from fastapi import HTTPException
 
 def open_folio(db: Session, reservation_id: str, trace_id: str, tenant_id: str = "default", actor: str = "SYSTEM") -> models.Folio:
     try:
@@ -38,31 +39,32 @@ def open_folio(db: Session, reservation_id: str, trace_id: str, tenant_id: str =
         db.rollback()
         raise
 
-from fastapi import HTTPException
-from datetime import datetime, UTC
-
 def finalize_invoice(db: Session, folio_id: int, trace_id: Optional[str] = None, tenant_id: str = "default", actor: str = "SYSTEM") -> models.Invoice:
+    """
+    Harden Finance: Lock exchange rate and generate ledger entry.
+    Law: Base + 10% SC -> Subtotal -> 17% TGST.
+    """
     try:
         if not trace_id:
             trace_id = f"INV-FIN-{uuid.uuid4().hex[:8]}"
+
         folio = db.query(models.Folio).filter(models.Folio.id == folio_id).first()
         if not folio:
             raise HTTPException(status_code=404, detail="Folio not found")
 
         # idempotency / guard against double-finalization
         if folio.status == models.FolioStatus.FINALIZED:
-            # Try to find existing invoice
             existing_invoice = db.query(models.Invoice).filter(models.Invoice.folio_id == folio_id).first()
             if existing_invoice:
                 return existing_invoice
 
-        if hasattr(folio, "status"):
-            folio.status = models.FolioStatus.FINALIZED
-        if hasattr(folio, "finalized_by"):
-            folio.finalized_by = actor
-        if hasattr(folio, "finalized_at"):
-            folio.finalized_at = datetime.now(UTC)
+        # 1. Lock Exchange Rate (Mock for sandbox)
+        exchange_rate = 15.42 # USD/MVR
 
+        # 2. Update Folio Status
+        folio.status = models.FolioStatus.FINALIZED
+
+        # 3. Create Invoice
         invoice = models.Invoice(
             tenant_id=tenant_id,
             trace_id=trace_id,
@@ -73,12 +75,17 @@ def finalize_invoice(db: Session, folio_id: int, trace_id: Optional[str] = None,
         db.add(invoice)
         db.flush()
 
+        # 4. Generate SHADOW Audit entry
         shadow_service.commit_evidence(db, trace_id, {
             "actor": actor,
             "action": "FINALIZE_INVOICE",
             "entity_type": "INVOICE",
             "entity_id": invoice.id,
-            "after_state": {"invoice_number": invoice.invoice_number, "amount": invoice.total_amount}
+            "financial_lock": {
+                "amount": invoice.total_amount,
+                "exchange_rate": exchange_rate,
+                "currency": folio.currency
+            }
         })
 
         db.commit()
@@ -87,9 +94,9 @@ def finalize_invoice(db: Session, folio_id: int, trace_id: Optional[str] = None,
     except HTTPException:
         db.rollback()
         raise
-    except Exception:
+    except Exception as e:
         db.rollback()
-        raise
+        raise e
 
 def post_charge(db: Session, folio_id: int, charge_data: Dict, trace_id: str, tenant_id: str = "default", actor: str = "SYSTEM") -> models.FolioLine:
     try:
@@ -104,6 +111,7 @@ def post_charge(db: Session, folio_id: int, charge_data: Dict, trace_id: str, te
         if isinstance(biz_date, str): biz_date = date.fromisoformat(biz_date)
         elif not biz_date: biz_date = date.today()
 
+        # ENFORCEMENT: 10% Service Charge + 17% TGST (tourism flows)
         taxes = calculate_maldives_taxes(
             charge_data["base_amount"],
             biz_date,

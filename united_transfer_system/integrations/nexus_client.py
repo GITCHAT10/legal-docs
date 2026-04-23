@@ -25,7 +25,6 @@ class NexusClient:
         """AEGIS: verify-session / trusted operator validation."""
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             try:
-                # Mock calling NEXUS AEGIS bridge
                 res = await client.get(
                     f"{self.base_url}/auth/verify",
                     headers={"Authorization": f"Bearer {token}", "X-NexGen-Patente": patente}
@@ -35,18 +34,32 @@ class NexusClient:
                 logging.error(f"NEXUS AEGIS error: {e}")
                 return False
 
-    async def preauthorize_payment(self, amount: float, trace_id: str) -> bool:
-        """FCE: preauthorize payment via NEXUS FCE module."""
+    async def finalize_invoice(self, journey_id: int, trace_id: str) -> Optional[Dict]:
+        """FCE: finalize_invoice implementation."""
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             try:
                 res = await client.post(
-                    f"{self.base_url}/finance/preauth",
-                    json={"amount": amount, "trace_id": trace_id},
+                    f"{self.base_url}/finance/finalize",
+                    json={"journey_id": journey_id, "trace_id": trace_id},
+                    headers=self._get_headers()
+                )
+                return res.json() if res.status_code == 200 else None
+            except Exception as e:
+                logging.error(f"NEXUS FCE error: {e}")
+                return None
+
+    async def release_payout(self, journey_id: int, trace_id: str) -> bool:
+        """FCE: release_payout implementation."""
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            try:
+                res = await client.post(
+                    f"{self.base_url}/finance/payout",
+                    json={"journey_id": journey_id, "trace_id": trace_id},
                     headers=self._get_headers()
                 )
                 return res.status_code == 200
             except Exception as e:
-                logging.error(f"NEXUS FCE error: {e}")
+                logging.error(f"NEXUS Payout error: {e}")
                 return False
 
     async def commit_evidence(self, trace_id: str, payload: Dict[str, Any]) -> bool:

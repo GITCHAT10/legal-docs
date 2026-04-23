@@ -10,9 +10,14 @@ class LegType(str, enum.Enum):
     SEA = "sea"
 
 class JourneyStatus(str, enum.Enum):
-    PENDING = "pending"
-    IN_PROGRESS = "in_progress"
+    CREATED = "created"
+    CONFIRMED = "confirmed"
+    DISPATCHED = "dispatched"
+    PICKED_UP = "picked_up"
+    IN_TRANSIT = "in_transit"
+    DROPPED = "dropped"
     COMPLETED = "completed"
+    PAID = "paid"
     CANCELLED = "cancelled"
     REROUTED = "rerouted"
 
@@ -34,11 +39,14 @@ class Partner(Base):
 class Journey(Base):
     id = Column(Integer, primary_key=True, index=True)
     tenant_id = Column(String, index=True, nullable=False, default="default")
-    trace_id = Column(String, index=True, nullable=False) # MANDATORY
+    trace_id = Column(String, index=True, nullable=False) # MANDATORY: trace_id + aegis_id + device_id + ts
+    aegis_id = Column(String, index=True)
+    device_id = Column(String, index=True)
+
     created_at = Column(DateTime, default=lambda: datetime.now(UTC))
 
     external_reference = Column(String, index=True) # TA/DMC ref
-    status = Column(Enum(JourneyStatus), default=JourneyStatus.PENDING)
+    status = Column(Enum(JourneyStatus), default=JourneyStatus.CREATED)
 
     legs = relationship("Leg", back_populates="journey")
 
@@ -59,7 +67,9 @@ class Leg(Base):
     arrival_time = Column(DateTime)
 
     status = Column(String, default="scheduled")
-    master_voucher_code = Column(String, index=True) # The QR code
+    qr1_verified = Column(Boolean, default=False) # PICKUP
+    qr2_verified = Column(Boolean, default=False) # DROP
+    master_voucher_code = Column(String, index=True) # The QR code base
 
     journey = relationship("Journey", back_populates="legs")
     partner = relationship("Partner", back_populates="legs")
