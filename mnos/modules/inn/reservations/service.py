@@ -52,6 +52,7 @@ def create_reservation(db: Session, *, reservation_in: schemas.ReservationCreate
 
         db.commit()
         db.refresh(db_reservation)
+        event_dispatcher.dispatch("reservation_confirmed", {"reservation_id": db_reservation.id})
         event_dispatcher.dispatch("reservation_created", {"reservation_id": db_reservation.id})
         return db_reservation
     except Exception:

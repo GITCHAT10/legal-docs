@@ -31,12 +31,12 @@ class SyncBuffer:
                     "offline_at": tx["offline_timestamp"]
                 })
                 sealed_traces.append(tx["trace_id"])
-
-            db.commit() # Ensure all are persisted
-            self._buffer.clear() # Clear only after successful commit
-            return sealed_traces
+            db.commit()
         except Exception as e:
             db.rollback()
             raise e
+
+        self._buffer.clear()
+        return sealed_traces
 
 sync_buffer = SyncBuffer()

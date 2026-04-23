@@ -38,10 +38,30 @@ def open_folio(db: Session, reservation_id: str, trace_id: str, tenant_id: str =
         db.rollback()
         raise
 
-def finalize_invoice(db: Session, folio_id: int, trace_id: str, tenant_id: str = "default", actor: str = "SYSTEM") -> models.Invoice:
+from fastapi import HTTPException
+from datetime import datetime, UTC
+
+def finalize_invoice(db: Session, folio_id: int, trace_id: Optional[str] = None, tenant_id: str = "default", actor: str = "SYSTEM") -> models.Invoice:
     try:
+        if not trace_id:
+            trace_id = f"INV-FIN-{uuid.uuid4().hex[:8]}"
         folio = db.query(models.Folio).filter(models.Folio.id == folio_id).first()
-        if not folio: raise ValueError("Folio not found")
+        if not folio:
+            raise HTTPException(status_code=404, detail="Folio not found")
+
+        # idempotency / guard against double-finalization
+        if folio.status == models.FolioStatus.FINALIZED:
+            # Try to find existing invoice
+            existing_invoice = db.query(models.Invoice).filter(models.Invoice.folio_id == folio_id).first()
+            if existing_invoice:
+                return existing_invoice
+
+        if hasattr(folio, "status"):
+            folio.status = models.FolioStatus.FINALIZED
+        if hasattr(folio, "finalized_by"):
+            folio.finalized_by = actor
+        if hasattr(folio, "finalized_at"):
+            folio.finalized_at = datetime.now(UTC)
 
         invoice = models.Invoice(
             tenant_id=tenant_id,
@@ -51,7 +71,6 @@ def finalize_invoice(db: Session, folio_id: int, trace_id: str, tenant_id: str =
             total_amount=folio.total_amount
         )
         db.add(invoice)
-        folio.status = models.FolioStatus.FINALIZED
         db.flush()
 
         shadow_service.commit_evidence(db, trace_id, {
@@ -65,6 +84,9 @@ def finalize_invoice(db: Session, folio_id: int, trace_id: str, tenant_id: str =
         db.commit()
         db.refresh(invoice)
         return invoice
+    except HTTPException:
+        db.rollback()
+        raise
     except Exception:
         db.rollback()
         raise

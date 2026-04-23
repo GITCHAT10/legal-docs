@@ -21,6 +21,7 @@ class GuestUpdate(GuestBase):
 
 class Guest(GuestBase):
     id: int
+    trace_id: Optional[str] = None
 
     class Config:
         from_attributes = True

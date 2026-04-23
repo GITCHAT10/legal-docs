@@ -71,7 +71,8 @@ class Invoice(BaseModel):
     folio_id: int
     invoice_number: str
     total_amount: float
-    tax_summary: Any
+    tax_summary: Optional[Any] = None
+    status: str = "finalized"
     created_at: datetime
 
     class Config:

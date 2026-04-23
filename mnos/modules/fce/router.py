@@ -50,11 +50,10 @@ def post_transaction(
 @router.post("/folios/{folio_id}/finalize", response_model=schemas.Invoice)
 def finalize_invoice(
     folio_id: int,
-    trace_id: str,
     db: Session = Depends(deps.get_db),
     current_user: Any = Depends(deps.get_current_user),
 ) -> Any:
-    return service.finalize_invoice(db, folio_id=folio_id, trace_id=trace_id, actor=current_user.email)
+    return service.finalize_invoice(db, folio_id=folio_id, actor=current_user.email)
 
 @router.post("/lines/{line_id}/void", response_model=schemas.FolioLine)
 def void_charge(

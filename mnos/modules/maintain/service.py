@@ -17,6 +17,7 @@ def create_ticket(db: Session, room_id: int, title: str, description: str, prior
 
         ticket = models.MaintenanceTicket(
             room_id=room_id,
+            trace_id=trace_id,
             title=title,
             description=description,
             priority=priority,
