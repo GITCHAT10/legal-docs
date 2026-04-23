@@ -22,7 +22,12 @@ class EventBus:
         "nexus.security.door_secured",
         "nexus.security.handshake",
         "mrcrab.remediation.collect",
-        "mrcrab.status.update"
+        "mrcrab.status.update",
+        "risk_monitor.alert",
+        "aether.space_risk.detected",
+        "hubble.distress_ping",
+        "hubble.location_update",
+        "hubble.health_state"
     }
 
     def __init__(self):

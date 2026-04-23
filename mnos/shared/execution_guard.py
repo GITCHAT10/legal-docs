@@ -39,6 +39,25 @@ class ExecutionGuard:
             payload["physical_relay_safety_check"] = True
             payload["fire_exit_always_unlocked"] = True
 
+            # RISK MONITOR ADVISORY ENFORCEMENT
+            if "risk_monitor" in action_type or "aether" in action_type:
+                print(f"[ExecutionGuard] ADVISORY MODE ACTIVE: {action_type}. Suggested actions logged.")
+                # Advisory mode forbids automatic infrastructure control
+                payload["advisory_only"] = True
+                payload["human_decision_required"] = True
+
+            # OFF-GRID HUBBLE ENFORCEMENT
+            if "hubble" in action_type:
+                print(f"[ExecutionGuard] OFF-GRID SATELLITE HANDSHAKE: {action_type}. Enforcing restricted scope.")
+                # Allow only essential status and distress signals
+                allowed_hubble = [
+                    "hubble.distress_ping",
+                    "hubble.location_update",
+                    "hubble.health_state"
+                ]
+                if action_type not in allowed_hubble:
+                    raise RuntimeError(f"OFF_GRID_VIOLATION: Remote execution {action_type} blocked over satellite link.")
+
             # MR CRAB Safety + Governance Enforcement
             if "mrcrab" in action_type:
                 if payload.get("human_proximity_meters", 100) < 1.0:

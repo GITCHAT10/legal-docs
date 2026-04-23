@@ -20,7 +20,10 @@ class TrustedDeviceRegistry:
             "2024PV12395H", # HSM Root UEI
             "MIG-2026-GENESIS-APOLLO-01",
             "MIG-MARS-LOCAL-GENESIS-2026-01",
-            "MIG-ASI-MRCRAB-2026"
+            "MIG-ASI-MRCRAB-2026",
+            "MIG-MONITOR-CORE-2026",
+            "MIG-AETHER-CIVIL-2026",
+            "MIG-HUBBLE-I-2026-INIT"
         }
 
     def is_trusted(self, device_id: str) -> bool:
