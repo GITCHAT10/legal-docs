@@ -49,9 +49,11 @@ class ExecutionGuard:
             payload["fire_exit_always_unlocked"] = True
 
             # SAFE STATE FALLBACK / HUMAN OVERRIDE
-            if payload.get("operator_hold"):
+            if payload.get("operator_hold") or payload.get("status") == "HOLD":
                 print(f"[ExecutionGuard] SAFE STATE FALLBACK: Action {action_type} placed on HOLD.")
-                return {"status": "HOLD", "reason": "Operator request"}
+                if payload.get("paradox_id"):
+                    print(f"[ExecutionGuard] CAUSAL PARADOX DETECTED: {payload.get('paradox_id')}. Requesting MIG ADJUDICATION.")
+                return {"status": "HOLD", "reason": payload.get("reasoning", "Operator request")}
 
             # TEMPORAL CHRONOS QUERY ENFORCEMENT
             if "temporal_query" in action_type:
