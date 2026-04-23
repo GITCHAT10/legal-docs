@@ -1,49 +1,28 @@
 class RentEngine:
-    """
-    IMOXON HOMES: Property and tenancy management.
-    Compliant with Maldives Tenancy Act 2021.
-    """
-    def __init__(self, fce, shadow, events):
+    def __init__(self, guard, fce, shadow, events):
+        self.guard = guard
         self.fce = fce
         self.shadow = shadow
         self.events = events
-        self.tenancies = {}
 
-    def create_tenancy(self, landlord_id: str, tenant_id: str, property_id: str, monthly_rent: float, deposit: float):
-        # 1. Validation (Tenancy Act: Deposit check)
-        if deposit > (monthly_rent * 2):
-            raise ValueError("AEGIS.POLICY: Security deposit cannot exceed 2 months rent.")
+    def create_lease(self, actor_ctx: dict, lease_data: dict):
+        return self.guard.execute_sovereign_action(
+            "imoxon.rent.lease",
+            actor_ctx,
+            self._internal_create_lease,
+            lease_data
+        )
 
-        tenancy_id = f"ten_{hash(landlord_id + tenant_id + property_id) % 10000}"
-        tenancy = {
-            "id": tenancy_id,
-            "landlord": landlord_id,
-            "tenant": tenant_id,
-            "property": property_id,
-            "monthly_rent": monthly_rent,
-            "deposit": deposit,
-            "status": "ACTIVE",
-            "overdue_count": 0
-        }
+    def _internal_create_lease(self, lease_data: dict):
+        rent_amount = lease_data.get("rent", 0)
+        # Rent logic: Apply tax/SC per property rules
+        pricing = self.fce.price_order(rent_amount)
 
-        # 2. Commit & Record
-        self.shadow.commit("homes.tenancy_created", tenancy)
-        self.tenancies[tenancy_id] = tenancy
-
-        # 3. Trigger events
-        self.events.publish("RENT_BILL_CREATED", {"tenancy_id": tenancy_id, "amount": monthly_rent})
-        return tenancy
-
-    def record_rent_payment(self, tenancy_id: str, amount: float):
-        # Pricing via FCE
-        pricing = self.fce.price_order(amount)
-        payment = {
-            "tenancy_id": tenancy_id,
-            "amount": amount,
+        entry = {
+            "tenant": self.guard.get_actor().get("identity_id"),
+            "property": lease_data.get("property"),
             "pricing": pricing,
-            "status": "PAID",
-            "timestamp": "now"
+            "status": "LEASE_SIGNED"
         }
-        self.shadow.commit("homes.rent_paid", payment)
-        self.events.publish("RENT_PAID", payment)
-        return payment
+        self.events.publish("rent.lease_created", entry)
+        return entry

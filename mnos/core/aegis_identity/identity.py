@@ -1,6 +1,5 @@
 import uuid
 from datetime import datetime, UTC
-from typing import List, Optional, Dict
 
 class AegisIdentityCore:
     def __init__(self, shadow, events):

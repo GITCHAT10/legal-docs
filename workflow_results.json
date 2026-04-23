@@ -1,0 +1,70 @@
+[
+  {
+    "name": "User Onboarding",
+    "res": "SUCCESS",
+    "id": "1f6acbdc-0848-413a-8372-2fdafdeb11be"
+  },
+  {
+    "name": "Merchant Onboarding",
+    "res": "SUCCESS",
+    "id": "4aa80378-9e50-488a-9fc8-7d52b3e9fccc"
+  },
+  {
+    "name": "Coupon Flow",
+    "res": "SUCCESS"
+  },
+  {
+    "name": "Checkout Flow",
+    "res": "SUCCESS",
+    "total": 1188.0
+  },
+  {
+    "name": "Payout Flow",
+    "res": "SUCCESS",
+    "amount": 100.0
+  },
+  {
+    "name": "Faith Flow",
+    "res": "SUCCESS"
+  },
+  {
+    "name": "Education Flow",
+    "res": "SUCCESS"
+  },
+  {
+    "name": "Transport Flow",
+    "res": "SUCCESS",
+    "split": {
+      "total": 23.76,
+      "hub_net": 20.2,
+      "platform_cut": 3.56,
+      "currency": "MVR"
+    }
+  },
+  {
+    "name": "Housing Flow",
+    "res": "SUCCESS"
+  },
+  {
+    "name": "Installment Flow",
+    "res": "SUCCESS"
+  },
+  {
+    "name": "Tourism Flow",
+    "res": "SUCCESS",
+    "total": 6435.0
+  },
+  {
+    "name": "Asset Exchange",
+    "res": "SUCCESS"
+  },
+  {
+    "name": "POS Sync",
+    "res": "SUCCESS"
+  },
+  {
+    "name": "Integrity Check",
+    "res": "SUCCESS",
+    "integrity": true
+  }
+]

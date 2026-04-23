@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Optional, Dict, Any
+from typing import List, Dict, Any
 
 # Event Contracts
 EVENT_DEMAND_SIGNAL_VALIDATED = "DEMAND_SIGNAL_VALIDATED"

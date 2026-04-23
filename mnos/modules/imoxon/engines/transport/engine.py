@@ -1,28 +1,32 @@
 class TransportEngine:
-    def __init__(self, aegis, fce, shadow, events):
-        self.aegis = aegis
+    def __init__(self, guard, fce, shadow, events):
+        self.guard = guard
         self.fce = fce
         self.shadow = shadow
         self.events = events
 
-    def request_ride(self, user_id: str, device_id: str, role: str, pickup: str, destination: str):
-        # 1. AEGIS: Mandatory Identity & Role check
-        self.aegis.authorize(user_id, device_id, role)
+    def book_journey(self, actor_ctx: dict, booking_data: dict):
+        return self.guard.execute_sovereign_action(
+            "imoxon.transport.book",
+            actor_ctx,
+            self._internal_book_journey,
+            booking_data
+        )
 
-        # 2. FCE: Mandatory Pricing
-        pricing = self.fce.price_order(15.0) # Base taxi fare 15 MVR
+    def _internal_book_journey(self, booking_data: dict):
+        base_fare = booking_data.get("fare", 0)
+        pricing = self.fce.price_order(base_fare)
 
-        ride = {
-            "user": user_id,
-            "pickup": pickup,
-            "destination": destination,
+        # Transport Split: 85% to driver, 15% platform
+        split = self.fce.calculate_isky_split(Decimal(str(pricing["total"])))
+
+        entry = {
+            "passenger": self.guard.get_actor().get("identity_id"),
+            "route": booking_data.get("route"),
             "pricing": pricing,
-            "status": "REQUESTED"
+            "split": split,
+            "status": "BOOKED"
         }
-
-        # 3. SHADOW: Mandatory Record
-        self.shadow.commit("ride.requested", ride)
-
-        # 4. EVENTS: Async trigger
-        self.events.publish("RIDE_REQUESTED", ride)
-        return ride
+        self.events.publish("transport.booked", entry)
+        return entry
+from decimal import Decimal

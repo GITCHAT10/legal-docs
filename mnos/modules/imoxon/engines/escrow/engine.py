@@ -1,31 +1,28 @@
 class EscrowEngine:
-    """
-    IMOXON ESCROW: Secure holding and dispute management.
-    """
-    def __init__(self, shadow, events):
+    def __init__(self, guard, fce, shadow, events):
+        self.guard = guard
+        self.fce = fce
         self.shadow = shadow
         self.events = events
-        self.escrows = {}
 
-    def create_escrow(self, from_user: str, to_user: str, amount: float, conditions: list):
-        escrow_id = f"esc_{hash(from_user + to_user + str(amount)) % 10000}"
-        hold = {
-            "id": escrow_id,
-            "from": from_user,
-            "to": to_user,
-            "amount": amount,
-            "conditions": conditions,
+    def lock_funds(self, actor_ctx: dict, escrow_data: dict):
+        return self.guard.execute_sovereign_action(
+            "imoxon.escrow.lock",
+            actor_ctx,
+            self._internal_lock_funds,
+            escrow_data
+        )
+
+    def _internal_lock_funds(self, escrow_data: dict):
+        amount = escrow_data.get("amount", 0)
+        pricing = self.fce.price_order(amount)
+
+        entry = {
+            "escrow_id": f"esc_{hash(str(escrow_data)) % 10000}",
+            "depositor": self.guard.get_actor().get("identity_id"),
+            "target": escrow_data.get("target"),
+            "pricing": pricing,
             "status": "LOCKED"
         }
-        self.shadow.commit("escrow.locked", hold)
-        self.events.publish("PAYMENT_AUTHORIZED", hold)
-        self.escrows[escrow_id] = hold
-        return hold
-
-    def release_escrow(self, escrow_id: str, dispute: bool = False):
-        if escrow_id not in self.escrows: return False
-        status = "DISPUTED" if dispute else "RELEASED"
-        self.escrows[escrow_id]["status"] = status
-        self.shadow.commit("escrow.released", {"id": escrow_id, "status": status})
-        self.events.publish("PAYMENT_CAPTURED", {"id": escrow_id})
-        return True
+        self.events.publish("escrow.funds_locked", entry)
+        return entry

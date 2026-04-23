@@ -55,3 +55,16 @@ class FCEEngine:
         rates = {"AWARD": 0.10, "PORT": 0.40, "QC": 0.20, "ACCEPTANCE": 0.30}
         release_amt = (total * Decimal(str(rates.get(milestone, 0)))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         return {"milestone": milestone, "release_amount": float(release_amt), "status": "COMMITTED"}
+
+    def calculate_isky_split(self, booking_amount: Decimal) -> dict:
+        """
+        iSKY Payout Split: 85% to Hub, 15% to Platform
+        """
+        platform_cut = (booking_amount * Decimal("0.15")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        hub_net = booking_amount - platform_cut
+        return {
+            "total": float(booking_amount),
+            "hub_net": float(hub_net),
+            "platform_cut": float(platform_cut),
+            "currency": "MVR"
+        }

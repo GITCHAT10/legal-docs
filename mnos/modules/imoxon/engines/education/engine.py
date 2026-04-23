@@ -1,25 +1,29 @@
 class EducationEngine:
-    """
-    Deduplicated: Institute Ops (Backend) + E-Academy (Learning Delivery).
-    """
-    def __init__(self, fce, shadow, events):
+    def __init__(self, guard, fce, shadow, events):
+        self.guard = guard
         self.fce = fce
         self.shadow = shadow
         self.events = events
 
-    def enroll_student(self, student_id: str, institute_id: str, course_id: str, fee: float):
+    def process_enrollment(self, actor_ctx: dict, enrollment_data: dict):
+        return self.guard.execute_sovereign_action(
+            "imoxon.education.enroll",
+            actor_ctx,
+            self._internal_process_enrollment,
+            enrollment_data
+        )
+
+    def _internal_process_enrollment(self, enrollment_data: dict):
+        course_id = enrollment_data.get("course_id")
+        fee = enrollment_data.get("fee", 0)
+
         pricing = self.fce.price_order(fee)
-        enrollment = {
-            "student_id": student_id,
-            "institute_id": institute_id,
-            "course_id": course_id,
+
+        entry = {
+            "student": self.guard.get_actor().get("identity_id"),
+            "course": course_id,
             "pricing": pricing,
             "status": "ENROLLED"
         }
-        self.shadow.commit("edu.enrollment", enrollment)
-        self.events.publish("CLASS_SCHEDULED", enrollment)
-        return enrollment
-
-    def log_attendance(self, student_id: str, course_id: str):
-        # Delivery layer logic
-        self.shadow.commit("edu.attendance", {"student": student_id, "course": course_id})
+        self.events.publish("education.enrolled", entry)
+        return entry

@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Optional, Dict, Any
+from typing import List, Optional
 
 # Event Contracts
 EVENT_USER_VERIFIED = "USER_VERIFIED"
