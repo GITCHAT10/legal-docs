@@ -35,6 +35,7 @@ class ExecutionGuard:
         t = threading.current_thread()
         prev_guard = getattr(t, 'in_sovereign_guard', False)
         t.in_sovereign_guard = True
+        t.sovereign_guard = True # P2: Enforce sovereign_guard=True
         try:
             trace_id = str(uuid.uuid4())
 
@@ -145,5 +146,6 @@ guard = ExecutionGuard()
 
 def ensure_sovereign_context():
     """Safety check to block writes outside the execution guard."""
-    if not in_sovereign_context.get():
-        raise RuntimeError("SOVEREIGN VIOLATION: Write attempted outside Execution Guard chain.")
+    t = threading.current_thread()
+    if not in_sovereign_context.get() or not getattr(t, 'sovereign_guard', False):
+        raise RuntimeError("SOVEREIGN VIOLATION: Write attempted outside Execution Guard chain. Bypass detected.")

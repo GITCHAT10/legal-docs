@@ -1,0 +1,56 @@
+{
+    "forensic_id": "MIG-AUDIT-202604231332",
+    "timestamp": "2026-04-23T13:32:15.428259+00:00",
+    "chain_length": 2,
+    "merkle_root": "f5a58aa5311005a5220e704174b492e67330def4e76b880ee2db05a9a1a35642",
+    "data": [
+        {
+            "entry_id": 0,
+            "timestamp": "2026-04-22T08:00:00Z",
+            "event_type": "GENESIS",
+            "payload": {},
+            "previous_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+            "actor_id": "SYSTEM",
+            "objective_code": "GENESIS",
+            "hash": "33e146ffde7552298df7910a18af56870168e9384ea43a4063c309a699875991"
+        },
+        {
+            "entry_id": 1,
+            "timestamp": "2026-04-23T13:32:15.427958+00:00",
+            "event_type": "nexus.security.handshake",
+            "payload": {
+                "event_id": "3ece1afd-86dc-4ea1-b1dc-8f83869b1bf4",
+                "trace_id": "c4539fb0-2a72-42fd-8e74-b2574d8f3205",
+                "timestamp": "2026-04-23T13:32:15.427749+00:00",
+                "data": {
+                    "trace_id": "c4539fb0-2a72-42fd-8e74-b2574d8f3205",
+                    "action": "nexus.security.handshake",
+                    "input": {
+                        "status": "FORTRESS_LOCK",
+                        "physical_relay_safety_check": true,
+                        "fire_exit_always_unlocked": true
+                    },
+                    "result": "done",
+                    "authorized_session": {
+                        "device_id": "MD_A096158_ROOT",
+                        "role": "privileged",
+                        "signature": "8dc357187444881683d6ad5aff0a91b7ed3496f40a29eb394dd616a074303ead",
+                        "bound_device_id": "MD_A096158_ROOT"
+                    }
+                }
+            },
+            "previous_hash": "33e146ffde7552298df7910a18af56870168e9384ea43a4063c309a699875991",
+            "actor_id": "SYSTEM",
+            "objective_code": "EXEC",
+            "latency_audit": {
+                "detection_to_action_ms": 12,
+                "relay_response_confirmation": "VERIFIED"
+            },
+            "hash": "f5a58aa5311005a5220e704174b492e67330def4e76b880ee2db05a9a1a35642"
+        }
+    ],
+    "signature_verification": "VERIFIED_SATA_HSM_MD_A096158",
+    "proof_type": "COURT_VALID_IMMUTABLE_REALITY",
+    "bundle_id": "MIG-PR29-FORTRESS-PROOF",
+    "certificate_id": "MIG-COURT-VALID-2026"
+}

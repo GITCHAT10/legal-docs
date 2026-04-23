@@ -28,7 +28,8 @@ class EventBus:
         "aether.space_risk.detected",
         "hubble.distress_ping",
         "hubble.location_update",
-        "hubble.health_state"
+        "hubble.health_state",
+        "nexus.test"
     }
 
     def __init__(self):
@@ -36,7 +37,8 @@ class EventBus:
 
     def publish(self, event_type: str, data: Dict[str, Any] = None, trace_id: str = None) -> Dict[str, Any]:
         """Publishes an event and commits to SHADOW ledger."""
-        if not getattr(threading.current_thread(), 'in_sovereign_guard', False):
+        t = threading.current_thread()
+        if not getattr(t, 'in_sovereign_guard', False) or not getattr(t, 'sovereign_guard', False):
             # FALLBACK: DEGRADED_MODE_IF_CRITICAL
             if event_type == "nexus.emergency.triggered":
                 print(f"[EventBus] CRITICAL EMERGENCY DETECTED OUTSIDE GUARD. Allowing degraded-mode emission.")

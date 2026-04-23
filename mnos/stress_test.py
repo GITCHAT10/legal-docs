@@ -44,10 +44,11 @@ def stress_test():
     # Clear chain for clean test
     shadow.chain = shadow.chain[:1]
 
+    session = get_test_session()
     guard.execute_sovereign_action(
         "nexus.booking.created",
         {"data": "test"},
-        get_test_session(),
+        session,
         lambda p: "done"
     )
 
