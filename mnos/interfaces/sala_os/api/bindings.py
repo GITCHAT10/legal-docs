@@ -19,7 +19,11 @@ class SalaApiBridge:
             "mail": {"endpoint": "/exmail/inbox", "source": "EXMAIL"}
         }
 
-    def fetch_data(self, key: str, params: Dict[str, Any] = None):
+    def fetch_data(self, key: str, session_context: Dict[str, Any], params: Dict[str, Any] = None):
+        """Hardened data fetch: requires AEGIS signed session."""
+        from mnos.core.security.aegis import aegis
+        aegis.require_signed_session_context(session_context)
+
         if key not in self.bindings:
             raise ValueError(f"Unknown API binding: {key}")
 

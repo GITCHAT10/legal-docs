@@ -38,8 +38,23 @@ def validate_sala_os_deployment():
 
     # 4. API Connectivity
     print("\n[BINDING CHECK]")
-    sala_api.fetch_data("arrivals")
-    sala_api.fetch_data("mail")
+    # Re-sign before each call to avoid context mutation issues if necessary
+    ctx_fetch_base = {
+        "user_id": "VAL-UI-01",
+        "session_id": "S-UI-FETCH",
+        "device_id": "nexus-001",
+        "issued_at": 1700000000
+    }
+
+    ctx_arr = ctx_fetch_base.copy()
+    ctx_arr["nonce"] = "N-UI-ARR"
+    ctx_arr["signature"] = aegis.sign_session(ctx_arr)
+    sala_api.fetch_data("arrivals", ctx_arr)
+
+    ctx_mail = ctx_fetch_base.copy()
+    ctx_mail["nonce"] = "N-UI-MAIL"
+    ctx_mail["signature"] = aegis.sign_session(ctx_mail)
+    sala_api.fetch_data("mail", ctx_mail)
 
     # 5. Security Rejection (Spoof attempt)
     print("\n[SECURITY ATTACK SIMULATION]")

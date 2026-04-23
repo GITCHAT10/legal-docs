@@ -95,8 +95,15 @@ class ShadowLedger:
         }, sort_keys=True, separators=(',', ':'), default=str).encode()
         return hashlib.sha256(block_string).hexdigest()
 
+    def verify_integrity_from_index_0(self) -> bool:
+        """
+        ANCHOR SHADOW TIMELINE (GENESIS-SEAL):
+        Validates the entire hash chain from genesis block at index 0.
+        """
+        return self.verify_integrity()
+
     def verify_integrity(self) -> bool:
-        """Validates the entire hash chain from genesis to head (Go-Live Validation Lock)."""
+        """Validates the entire hash chain from genesis to head (GENESIS-SEAL)."""
         if not self.chain:
             return False
 

@@ -30,15 +30,20 @@ class AegisService:
         data = json.dumps(payload, sort_keys=True).encode()
         return hmac.new(self.secret, data, hashlib.sha256).hexdigest()
 
-    def validate_session(self, session_context: Dict[str, Any]) -> bool:
+    def require_signed_session_context(self, session_context: Dict[str, Any]) -> bool:
         """
-        Enforces Absolute Server-Side Trust (SKY-i v1.2 Hardening):
+        ENFORCE HSM-BOUND IDENTITY (GENESIS-SEAL):
+        Enforces Absolute Server-Side Trust:
         1. HMAC-SHA256 verification of session context (mandatory fields).
         2. REJECT unsigned, forged, malformed, or incomplete contexts.
         3. REJECT sessions where client-provided 'bound_device_id' is present.
-        4. MANDATORY: Validate 'device_id' against server-side 'HARDWARE_REGISTRY'.
+        4. MANDATORY: Verify binding against server-side 'HARDWARE_REGISTRY'.
         5. FAIL-CLOSED: Halt on any registry or signature failure.
         """
+        return self.validate_session(session_context)
+
+    def validate_session(self, session_context: Dict[str, Any]) -> bool:
+        """Core session validation logic."""
         signature = session_context.get("signature")
         if not signature:
             raise SecurityException("AEGIS: Missing session signature. Rejecting unsigned context.")
