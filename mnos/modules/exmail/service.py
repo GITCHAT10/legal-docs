@@ -45,7 +45,9 @@ class ExMailAuthority:
                     "encryption": "wireguard",
                     "tunnel_id": "EXMAIL-INTERNAL",
                     "source_ip": "10.0.0.88",
-                    "node_id": "SALA-EDGE-01"
+                    "node_id": "SALA-EDGE-01",
+                    "network_signature": "sig:exmail-internal-verified",
+                    "device_id": session_context.get("device_id", "SYSTEM")
                 }
 
             # Advisory Intelligence
