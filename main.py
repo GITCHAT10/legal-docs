@@ -1,12 +1,10 @@
 import os
 from fastapi import FastAPI, HTTPException, Header, Depends, Query, Request
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
 from typing import List, Optional, Dict
 from decimal import Decimal
 
 # MNOS Core
-from mnos.modules.aegis.verifier import AegisVerifier
 from mnos.modules.finance.fce import FCEEngine
 from mnos.modules.shadow.ledger import ShadowLedger
 from mnos.modules.events.bus import EventBus
@@ -15,68 +13,29 @@ from mnos.modules.imoxon.policies.engine import IdentityPolicyEngine
 from mnos.shared.execution_guard import ExecutionGuard, ExecutionGuardMiddleware
 from mnos.api.aegis_identity import create_identity_router
 
-# iMOXON Engines (Hardened Paths)
-from mnos.modules.imoxon.core.engine import CommerceEngine
-from mnos.modules.imoxon.delivery.engine import DeliveryEngine
-from mnos.modules.imoxon.finance.engine import ApolloOrchestrator
-from mnos.modules.imoxon.demand.engine import DemandEngine
-from mnos.modules.imoxon.procurement.engine import ProcurementEngine
-from mnos.modules.imoxon.skygodown.engine import SkygodownManager
-from mnos.modules.imoxon.tailorgrid.engine import TailorGridEngine
-from mnos.modules.imoxon.linengrid.engine import LinenGridEngine
-from mnos.modules.imoxon.ut_bridge.engine import UTBridge
-from mnos.modules.imoxon.engines.faith.engine import FaithEngine
-from mnos.modules.imoxon.engines.education.engine import EducationEngine
-from mnos.modules.imoxon.engines.transport.engine import TransportEngine
-from mnos.modules.imoxon.engines.rent.engine import RentEngine
-from mnos.modules.imoxon.engines.escrow.engine import EscrowEngine
-from mnos.modules.imoxon.engines.installment.engine import InstallmentEngine
-from mnos.modules.imoxon.engines.coupon.engine import CouponEngine
-from mnos.modules.imoxon.engines.tourism.engine import TourismEngine
-from mnos.modules.imoxon.engines.exchange.engine import ExchangeEngine
-from mnos.modules.imoxon.engines.pos.engine import POSEngine
+# iMOXON Consolidated
+from mnos.modules.imoxon.core.engine import ImoxonCore, SupplierManager, CatalogManager, PricingEngine, OrderManager
 
-app = FastAPI(title="iMOXON Sovereign Platform - Production Grade")
+app = FastAPI(title="iMOXON Consolidated Commerce Platform - RC1")
 
-# --- System Law (Initialization) ---
-os.environ["NEXGEN_SECRET"] = os.environ.get("NEXGEN_SECRET", "mnos-sovereign-production")
+# --- System Law ---
+os.environ["NEXGEN_SECRET"] = os.environ.get("NEXGEN_SECRET", "imoxon-rc1-sovereign")
 
-aegis_verifier = AegisVerifier()
 fce_core = FCEEngine()
 shadow_core = ShadowLedger()
 events_core = EventBus()
 identity_core = AegisIdentityCore(shadow_core, events_core)
 policy_engine = IdentityPolicyEngine(identity_core)
 
-# Guard is the central entrypoint
 guard = ExecutionGuard(identity_core, policy_engine, fce_core, shadow_core, events_core)
-
-# Middleware enforces Fail-Closed
 app.add_middleware(ExecutionGuardMiddleware, guard=guard, events=events_core)
 
-# Routes
-app.include_router(create_identity_router(identity_core, policy_engine))
-
-# Engines
-commerce = CommerceEngine(guard, fce_core, shadow_core, events_core)
-delivery = DeliveryEngine(guard, shadow_core, events_core)
-apollo = ApolloOrchestrator(guard, shadow_core, events_core)
-demand = DemandEngine(guard, shadow_core, events_core)
-procurement = ProcurementEngine(guard, shadow_core, events_core)
-skygodown = SkygodownManager(guard, shadow_core, events_core)
-tailor = TailorGridEngine(guard, fce_core, shadow_core, events_core)
-linen = LinenGridEngine(guard, fce_core, shadow_core, events_core)
-ut = UTBridge(guard, shadow_core, events_core)
-faith = FaithEngine(guard, fce_core, shadow_core, events_core)
-education = EducationEngine(guard, fce_core, shadow_core, events_core)
-transport = TransportEngine(guard, fce_core, shadow_core, events_core)
-rent = RentEngine(guard, fce_core, shadow_core, events_core)
-escrow = EscrowEngine(guard, fce_core, shadow_core, events_core)
-installment = InstallmentEngine(guard, fce_core, shadow_core, events_core)
-coupon = CouponEngine(guard, fce_core, shadow_core, events_core)
-tourism = TourismEngine(guard, fce_core, shadow_core, events_core)
-exchange = ExchangeEngine(guard, fce_core, shadow_core, events_core)
-pos = POSEngine(guard, fce_core, shadow_core, events_core)
+# Core Instance
+imoxon = ImoxonCore(guard, fce_core, shadow_core, events_core)
+suppliers = SupplierManager(imoxon)
+catalog = CatalogManager(imoxon)
+pricing = PricingEngine(imoxon)
+orders = OrderManager(imoxon)
 
 # --- Dependency ---
 def get_actor_ctx(
@@ -85,9 +44,35 @@ def get_actor_ctx(
 ):
     if not x_aegis_identity or not x_aegis_device:
         raise HTTPException(status_code=403, detail="FAIL CLOSED: Missing Identity or Device")
-    return {"identity_id": x_aegis_identity, "device_id": x_aegis_device, "role": "staff"}
+    return {"identity_id": x_aegis_identity, "device_id": x_aegis_device, "role": "admin"}
 
-# --- Exception Handlers ---
+# --- Consolidated APIs ---
+
+@app.post("/imoxon/suppliers/connect")
+async def connect_supplier(data: dict, actor: dict = Depends(get_actor_ctx)):
+    return suppliers.connect_supplier(actor, data)
+
+@app.post("/imoxon/products/import")
+async def import_products(sid: str, items: List[dict], actor: dict = Depends(get_actor_ctx)):
+    return catalog.import_products(actor, sid, items)
+
+@app.post("/imoxon/products/approve")
+async def approve_product(pid: str, actor: dict = Depends(get_actor_ctx)):
+    return catalog.approve_product(actor, pid)
+
+@app.get("/imoxon/catalog")
+async def get_catalog():
+    return catalog.catalog
+
+@app.post("/imoxon/pricing/landed-cost")
+async def calc_landed(base: float, cat: str = "RESORT_SUPPLY", actor: dict = Depends(get_actor_ctx)):
+    return pricing.calculate_landed_cost(actor, base, cat)
+
+@app.post("/imoxon/orders/create")
+async def create_order(data: dict, actor: dict = Depends(get_actor_ctx)):
+    return orders.create_order(actor, data)
+
+# Error handlers
 @app.exception_handler(PermissionError)
 async def permission_error_handler(request: Request, exc: PermissionError):
     return JSONResponse(status_code=403, content={"detail": str(exc)})
@@ -96,107 +81,8 @@ async def permission_error_handler(request: Request, exc: PermissionError):
 async def runtime_error_handler(request: Request, exc: RuntimeError):
     return JSONResponse(status_code=500, content={"detail": str(exc)})
 
-@app.exception_handler(ValueError)
-async def value_error_handler(request: Request, exc: ValueError):
-    return JSONResponse(status_code=400, content={"detail": str(exc)})
-
-# --- Production API ---
-
-@app.post("/supply/demand")
-async def capture_demand(resort: str, items: List[dict], actor: dict = Depends(get_actor_ctx)):
-    return demand.capture_signal(actor, resort, items)
-
-@app.post("/supply/procurement/issue")
-async def issue_rfp(signals: List[str], actor: dict = Depends(get_actor_ctx)):
-    return procurement.issue_rfp(actor, signals)
-
-@app.post("/supply/skygodown/receive")
-async def receive_lot(lot_data: dict, actor: dict = Depends(get_actor_ctx)):
-    return skygodown.receive_lot(actor, lot_data)
-
-@app.post("/tailor/measurement")
-async def tailor_measure(staff_id: str, profile: dict, actor: dict = Depends(get_actor_ctx)):
-    return tailor.capture_measurement(actor, staff_id, profile)
-
-@app.post("/linen/wash")
-async def linen_wash(tag_id: str, actor: dict = Depends(get_actor_ctx)):
-    return linen.track_wash_cycle(actor, tag_id)
-
-@app.post("/ut/assign")
-async def ut_assign(manifest_id: str, vessel_id: str, actor: dict = Depends(get_actor_ctx)):
-    return ut.assign_vessel(actor, manifest_id, vessel_id)
-
-# --- Legacy / Demo Bridge ---
-@app.post("/auth/onboard")
-async def legacy_onboard(name: str, role: str, device_id: str):
-    # Set bootstrap context for direct engine call
-    from mnos.shared.execution_guard import _sovereign_context
-    token = _sovereign_context.set({"token": "DEMO", "actor": {"identity_id": "SYSTEM", "role": "admin"}})
-    try:
-        did = identity_core.create_profile({"full_name": name, "profile_type": "staff"})
-        identity_core.bind_device(did, {"fingerprint": device_id})
-        return {"did": did, "status": "onboarded"}
-    finally:
-        _sovereign_context.reset(token)
-
-@app.post("/move/ride")
-async def legacy_ride(user: str, dev: str, role: str, src: str, dst: str, actor: dict = Depends(get_actor_ctx)):
-    return {"ride": transport.book_journey(actor, {"fare": 50, "route": f"{src}-{dst}"})}
-
-# --- Sovereign Commerce API ---
-@app.post("/commerce/vendors/approve")
-async def approve_vendor(vendor_data: dict, actor: dict = Depends(get_actor_ctx)):
-    return commerce.approve_vendor(actor, vendor_data)
-
-@app.post("/commerce/orders/create")
-async def create_order(order_data: dict, actor: dict = Depends(get_actor_ctx)):
-    return commerce.create_order(actor, order_data)
-
-@app.post("/commerce/milestones/verify")
-async def verify_milestone(proof_data: dict, actor: dict = Depends(get_actor_ctx)):
-    return apollo.record_milestone_proof(actor, proof_data)
-
-@app.post("/commerce/payouts/release")
-async def release_payout(milestone: str, ref_id: str, total_amount: float, actor: dict = Depends(get_actor_ctx)):
-    return apollo.trigger_milestone_payout(actor, fce_core, milestone, {"ref_id": ref_id, "total_amount": total_amount})
-
-@app.post("/commerce/coupon/campaign")
-async def create_coupon(data: dict, actor: dict = Depends(get_actor_ctx)):
-    return coupon.create_campaign(actor, data)
-
-@app.post("/commerce/pos/stock")
-async def update_pos_stock(data: dict, actor: dict = Depends(get_actor_ctx)):
-    return pos.update_stock(actor, data)
-
-# --- Domain Engines API ---
-@app.post("/faith/donate")
-async def faith_donate(data: dict, actor: dict = Depends(get_actor_ctx)):
-    return faith.record_donation(actor, data)
-
-@app.post("/education/enroll")
-async def edu_enroll(data: dict, actor: dict = Depends(get_actor_ctx)):
-    return education.process_enrollment(actor, data)
-
-@app.post("/transport/book")
-async def transport_book(data: dict, actor: dict = Depends(get_actor_ctx)):
-    return transport.book_journey(actor, data)
-
-@app.post("/rent/lease")
-async def rent_lease(data: dict, actor: dict = Depends(get_actor_ctx)):
-    return rent.create_lease(actor, data)
-
-@app.post("/finance/installment")
-async def create_installment(total: float, months: int, actor: dict = Depends(get_actor_ctx)):
-    return installment.create_plan(actor, total, months)
-
-@app.post("/tourism/book")
-async def tourism_book(data: dict, actor: dict = Depends(get_actor_ctx)):
-    return tourism.book_package(actor, data)
-
-@app.post("/exchange/transfer")
-async def asset_transfer(data: dict, actor: dict = Depends(get_actor_ctx)):
-    return exchange.transfer_asset(actor, data)
+app.include_router(create_identity_router(identity_core, policy_engine))
 
 @app.get("/health")
 async def health():
-    return {"status": "online", "integrity": shadow_core.verify_integrity(), "version": "PROD-1.0"}
+    return {"status": "online", "integrity": shadow_core.verify_integrity()}
