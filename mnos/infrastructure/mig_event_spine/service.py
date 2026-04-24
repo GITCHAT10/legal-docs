@@ -33,6 +33,10 @@ class EventBus:
         "FINALIZE_INVOICE_PROCESS",
         "apollo.deploy",
         "SYSTEM_OVERRIDE",
+        "hms.rfq.outbound",
+        "hms.quotes.read",
+        "airlock.request_accepted",
+        "airlock.request_blocked",
         "test"
     }
 

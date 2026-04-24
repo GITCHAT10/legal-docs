@@ -15,7 +15,8 @@ class TrustedDeviceRegistry:
             "nexus-001": {"status": "ACTIVE", "tier": 1},
             "nexus-002": {"status": "ACTIVE", "tier": 1},
             "nexus-admin-01": {"status": "ACTIVE", "tier": 3},
-            "ut-dispatch-01": {"status": "ACTIVE", "tier": 2}
+            "ut-dispatch-01": {"status": "ACTIVE", "tier": 2},
+            "AIRLOCK-GATEWAY": {"status": "ACTIVE", "tier": 3}
         }
 
     def get_device_info(self, device_id: str) -> Dict[str, Any]:
