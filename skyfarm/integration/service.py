@@ -8,10 +8,20 @@ from pydantic import BaseModel, Field
 import uuid
 
 # Mandatory secret handling: Fail if missing.
-if not os.environ.get("SKYFARM_INTEGRATION_SECRET"):
-    raise RuntimeError("SKYFARM_INTEGRATION_SECRET NOT CONFIGURED - SYSTEM HALT")
+ALLOW_INSECURE_DEV = os.environ.get("ALLOW_INSECURE_DEV", "false").lower() == "true"
+ALLOW_MANUAL_OVERRIDE = os.environ.get("ALLOW_MANUAL_OVERRIDE", "true").lower() == "true"
 
-SECRET_KEY = os.environ["SKYFARM_INTEGRATION_SECRET"]
+if not os.environ.get("SKYFARM_INTEGRATION_SECRET"):
+    if ALLOW_INSECURE_DEV:
+        SECRET_KEY = "dev_secret"
+    else:
+        raise RuntimeError("SKYFARM_INTEGRATION_SECRET NOT CONFIGURED - SYSTEM HALT")
+else:
+    SECRET_KEY = os.environ["SKYFARM_INTEGRATION_SECRET"]
+
+if not os.environ.get("MNOS_INTEGRATION_SECRET"):
+    if not ALLOW_INSECURE_DEV:
+        raise RuntimeError("MNOS_INTEGRATION_SECRET NOT CONFIGURED - SYSTEM HALT")
 
 class IntegrationPayload(BaseModel):
     event_id: str = Field(default_factory=lambda: f"evt_{uuid.uuid4().hex}")

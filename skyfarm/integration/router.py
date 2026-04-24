@@ -72,10 +72,10 @@ def send_to_mnos(payload: IntegrationSend, x_correlation_id: Optional[str] = Hea
     }
 
     try:
-        # Enforce 5s timeout and retry strategy
-        resp = session.post(endpoint, data=body_bytes, headers=headers, timeout=5)
+        # Enforce strict 2s connect, 5s read timeout
+        resp = session.post(endpoint, data=body_bytes, headers=headers, timeout=(2, 5))
 
-        if resp.status_code >= 400:
+        if not resp.ok:
              # Propagate real HTTP error statuses
              raise HTTPException(
                 status_code=resp.status_code,

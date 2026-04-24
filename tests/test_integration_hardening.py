@@ -17,6 +17,7 @@ class TestIntegrationHardening(unittest.TestCase):
         # Simulate 401 from MNOS
         mock_response = MagicMock()
         mock_response.status_code = 401
+        mock_response.ok = False
         mock_response.text = "INVALID_SIGNATURE"
         mock_post.return_value = mock_response
 

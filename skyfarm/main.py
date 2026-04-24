@@ -10,7 +10,6 @@ import skyfarm.trace.models
 import skyfarm.restaurant.models
 import skyfarm.retail.models
 import skyfarm.integration.models
-import sxos.finance.models
 import threading
 from skyfarm.integration.outbox_worker import process_outbox
 from skyfarm.integration.logging_utils import logger
@@ -27,14 +26,6 @@ from skyfarm.trace.router import router as trace_router
 from skyfarm.restaurant.router import router as restaurant_router
 from skyfarm.retail.router import router as retail_router
 from skyfarm.integration.router import router as integration_router
-
-# SXOS Routers
-from sxos.api.finance import router as sxos_finance_router
-from sxos.api.tax import router as sxos_tax_router
-from sxos.api.logistics import router as sxos_logistics_router
-from sxos.api.metrics import router as sxos_metrics_router
-from sxos.api.esg import router as sxos_esg_router
-from sxos.api.supply import router as sxos_supply_router
 
 # Background Worker Thread
 def start_worker():
@@ -67,14 +58,6 @@ app.include_router(trace_router)
 app.include_router(restaurant_router)
 app.include_router(retail_router)
 app.include_router(integration_router)
-
-# Include SXOS Economic Layer
-app.include_router(sxos_finance_router)
-app.include_router(sxos_tax_router)
-app.include_router(sxos_logistics_router)
-app.include_router(sxos_metrics_router)
-app.include_router(sxos_esg_router)
-app.include_router(sxos_supply_router)
 
 @app.get("/")
 def read_root():
