@@ -37,6 +37,7 @@ class EventBus:
         "hms.quotes.read",
         "airlock.request_accepted",
         "airlock.request_blocked",
+        "SYSTEM_CERTIFICATION",
         "test"
     }
 
