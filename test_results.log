@@ -1,0 +1,21 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.0.3, pluggy-1.6.0
+rootdir: /app
+plugins: anyio-4.13.0
+collected 0 items / 1 error
+
+==================================== ERRORS ====================================
+______________ ERROR collecting mnos/tests/test_ndeos_genesis.py _______________
+ImportError while importing test module '/app/mnos/tests/test_ndeos_genesis.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/home/jules/.pyenv/versions/3.12.13/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+mnos/tests/test_ndeos_genesis.py:5: in <module>
+    from iMOXON.AI_ECON.engine import ai_econ
+E   ModuleNotFoundError: No module named 'iMOXON.AI_ECON'
+=========================== short test summary info ============================
+ERROR mnos/tests/test_ndeos_genesis.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+=============================== 1 error in 0.20s ===============================
