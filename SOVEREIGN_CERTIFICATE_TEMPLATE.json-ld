@@ -1,0 +1,16 @@
+{
+  "@context": "https://schema.mig.com/sovereign-seal",
+  "@type": "SovereignCertificate",
+  "issuing_authority": "MALDIVES INTERNATIONAL GROUP PVT LTD",
+  "uei": "2024PV12395H",
+  "tin": "1166708",
+  "root_authority": "ABDULLA RASHEED (A096158)",
+  "issued_at": "${TIMESTAMP}",
+  "cert_type": "${CERT_TYPE}",
+  "data": "${DATA}",
+  "sovereign_seal_hash": "${HASH}",
+  "notarization": {
+    "protocol": "RFC 3161",
+    "algorithm": "SPHINCS+"
+  }
+}

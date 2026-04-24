@@ -1,0 +1,52 @@
+openapi: 3.0.0
+info:
+  title: BUILD-X FULL API SPEC (MIG)
+  version: 1.0.0
+  description: Sovereign Execution Engine for Maldives International Group
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: OK
+  /design/generate:
+    post:
+      summary: BUILD-X ARCH Design Engine
+      responses:
+        '200':
+          description: Design generated
+  /boq/calculate:
+    post:
+      summary: BUILD-X BUILD BOQ Engine
+      parameters:
+        - name: beds
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: BOQ calculated
+  /metrics/war-room:
+    get:
+      summary: CEO War Room Metrics
+      responses:
+        '200':
+          description: Success
+  /tasks/re-align:
+    post:
+      summary: Trigger RE-ALIGN task
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                module:
+                  type: string
+                drift:
+                  type: number
+      responses:
+        '200':
+          description: Result
