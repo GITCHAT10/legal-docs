@@ -1,0 +1,40 @@
+@router.post("/send")
+def send_to_mnos(payload: IntegrationSend, x_correlation_id: Optional[str] = Header(None)):
+    correlation_id = payload.correlation_id or x_correlation_id or str(uuid.uuid4())
+
+    event = create_integration_event(
+        tenant_id=payload.tenant_id,
+        event_type=payload.event_type,
+        data=payload.data,
+        event_id=payload.event_id,
+        correlation_id=correlation_id
+    )
+
+    path = "/integration/v1/events/production"
+    endpoint = f"{MNOS_URL}{path}"
+    method = "POST"
+    timestamp = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
+    request_id = str(uuid.uuid4())
+
+    body_json = json.dumps(event.model_dump(), sort_keys=True)
+    body_bytes = body_json.encode()
+
+    canonical = generate_canonical_string(method, path, timestamp, request_id, body_bytes)
+    signature = sign_payload_canonical(canonical, SECRET_KEY)
+
+    headers = {
+        "X-Request-Id": request_id,
+        "X-Idempotency-Key": payload.idempotency_key or str(uuid.uuid4()),
+        "X-Correlation-Id": correlation_id,
+        "X-Timestamp": timestamp,
+        "X-Signature": signature,
+        "Content-Type": "application/json"
+    }
+
+    try:
+        resp = session.post(endpoint, data=body_bytes, headers=headers, timeout=5)
+
+        if resp.status_code >= 400:
+             raise HTTPException(
+                status_code=resp.status_code,
+                detail=f"MNOS rejected request: {resp.text}"
