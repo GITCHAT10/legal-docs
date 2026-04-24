@@ -15,7 +15,7 @@ def test_aegis_forged_signature_rejection():
     ctx = payload.copy()
     ctx["signature"] = "FORGED_HASH"
 
-    with pytest.raises(SecurityException, match="signature mismatch"):
+    with pytest.raises(SecurityException, match="forgery detected"):
         aegis.validate_session(ctx)
 
 def test_aegis_missing_required_fields():
@@ -38,7 +38,7 @@ def test_aegis_untrusted_device_rejection():
     ctx = payload.copy()
     ctx["signature"] = aegis.sign_session(payload)
 
-    with pytest.raises(SecurityException, match="Unauthorized device"):
+    with pytest.raises(SecurityException, match="untrusted device"):
         aegis.validate_session(ctx)
 
 def test_aegis_legacy_bound_device_id_rejection():
@@ -54,5 +54,5 @@ def test_aegis_legacy_bound_device_id_rejection():
     ctx = payload.copy()
     ctx["signature"] = aegis.sign_session(payload)
 
-    with pytest.raises(SecurityException, match="Legacy anti-pattern"):
+    with pytest.raises(SecurityException, match="Security Breach Attempt"):
         aegis.validate_session(ctx)

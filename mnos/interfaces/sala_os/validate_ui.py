@@ -12,13 +12,14 @@ from mnos.core.security.aegis import aegis
 
 def validate_sala_os_deployment():
     print("--- 🏛️ SALA-OS UI INTERFACE VALIDATION ---")
+    import time
 
     # 1. Security Context
     ctx = {
         "user_id": "VAL-UI-01",
         "session_id": "S-UI-01",
         "device_id": "nexus-001",
-        "issued_at": 1700000000,
+        "issued_at": int(time.time()),
         "nonce": "N-UI-01"
     }
     ctx["signature"] = aegis.sign_session(ctx)
@@ -43,7 +44,7 @@ def validate_sala_os_deployment():
         "user_id": "VAL-UI-01",
         "session_id": "S-UI-FETCH",
         "device_id": "nexus-001",
-        "issued_at": 1700000000
+        "issued_at": int(time.time())
     }
 
     ctx_arr = ctx_fetch_base.copy()

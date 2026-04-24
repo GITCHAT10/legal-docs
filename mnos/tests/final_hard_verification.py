@@ -29,13 +29,14 @@ def test_tax_edge_case_high_pax():
 
 def test_ledger_tamper_hard_fail():
     """Verify that tampering with any block prevents further commits."""
+    import time
     shadow.chain = []
     shadow._seed_ledger()
     ctx = {
         "user_id": "CEO-01",
         "session_id": "S-99",
         "device_id": "nexus-001",
-        "issued_at": 1700000000,
+        "issued_at": int(time.time()),
         "nonce": "N-99"
     }
     ctx["signature"] = aegis_sign(ctx)
@@ -52,7 +53,7 @@ def test_ledger_tamper_hard_fail():
             "user_id": "CEO-01",
             "session_id": "S-100",
             "device_id": "nexus-001",
-            "issued_at": 1700000000,
+            "issued_at": int(time.time()),
             "nonce": "N-100"
         }
         new_ctx["signature"] = aegis_sign(new_ctx)

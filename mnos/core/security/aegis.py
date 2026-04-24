@@ -12,9 +12,25 @@ class HardwareRegistry:
     def __init__(self):
         # In production, this would be backed by a secure DB/HSM
         self._registry: Set[str] = {"nexus-001", "nexus-admin-01"}
+        self._session_device_map: Dict[str, str] = {} # session_id -> device_id mapping
+        self._used_nonces: Set[str] = set()
 
     def verify_device(self, device_id: str) -> bool:
         return device_id in self._registry
+
+    def resolve_binding(self, session_id: str) -> str:
+        """Resolves trusted device binding from server-side store."""
+        return self._session_device_map.get(session_id)
+
+    def bind_session(self, session_id: str, device_id: str):
+        if device_id not in self._registry:
+            raise SecurityException(f"Cannot bind untrusted device {device_id}")
+        self._session_device_map[session_id] = device_id
+
+    def check_nonce(self, nonce: str):
+        if nonce in self._used_nonces:
+            raise SecurityException(f"AEGIS: Replayed nonce detected: {nonce}")
+        self._used_nonces.add(nonce)
 
 class AegisService:
     """
@@ -43,41 +59,66 @@ class AegisService:
         return self.validate_session(session_context)
 
     def validate_session(self, session_context: Dict[str, Any]) -> bool:
-        """Core session validation logic."""
+        """
+        Core session validation logic (FORTRESS HARDENED).
+        MANDATE: Never trust client fields. Resolve binding server-side.
+        """
+        import time
         signature = session_context.get("signature")
         if not signature:
             raise SecurityException("AEGIS: Missing session signature. Rejecting unsigned context.")
 
-        # P1: Required signed fields audit
+        # P0: Required signed fields (MANDATORY)
         required_fields = ["user_id", "session_id", "device_id", "issued_at", "nonce"]
         for field in required_fields:
             if field not in session_context:
                 raise SecurityException(f"AEGIS: Missing required field '{field}' in session context.")
 
-        # Extract payload for verification (excluding signature)
+        # P0: Freshness window check (5 minutes)
+        now = int(time.time())
+        issued_at = int(session_context["issued_at"])
+        if abs(now - issued_at) > 300:
+             raise SecurityException("AEGIS: Session context expired or stale.")
+
+        # P0: Replay resistance
+        self.registry.check_nonce(session_context["nonce"])
+
+        # Extract payload for HMAC verification
         payload = {k: v for k, v in session_context.items() if k != "signature"}
 
-        # P1: Absolute Trust Boundary - No client-provided binding fields allowed
+        # P0: Reject legacy anti-patterns
         if "bound_device_id" in payload:
-            raise SecurityException("AEGIS: Legacy anti-pattern detected. Client-provided 'bound_device_id' REJECTED.")
+            raise SecurityException("AEGIS: Client-provided 'bound_device_id' REJECTED. Security Breach Attempt.")
 
+        # P0: HMAC-SHA256 Verification
         expected_sig = self.sign_session(payload)
         if not hmac.compare_digest(expected_sig, signature):
-            raise SecurityException("AEGIS: Session signature mismatch. Potential spoofing/forgery detected.")
+            raise SecurityException("AEGIS: Session signature forgery detected.")
 
-        # Hardware-DNA Verification - Trust ONLY server-side Hardware Registry.
-        client_device_id = payload.get("device_id")
+        # P0: Server-side binding resolution (Trust Anchor)
+        session_id = payload.get("session_id")
+        device_id = payload.get("device_id")
 
-        # Server-trusted bound_device lookup (Authority Gate)
-        if not self.registry.verify_device(client_device_id):
-            raise SecurityException(f"AEGIS: Unauthorized device {client_device_id}. Access Denied (Fail-Closed).")
+        # Resolving trusted binding from server store
+        server_bound_device = self.registry.resolve_binding(session_id)
 
-        # Context Cleansing: Remove unverified/privileged client fields
+        # If no binding exists in simulator, we auto-bind first trusted device access for this sess
+        if not server_bound_device:
+             self.registry.bind_session(session_id, device_id)
+             server_bound_device = device_id
+
+        if not device_id or device_id != server_bound_device:
+            raise SecurityException("AEGIS: Device binding violation (Hardware DNA Mismatch).")
+
+        if not self.registry.verify_device(device_id):
+            raise SecurityException(f"AEGIS: Unauthorized device {device_id}. Access Denied.")
+
+        # Context Cleansing
         session_context.pop("roles", None)
         session_context.pop("bound_device_id", None)
 
-        # Inject server-verified binding ID as the ONLY proof for execution
-        session_context["verified_device_id"] = client_device_id
+        # Inject verified hardware DNA
+        session_context["verified_device_id"] = device_id
 
         return True
 

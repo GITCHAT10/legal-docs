@@ -16,7 +16,10 @@ class EventBus:
         "exmail.received",
         "exmail.sent",
         "exmail.task.created",
-        "exmail.ticket.created"
+        "exmail.ticket.created",
+        "nexus.pio.ingest.folio",
+        "nexus.pio.ingest.pos",
+        "nexus.pio.ingest.inventory"
     }
 
     def __init__(self):

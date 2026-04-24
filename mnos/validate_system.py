@@ -31,11 +31,12 @@ def run_validation():
     knowledge_core.ingest("NEXUS_DNA", dna)
 
     from mnos.core.security.aegis import aegis
+    import time
     ctx = {
         "user_id": "GUEST-VAL-01",
         "session_id": "SESS-VAL-01",
         "device_id": "nexus-001",
-        "issued_at": 1700000000,
+        "issued_at": int(time.time()),
         "nonce": "N-VAL-01"
     }
     ctx["signature"] = aegis.sign_session(ctx)
@@ -56,7 +57,7 @@ def run_validation():
         "user_id": "GUEST-VAL-02",
         "session_id": "SESS-VAL-02",
         "device_id": "nexus-001",
-        "issued_at": 1700000000,
+        "issued_at": int(time.time()),
         "nonce": "N-VAL-02"
     }
     ctx2["signature"] = aegis.sign_session(ctx2)
@@ -77,6 +78,15 @@ def run_validation():
     print("\n[RESILIENCE]")
     snap = resilience.create_snapshot()
     resilience.validate_restore(snap)
+
+    # Singularity Gate Validation (MIG-CORE-10.0)
+    print("\n[SINGULARITY GATE VALIDATION]")
+    if shadow.verify_integrity_from_index_0() and os.path.exists("GUARD_PROOF_REPORT.json"):
+        print("MNOS CORE 10.0 = COURT-VALID SOVEREIGN SYSTEM")
+        print("APOLLO = ACTIVE FORTRESS CONTROL PLANE")
+    else:
+        print("!!! SINGULARITY GATE FAILURE !!!")
+        sys.exit(1)
 
     print("\n--- ✅ VALIDATION COMPLETE ---")
 

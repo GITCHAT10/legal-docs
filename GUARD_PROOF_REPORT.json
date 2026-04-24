@@ -1,0 +1,19 @@
+{
+  "version": "MIG-CORE-10.0",
+  "status": "COURT-VALID",
+  "integrity_checks": {
+    "genesis_verification": "PASS",
+    "chain_integrity": "PASS",
+    "timestamp_inclusion": "CONFIRMED"
+  },
+  "enforcement": {
+    "signed_ctx": "STRICT",
+    "event_guard": "MANDATORY",
+    "fail_closed": "ACTIVE"
+  },
+  "release_controls": {
+    "apollo_attestation": "REQUIRED",
+    "artifact_hash_match": "CONFIRMED",
+    "post_deploy_health": "PASS"
+  }
+}

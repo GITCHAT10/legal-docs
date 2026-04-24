@@ -23,12 +23,17 @@ class ExecutionGuard:
         execution_logic: Callable[[Dict[str, Any]], Any],
         financial_validation: bool = False
     ):
+        # Check if already in sovereign context (Nested Execution)
+        is_nested = in_sovereign_context.get()
+
         token = in_sovereign_context.set(True)
         try:
             trace_id = str(uuid.uuid4())
 
             # 1. AEGIS Identity Enforcement (Identity Binding)
-            aegis.validate_session(session_context)
+            # Bypass re-validation for nested calls from trusted internal logic
+            if not is_nested:
+                aegis.validate_session(session_context)
 
             # Pre-commit Hash Anchor
             pre_commit_hash = shadow.chain[-1]["hash"] if shadow.chain else "0"*64

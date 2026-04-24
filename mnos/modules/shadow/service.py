@@ -82,8 +82,11 @@ class ShadowLedger:
             raise
 
     def _calculate_hash(self, entry: Dict[str, Any]) -> str:
-        """previous_hash + timestamp + event_type + payload + actor_id + objective_code + entry_id -> current_hash"""
-        # Fortress Build (Go-Live Validation Lock): Enforce absolute determinism
+        """
+        previous_hash + timestamp + event_type + payload + actor_id + objective_code + entry_id -> current_hash
+        MANDATE: deterministic serialization for forensic immutability.
+        """
+        # ISO-8601 timestamp presence enforced by schema
         block_string = json.dumps({
             "entry_id": entry["entry_id"],
             "timestamp": entry.get("timestamp"),

@@ -37,11 +37,12 @@ def test_silvia_intelligence_thresholds():
 
 def test_whatsapp_hardened_flow():
     """Verify end-to-end WhatsApp flow via Execution Guard with signed session."""
+    import time
     ctx = {
         "user_id": "GUEST-01",
         "session_id": "SESS-101",
         "device_id": "nexus-001",
-        "issued_at": 1700000000,
+        "issued_at": int(time.time()),
         "nonce": "N-101"
     }
     ctx["signature"] = aegis_sign(ctx)
@@ -53,12 +54,13 @@ def test_whatsapp_hardened_flow():
 
 def test_concurrent_integrity_sim():
     """Verify multiple workflows maintain immutable chain integrity."""
+    import time
     # Use different phone numbers to avoid any caching side effects if they existed
     ctx = {
         "user_id": "GUEST-01",
         "session_id": "SESS-102",
         "device_id": "nexus-001",
-        "issued_at": 1700000000,
+        "issued_at": int(time.time()),
         "nonce": "N-102"
     }
     ctx["signature"] = aegis_sign(ctx)
@@ -67,7 +69,15 @@ def test_concurrent_integrity_sim():
     whatsapp.receive_message("+9601001", "Book room", ctx.copy())
 
     # 2. Arrival (Triggers 1 entry)
-    whatsapp.receive_message("+9601002", "Arrival", ctx.copy())
+    ctx_arr = {
+        "user_id": "GUEST-01",
+        "session_id": "SESS-102",
+        "device_id": "nexus-001",
+        "issued_at": int(time.time()),
+        "nonce": "N-102-ARR"
+    }
+    ctx_arr["signature"] = aegis.sign_session(ctx_arr)
+    whatsapp.receive_message("+9601002", "Arrival", ctx_arr)
 
     # Chain:
     # [0] GENESIS

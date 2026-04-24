@@ -30,7 +30,7 @@ class ExMailAuthority:
             smart_reply = self._generate_smart_reply(analysis, sentiment)
 
             def execute_exmail(payload):
-                self._handle_asi_conversions(payload["analysis"], payload["sender"], "INTERNAL")
+                self._handle_asi_conversions(payload["analysis"], payload["sender"], session_context)
                 return {"processed": True, "sentiment": payload["sentiment"]}
 
             # Execute via Sovereign Guard
@@ -75,18 +75,63 @@ class ExMailAuthority:
 
         return f"{base_reply} {analysis.get('response')}"
 
-    def _handle_asi_conversions(self, analysis: Dict[str, Any], sender: str, trace_id: str):
-        """Nextgen ASI: Automatically converts emails into actionable CRM entities."""
+    def _handle_asi_conversions(self, analysis: Dict[str, Any], sender: str, session_context: Dict[str, Any]):
+        """Nextgen ASI: Automatically converts emails into actionable CRM entities via Guarded Execution."""
         intent = analysis.get("intent")
 
         # Scenario: Booking becomes a Task
         if intent == "booking.created":
-            events.publish("exmail.task.created", {"type": "RESERVATION_PROC", "sender": sender}, trace_id=trace_id)
-            events.publish("nexus.booking.created", {"sender": sender, "source": "ExMAIL"}, trace_id=trace_id)
+            # For each sub-action in a nested chain, we need a fresh nonce if we re-verify.
+            # But the doctrine says REALITY -> SIGNED EVENT -> GUARD.
+            # In a nested conversion, we should probably bypass re-verification or use one-time sub-tokens.
+            # For this prototype, we'll ensure sub-actions don't re-trigger AEGIS or we provide sub-nonces.
+
+            sub_ctx = session_context.copy()
+            sub_ctx["nonce"] = f"{session_context['nonce']}:task"
+            from mnos.core.security.aegis import aegis
+            sub_ctx["signature"] = aegis.sign_session(sub_ctx)
+
+            guard.execute_sovereign_action(
+                "exmail.task.created",
+                {"type": "RESERVATION_PROC", "sender": sender},
+                sub_ctx,
+                lambda x: None
+            )
+
+            sub_ctx2 = session_context.copy()
+            sub_ctx2["nonce"] = f"{session_context['nonce']}:booking"
+            sub_ctx2["signature"] = aegis.sign_session(sub_ctx2)
+
+            guard.execute_sovereign_action(
+                "nexus.booking.created",
+                {"sender": sender, "source": "ExMAIL"},
+                sub_ctx2,
+                lambda x: None
+            )
 
         # Scenario: Emergency becomes a Ticket
         elif intent == "emergency.triggered":
-            events.publish("exmail.ticket.created", {"severity": "CRITICAL", "sender": sender}, trace_id=trace_id)
-            events.publish("nexus.emergency.triggered", {"sender": sender, "source": "ExMAIL"}, trace_id=trace_id)
+            sub_ctx3 = session_context.copy()
+            sub_ctx3["nonce"] = f"{session_context['nonce']}:ticket"
+            from mnos.core.security.aegis import aegis
+            sub_ctx3["signature"] = aegis.sign_session(sub_ctx3)
+
+            guard.execute_sovereign_action(
+                "exmail.ticket.created",
+                {"severity": "CRITICAL", "sender": sender},
+                sub_ctx3,
+                lambda x: None
+            )
+
+            sub_ctx4 = session_context.copy()
+            sub_ctx4["nonce"] = f"{session_context['nonce']}:sos"
+            sub_ctx4["signature"] = aegis.sign_session(sub_ctx4)
+
+            guard.execute_sovereign_action(
+                "nexus.emergency.triggered",
+                {"sender": sender, "source": "ExMAIL"},
+                sub_ctx4,
+                lambda x: None
+            )
 
 exmail_authority = ExMailAuthority()

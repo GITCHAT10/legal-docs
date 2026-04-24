@@ -12,16 +12,17 @@ def aegis_sign(payload):
 
 def test_aegis_spoof_attack():
     """Verify spoofing fails (server-side hardware binding only)."""
+    import time
     # Hardware not in registry
     ctx = {
         "user_id": "ATTACKER",
         "session_id": "S-ROGUE",
         "device_id": "nexus-SPOOFED-ID",
-        "issued_at": 1700000000,
+        "issued_at": int(time.time()),
         "nonce": "N-BAD"
     }
     ctx["signature"] = aegis_sign(ctx)
-    with pytest.raises(SecurityException, match="Unauthorized device"):
+    with pytest.raises(SecurityException, match="untrusted device"):
         guard.execute_sovereign_action("test", {}, ctx, lambda x: "fail")
 
 def test_shadow_genesis_tamper_fail_closed():
@@ -45,6 +46,7 @@ def reset_shadow():
 
 def test_shadow_sync_disconnection_lifecycle():
     """Simulate CABLE_CUT -> Local Execution -> Reconnect -> Reconcile."""
+    import time
     # 1. Cloud mode (default)
     assert shadow_sync.mode == "READ_ONLY"
 
@@ -53,7 +55,7 @@ def test_shadow_sync_disconnection_lifecycle():
         "user_id": "CEO-01",
         "session_id": "S-01",
         "device_id": "nexus-001",
-        "issued_at": 1700000000,
+        "issued_at": int(time.time()),
         "nonce": "N-SYNC"
     }
     ctx["signature"] = aegis_sign(ctx)

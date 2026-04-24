@@ -10,11 +10,12 @@ def aegis_sign(payload):
 
 def test_identity_spoof_attack():
     """Simulate session payload tampering."""
+    import time
     payload = {
         "user_id": "GUEST-X",
         "session_id": "S-X",
         "device_id": "nexus-001",
-        "issued_at": 1700000000,
+        "issued_at": int(time.time()),
         "nonce": "N-X"
     }
     sig = aegis_sign(payload)
@@ -24,11 +25,12 @@ def test_identity_spoof_attack():
     bad_payload["device_id"] = "nexus-attacker"
     bad_payload["signature"] = sig
 
-    with pytest.raises(SecurityException, match="signature mismatch"):
+    with pytest.raises(SecurityException, match="forgery detected"):
         guard.execute_sovereign_action("test", {}, bad_payload, lambda x: "fail")
 
 def test_ledger_tampering_fail_closed():
     """Simulate head block tampering before next commit."""
+    import time
     shadow.chain = []
     shadow._seed_ledger()
 
@@ -36,7 +38,7 @@ def test_ledger_tampering_fail_closed():
         "user_id": "CEO-01",
         "session_id": "S-LEGER-01",
         "device_id": "nexus-001",
-        "issued_at": 1700000000,
+        "issued_at": int(time.time()),
         "nonce": "N-LEGER-01"
     }
     ctx["signature"] = aegis_sign(ctx)
@@ -54,7 +56,7 @@ def test_ledger_tampering_fail_closed():
             "user_id": "CEO-01",
             "session_id": "S-LEGER-02",
             "device_id": "nexus-001",
-            "issued_at": 1700000000,
+            "issued_at": int(time.time()),
             "nonce": "N-LEGER-02"
         }
         new_ctx["signature"] = aegis_sign(new_ctx)
@@ -62,6 +64,7 @@ def test_ledger_tampering_fail_closed():
 
 def test_partial_transaction_failure_recovery():
     """Verify system remains atomic even if execution logic fails."""
+    import time
     shadow.chain = []
     shadow._seed_ledger()
     initial_len = len(shadow.chain)
@@ -70,7 +73,7 @@ def test_partial_transaction_failure_recovery():
         "user_id": "CEO-01",
         "session_id": "S-ATOMIC-01",
         "device_id": "nexus-001",
-        "issued_at": 1700000000,
+        "issued_at": int(time.time()),
         "nonce": "N-ATOMIC-01"
     }
     ctx["signature"] = aegis_sign(ctx)

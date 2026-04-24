@@ -37,13 +37,19 @@ def stress_test():
     # Clear chain for clean test
     shadow.chain = shadow.chain[:1]
 
-    # Needs guard context for publish
-    from mnos.shared.execution_guard import in_sovereign_context
-    t = in_sovereign_context.set(True)
-    try:
-        events.publish("nexus.booking.created", {"data": "test"})
-    finally:
-        in_sovereign_context.reset(t)
+    # Needs guard
+    from mnos.shared.execution_guard import guard
+    from mnos.core.security.aegis import aegis
+    import time
+    ctx_stress = {
+        "user_id": "STRESS-INIT",
+        "session_id": "STRESS",
+        "device_id": "nexus-001",
+        "issued_at": int(time.time()),
+        "nonce": "N-STRESS-INIT"
+    }
+    ctx_stress["signature"] = aegis.sign_session(ctx_stress)
+    guard.execute_sovereign_action("nexus.booking.created", {"data": "test"}, ctx_stress, lambda x: None)
 
     original_integrity = shadow.verify_integrity()
     print(f"Original Integrity: {original_integrity}")
@@ -66,11 +72,12 @@ def stress_test():
     # 4. Concurrency Test (Simulated Sequential but overlapping logic)
     print("\n[TEST 4: Concurrency Simulation]")
     # Use trusted hardware ID from Registry
+    import time
     ctx = {
         "user_id": "STRESS-01",
         "session_id": "S-STRESS-01",
         "device_id": "nexus-001",
-        "issued_at": 1700000000,
+        "issued_at": int(time.time()),
         "nonce": "N-STRESS-01"
     }
     from mnos.core.security.aegis import aegis
@@ -83,7 +90,7 @@ def stress_test():
         "user_id": "STRESS-01",
         "session_id": "S-STRESS-01",
         "device_id": "nexus-001",
-        "issued_at": 1700000000
+        "issued_at": int(time.time())
     }
 
     ctx3 = ctx_base.copy()

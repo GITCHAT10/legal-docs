@@ -25,9 +25,9 @@ def commit_evidence(event_type, payload):
     """SHADOW: Immutable audit commit. MUST be called via ExecutionGuard in prod."""
     return shadow.commit(event_type, payload)
 
-def publish_event(event_type, data, trace_id=None):
-    """EVENTS: Sovereign orchestration hub."""
-    return events.publish(event_type, data, trace_id)
+def publish_event(event_type, data, session_context, trace_id=None):
+    """EVENTS: Sovereign orchestration hub (Guarded)."""
+    return guard.execute_sovereign_action(event_type, data, session_context, lambda x: x)
 
 def execute_sovereign(action_type, payload, session_context, logic, financial_validation=False):
     """GUARD: Mandatory execution sequence (AEGIS -> FCE -> EXEC -> SHADOW -> EVENT)."""

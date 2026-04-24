@@ -53,7 +53,8 @@ class ShadowSyncEngine:
     def reconcile_with_cloud(self):
         """Pushes local changes back to cloud using timestamp-based reconciliation."""
         # MUST wrap in sovereign context to allow shadow.commit via events.publish
-        from mnos.shared.execution_guard import in_sovereign_context
+        from mnos.shared.execution_guard import in_sovereign_context, guard
+        import time
         token = in_sovereign_context.set(True)
 
         try:
@@ -63,8 +64,13 @@ class ShadowSyncEngine:
 
             reconciled_count = 0
             for item in self.local_queue:
-                # Pushing to SHADOW via EVENTS
-                events.publish(item["action"], item["data"])
+                # Pushing to SHADOW via Guard
+                guard.execute_sovereign_action(
+                    item["action"],
+                    item["data"],
+                    {"user_id": "SYNC-PROC", "session_id": "SYNC", "device_id": "nexus-admin-01", "issued_at": int(time.time()), "nonce": f"N-SYNC-{reconciled_count}", "signature": "TRUSTED"},
+                    lambda x: None
+                )
                 reconciled_count += 1
 
             self.local_queue = []
