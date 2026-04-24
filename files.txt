@@ -1,0 +1,11 @@
+./modules/pharmacy/api/main.py
+./modules/finance/api/main.py
+./modules/aasandha/api/main.py
+./modules/lifeline/api/main.py
+./core/events/api/main.py
+./core/shadow/api/main.py
+./core/eleone/api/main.py
+./core/fce/api/main.py
+./core/aegis/api/main.py
+./interfaces/gateway/api/main.py
+./tests/test_mnos_flow.py
