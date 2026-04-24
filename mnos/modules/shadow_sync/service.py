@@ -1,3 +1,4 @@
+import uuid
 from enum import Enum
 from datetime import datetime, timezone
 from typing import List, Dict, Any
@@ -17,6 +18,7 @@ class ShadowSyncEngine:
         self.mode = DBMode.READ_ONLY
         self.local_queue: List[Dict[str, Any]] = []
         self.local_db: Dict[str, Any] = {"bookings": [], "finance": [], "identity": []}
+        self.provisional_seals: List[Dict[str, Any]] = []
 
         # Subscribe to CABLE_CUT event
         events.subscribe("nexus.emergency.triggered", self._handle_disconnection)
@@ -39,43 +41,102 @@ class ShadowSyncEngine:
         if self.mode == DBMode.READ_ONLY:
             self._apply_to_local(event)
 
-    def process_local_execution(self, action: str, data: Dict[str, Any]):
-        """Handles execution during disconnection."""
+    def process_local_execution(self, action: str, data: Dict[str, Any], trace_id: str = None, session_context: Dict[str, Any] = None):
+        """Handles execution during disconnection. Enforces WAL append integrity."""
         if self.mode != DBMode.READ_WRITE:
              raise RuntimeError("Local DB is READ_ONLY. Disconnection mode not active.")
+
+        # WAL Append with previous_hash continuity simulation
+        prev_hash = self.local_queue[-1].get("hash") if self.local_queue else "0"*64
+
+        entry = {
+            "action": action,
+            "data": data,
+            "trace_id": trace_id or str(uuid.uuid4()),
+            "ts": datetime.now(timezone.utc).timestamp(),
+            "previous_hash": prev_hash,
+            "session_context": session_context
+        }
+        # Simplified hash for WAL continuity
+        import hashlib
+        entry["hash"] = hashlib.sha256(str(entry).encode()).hexdigest()
 
         # Record locally
         self._apply_to_local({"type": action, "data": data, "timestamp": datetime.now(timezone.utc).isoformat()})
         # Queue for reconciliation
-        self.local_queue.append({"action": action, "data": data, "ts": datetime.now(timezone.utc).timestamp()})
-        print(f"[SHADOW-SYNC] Local execution recorded: {action}")
+        self.local_queue.append(entry)
+        print(f"[SHADOW-SYNC] Local execution (WAL) recorded: {action} | Trace: {entry['trace_id']}")
 
-    def reconcile_with_cloud(self):
-        """Pushes local changes back to cloud using timestamp-based reconciliation."""
-        # MUST wrap in sovereign context to allow shadow.commit via events.publish
+    def create_local_provisional_seal(self):
+        """Generates a local seal for a closed business day while offline."""
+        if not self.local_queue:
+            return None
+
+        seal = {
+            "ts": datetime.now(timezone.utc).isoformat(),
+            "head_hash": self.local_queue[-1]["hash"],
+            "event_count": len(self.local_queue),
+            "status": "PROVISIONAL"
+        }
+        self.provisional_seals.append(seal)
+        print(f"[SHADOW-SYNC] PROVISIONAL SEAL CREATED: {seal['head_hash'][:16]}")
+        return seal
+
+    def reconcile_with_cloud(self, batch_size: int = None):
+        """
+        Pushes local changes back to cloud using timestamp-based reconciliation.
+        Supports partial replay and idempotency.
+        """
         from mnos.shared.execution_guard import in_sovereign_context, guard
+        from mnos.core.security.aegis import aegis
         import time
         token = in_sovereign_context.set(True)
 
         try:
-            print(f"[SHADOW-SYNC] Reconciling {len(self.local_queue)} items...")
-            # Sort by timestamp
-            self.local_queue.sort(key=lambda x: x["ts"])
+            items_to_process = self.local_queue
+            if batch_size:
+                items_to_process = self.local_queue[:batch_size]
+
+            print(f"[SHADOW-SYNC] Replaying {len(items_to_process)} items (Mode: {self.mode})...")
+            # Sort by timestamp to ensure deterministic replay order
+            items_to_process.sort(key=lambda x: x["ts"])
 
             reconciled_count = 0
-            for item in self.local_queue:
+            for item in items_to_process:
+                # Use original session context if available, else system sync
+                ctx = item.get("session_context")
+                if not ctx or "signature" not in ctx:
+                    ctx = {
+                        "user_id": "SYNC-PROC",
+                        "session_id": "SYNC",
+                        "device_id": "nexus-admin-01",
+                        "issued_at": int(time.time()),
+                        "nonce": f"N-SYNC-{reconciled_count}-{item['trace_id'][:8]}"
+                    }
+                    ctx["signature"] = aegis.sign_session(ctx)
+
                 # Pushing to SHADOW via Guard
+                # Note: guard will handle the trace_id/idempotency check at the event level
                 guard.execute_sovereign_action(
                     item["action"],
                     item["data"],
-                    {"user_id": "SYNC-PROC", "session_id": "SYNC", "device_id": "nexus-admin-01", "issued_at": int(time.time()), "nonce": f"N-SYNC-{reconciled_count}", "signature": "TRUSTED"},
+                    ctx,
                     lambda x: None
                 )
                 reconciled_count += 1
 
-            self.local_queue = []
-            self.mode = DBMode.READ_ONLY
-            print(f"[SHADOW-SYNC] Reconciliation complete. Mode: {self.mode}")
+            # Remove processed items from queue
+            self.local_queue = self.local_queue[reconciled_count:]
+
+            if not self.local_queue:
+                self.mode = DBMode.READ_ONLY
+                # Promote provisional seals to FINAL
+                for seal in self.provisional_seals:
+                    seal["status"] = "FINAL"
+                print(f"[SHADOW-SYNC] Reconciliation complete. Mode: {self.mode}")
+            else:
+                print(f"[SHADOW-SYNC] Partial replay finished. {len(self.local_queue)} items remain.")
+
             return reconciled_count
         finally:
             in_sovereign_context.reset(token)

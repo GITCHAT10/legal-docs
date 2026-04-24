@@ -20,7 +20,8 @@ class EventBus:
         "nexus.pio.ingest.folio",
         "nexus.pio.ingest.pos",
         "nexus.pio.ingest.inventory",
-        "fce.ledger.reversal"
+        "fce.ledger.reversal",
+        "system.counter_seal"
     }
 
     def __init__(self):

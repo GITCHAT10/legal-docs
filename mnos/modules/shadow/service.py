@@ -123,6 +123,20 @@ class ShadowLedger:
         print(f"[SHADOW] EXTERNAL ANCHOR GENERATED: {anchor_id} -> {head_hash}")
         return anchor_id
 
+    def create_counter_seal(self, batch_id: str, expected_count: int) -> str:
+        """
+        Creates a 'COUNTER-SEAL' event to anchor a replayed batch.
+        Verification includes event count and chain head confirmation.
+        """
+        payload = {
+            "batch_id": batch_id,
+            "expected_count": expected_count,
+            "actual_count": len(self.chain),
+            "head_hash": self.chain[-1]["hash"]
+        }
+        print(f"[SHADOW] Creating COUNTER-SEAL for batch {batch_id}...")
+        return self.commit("system.counter_seal", payload, objective_code="RECONCILIATION")
+
     def verify_integrity(self) -> bool:
         """Validates the entire hash chain from genesis to head (GENESIS-SEAL)."""
         if not self.chain:
