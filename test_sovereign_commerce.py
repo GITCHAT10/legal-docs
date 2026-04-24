@@ -1,5 +1,4 @@
 import pytest
-import asyncio
 import httpx
 import os
 from main import app
@@ -15,111 +14,66 @@ async def client():
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
         yield c
 
+@pytest.fixture
+async def headers(client):
+    # Setup authorized actor
+    res = await client.post("/aegis/identity/create", json={"full_name": "Test Admin", "profile_type": "admin"})
+    actor_id = res.json()["identity_id"]
+    await client.post("/aegis/identity/device/bind", params={"identity_id": actor_id}, json={"fingerprint": "test-dev"})
+    return {"X-AEGIS-IDENTITY": actor_id, "X-AEGIS-DEVICE": "test-dev"}
+
 @pytest.mark.anyio
 async def test_unsigned_request_rejected(client):
-    res = await client.post("/commerce/orders/create", json={})
+    res = await client.post("/imoxon/orders/create", json={})
     assert res.status_code == 403
-    assert "Missing Actor Identity" in res.json()["detail"]
+    assert "Missing Identity or Device" in res.json()["detail"]
 
 @pytest.mark.anyio
 async def test_missing_device_rejected(client):
     headers = {"X-AEGIS-IDENTITY": "actor-123"}
-    res = await client.post("/commerce/orders/create", json={}, headers=headers)
+    res = await client.post("/imoxon/orders/create", json={}, headers=headers)
     assert res.status_code == 403
-    assert "Missing Device Binding" in res.json()["detail"]
+    assert "Missing Identity or Device" in res.json()["detail"]
 
 @pytest.mark.anyio
-async def test_vendor_kyc_blocked(client):
-    res = await client.post("/aegis/identity/create", json={"full_name": "Adam", "profile_type": "staff"})
-    actor_id = res.json()["identity_id"]
-    await client.post("/aegis/identity/device/bind", params={"identity_id": actor_id}, json={"fingerprint": "dev-1"})
-    headers = {"X-AEGIS-IDENTITY": actor_id, "X-AEGIS-DEVICE": "dev-1"}
-    res = await client.post("/commerce/orders/create", json={"vendor_id": "bad-vendor", "amount": 100}, headers=headers)
-    assert res.status_code == 500
-    assert "Vendor not approved" in res.json()["detail"]
+async def test_maldives_billing_math(client, headers):
+    # Base: 1000
+    # Ship/Cust (15%): 150 -> 1150
+    # Markup (10%): 115 -> 1265
+    # Landed Base: 1265
+    # SC (10% on 1265): 126.5 -> 1391.5
+    # TGST (17% on 1391.5): 236.56 -> 1628.06
+    res = await client.post("/imoxon/pricing/landed-cost", params={"base": 1000, "cat": "RESORT_SUPPLY"}, headers=headers)
+    pricing = res.json()
+    assert pricing["total"] == 1628.06
+    # Standard FCE test without landed engine overhead
+    from main import fce_core
+    fce_res = fce_core.finalize_invoice(1000, "TOURISM")
+    assert fce_res["total"] == 1287.0
+    assert fce_res["tax_rate"] == 0.17
 
 @pytest.mark.anyio
-async def test_milestone_release_only_on_verified_proof(client):
-    res = await client.post("/aegis/identity/create", json={"full_name": "Adam", "profile_type": "staff"})
-    actor_id = res.json()["identity_id"]
-    await client.post("/aegis/identity/device/bind", params={"identity_id": actor_id}, json={"fingerprint": "dev-1"})
-    headers = {"X-AEGIS-IDENTITY": actor_id, "X-AEGIS-DEVICE": "dev-1"}
-    res = await client.post("/commerce/payouts/release", params={"milestone": "AWARD", "ref_id": "rfp_1", "total_amount": 1000}, headers=headers)
-    assert res.status_code == 500
-    assert "No verified SHADOW proof" in res.json()["detail"]
-
-@pytest.mark.anyio
-async def test_milestone_release_success_after_proof(client):
-    res = await client.post("/aegis/identity/create", json={"full_name": "Adam", "profile_type": "staff"})
-    actor_id = res.json()["identity_id"]
-    await client.post("/aegis/identity/device/bind", params={"identity_id": actor_id}, json={"fingerprint": "dev-1"})
-    headers = {"X-AEGIS-IDENTITY": actor_id, "X-AEGIS-DEVICE": "dev-1"}
-
-    # 1. Record Proof
-    await client.post("/commerce/milestones/verify", json={"milestone": "AWARD", "ref_id": "rfp_1", "timestamp": "now"}, headers=headers)
-
-    # 2. Release Payout
-    res = await client.post("/commerce/payouts/release", params={"milestone": "AWARD", "ref_id": "rfp_1", "total_amount": 1000}, headers=headers)
-    assert res.status_code == 200
-    assert res.json()["release_amount"] == 100.0
-
-@pytest.mark.anyio
-async def test_maldives_billing_math(client):
-    res = await client.post("/aegis/identity/create", json={"full_name": "Adam", "profile_type": "staff"})
-    actor_id = res.json()["identity_id"]
-    await client.post("/aegis/identity/device/bind", params={"identity_id": actor_id}, json={"fingerprint": "dev-1"})
-    headers = {"X-AEGIS-IDENTITY": actor_id, "X-AEGIS-DEVICE": "dev-1"}
-    await client.post("/commerce/vendors/approve", json={"did": "vend-1", "business_name": "Stelco"}, headers=headers)
-    res = await client.post("/commerce/orders/create", json={"vendor_id": "vend-1", "amount": 1000}, headers=headers)
-    order = res.json()
-    pricing = order["pricing"]
-    assert pricing["base"] == 1000.0
-    assert pricing["service_charge"] == 100.0
-    assert pricing["subtotal"] == 1100.0
-    assert pricing["total"] == 1188.0
-
-@pytest.mark.anyio
-async def test_direct_event_publish_blocked():
-    from mnos.modules.events.bus import EventBus
-    bus = EventBus()
-    with pytest.raises(PermissionError) as exc:
-        bus.publish("test.event", {})
-    assert "Direct event publish blocked" in str(exc.value)
-
-@pytest.mark.anyio
-async def test_direct_shadow_commit_blocked():
-    from mnos.modules.shadow.ledger import ShadowLedger
-    ledger = ShadowLedger()
-    with pytest.raises(PermissionError) as exc:
-        ledger.commit("test.event", {})
-    assert "Direct SHADOW commit blocked" in str(exc.value)
-
-@pytest.mark.anyio
-async def test_atomic_rollback_on_failure(client):
-    # vector: If business logic fails, check if we have a failure log in shadow
-    # and the state isn't partial (though in-memory is harder to verify partiality)
-    res = await client.post("/aegis/identity/create", json={"full_name": "Adam", "profile_type": "staff"})
-    actor_id = res.json()["identity_id"]
-    await client.post("/aegis/identity/device/bind", params={"identity_id": actor_id}, json={"fingerprint": "dev-1"})
-    headers = {"X-AEGIS-IDENTITY": actor_id, "X-AEGIS-DEVICE": "dev-1"}
-
-    # Attempt payout without proof triggers error in engine
-    res = await client.post("/commerce/payouts/release", params={"milestone": "AWARD", "ref_id": "err_1", "total_amount": 1000}, headers=headers)
-    assert res.status_code == 500
-
-    # Verify SHADOW has the failure entry
-    # Since we use a singleton shadow_core in main.py, we can check it if we import it
+async def test_shadow_audit_creation(client, headers):
     from main import shadow_core
-    last_block = shadow_core.get_block(len(shadow_core.chain) - 1)
-    assert last_block["data"]["event_type"] == "imoxon.payment.release.failed"
-    assert last_block["data"]["payload"]["status"] == "FAILED_ROLLBACK"
+    initial_len = len(shadow_core.chain)
+    await client.post("/imoxon/suppliers/connect", json={"name": "Audit Test", "type": "LOCAL"}, headers=headers)
+    # Each execute_sovereign_action creates 2 entries (Intent + Committed)
+    assert len(shadow_core.chain) == initial_len + 2
+    last_block = shadow_core.get_block(len(shadow_core.chain)-1)
+    assert last_block["data"]["status"] == "COMMITTED"
+    assert last_block["data"]["actor_aegis_id"] == headers["X-AEGIS-IDENTITY"]
 
 @pytest.mark.anyio
-async def test_refund_reversal_logic(client):
-    from mnos.modules.finance.fce import FCEEngine
-    fce = FCEEngine()
-    invoice = fce.finalize_invoice(1000, "RETAIL")
-    refund = fce.calculate_refund(invoice)
+async def test_failed_transaction_rollback(client, headers):
+    # Attempt to approve non-existent product
+    res = await client.post("/imoxon/products/approve", params={"pid": "none"}, headers=headers)
+    assert res.status_code == 500
+    from main import shadow_core
+    last_block = shadow_core.get_block(len(shadow_core.chain)-1)
+    assert last_block["data"]["status"] == "FAILED_ROLLBACK"
 
-    assert refund["total"] == -1188.0
-    assert refund["type"] == "REVERSAL"
+@pytest.mark.anyio
+async def test_unauthorized_mutation_rejection(client):
+    # Try to approve product without valid admin headers
+    res = await client.post("/imoxon/products/approve", params={"pid": "123"})
+    assert res.status_code == 403

@@ -1,0 +1,29 @@
+name: iMOXON Sovereign Audit CI
+
+on:
+  push:
+    branches: [ release/imoxon-consolidated-commerce-rc1 ]
+  pull_request:
+    branches: [ release/imoxon-consolidated-commerce-rc1 ]
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    - name: Run Boot Check
+      run: NEXGEN_SECRET=audit-test python mnos/boot_check.py
+    - name: Run Schema Validation
+      run: python validate_schema.py
+    - name: Run Lint
+      run: ruff check .
+    - name: Run Tests
+      run: python -m pytest test_sovereign_commerce.py test_consolidated_imoxon.py

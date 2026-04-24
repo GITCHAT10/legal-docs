@@ -34,11 +34,13 @@ class ShadowLedger:
             "payload": safe_payload,
             "entry_id": entry_id,
             "timestamp": timestamp,
-            "actor_identity_id": safe_payload.get("actor_identity_id"),
+            "actor_identity_id": safe_payload.get("actor_identity_id") or safe_payload.get("actor_aegis_id"),
+            "actor_aegis_id": safe_payload.get("actor_aegis_id"),
             "actor_device_id": safe_payload.get("actor_device_id"),
             "actor_role": safe_payload.get("actor_role"),
             "location_tag": safe_payload.get("location_tag"),
-            "source_mode": safe_payload.get("source_mode", "SYSTEM")
+            "source_mode": safe_payload.get("source_mode", "SYSTEM"),
+            "status": safe_payload.get("status")
         }
 
         block_string = json.dumps(data_to_hash, sort_keys=True)
