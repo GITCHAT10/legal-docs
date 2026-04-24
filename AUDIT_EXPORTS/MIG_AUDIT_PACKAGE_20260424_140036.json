@@ -1,0 +1,70 @@
+{
+  "version": "SKY-i Core v1.4",
+  "identity": "MALDIVES INTERNATIONAL GROUP (UEI: 2024PV12395H)",
+  "timestamp": "2026-04-24T14:00:36.770425+00:00",
+  "integrity_status": "VERIFIED_SOVEREIGN",
+  "external_anchor_id": "ANCHOR-20260424-8034fc76",
+  "ledger_head_hash": "8034fc7662a53aa27f2c807387c3d37c58982a188e18d32a46691c1419c30a03",
+  "chain_length": 3,
+  "chain": [
+    {
+      "entry_id": 0,
+      "timestamp": "2026-04-22T08:00:00Z",
+      "event_type": "GENESIS",
+      "payload": {},
+      "previous_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "hash": "12890de2f92ea537030e609f02cafe917c44dfa7c364219797a8b78402d4e3c1"
+    },
+    {
+      "entry_id": 1,
+      "timestamp": "2026-04-24T14:00:36.768861+00:00",
+      "event_type": "nexus.booking.created",
+      "payload": {
+        "event_id": "99412de8-0bba-4e63-99bc-558d858b5954",
+        "trace_id": "de9e3e44-9262-4ae1-8598-7f62c4a28959",
+        "timestamp": "2026-04-24T14:00:36.768767+00:00",
+        "data": {
+          "data": "test"
+        }
+      },
+      "previous_hash": "12890de2f92ea537030e609f02cafe917c44dfa7c364219797a8b78402d4e3c1",
+      "actor_id": "SYSTEM",
+      "objective_code": "GENERIC",
+      "hash": "5b70811f8470e9e8d38fa00ffe9cd2beb1eb858b794bdda4df2e37bc19d40007"
+    },
+    {
+      "entry_id": 2,
+      "timestamp": "2026-04-24T14:00:36.769306+00:00",
+      "event_type": "fce.ledger.reversal",
+      "payload": {
+        "event_id": "741409f0-826f-4a60-a4a6-3aef2f31edaf",
+        "trace_id": "e00761c1-6b03-476d-8e46-13149bf13d6b",
+        "timestamp": "2026-04-24T14:00:36.769222+00:00",
+        "data": {
+          "trace_id": "e00761c1-6b03-476d-8e46-13149bf13d6b",
+          "action": "fce.ledger.reversal",
+          "input": {
+            "original_id": "E-999",
+            "reason": "Testing v1.4 Reversal",
+            "note": "COURT-VALID REVERSAL"
+          },
+          "result": {
+            "status": "REVERSED",
+            "original_id": "E-999"
+          },
+          "aegis_binding": {
+            "device_id": "nexus-admin-01",
+            "signature": "b4eaa862fcd8ae73cdeff7ab02fb88e98a5f490ed3d193a507abd6eb556f6364"
+          },
+          "pre_commit_hash": "5b70811f8470e9e8d38fa00ffe9cd2beb1eb858b794bdda4df2e37bc19d40007",
+          "actor_id": "AUDITOR-1.4",
+          "objective_code": "GENERIC"
+        }
+      },
+      "previous_hash": "5b70811f8470e9e8d38fa00ffe9cd2beb1eb858b794bdda4df2e37bc19d40007",
+      "actor_id": "AUDITOR-1.4",
+      "objective_code": "GENERIC",
+      "hash": "8034fc7662a53aa27f2c807387c3d37c58982a188e18d32a46691c1419c30a03"
+    }
+  ]
+}

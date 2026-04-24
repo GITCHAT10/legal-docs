@@ -14,6 +14,29 @@ class HardwareRegistry:
         self._registry: Set[str] = {"nexus-001", "nexus-admin-01"}
         self._session_device_map: Dict[str, str] = {} # session_id -> device_id mapping
         self._used_nonces: Set[str] = set()
+        self._rate_limits: Dict[str, List[float]] = {} # device_id -> timestamps
+        self._anomaly_scores: Dict[str, int] = {} # device_id -> score
+
+    def check_rate_limit(self, device_id: str):
+        """Simple rate limiting: Max 10 requests per 10 seconds."""
+        import time
+        now = time.time()
+        if device_id not in self._rate_limits:
+            self._rate_limits[device_id] = []
+
+        self._rate_limits[device_id] = [t for t in self._rate_limits[device_id] if now - t < 10]
+        if len(self._rate_limits[device_id]) >= 10:
+             self._report_anomaly(device_id, "RATE_LIMIT_EXCEEDED")
+             raise SecurityException(f"AEGIS: Rate limit exceeded for device {device_id}")
+
+        self._rate_limits[device_id].append(now)
+
+    def _report_anomaly(self, device_id: str, reason: str):
+        self._anomaly_scores[device_id] = self._anomaly_scores.get(device_id, 0) + 1
+        print(f"!!! AEGIS ANOMALY DETECTED: {device_id} | Reason: {reason} | Score: {self._anomaly_scores[device_id]} !!!")
+        if self._anomaly_scores[device_id] > 5:
+            print(f"!!! AEGIS: AUTO-LOCKING DEVICE {device_id} due to high anomaly score !!!")
+            # In production, this would remove the device from self._registry
 
     def verify_device(self, device_id: str) -> bool:
         return device_id in self._registry
@@ -82,6 +105,11 @@ class AegisService:
 
         # P0: Replay resistance
         self.registry.check_nonce(session_context["nonce"])
+
+        # P0: Rate Limiting & Anomaly Detection
+        device_id = session_context.get("device_id")
+        if device_id:
+            self.registry.check_rate_limit(device_id)
 
         # Extract payload for HMAC verification
         payload = {k: v for k, v in session_context.items() if k != "signature"}

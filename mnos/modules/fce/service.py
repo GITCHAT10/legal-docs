@@ -8,7 +8,23 @@ class FinancialException(Exception):
 class FceService:
     """
     Financial Control Engine: Maldives-native tax logic and pre-auth.
+    Enforces Night Audit locking and Reversal-Only Correction model.
     """
+    def __init__(self):
+        self.period_locked = False
+        self.current_business_date = "2026-04-24" # Mock current date
+
+    def lock_period(self):
+        """Mandatory Night Audit Lock. Blocks all subsequent postings to the current period."""
+        self.period_locked = True
+        print(f"[FCE] PERIOD LOCKED: {self.current_business_date}. Night Audit Sealed.")
+
+    def unlock_period(self, next_date: str):
+        """Advances the business date and unlocks for new postings."""
+        self.current_business_date = next_date
+        self.period_locked = False
+        print(f"[FCE] NEW PERIOD OPEN: {self.current_business_date}")
+
     def calculate_folio(
         self,
         base_amount: Decimal,
@@ -53,8 +69,34 @@ class FceService:
 
     def validate_pre_auth(self, folio_id: str, amount: Decimal, credit_limit: Decimal) -> bool:
         """Mandatory validation before commit."""
+        if self.period_locked:
+            raise FinancialException("FCE: Period locked. Night Audit in progress or completed.")
         if amount > credit_limit:
             raise FinancialException(f"FCE AUTH DENIED: Amount {amount} exceeds limit {credit_limit} for folio {folio_id}")
         return True
+
+    def process_reversal(self, original_entry_id: str, reason: str, ctx: Dict[str, Any]) -> str:
+        """
+        REVERSAL-ONLY DISCIPLINE:
+        Never delete an entry. Create a contra-entry linked to the original.
+        """
+        from mnos.modules.shadow.service import shadow
+        from mnos.shared.execution_guard import guard
+
+        def reversal_logic(payload):
+            return {"status": "REVERSED", "original_id": payload["original_id"]}
+
+        res = guard.execute_sovereign_action(
+            action_type="fce.ledger.reversal",
+            payload={
+                "original_id": original_entry_id,
+                "reason": reason,
+                "note": "COURT-VALID REVERSAL"
+            },
+            session_context=ctx,
+            execution_logic=reversal_logic
+        )
+        print(f"[FCE] REVERSAL SEALED: Original Entry {original_entry_id}")
+        return res["status"]
 
 fce = FceService()

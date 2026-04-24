@@ -105,6 +105,24 @@ class ShadowLedger:
         """
         return self.verify_integrity()
 
+    def generate_external_anchor(self) -> str:
+        """
+        Generates a daily root hash snapshot for external immutable anchoring.
+        Returns the hash of the current chain head.
+        """
+        if not self.chain:
+            raise RuntimeError("SHADOW: Cannot anchor an empty chain.")
+
+        if not self.verify_integrity():
+            raise RuntimeError("SHADOW: Integrity check failed. Cannot anchor corrupted state.")
+
+        head_hash = self.chain[-1]["hash"]
+        anchor_id = f"ANCHOR-{datetime.now(timezone.utc).strftime('%Y%m%d')}-{head_hash[:8]}"
+
+        # In production, this would be pushed to a public blockchain or regulator vault.
+        print(f"[SHADOW] EXTERNAL ANCHOR GENERATED: {anchor_id} -> {head_hash}")
+        return anchor_id
+
     def verify_integrity(self) -> bool:
         """Validates the entire hash chain from genesis to head (GENESIS-SEAL)."""
         if not self.chain:

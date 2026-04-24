@@ -19,14 +19,24 @@ class EventBus:
         "exmail.ticket.created",
         "nexus.pio.ingest.folio",
         "nexus.pio.ingest.pos",
-        "nexus.pio.ingest.inventory"
+        "nexus.pio.ingest.inventory",
+        "fce.ledger.reversal"
     }
 
     def __init__(self):
         self.subscribers: Dict[str, List[Callable]] = {event: [] for event in self.TAXONOMY}
+        self.processed_traces: Dict[str, datetime] = {} # trace_id -> processed_at
 
     def publish(self, event_type: str, data: Dict[str, Any], trace_id: str = None) -> Dict[str, Any]:
-        """Publishes an event and commits to SHADOW ledger."""
+        """Publishes an event and commits to SHADOW ledger. Enforces idempotency."""
+        if not trace_id:
+            trace_id = str(uuid.uuid4())
+
+        # P0: Idempotency Check (REPLAY PROTECTION)
+        if trace_id in self.processed_traces:
+             print(f"[EVENTS] DUPLICATE DETECTED: Trace {trace_id}. Blocking re-execution.")
+             return {"status": "DUPLICATE", "trace_id": trace_id}
+
         # Enforce MIG EVENT LAW (Singularity Core)
         from mnos.infrastructure.mig_event_spine.service import event_spine
         event_spine.enforce_event_law(event_type, data)
@@ -34,15 +44,15 @@ class EventBus:
         if event_type not in self.TAXONOMY:
             raise ValueError(f"Unknown event type: {event_type}")
 
-        if not trace_id:
-            trace_id = str(uuid.uuid4())
-
         payload = {
             "event_id": str(uuid.uuid4()),
             "trace_id": trace_id,
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "data": data
         }
+
+        # Mark as processed immediately (pre-exec lock)
+        self.processed_traces[trace_id] = datetime.now(timezone.utc)
 
         # Doctrine: n8n → MNOS EVENTS → AEGIS → FCE → SHADOW
         # All events MUST be recorded in SHADOW for sovereign truth
