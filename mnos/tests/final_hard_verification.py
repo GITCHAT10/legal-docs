@@ -1,4 +1,5 @@
 import pytest
+import time
 from decimal import Decimal
 from mnos.modules.fce.service import fce
 from mnos.modules.aig_shadow.service import aig_shadow
@@ -31,7 +32,12 @@ def test_ledger_tamper_hard_fail():
     """Verify that tampering with any block prevents further commits."""
     aig_shadow.chain = []
     aig_shadow._seed_ledger()
-    ctx = {"device_id": "nexus-admin-01", "biometric_verified": True}
+    ctx = {
+        "device_id": "nexus-admin-01",
+        "biometric_verified": True,
+        "nonce": "nonce-tamper-fail",
+        "timestamp": int(time.time())
+    }
     ctx["signature"] = aig_aegis_sign(ctx)
 
     conn = {
@@ -48,6 +54,10 @@ def test_ledger_tamper_hard_fail():
     # Tamper with block 1 hash in head's previous_hash link
     # This simulates a direct DB mutation of a sealed link
     aig_shadow.chain[1]["previous_hash"] = "CORRUPT"
+
+    # Update nonce for second call
+    ctx["nonce"] = "nonce-tamper-fail-2"
+    ctx["signature"] = aig_aegis_sign(ctx)
 
     with pytest.raises(RuntimeError, match="Chain corruption detected"):
         guard.execute_sovereign_action("nexus.booking.created", {}, ctx, lambda x: "ok", connection_context=conn, tenant="MIG-GENESIS")

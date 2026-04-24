@@ -1,11 +1,24 @@
 import pytest
-from mnos.modules.aig_shadow.service import aig_shadow
-from mnos.modules.knowledge.service import knowledge_core
+import time
+from mnos.core.aig_aegis.service import aig_aegis
 
 @pytest.fixture(autouse=True)
-def reset_system_state():
-    """Resets global system state between tests to ensure isolation."""
-    aig_shadow.chain = []
-    aig_shadow._seed_ledger()
-    # Reset knowledge core or other singletons if needed
-    knowledge_core.ingest("TEST_DNA", "Sovereign Core Active")
+def aig_aegis_sign_global(monkeypatch):
+    def _sign(payload):
+        if "nonce" not in payload:
+            payload["nonce"] = f"nonce-{time.time()}-{payload.get('device_id')}"
+        if "timestamp" not in payload:
+            payload["timestamp"] = int(time.time())
+        return aig_aegis.sign_session(payload)
+
+    # Inject into modules that need it
+    import mnos.final_sovereign_tests
+    monkeypatch.setattr("mnos.final_sovereign_tests.aig_aegis_sign", _sign)
+
+    import mnos.tests.rc2_hardening_suite
+    monkeypatch.setattr("mnos.tests.rc2_hardening_suite.aig_aegis_sign", _sign)
+
+    import mnos.tests.final_hard_verification
+    monkeypatch.setattr("mnos.tests.final_hard_verification.aig_aegis_sign", _sign)
+
+    return _sign

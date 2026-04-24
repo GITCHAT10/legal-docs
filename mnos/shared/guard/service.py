@@ -11,15 +11,21 @@ from mnos.core.aig_l5_control.service import aig_l5
 from mnos.modules.aig_shadow_sync.db_mirror import db_mirror
 from mnos.shared import constants
 
+from enum import Enum
+
+class ExecutionMode(Enum):
+    CRITICAL = "CRITICAL"
+    STANDARD = "STANDARD"
+    DEGRADED = "DEGRADED"
+
 # Context variable to track if we are inside the execution guard
 in_sovereign_context = contextvars.ContextVar("in_sovereign_context", default=False)
 current_trace_id = contextvars.ContextVar("current_trace_id", default=None)
 
 class ExecutionGuard:
     """
-    Sovereign Execution Guard (HARDENED):
-    Enforces mandatory 5-layer flow:
-    VPN (Network) → AIGAegis (Identity) → L5 (Governance) → AIGShadow (Audit Intent) → EXECUTE → AIGShadow (Audit Result) → AIGProof (Proof)
+    Sovereign Execution Guard (HARDENED - PRODUCTION READY):
+    Enforces mandatory 5-layer flow with explicit Execution Modes.
     """
     @staticmethod
     def execute_sovereign_action(
@@ -34,7 +40,9 @@ class ExecutionGuard:
         financial_intent: Dict[str, Any] = None,
         objective_code: str = "J5", # Constitutional Default
         tenant: str = None,
-        mission_scope: str = None
+        mission_scope: str = None,
+        mode: ExecutionMode = ExecutionMode.STANDARD,
+        correlation_id: str = None
     ) -> Any:
         """
         NEXUS-SKYI-APOLLO Sovereign Execution Guard:
@@ -43,9 +51,15 @@ class ExecutionGuard:
         token = in_sovereign_context.set(True)
         trace_id = str(uuid.uuid4())
         trace_token = current_trace_id.set(trace_id)
+        cid = correlation_id or str(uuid.uuid4())
+
         try:
             connection_context = connection_context or {}
             approvals = approvals or []
+
+            # PRODUCTION RULE: Critical actions cannot run in DEGRADED mode
+            if mode == ExecutionMode.DEGRADED and objective_code in ["J5", "H2", "H3"]:
+                 raise RuntimeError(f"EXECUTION_GUARD: Critical action '{action_type}' prohibited in DEGRADED mode.")
 
             # MANDATORY 5-LAYER SEQUENTIAL ENFORCEMENT
             # NO bypass paths allowed. Failure at any layer stops execution.
@@ -96,23 +110,30 @@ class ExecutionGuard:
 
             # 5. AIGShadow Audit (Intent)
             actor_id = session_context.get("device_id", "SYSTEM")
-            # In MNOS 10.0, we no longer do double commits here to avoid redundant chain expansion
-            # if the event bus also commits.
-            # However, for fortress-build we want the INTENT specifically logged.
-            aig_shadow.commit(action_type, {"intent": payload, "trace_id": trace_id}, stage="intent", actor_id=actor_id, objective_code=objective_code)
+            intent_payload = {
+                "intent": payload,
+                "trace_id": trace_id,
+                "correlation_id": cid,
+                "mode": mode.value
+            }
+            if mode == ExecutionMode.DEGRADED:
+                intent_payload["degraded"] = True
+                intent_payload["sync_required"] = True
+
+            aig_shadow.commit(action_type, intent_payload, stage="intent", actor_id=actor_id, objective_code=objective_code)
 
             # 6. EXECUTE Logic
             try:
-                # Operational Continuity: If in failover mode, we write to local mirror
+                # Operational Continuity
+                if mode == ExecutionMode.DEGRADED:
+                    print(f"[GUARD] DEGRADED MODE: Local execution only.")
+
                 if db_mirror.is_primary:
-                    # In a real system, this would be handled by the ORM/Database Driver
-                    # switching connection strings. For this simulation, we simulate local write.
                     print(f"[GUARD] CONTINUITY MODE: Writing to Local Primary DB.")
-                    # result = execution_logic(payload)
 
                 result = execution_logic(payload)
             except Exception:
-                # Rollback AIGShadow intent commit on execution failure to maintain atomicity
+                # Rollback AIGShadow intent commit on execution failure
                 if aig_shadow.chain and aig_shadow.chain[-1]["stage"] == "intent":
                     aig_shadow.chain.pop()
                 raise
@@ -123,11 +144,16 @@ class ExecutionGuard:
 
             event_data = {
                 "trace_id": trace_id,
+                "correlation_id": cid,
                 "action": action_type,
+                "mode": mode.value,
                 "input": payload,
                 "result": result,
                 "authorized_session": session_context
             }
+            if mode == ExecutionMode.DEGRADED:
+                event_data["degraded"] = True
+                event_data["sync_required"] = True
 
             # Events.publish will call shadow.commit(action_type, payload) with stage="result"
             # ensuring a single authoritative entry for the execution outcome.

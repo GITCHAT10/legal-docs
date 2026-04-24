@@ -12,11 +12,12 @@ class TrustedDeviceRegistry:
     def __init__(self):
         # In production, this would be backed by a secure DB/HSM
         self._trusted_devices: Dict[str, Dict[str, Any]] = {
-            "nexus-001": {"status": "ACTIVE", "tier": 1},
-            "nexus-002": {"status": "ACTIVE", "tier": 1},
-            "nexus-admin-01": {"status": "ACTIVE", "tier": 3},
-            "ut-dispatch-01": {"status": "ACTIVE", "tier": 2},
-            "AIRLOCK-GATEWAY": {"status": "ACTIVE", "tier": 3}
+            "nexus-001": {"status": "ACTIVE", "tier": 1, "role": "nexus-admin"},
+            "nexus-002": {"status": "ACTIVE", "tier": 1, "role": "nexus-admin"},
+            "nexus-admin-01": {"status": "ACTIVE", "tier": 3, "role": "nexus-admin"},
+            "nexus-guest-01": {"status": "ACTIVE", "tier": 1, "role": "nexus-guest"},
+            "ut-dispatch-01": {"status": "ACTIVE", "tier": 2, "role": "ut-operator"},
+            "AIRLOCK-GATEWAY": {"status": "ACTIVE", "tier": 3, "role": "system-gateway"}
         }
 
     def get_device_info(self, device_id: str) -> Dict[str, Any]:
@@ -42,10 +43,18 @@ class AegisService:
 
     def sign_session(self, payload: Dict[str, Any]) -> str:
         """Generates an HMAC signature for a session payload."""
-        # Always filter out signature if present to ensure consistency
-        clean_payload = {k: v for k, v in payload.items() if k != "signature"}
+        # Always filter out signature and resolved fields if present to ensure consistency
+        excluded = ["signature", "verified_device_id", "resolved_role"]
+        clean_payload = {k: v for k, v in payload.items() if k not in excluded}
         data = json.dumps(clean_payload, sort_keys=True).encode()
         return hmac.new(self.secret, data, hashlib.sha256).hexdigest()
+
+    def resolve_role_from_device(self, device_id: str) -> str:
+        """PRODUCTION HARDENING: Maps hardware identity to functional role."""
+        info = self.registry.get_device_info(device_id)
+        if not info:
+             return "unknown"
+        return info.get("role", "unknown")
 
     def validate_session(self, session_context: Dict[str, Any]) -> bool:
         """
@@ -92,6 +101,7 @@ class AegisService:
         # Clean session context from client-provided attributes
         # Downstream must use server-side registry based on device_id
         session_context["verified_device_id"] = device_id
+        session_context["resolved_role"] = device_info.get("role", "unknown")
         session_context.pop("roles", None)
 
         return True

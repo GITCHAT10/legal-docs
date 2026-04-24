@@ -13,30 +13,36 @@ class AIGVault:
     def __init__(self):
         # AIG APOLLO ACL: Role-based alignment with AIG AEGIS
         self.permissions: Dict[str, List[str]] = {
-            "nexus-admin-01": ["read", "write", "delete"],
-            "nexus-001": ["read", "write"],
-            "nexus-readonly": ["read"]
+            "nexus-admin": ["read", "write", "delete"],
+            "nexus-operator": ["read", "write"],
+            "nexus-guest": ["read"],
+            "system-gateway": ["read", "write"]
         }
 
     def check_permission(self, identity: str, action: str, session_context: Dict[str, Any] = None):
         """
         Enforces AIG AEGIS session verification for data access (FORTRESS BUILD).
-        MIG HARDENING: No direct access without verified device binding.
+        MIG HARDENING: Authorize based on role, log based on device.
         """
         if not session_context:
             raise VaultException("AIG_VAULT: Unauthorized access attempt. Active session context required.")
 
-        # In MNOS 10.0, we only trust the verified_device_id from Aegis
+        # Resolve Actor Role
         verified_id = session_context.get("verified_device_id")
+        resolved_role = session_context.get("resolved_role", "unknown")
+
         if not verified_id:
-             raise VaultException("AIG_VAULT: Unverified identity. Aegis validation required.")
+             raise VaultException("AIG_VAULT: Unverified device. Aegis validation required.")
 
-        if verified_id != identity:
-             raise VaultException("AIG_VAULT: Identity mismatch. Session binding compromised.")
-
-        allowed_actions = self.permissions.get(verified_id, [])
+        # PRODUCTION RULE: Check permission based on RESOLVED ROLE
+        allowed_actions = self.permissions.get(resolved_role, [])
         if "*" not in allowed_actions and action not in allowed_actions:
-            raise VaultException(f"AIG_VAULT: Identity '{verified_id}' denied '{action}' access.")
+            # Fallback to direct identity check for legacy support
+            allowed_actions = self.permissions.get(verified_id, [])
+            if "*" not in allowed_actions and action not in allowed_actions:
+                raise VaultException(f"AIG_VAULT: Identity '{verified_id}' [Role: {resolved_role}] denied '{action}' access.")
+
+        print(f"[AIG_VAULT] PERMISSION_GRANTED: Device={verified_id} Role={resolved_role} Action={action}")
         return True
 
     def secure_storage_path(self, file_id: str, local_only: bool = True) -> str:
