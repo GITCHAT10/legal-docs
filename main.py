@@ -34,6 +34,8 @@ from mnos.modules.education.engine import EducationEngine
 # Bubble OS Super App Layer
 from mnos.modules.bubble.chat.engine import ChatIntentEngine, ChatToTransactionEngine
 from mnos.modules.bubble.sdk.core.bridge import BubbleSDK
+from mnos.modules.bubble.pos.engine import BubblePOSEngine
+from mnos.modules.bubble.pos.bridge import BubbleBPEBridge
 
 app = FastAPI(title="iMOXON N-DEOS: Consolidated Architecture Final")
 
@@ -61,7 +63,12 @@ fce_hardened = FCEHardenedEngine(shadow_core)
 imoxon = ImoxonCore(guard, fce_core, shadow_core, events_core)
 imoxon.campaign_manager = CampaignManager(imoxon)
 merchant = MerchantManager(imoxon)
-pos = POSManager(imoxon)
+
+# BUBBLE POS Engine (BPE)
+bpe = BubblePOSEngine(imoxon)
+bpe_bridge = BubbleBPEBridge(imoxon, bpe)
+
+pos = POSManager(imoxon, bpe)
 catalog = CatalogManager(imoxon)
 procurement = ProcurementEngine(imoxon)
 

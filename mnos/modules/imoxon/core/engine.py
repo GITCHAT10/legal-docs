@@ -72,13 +72,13 @@ class MerchantManager:
         return vendor
 
 class POSManager:
-    def __init__(self, core):
+    def __init__(self, core, bpe):
         self.core = core
-        self.inventory = {} # vendor_id -> {item_id -> qty}
+        self.bpe = bpe # BUBBLE POS Engine (BPE)
 
     def sync_stock(self, actor_ctx: dict, stock_data: dict):
         return self.core.execute_commerce_action(
-            "imoxon.pos.sync",
+            "bpe.pos.sync",
             actor_ctx,
             self._internal_sync,
             stock_data
@@ -89,13 +89,8 @@ class POSManager:
         item = data.get("item")
         count = data.get("count")
 
-        if vendor_id not in self.inventory:
-            self.inventory[vendor_id] = {}
-
-        self.inventory[vendor_id][item] = count
-        event = {"vendor_id": vendor_id, "item": item, "count": count}
-        self.core.events.publish("imoxon.stock_updated", event)
-        return event
+        # Delegate to rebranded BPE
+        return self.bpe.update_inventory(vendor_id, item, count, action="SYNC")
 
 class CatalogManager:
     def __init__(self, core):
