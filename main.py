@@ -112,23 +112,44 @@ app.add_middleware(ExecutionGuardMiddleware, guard=guard, events=events_core)
 # --- Dependency ---
 def get_actor_ctx(
     x_aegis_identity: str = Header(None, alias="X-AEGIS-IDENTITY"),
-    x_aegis_device: str = Header(None, alias="X-AEGIS-DEVICE"),
-    x_aegis_verified: bool = Header(False, alias="X-AEGIS-VERIFIED")
+    x_aegis_device: str = Header(None, alias="X-AEGIS-DEVICE")
 ):
     if not x_aegis_identity or not x_aegis_device:
         raise HTTPException(status_code=403, detail="FAIL CLOSED: Missing Identity or Device")
+
+    # SECURITY: Validate identity exists in persistence layer
+    profile = identity_core.profiles.get(x_aegis_identity)
+    if not profile:
+        raise HTTPException(status_code=403, detail="FAIL CLOSED: Identity Unauthorized")
+
+    # SECURITY: Validate device is bound to identity
+    device = identity_core.devices.get(x_aegis_device)
+    if not device or device.get("identity_id") != x_aegis_identity:
+        raise HTTPException(status_code=403, detail="FAIL CLOSED: Device Binding Invalid")
+
+    # SECURITY: Derive role from stored records, NOT from headers
     return {
         "identity_id": x_aegis_identity,
         "device_id": x_aegis_device,
-        "role": "admin",
-        "national_id_verified": x_aegis_verified
+        "role": profile.get("profile_type"),
+        "national_id_verified": profile.get("verification_status") == "verified"
     }
 
 # --- Consolidated APIs ---
 
 @app.post("/imoxon/suppliers/connect")
 async def connect_supplier(name: str, actor: dict = Depends(get_actor_ctx)):
-    return imoxon.execute_commerce_action("imoxon.supplier.connect", actor, lambda: {"name": name, "status": "CONNECTED"})
+    # Create a profile in Aegis for the supplier to get a real ID
+    supplier_id = identity_core.create_profile({
+        "full_name": name,
+        "profile_type": "supplier",
+        "organization_id": "IMOXON-NETWORK"
+    })
+    return imoxon.execute_commerce_action(
+        "imoxon.supplier.connect",
+        actor,
+        lambda: {"id": supplier_id, "name": name, "status": "CONNECTED"}
+    )
 
 @app.post("/imoxon/products/import")
 async def import_product(sid: str, raw: dict, actor: dict = Depends(get_actor_ctx)):
@@ -147,11 +168,11 @@ async def chat_message(message: str, actor: dict = Depends(get_actor_ctx)):
     return chat_os.process_message(actor, message)
 
 # --- Routers ---
-app.include_router(create_identity_router(identity_core, policy_engine))
-app.include_router(create_commerce_router(imoxon, catalog, merchant, pos, procurement, get_actor_ctx))
-app.include_router(create_finance_router(fce_hardened, get_actor_ctx))
-app.include_router(create_specialized_router(tourism, faith, transport, housing, exchange, education, get_actor_ctx))
-app.include_router(create_hospitality_router(hospitality, get_actor_ctx))
+app.include_router(create_identity_router(identity_core, policy_engine), prefix="/imoxon")
+app.include_router(create_commerce_router(imoxon, catalog, merchant, pos, procurement, get_actor_ctx), prefix="/imoxon")
+app.include_router(create_finance_router(fce_hardened, get_actor_ctx), prefix="/imoxon")
+app.include_router(create_specialized_router(tourism, faith, transport, housing, exchange, education, get_actor_ctx), prefix="/imoxon")
+app.include_router(create_hospitality_router(hospitality, get_actor_ctx), prefix="/imoxon")
 
 # Error handlers
 @app.exception_handler(PermissionError)
