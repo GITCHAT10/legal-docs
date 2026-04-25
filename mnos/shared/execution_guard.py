@@ -31,6 +31,22 @@ class ExecutionGuard:
         if not getattr(orban_comms, "active_secure_tunnel", True):
              raise RuntimeError("ORBAN_CONNECTION_REQUIRED: Execution blocked.")
 
+        # ADDU FORTRESS: Multisig 2-of-3 Verification for privileged actions
+        if session_context.get("role") == "privileged":
+             signatures = session_context.get("multisig_signatures", [])
+             if len(signatures) < 2:
+                  raise RuntimeError(f"MULTISIG_REQUIRED: Privileged action {action_type} requires 2-of-3 signatures.")
+
+        # ADDU FORTRESS: Hardware Attestation Requirement
+        if "hardware" in action_type and not session_context.get("attested_context"):
+             raise RuntimeError("HARDWARE_ATTESTATION_REQUIRED: Action blocked.")
+
+        # NATIONAL DEPLOYMENT: Regional Geo-Lock
+        allowed_locations = ["ADDU_FORTRESS", "VELANA_GATEWAY", "MALE_BRIDGE", "VIMAN_RESIDENTIAL", "OMADHOO_PILOT"]
+        current_location = session_context.get("location")
+        if current_location not in allowed_locations:
+             raise RuntimeError(f"GEO_LOCK_VIOLATION: Identity location {current_location} not authorized for National Grid.")
+
         token = in_sovereign_context.set(True)
         t = threading.current_thread()
         prev_in_guard = getattr(t, 'in_sovereign_guard', False)

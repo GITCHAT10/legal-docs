@@ -1,5 +1,6 @@
 import pytest
 import uuid
+from datetime import datetime, timezone
 from decimal import Decimal
 from mnos.modules.fce.service import fce, FinancialException
 from mnos.modules.shadow.service import shadow
@@ -37,7 +38,12 @@ def test_silvia_intelligence_thresholds():
 
 def test_whatsapp_hardened_flow():
     """Verify end-to-end WhatsApp flow via Execution Guard with signed session."""
-    ctx = {"device_id": "nexus-001"}
+    ctx = {
+        "device_id": "nexus-001",
+        "location": "ADDU_FORTRESS",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "nonce": str(uuid.uuid4())
+    }
     ctx["signature"] = aegis_sign(ctx)
 
     res = whatsapp.receive_message("+9601112222", "I want to book a room", ctx)
@@ -47,12 +53,19 @@ def test_whatsapp_hardened_flow():
 
 def test_concurrent_integrity_sim():
     """Verify multiple workflows maintain immutable chain integrity."""
-    ctx = {"device_id": "nexus-001"}
-    ctx["signature"] = aegis_sign(ctx)
+    def get_ctx():
+        c = {
+            "device_id": "nexus-001",
+            "location": "ADDU_FORTRESS",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "nonce": str(uuid.uuid4())
+        }
+        c["signature"] = aegis_sign(c)
+        return c
 
     # Sequence of events
-    whatsapp.receive_message("+9601", "Book room", ctx)
-    whatsapp.receive_message("+9602", "Arrival", ctx)
+    whatsapp.receive_message("+9601", "Book room", get_ctx())
+    whatsapp.receive_message("+9602", "Arrival", get_ctx())
 
     # Analysis:
     # 1. Genesis (1)

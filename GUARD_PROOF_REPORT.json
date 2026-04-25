@@ -1,6 +1,6 @@
 {
-    "forensic_id": "MIG-AUDIT-202604232136",
-    "timestamp": "2026-04-23T21:36:56.936781+00:00",
+    "forensic_id": "MIG-AUDIT-202604252259",
+    "timestamp": "2026-04-25T22:59:21.473870+00:00",
     "genesis_verified": true,
     "chain_length": 8,
     "integrity_pass": true,
@@ -8,7 +8,7 @@
     "signed_session_enforcement": "ACTIVE",
     "direct_publish_bypass_scan": "CLEAN",
     "hardening_version": "MIG-RECON-9.5",
-    "merkle_root": "5083b83ae371a9600cca47ee70a1cba447ada8b633406cb2f66d40b68bd72669",
+    "merkle_root": "c948ce6dc382edf6b8b9bc165d3f9c691c234b9578ef11d41efa031144a11bfe",
     "data": [
         {
             "entry_id": 0,
@@ -18,84 +18,84 @@
             "previous_hash": "0000000000000000000000000000000000000000000000000000000000000000",
             "actor_id": "SYSTEM",
             "objective_code": "GENESIS",
-            "hash": "33e146ffde7552298df7910a18af56870168e9384ea43a4063c309a699875991"
+            "hash": "eba7f9fdecc82c1f8c08f83483dfdb51e61e630dc68a9f03ed90d8b77f191dd2"
         },
         {
             "entry_id": 1,
-            "timestamp": "2026-04-23T21:36:56.934584+00:00",
+            "timestamp": "2026-04-25T22:59:21.471491+00:00",
             "event_type": "exmail.task.created",
             "payload": {
-                "event_id": "62ecfa15-e108-4680-b04e-7fc2aeef9860",
+                "event_id": "00e2ac36-e669-457f-acb9-56094d5eb0e2",
                 "trace_id": "INTERNAL",
-                "timestamp": "2026-04-23T21:36:56.934529+00:00",
+                "timestamp": "2026-04-25T22:59:21.471433+00:00",
                 "data": {
                     "type": "RESERVATION_PROC",
                     "sender": "happy.guest@example.com"
                 }
             },
-            "previous_hash": "33e146ffde7552298df7910a18af56870168e9384ea43a4063c309a699875991",
+            "previous_hash": "eba7f9fdecc82c1f8c08f83483dfdb51e61e630dc68a9f03ed90d8b77f191dd2",
             "actor_id": "SYSTEM",
             "objective_code": "EXEC",
             "latency_audit": {
                 "detection_to_action_ms": 12,
                 "relay_response_confirmation": "VERIFIED"
             },
-            "hash": "3e6304388559fcb28233cbcb1417608f35cf5361362caa7a7ac039282373795a"
+            "hash": "0d9ffbaf2589c00ae494d65cf2860173adff36158660e95b30351012e3240545"
         },
         {
             "entry_id": 2,
-            "timestamp": "2026-04-23T21:36:56.934711+00:00",
+            "timestamp": "2026-04-25T22:59:21.471625+00:00",
             "event_type": "nexus.booking.created",
             "payload": {
-                "event_id": "2922c144-a42e-4580-a6a1-2c01cfee33c4",
+                "event_id": "4e709379-628f-4488-81c3-3650b5aca5da",
                 "trace_id": "INTERNAL",
-                "timestamp": "2026-04-23T21:36:56.934664+00:00",
+                "timestamp": "2026-04-25T22:59:21.471573+00:00",
                 "data": {
                     "sender": "happy.guest@example.com",
                     "source": "ExMAIL"
                 }
             },
-            "previous_hash": "3e6304388559fcb28233cbcb1417608f35cf5361362caa7a7ac039282373795a",
+            "previous_hash": "0d9ffbaf2589c00ae494d65cf2860173adff36158660e95b30351012e3240545",
             "actor_id": "SYSTEM",
             "objective_code": "EXEC",
             "latency_audit": {
                 "detection_to_action_ms": 12,
                 "relay_response_confirmation": "VERIFIED"
             },
-            "hash": "0d5f0cd926aec32d2690821a777118591779ae02cf6f9fb290f21c0d07aee89c"
+            "hash": "00fec783bdb87cff3751c710e6a351d52372d93a2a9d63fe434c6e61016c2c7d"
         },
         {
             "entry_id": 3,
-            "timestamp": "2026-04-23T21:36:56.934960+00:00",
+            "timestamp": "2026-04-25T22:59:21.471801+00:00",
             "event_type": "nexus.payment.received",
             "payload": {
-                "event_id": "98fe9822-c95f-41ca-add4-f3babfea444a",
+                "event_id": "2bbf6513-184a-49dd-a2c3-b38ef05c8a90",
                 "trace_id": "INTERNAL",
-                "timestamp": "2026-04-23T21:36:56.934838+00:00",
+                "timestamp": "2026-04-25T22:59:21.471745+00:00",
                 "data": {
                     "amount": "649.50",
                     "folio_id": "F-999"
                 }
             },
-            "previous_hash": "0d5f0cd926aec32d2690821a777118591779ae02cf6f9fb290f21c0d07aee89c",
+            "previous_hash": "00fec783bdb87cff3751c710e6a351d52372d93a2a9d63fe434c6e61016c2c7d",
             "actor_id": "SYSTEM",
             "objective_code": "EXEC",
             "latency_audit": {
                 "detection_to_action_ms": 12,
                 "relay_response_confirmation": "VERIFIED"
             },
-            "hash": "efbcfbd3e815a0da4037a9d2989019c8eb3bb7c32c8d39540424369025212527"
+            "hash": "6d0b82b5e2112d6b6d8e96e4fef8cfcbe07c4e3624edbf19f71476918f91a857"
         },
         {
             "entry_id": 4,
-            "timestamp": "2026-04-23T21:36:56.935133+00:00",
+            "timestamp": "2026-04-25T22:59:21.471977+00:00",
             "event_type": "exmail.received",
             "payload": {
-                "event_id": "61495ba8-8441-4f3e-aba7-48e9bc7bd072",
-                "trace_id": "1d3a4faf-e54a-4532-97f1-51205c8786fd",
-                "timestamp": "2026-04-23T21:36:56.935060+00:00",
+                "event_id": "b943306b-5a5e-4efa-9a7e-67b833948cc6",
+                "trace_id": "b918deda-2a8d-4800-bb19-33c609927073",
+                "timestamp": "2026-04-25T22:59:21.471907+00:00",
                 "data": {
-                    "trace_id": "1d3a4faf-e54a-4532-97f1-51205c8786fd",
+                    "trace_id": "b918deda-2a8d-4800-bb19-33c609927073",
                     "action": "exmail.received",
                     "input": {
                         "sender": "happy.guest@example.com",
@@ -118,75 +118,77 @@
                     "authorized_session": {
                         "device_id": "nexus-001",
                         "nonce": "SESSION-001",
-                        "timestamp": "2026-04-23T21:36:56.934295+00:00",
-                        "signature": "5a27d99756263fec3af91ea0f8bb344d2751f5f45d22144166093ee2783d79ee",
+                        "timestamp": "2026-04-25T22:59:21.470958+00:00",
+                        "location": "ADDU_FORTRESS",
+                        "role": "admin",
+                        "signature": "cc528085789dec08804177cc66942d276053f39b6ba36d784871160ea1692842",
                         "bound_device_id": "nexus-001"
                     }
                 }
             },
-            "previous_hash": "efbcfbd3e815a0da4037a9d2989019c8eb3bb7c32c8d39540424369025212527",
+            "previous_hash": "6d0b82b5e2112d6b6d8e96e4fef8cfcbe07c4e3624edbf19f71476918f91a857",
             "actor_id": "SYSTEM",
             "objective_code": "EXEC",
             "latency_audit": {
                 "detection_to_action_ms": 12,
                 "relay_response_confirmation": "VERIFIED"
             },
-            "hash": "3d4a9dd82f0dc9f269dfe4b7ab34011aa3aeb142887a4850b265e8725223a2f3"
+            "hash": "a9cc8732bffdc2f2a329c3c8fe3a676d11917ce6ccddc9dea65975bd509ebaad"
         },
         {
             "entry_id": 5,
-            "timestamp": "2026-04-23T21:36:56.935556+00:00",
+            "timestamp": "2026-04-25T22:59:21.472498+00:00",
             "event_type": "exmail.ticket.created",
             "payload": {
-                "event_id": "65bb4bd8-3660-41fe-a145-01f7df7d763f",
+                "event_id": "6d13624e-505a-4f0c-af95-6c2f2646a82c",
                 "trace_id": "INTERNAL",
-                "timestamp": "2026-04-23T21:36:56.935433+00:00",
+                "timestamp": "2026-04-25T22:59:21.472384+00:00",
                 "data": {
                     "severity": "CRITICAL",
                     "sender": "angry.guest@example.com"
                 }
             },
-            "previous_hash": "3d4a9dd82f0dc9f269dfe4b7ab34011aa3aeb142887a4850b265e8725223a2f3",
+            "previous_hash": "a9cc8732bffdc2f2a329c3c8fe3a676d11917ce6ccddc9dea65975bd509ebaad",
             "actor_id": "SYSTEM",
             "objective_code": "EXEC",
             "latency_audit": {
                 "detection_to_action_ms": 12,
                 "relay_response_confirmation": "VERIFIED"
             },
-            "hash": "345903f0c3b4de25ca1be2a86af4136c305be98b3c81315a688327ff51145206"
+            "hash": "2e53407e7a8d4d53165bfe5c99fefb31139e22b3716def68800fcb3ccbc941e2"
         },
         {
             "entry_id": 6,
-            "timestamp": "2026-04-23T21:36:56.935818+00:00",
+            "timestamp": "2026-04-25T22:59:21.472773+00:00",
             "event_type": "nexus.emergency.triggered",
             "payload": {
-                "event_id": "ee2e826c-9940-4d26-b389-529f39e28e55",
+                "event_id": "2f067bf5-16db-40d7-bdcd-89538e212e7a",
                 "trace_id": "INTERNAL",
-                "timestamp": "2026-04-23T21:36:56.935701+00:00",
+                "timestamp": "2026-04-25T22:59:21.472661+00:00",
                 "data": {
                     "sender": "angry.guest@example.com",
                     "source": "ExMAIL"
                 }
             },
-            "previous_hash": "345903f0c3b4de25ca1be2a86af4136c305be98b3c81315a688327ff51145206",
+            "previous_hash": "2e53407e7a8d4d53165bfe5c99fefb31139e22b3716def68800fcb3ccbc941e2",
             "actor_id": "SYSTEM",
             "objective_code": "EXEC",
             "latency_audit": {
                 "detection_to_action_ms": 12,
                 "relay_response_confirmation": "VERIFIED"
             },
-            "hash": "ad61d231b0cf2f285a0b66532907e1c4fd849c13eb5a5b6c2e8f331286456b36"
+            "hash": "0d1b917ed07aed8f805f6688c85d58b84a0564d5aad5fb6674a863b473d0aeab"
         },
         {
             "entry_id": 7,
-            "timestamp": "2026-04-23T21:36:56.936183+00:00",
+            "timestamp": "2026-04-25T22:59:21.473077+00:00",
             "event_type": "exmail.received",
             "payload": {
-                "event_id": "9c7f61e9-881b-474d-9b3a-7586acbfa7fc",
-                "trace_id": "2a9270ea-0f44-43e8-8482-aa8fc6ed6c8f",
-                "timestamp": "2026-04-23T21:36:56.936039+00:00",
+                "event_id": "c5c2f7df-e174-47bb-8afe-62e0b4155b35",
+                "trace_id": "834dc5cc-4dd7-4b4b-a51f-2ddbc0629a6a",
+                "timestamp": "2026-04-25T22:59:21.472932+00:00",
                 "data": {
-                    "trace_id": "2a9270ea-0f44-43e8-8482-aa8fc6ed6c8f",
+                    "trace_id": "834dc5cc-4dd7-4b4b-a51f-2ddbc0629a6a",
                     "action": "exmail.received",
                     "input": {
                         "sender": "angry.guest@example.com",
@@ -209,20 +211,22 @@
                     "authorized_session": {
                         "device_id": "nexus-001",
                         "nonce": "SESSION-002",
-                        "timestamp": "2026-04-23T21:36:56.935284+00:00",
-                        "signature": "a5484bf359772bdd31c9925cbb5f1243356524bda07b1717505c0b0dd3607a3e",
+                        "timestamp": "2026-04-25T22:59:21.472124+00:00",
+                        "location": "ADDU_FORTRESS",
+                        "role": "admin",
+                        "signature": "def50aa7ee146c3bdc3d2769932ef86b65c020316a10ad342668d25b3636f72a",
                         "bound_device_id": "nexus-001"
                     }
                 }
             },
-            "previous_hash": "ad61d231b0cf2f285a0b66532907e1c4fd849c13eb5a5b6c2e8f331286456b36",
+            "previous_hash": "0d1b917ed07aed8f805f6688c85d58b84a0564d5aad5fb6674a863b473d0aeab",
             "actor_id": "SYSTEM",
             "objective_code": "EXEC",
             "latency_audit": {
                 "detection_to_action_ms": 12,
                 "relay_response_confirmation": "VERIFIED"
             },
-            "hash": "5083b83ae371a9600cca47ee70a1cba447ada8b633406cb2f66d40b68bd72669"
+            "hash": "c948ce6dc382edf6b8b9bc165d3f9c691c234b9578ef11d41efa031144a11bfe"
         }
     ],
     "signature_verification": "VERIFIED_SATA_HSM_MD_A096158",

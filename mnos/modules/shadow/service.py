@@ -85,27 +85,53 @@ class ShadowLedger:
 
     def _calculate_hash(self, entry: Dict[str, Any]) -> str:
         """
-        Hardened v9.5 Forensic Hash Calculation:
-        entry_id + event_type + payload + timestamp + previous_hash
-        [+ actor_id + objective_code]
-        Enforces deterministic sort_keys=True.
+        Hardened SOVEREIGN DYNAMIC Hash Calculation (MIG-CORE-v10-FINAL):
+        Adapts to ADDU, VELANA, MALE, VIMAN, AVIATION and ENV forensic specs.
         """
         if "timestamp" not in entry:
             raise RuntimeError("SHADOW: Missing timestamp in block. Integrity check aborted.")
 
-        # v9.5 Court-Valid Enforcement: Mandatory canonical field set
+        event_type = entry.get("event_type", "UNKNOWN")
+        payload = entry.get("payload", {})
+
+        # Default v10.0 Forensic Set
         data = {
-            "entry_id": entry["entry_id"],
-            "event_type": entry["event_type"],
-            "payload": entry["payload"],
             "timestamp": entry["timestamp"],
+            "device_id": entry.get("actor_id", "SYSTEM"),
+            "event_payload": payload,
             "previous_hash": entry["previous_hash"]
         }
 
-        # P1 Enforcement: Include actor and objective in hash if present
-        for field in ["actor_id", "objective_code"]:
-            if field in entry:
-                data[field] = entry[field]
+        # VELANA SENTINEL / EGATE: [timestamp, device_id, identity_token, event_payload, previous_hash]
+        if "egate" in event_type:
+            data["identity_token"] = payload.get("identity_token", "NONE")
+
+        # URBAN MALE: [timestamp, device_id, signal_state, reason_code, previous_hash]
+        elif "urban" in event_type:
+            data["signal_state"] = payload.get("state", "OFF")
+            data["reason_code"] = payload.get("reason_code", "NONE")
+
+        # GATEKEEPER VIMAN: [timestamp, gate_id, vehicle_id, decision, previous_hash]
+        elif "gatekeeper" in event_type:
+            data["gate_id"] = payload.get("gate_id", "G-0")
+            data["vehicle_id"] = payload.get("vehicle_id", "V-0")
+            data["decision"] = payload.get("decision", "HOLD")
+
+        # AVIATION VELANA: [timestamp, event_id, location, video_clip, previous_hash]
+        elif "aviation" in event_type:
+            data["event_id"] = payload.get("event_id", "AV-0")
+            data["location"] = payload.get("location", "VELANA_MLE")
+            data["video_clip"] = payload.get("forensic_clip", "CLIP_REDACTED")
+
+        # ENV SHIELD: [timestamp, event_id, sensor_data, action_log, previous_hash]
+        elif "environment" in event_type:
+            data["event_id"] = payload.get("event_id", "ENV-0")
+            data["sensor_data"] = payload.get("pressure", 0)
+            data["action_log"] = payload.get("status", "NORMAL")
+
+        # ADDU FORTRESS: aegis_signature required
+        else:
+            data["aegis_signature"] = entry.get("latency_audit", {}).get("relay_response_confirmation", "SOVEREIGN_ROOT_SIGNED")
 
         block_string = json.dumps(data, sort_keys=True, separators=(',', ':')).encode()
         return hashlib.sha256(block_string).hexdigest()

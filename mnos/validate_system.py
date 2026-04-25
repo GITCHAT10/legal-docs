@@ -10,6 +10,11 @@ from mnos.boot_check import check_integrity
 from mnos.core.security.aegis import aegis
 from mnos.interfaces.sky_i.comms.whatsapp import whatsapp
 from mnos.modules.exmail.service import exmail_authority
+from mnos.modules.egate.service import egate_sentinel
+from mnos.modules.urban.service import urban_core, emergency_shield
+from mnos.modules.gatekeeper.service import gatekeeper
+from mnos.modules.aviation.service import aviation_sentinel
+from mnos.modules.environment.shield import env_shield
 from mnos.modules.shadow.service import shadow
 from mnos.modules.knowledge.service import knowledge_core
 from mnos.core.resilience.backup import resilience
@@ -32,11 +37,13 @@ def run_validation():
     knowledge_core.ingest("NEXUS_DNA", dna)
 
     # SECURE: All contexts must be signed before execution
-    def get_signed_ctx(session_id):
+    def get_signed_ctx(session_id, location="ADDU_FORTRESS", role="admin"):
         ctx_payload = {
             "device_id": "nexus-001",
             "nonce": session_id,
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "location": location,
+            "role": role
         }
         ctx = ctx_payload.copy()
         ctx["signature"] = aegis.sign_context(ctx_payload)
@@ -76,12 +83,25 @@ def run_validation():
     report = shadow.export_forensic_bundle()
     print(f"Generated GUARD_PROOF_REPORT.json | Hardening: {report['hardening_version']}")
 
-    # 7. Final Output & Compliance
+    # 7. National Grid Scenarios
+    print("\n[SCENARIO 3: VELANA EGATE SENTINEL]")
+    res_egate = egate_sentinel.process_arrival({}, get_signed_ctx("EGATE-001", "VELANA_GATEWAY"))
+    print(f"Result: {res_egate['status']}")
+
+    print("\n[SCENARIO 4: MALE URBAN CORE]")
+    res_urban = urban_core.set_signal_state("INT-01", "GREEN", get_signed_ctx("URBAN-001", "MALE_BRIDGE"))
+    print(f"Result: {res_urban['status']}")
+
+    print("\n[SCENARIO 5: VIMAN GATEKEEPER]")
+    res_gate = gatekeeper.process_gate_access("GATE-A", {"plate_match": True, "aegis_device_present": True}, get_signed_ctx("VIMAN-001", "VIMAN_RESIDENTIAL"))
+    print(f"Result: {res_gate['status']}")
+
+    # 8. Final Output & Compliance
     if not integrity_ok:
         print("\n!!! VALIDATION FAILED: Ledger compromised.")
         sys.exit(1)
 
-    print("\nMARS RECON Genesis Node v9.5 = HARDENED")
+    print("\nMARS RECON National Grid v10.0 = HARDENED")
     print("\n--- ✅ VALIDATION COMPLETE ---")
 
 if __name__ == "__main__":

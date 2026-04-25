@@ -1,0 +1,20 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.0.3, pluggy-1.6.0
+rootdir: /app
+configfile: pytest.ini
+collected 5 items
+run-last-failure: rerun previous 1 failure first
+
+mnos/final_sovereign_tests.py .....                                      [100%]
+
+============================== 5 passed in 0.05s ===============================
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.0.3, pluggy-1.6.0
+rootdir: /app
+configfile: pytest.ini
+collected 3 items
+run-last-failure: rerun previous 1 failure first
+
+mnos/tests/rc2_hardening_suite.py ...                                    [100%]
+
+============================== 3 passed in 0.03s ===============================

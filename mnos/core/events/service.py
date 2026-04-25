@@ -29,7 +29,14 @@ class EventBus:
         "hubble.distress_ping",
         "hubble.location_update",
         "hubble.health_state",
-        "nexus.test"
+        "nexus.test",
+        "egate.arrival_processed",
+        "urban.signal_updated",
+        "urban.priority_corridor_active",
+        "gatekeeper.access_processed",
+        "aviation.advisory_issued",
+        "environment.infra_failure",
+        "radar.vessel_linked"
     }
 
     def __init__(self):

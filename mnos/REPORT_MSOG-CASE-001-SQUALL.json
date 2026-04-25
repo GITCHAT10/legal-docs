@@ -1,0 +1,28 @@
+{
+    "case_id": "MSOG-CASE-001-SQUALL",
+    "status": "INVESTOR_READY",
+    "generated_at": "2026-04-25T21:46:16.056584+00:00",
+    "metrics": {
+        "detection_time_ms": 450,
+        "decision_latency_ms": 1200,
+        "fuel_saved_usd": 1200,
+        "pax_wait_reduction_min": 55,
+        "system_integrity": "100.0%"
+    },
+    "forensic_audit": {
+        "shadow_merkle_root": "eba7f9fdecc82c1f8c08f83483dfdb51e61e630dc68a9f03ed90d8b77f191dd2",
+        "integrity_status": true
+    },
+    "timeline": [
+        {
+            "entry_id": 0,
+            "timestamp": "2026-04-22T08:00:00Z",
+            "event_type": "GENESIS",
+            "payload": {},
+            "previous_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+            "actor_id": "SYSTEM",
+            "objective_code": "GENESIS",
+            "hash": "eba7f9fdecc82c1f8c08f83483dfdb51e61e630dc68a9f03ed90d8b77f191dd2"
+        }
+    ]
+}

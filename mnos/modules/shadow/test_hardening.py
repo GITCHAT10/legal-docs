@@ -10,11 +10,16 @@ class TestShadowHardening(unittest.TestCase):
 
     def test_integrity_checks(self):
         # Manually enter sovereign context for direct commit in test
+        import threading
+        t = threading.current_thread()
+        prev_flag = getattr(t, 'sovereign_guard', False)
+        t.sovereign_guard = True
         token = in_sovereign_context.set(True)
         try:
             shadow.commit("nexus.guest.arrival", {"data": "valid"})
         finally:
             in_sovereign_context.reset(token)
+            t.sovereign_guard = prev_flag
 
         self.assertEqual(len(shadow.chain), 2)
 
@@ -43,6 +48,10 @@ class TestShadowHardening(unittest.TestCase):
         shadow.enable_witness_mode()
 
         # 2. Attempt commit inside sovereign context
+        import threading
+        t = threading.current_thread()
+        prev_flag = getattr(t, 'sovereign_guard', False)
+        t.sovereign_guard = True
         token = in_sovereign_context.set(True)
         try:
             with self.assertRaises(RuntimeError) as cm:
@@ -50,6 +59,7 @@ class TestShadowHardening(unittest.TestCase):
             self.assertIn("SHADOW_READ_ONLY", str(cm.exception))
         finally:
             in_sovereign_context.reset(token)
+            t.sovereign_guard = prev_flag
             # Disable for other tests
             shadow.witness_mode = False
 

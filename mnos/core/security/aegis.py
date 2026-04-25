@@ -43,7 +43,8 @@ class AegisService:
     def __init__(self):
         self.secret = config.NEXGEN_SECRET.encode()
         self.registry = TrustedDeviceRegistry()
-        # Simulated HSM Root Profile
+        # SOVEREIGN ROOT SEAL (ADDU FORTRESS)
+        self.root_identity = "MD_A096158_ROOT"
         self.hsm_root_uei = "2024PV12395H"
         self._nonce_cache = set() # Replay protection
 
@@ -116,10 +117,14 @@ class AegisService:
         # SECURE: Resolve bound_device_id only from trusted server-side registry.
         session_context["bound_device_id"] = device_id
 
-        # HSM ROOT BINDING: Privileged sessions must match HSM Root UEI
+        # HSM ROOT BINDING: Privileged sessions must match HSM Root UEI or ROOT_IDENTITY
         if session_context.get("role") == "privileged":
-            if device_id != self.hsm_root_uei and device_id != "MD_A096158_ROOT":
+            if device_id != self.hsm_root_uei and device_id != self.root_identity:
                  raise SecurityException(f"AEGIS: Privileged session rejected. Identity {device_id} not HSM-bound.")
+
+        # FINAL SEAL: All commands require signature if Sovereign Root active
+        if not signature:
+             raise SecurityException("SOVEREIGN_ROOT: Unsigned requests DROP_IMMEDIATE.")
 
         return True
 

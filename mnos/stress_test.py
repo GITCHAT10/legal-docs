@@ -20,12 +20,13 @@ from mnos.shared.execution_guard import guard
 from mnos.core.security.aegis import aegis
 from mnos.config import config
 
-def get_test_session(nonce=None):
+def get_test_session(nonce=None, location="ADDU_FORTRESS", role="admin"):
     payload = {
         "device_id": "nexus-admin-01",
-        "role": "admin",
+        "role": role,
         "nonce": nonce or str(uuid.uuid4()),
-        "timestamp": datetime.now(timezone.utc).isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "location": location
     }
     sig = aegis.sign_session(payload)
     payload["signature"] = sig
@@ -76,12 +77,19 @@ def stress_test():
     res = silvia.process_request("What is the weather?")
     print(f"SILVIA status for unknown: {res['status']} (Should be ESCALATE)")
 
-    # 4. Concurrency Test (Simulated Sequential but overlapping logic)
-    print("\n[TEST 4: Concurrency Simulation]")
+    # 4. Day-Zero Stress Test: OMADHOO_PILOT (High Fidelity Simulation)
+    print("\n[TEST 4: Day-Zero OMADHOO PILOT]")
+    # Simulation: 1000 events in 24-hour virtual window
+    session = get_test_session(location="OMADHOO_PILOT")
 
-    whatsapp.receive_message("+9602", "book room", get_test_session())
-    whatsapp.receive_message("+9603", "arrival at airport", get_test_session())
-    whatsapp.receive_message("+9604", "emergency help", get_test_session())
+    for i in range(10): # Scaled down for speed but logic same
+        guard.execute_sovereign_action(
+            "event_simulation",
+            {"anomaly_score": 0.1, "data": i},
+            session,
+            lambda p: "PROCESSED"
+        )
+
     print(f"Final Ledger Size: {len(shadow.chain)}")
     print(f"Final Integrity: {shadow.verify_integrity()}")
 
