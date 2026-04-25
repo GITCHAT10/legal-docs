@@ -38,12 +38,19 @@ async def verify_workflows():
         res = await client.post("/commerce/coupon/campaign", json={"code": "SUMMER26", "discount": 0.2, "expiry": "2026-12-31"}, headers=h_merch)
         results.append({"name": "Coupon Flow", "res": "SUCCESS" if res.status_code == 200 else "FAIL"})
 
-        # 4. Checkout Flow
-        print("[4] Checkout Flow...")
-        res = await client.post("/commerce/orders/create", json={"vendor_id": merchant_id, "amount": 1000}, headers=h_buyer)
+        # 4. Checkout Flow (Execution Lifecycle)
+        print("[4] Checkout Flow (PR -> INVOICE)...")
+        res = await client.post("/commerce/orders/create", json={"vendor_id": merchant_id, "amount": 1000, "items": []}, headers=h_buyer)
         if res.status_code != 200:
-             print(f"    Checkout Flow Failed: {res.text}")
-             raise RuntimeError(f"Checkout Flow Failed: {res.text}")
+             raise RuntimeError(f"Order Create Failed: {res.text}")
+        order_id = res.json()["id"]
+
+        # Drive to Invoiced to get pricing
+        await client.post("/commerce/orders/approve", params={"order_id": order_id}, headers=h_merch)
+        await client.post("/commerce/orders/dispatch", params={"order_id": order_id}, headers=h_merch)
+        await client.post("/commerce/orders/deliver", params={"order_id": order_id}, headers=h_merch)
+        res = await client.post("/commerce/orders/invoice", params={"order_id": order_id}, headers=h_merch)
+
         results.append({"name": "Checkout Flow", "res": "SUCCESS", "total": res.json()["pricing"]["total"]})
 
         # 5. Payout Flow

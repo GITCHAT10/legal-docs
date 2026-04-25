@@ -51,6 +51,10 @@ class MerchantManager:
         self.core = core
         self.vendors = {}
 
+    def get_vendor_status(self, vendor_id: str) -> str:
+        vendor = self.vendors.get(vendor_id)
+        return vendor.get("kyc_status", "PENDING") if vendor else "UNKNOWN"
+
     def approve_vendor(self, actor_ctx: dict, vendor_data: dict):
         return self.core.execute_commerce_action(
             "imoxon.vendor.approve",

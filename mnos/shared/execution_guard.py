@@ -29,6 +29,11 @@ class ExecutionGuard:
         if not identity_id or not device_id:
             raise PermissionError(f"FAIL CLOSED: Missing Identity or Device Binding for {action_type}")
 
+        # ZERO_TRUST_DEFAULT_DENY for sensitive procurement actions
+        sensitive_actions = ["procurement.order.settle", "finance.escrow.release"]
+        if action_type in sensitive_actions and not actor_context.get("national_id_verified"):
+             raise PermissionError(f"ZERO TRUST REJECTION: National ID binding required for {action_type}")
+
         # 2. Role / Permission Validation
         valid, msg = self.policy_engine.validate_action(action_type, actor_context)
         if not valid:

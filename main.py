@@ -19,9 +19,15 @@ from mnos.gateway.engine import APIGatewayControlPlane
 
 # iMOXON Consolidated
 from mnos.modules.imoxon.core.engine import (
-    ImoxonCore, CatalogManager, ProcurementEngine,
+    ImoxonCore, CatalogManager, ProcurementEngine as LegacyProcurementEngine,
     CampaignManager, MerchantManager, POSManager
 )
+from mnos.modules.imoxon.procurement.engine import ProcurementEngine
+from mnos.modules.imoxon.resort.weekly_system import ResortWeeklyOrderSystem
+
+# Finance RC1
+from mnos.modules.finance.payment_layer import PaymentAbstractionLayer
+from mnos.modules.finance.escrow import EscrowFCETCore
 
 # Specialized Engines
 from mnos.modules.tourism.engine import TourismEngine
@@ -70,7 +76,13 @@ bpe_bridge = BubbleBPEBridge(imoxon, bpe)
 
 pos = POSManager(imoxon, bpe)
 catalog = CatalogManager(imoxon)
-procurement = ProcurementEngine(imoxon)
+
+# Finance RC1
+payment_rails = PaymentAbstractionLayer(fce_core)
+escrow_core = EscrowFCETCore(fce_core, shadow_core)
+
+procurement = ProcurementEngine(guard, shadow_core, events_core, fce_core, escrow_core)
+resort_system = ResortWeeklyOrderSystem(procurement)
 
 # Specialized Engines
 tourism = TourismEngine(imoxon)
@@ -97,11 +109,17 @@ app.add_middleware(ExecutionGuardMiddleware, guard=guard, events=events_core)
 # --- Dependency ---
 def get_actor_ctx(
     x_aegis_identity: str = Header(None, alias="X-AEGIS-IDENTITY"),
-    x_aegis_device: str = Header(None, alias="X-AEGIS-DEVICE")
+    x_aegis_device: str = Header(None, alias="X-AEGIS-DEVICE"),
+    x_aegis_verified: bool = Header(False, alias="X-AEGIS-VERIFIED")
 ):
     if not x_aegis_identity or not x_aegis_device:
         raise HTTPException(status_code=403, detail="FAIL CLOSED: Missing Identity or Device")
-    return {"identity_id": x_aegis_identity, "device_id": x_aegis_device, "role": "admin"}
+    return {
+        "identity_id": x_aegis_identity,
+        "device_id": x_aegis_device,
+        "role": "admin",
+        "national_id_verified": x_aegis_verified
+    }
 
 # --- Consolidated APIs ---
 
