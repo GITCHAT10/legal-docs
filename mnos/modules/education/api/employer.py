@@ -1,9 +1,23 @@
 from fastapi import FastAPI, HTTPException, Depends, Header
-from typing import List
+from typing import List, Annotated
+import os
 from mnos.modules.education.models.schemas import JobDemand, SkillVerification, StudentMatch, CertificationRequest
 from datetime import datetime, UTC
 
 app = FastAPI(title="MARS-GLOS Employer API", version="1.0.0")
+
+# AEGIS Authentication via Environment Variables
+AEGIS_KEY = os.getenv("AEGIS_SECRET_KEY", "MIG-SECURE-KEY-FALLBACK")
+
+async def get_current_user(x_api_key: Annotated[str | None, Header()] = None):
+    if not x_api_key or x_api_key != AEGIS_KEY:
+        raise HTTPException(status_code=401, detail="AEGIS Authentication Failed")
+    return {"id": "EMP-001", "role": "employer"}
+
+async def employer_only(user: Annotated[dict, Depends(get_current_user)]):
+    if user["role"] != "employer":
+        raise HTTPException(status_code=403, detail="Role-based access denied")
+    return user
 
 # Mock database
 job_demands = []
@@ -47,10 +61,21 @@ async def match_students(job_id: str):
     ]
 
 @app.post("/certify", response_model=CertificationRequest)
-async def certify_student(request: CertificationRequest):
+async def certify_student(
+    request: CertificationRequest,
+    user: Annotated[dict, Depends(employer_only)]
+):
     """
     Process certification requests via the 'Law of the Button' UI-driven action.
+    Requires AEGIS authentication and employer role.
     """
+    # Enforce human-in-the-loop: actor_id in request must match authenticated user
+    if request.actor_id != user["id"]:
+         raise HTTPException(status_code=403, detail="Actor identity mismatch")
+
+    if request.actor_role != "employer":
+        raise HTTPException(status_code=403, detail="Only employers can certify")
+
     # In a real system, this would involve ExecutionGuard and SHADOW logging
     certifications.append(request)
     return request

@@ -28,6 +28,9 @@ class DigitalTwinEngine:
         """
         Ingest simulation data and update the Digital Twin.
         """
+        # Clamp score to production bounds [0.0, 1.0]
+        clamped_score = max(0.0, min(1.0, result.score))
+
         if result.student_id not in self.twins:
             self.twins[result.student_id] = StudentDigitalTwin(student_id=result.student_id)
 
@@ -38,8 +41,9 @@ class DigitalTwinEngine:
         for skill in result.competencies_demonstrated:
             current_level = twin.mastery_levels.get(skill, 0.0)
             # Simple adaptive learning logic: weighted average update
-            new_level = (current_level * 0.7) + (result.score * 0.3)
-            twin.mastery_levels[skill] = round(min(new_level, 1.0), 4)
+            new_level = (current_level * 0.7) + (clamped_score * 0.3)
+            # Ensure mastery values stay within [0.0, 1.0]
+            twin.mastery_levels[skill] = round(max(0.0, min(new_level, 1.0)), 4)
 
         # Recalculate Performance Capital
         twin.performance_capital = self._calculate_performance_capital(twin)
@@ -76,4 +80,6 @@ class DigitalTwinEngine:
         """
         if not twin.mastery_levels:
             return 0.0
-        return round(sum(twin.mastery_levels.values()) / len(twin.mastery_levels), 4)
+        aggregate = sum(twin.mastery_levels.values()) / len(twin.mastery_levels)
+        # Protect performance capital bounds
+        return round(max(0.0, min(1.0, aggregate)), 4)
