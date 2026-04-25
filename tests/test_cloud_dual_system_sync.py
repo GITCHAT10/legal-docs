@@ -117,6 +117,41 @@ def test_shadow_audit_logging():
     assert "Ahmed" not in log_dump
     assert "Guest" not in log_dump
 
+def test_vendor_cannot_call_hms_internal_api(orban_conn):
+    """Test 9: unauthorized vendor node blocked from HMS scopes"""
+    vendor_request = {
+        "node_id": "imoxon-market-01",
+        "timestamp": int(time.time()),
+        "nonce": "vendor-attack-nonce",
+        "scope": "rfq:create", # This is an HMS scope
+        "trace_id": str(uuid.uuid4())
+    }
+    # Airlock process_request will reject because imoxon-market-01 doesn't have rfq:create scope
+    res = imoxon_airlock.process_request(vendor_request, "sig:vendor")
+    assert res["status"] == "BLOCKED"
+    assert "denied" in res["reason"]
+
+def test_shadow_failure_blocks_transaction(hms_session, orban_conn):
+    """Test 7: Verify that if SHADOW commit fails, the transaction is HALTED (Fail-Closed)"""
+    from mnos.modules.aig_shadow.service import aig_shadow
+
+    # Simulate Shadow Failure by tampering with verify_integrity or monkeypatching commit
+    original_verify = aig_shadow.verify_integrity
+    aig_shadow.verify_integrity = lambda start_index=0: False
+
+    try:
+        request = {
+            "node_id": "hms-resort-01",
+            "timestamp": int(time.time()),
+            "nonce": "shadow-fail-nonce",
+            "scope": "quotes:read",
+            "trace_id": str(uuid.uuid4())
+        }
+        res = imoxon_airlock.process_request(request, "sig:valid")
+        assert res["status"] == "HALT"
+    finally:
+        aig_shadow.verify_integrity = original_verify
+
 def test_latency_measurement(hms_session, orban_conn):
     """Test 10: Latency test for same-cloud bridge"""
     start = time.perf_counter()
