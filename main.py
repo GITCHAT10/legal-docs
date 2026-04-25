@@ -53,9 +53,11 @@ from mnos.modules.finance.mira_bridge import MiraBridgeEngine
 from mnos.modules.imoxon.vvip_key import VVIPKeyEngine
 from mnos.modules.trawel.heatmap import GlobalDemandHeatmap
 from mnos.modules.finance.reinvestment import RevenueReinvestmentEngine
+from mnos.modules.laundry.engine import MaldivesLaundryEngine
 from mnos.api.leaderboard import create_leaderboard_router
 from mnos.api.b2b_portal import create_b2b_portal_router
 from mnos.api.heatmap import create_heatmap_router
+from mnos.api.laundry import create_laundry_router
 
 # Bubble OS Super App Layer
 from mnos.modules.bubble.chat.engine import ChatIntentEngine, ChatToTransactionEngine
@@ -124,6 +126,7 @@ b2b_negotiator = B2BAutoNegotiationEngine(imoxon, mars_unified)
 mira_bridge = MiraBridgeEngine(imoxon)
 vvip_engine = VVIPKeyEngine(imoxon)
 reinvestment_engine = RevenueReinvestmentEngine(imoxon)
+laundry_engine = MaldivesLaundryEngine(imoxon, mars_unified)
 heatmap_engine = GlobalDemandHeatmap(imoxon, island_gm, mira_bridge, reinvestment_engine)
 
 imoxon.mira_bridge = mira_bridge
@@ -254,6 +257,7 @@ app.include_router(create_island_gm_router(island_gm, vvip_engine, get_actor_ctx
 app.include_router(create_leaderboard_router(leaderboard, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_b2b_portal_router(mars_unified, b2b_negotiator, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_heatmap_router(heatmap_engine, get_actor_ctx), prefix="/imoxon")
+app.include_router(create_laundry_router(laundry_engine, get_actor_ctx), prefix="/imoxon")
 
 # Error handlers
 @app.exception_handler(PermissionError)
