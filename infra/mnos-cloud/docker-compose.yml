@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  nexus-skyi-hms:
+    image: mig/nexus-skyi:latest
+    networks:
+      - mnos-hms-private
+      - mnos-airlock-bridge
+    environment:
+      - DB_HOST=hms-db
+      - AEGIS_NODE_ID=hms-resort-01
+    depends_on:
+      - hms-db
+
+  hms-db:
+    image: postgres:15-alpine
+    networks:
+      - mnos-hms-private
+    volumes:
+      - hms-data:/var/lib/postgresql/data
+
+  imoxon-marketplace:
+    image: mig/imoxon:latest
+    networks:
+      - mnos-imoxon-private
+      - mnos-airlock-bridge
+    environment:
+      - DB_HOST=imoxon-db
+      - AEGIS_NODE_ID=imoxon-market-01
+    depends_on:
+      - imoxon-db
+
+  imoxon-db:
+    image: postgres:15-alpine
+    networks:
+      - mnos-imoxon-private
+    volumes:
+      - imoxon-data:/var/lib/postgresql/data
+
+networks:
+  mnos-hms-private:
+    internal: true
+  mnos-imoxon-private:
+    internal: true
+  mnos-airlock-bridge:
+    driver: bridge
+
+volumes:
+  hms-data:
+  imoxon-data:

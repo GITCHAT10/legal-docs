@@ -1,0 +1,41 @@
+{
+  "release": "v1.0.0-aig-genesis",
+  "doctrine": "MNOS-SOVEREIGN",
+  "modules": {
+    "AEGIS": "mnos/core/aig_aegis/service.py",
+    "FCE": "mnos/modules/fce/service.py",
+    "SHADOW": "mnos/modules/aig_shadow/service.py",
+    "EVENTS": "mnos/infrastructure/mig_event_spine/service.py",
+    "TUNNEL": "mnos/core/aig_tunnel/service.py",
+    "GOVERNANCE": "mnos/core/aig_l5_control/service.py",
+    "GUARD": "mnos/shared/guard/service.py",
+    "ExMAIL": "mnos/modules/exmail/service.py"
+  },
+  "event_taxonomy": [
+    "nexus.booking.created",
+    "nexus.guest.arrival",
+    "nexus.payment.received",
+    "nexus.emergency.triggered",
+    "exmail.received",
+    "exmail.sent",
+    "exmail.task.created",
+    "exmail.ticket.created",
+    "sala.invoice.finalized",
+    "sala.guest.checkin",
+    "sala.folio.updated"
+  ],
+  "file_hashes": {
+    "mnos/config.py": "c6477e8c46821d9f5141c131e4df563d9600461ed18e1ac90a6d84768bb09f27",
+    "mnos/core/aig_aegis/service.py": "4d086500067fbb9a9357bfb2961938c3871ef153de2102723875b5946990cc0f",
+    "mnos/core/aig_tunnel/service.py": "b031812016d151e11f790fb2074eb8b90535e1e82d4b51e5bda57ba50e95732b",
+    "mnos/core/aig_l5_control/service.py": "8669259bae2a37e9be836c1783058a1c0f11d6ab941d209f5a69552e6ddda7a4",
+    "mnos/infrastructure/mig_event_spine/service.py": "92b62fdddb732377e479ad1ff7d6adf1442594e72eca0bd824ca043741de6d3e",
+    "mnos/shared/guard/service.py": "0c3d3375afcb59c61ccae453403a013bddba0b44eb568c19f5644627f3fceb3c",
+    "mnos/modules/fce/service.py": "13d16826d005ed7a0347fc49c1eb0884c9001397f84a844d17a160f145cc1295",
+    "mnos/modules/exmail/service.py": "0c10429126ed1153191cdf762d9b2b507879e70d37b81d3e99ef98a5195d2401",
+    "mnos/modules/aig_vault/service.py": "1137720641f6eb8516d161b54e6a8cb002bf9c260bbc94324e068f573a58d288",
+    "mnos/final_sovereign_tests.py": "bca3aa6186e252e703154bdf7e1a7474038653a0249a1ace43ac0bc01cea145c",
+    "mnos/tests/rc2_hardening_suite.py": "0ac3ad22673e6c3396f1a54da927af09ec90d6668923656045d934b3e0c8f952",
+    "mnos/tests/test_sala_ui_live_cycle.py": "c70d1d98180ec75001c52e32dd5390d47a12d462e16d93c824613f2cebcd23e4"
+  }
+}
