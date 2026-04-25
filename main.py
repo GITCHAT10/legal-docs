@@ -29,6 +29,10 @@ from mnos.modules.imoxon.resort.weekly_system import ResortWeeklyOrderSystem
 from mnos.modules.finance.payment_layer import PaymentAbstractionLayer
 from mnos.modules.finance.escrow import EscrowFCETCore
 
+# Logistics Engine
+from mnos.modules.imoxon.logistics.engine import LogisticsEngine
+from mnos.modules.imoxon.logistics.router import create_logistics_router
+
 # Specialized Engines
 from mnos.modules.tourism.engine import TourismEngine
 from mnos.modules.faith.engine import FaithEngine
@@ -83,6 +87,9 @@ escrow_core = EscrowFCETCore(fce_core, shadow_core)
 
 procurement = ProcurementEngine(guard, shadow_core, events_core, fce_core, escrow_core)
 resort_system = ResortWeeklyOrderSystem(procurement)
+
+# Logistics Engine
+logistics_engine = LogisticsEngine(guard, fce_core, shadow_core, events_core, identity_core, merchant)
 
 # Specialized Engines
 tourism = TourismEngine(imoxon)
@@ -147,6 +154,7 @@ async def chat_message(message: str, actor: dict = Depends(get_actor_ctx)):
 app.include_router(create_identity_router(identity_core, policy_engine))
 app.include_router(create_commerce_router(imoxon, catalog, merchant, pos, procurement, get_actor_ctx))
 app.include_router(create_finance_router(fce_hardened, get_actor_ctx))
+app.include_router(create_logistics_router(logistics_engine, get_actor_ctx))
 app.include_router(create_specialized_router(tourism, faith, transport, housing, exchange, education, get_actor_ctx))
 
 # Error handlers
