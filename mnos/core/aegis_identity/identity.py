@@ -20,6 +20,8 @@ class AegisIdentityCore:
             "external_ref": profile_data.get("external_ref"),
             "full_name": profile_data.get("full_name"),
             "organization_id": profile_data.get("organization_id"),
+            "assigned_island": profile_data.get("assigned_island"), # For Island GMs
+            "persistent_identity_hash": uuid.uuid4().hex, # Hardened identity hash
             "verification_status": "pending",
             "identity_status": "active",
             "created_at": datetime.now(UTC).isoformat()

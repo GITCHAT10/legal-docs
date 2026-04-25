@@ -12,6 +12,12 @@ class IdentityPolicyEngine:
             if not self._has_role(identity_id, "staff"):
                 return False, "Action requires staff binding"
 
+        # Hardened Verification requirements
+        hardened_actions = ["hospitality.property.register", "sky_i.loop_cycle.finalize", "imoxon.vendor.approve"]
+        if action_type in hardened_actions:
+            if not self._is_verified(identity_id):
+                 return False, f"CRITICAL ACTION: Identity {identity_id} must be verified (National ID / Biometric)"
+
         # Industry Partner / Special Discount Eligibility
         industry_actions = ["industry_discount_booking"]
         industry_roles = ["airline_partner", "medical_worker", "dmc_ta_staff", "club_member"]

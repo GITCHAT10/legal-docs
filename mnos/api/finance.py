@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
-def create_finance_router(fce_hardened, get_actor_ctx):
+def create_finance_router(fce_hardened, mira_bridge, get_actor_ctx):
     router = APIRouter(prefix="/finance", tags=["finance"])
 
     @router.post("/payouts/release")
@@ -25,5 +25,18 @@ def create_finance_router(fce_hardened, get_actor_ctx):
             "status": "ACTIVE"
         }
         return plan
+
+    @router.get("/mira/daily-report")
+    async def get_mira_report(vendor_id: str = None, date: str = None, actor: dict = Depends(get_actor_ctx)):
+        """MIRA-Bridge: Fetch daily tax aggregation."""
+        return mira_bridge.get_daily_report(vendor_id, date)
+
+    @router.get("/mira/invoice/{order_id}")
+    async def get_mira_invoice(order_id: str, actor: dict = Depends(get_actor_ctx)):
+        """MIRA-Bridge: Fetch MIRA-compliant invoice."""
+        invoice = mira_bridge.invoices.get(order_id)
+        if not invoice:
+            raise HTTPException(status_code=404, detail="Invoice not found")
+        return invoice
 
     return router

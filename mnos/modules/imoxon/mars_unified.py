@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, UTC
+from datetime import datetime, UTC, timedelta
 from typing import Dict, List, Any, Optional
 from decimal import Decimal, ROUND_HALF_UP
 
@@ -160,9 +160,56 @@ class NexusSkyICloudBrain:
 
     def _internal_finalize(self, order_id):
         if order_id in self.orders:
-            self.orders[order_id]["status"] = "COMPLETED"
+            order = self.orders[order_id]
+            order["status"] = "COMPLETED"
+
+            # 1. Sync Revenue to Island GM System
+            package = self.packages.get(order["package_id"])
+            if package:
+                 self.core.events.publish("internal.revenue.sync", {
+                     "island": package["island"],
+                     "amount": package["base_price"]
+                 })
+
+                 # 2. Emit event for Leaderboard (C2C Revenue)
+                 self.core.events.publish("hustle.revenue_generated", {
+                     "island": package["island"],
+                     "amount": package["base_price"],
+                     "hustler_id": order["guest_id"], # Simplified
+                     "shadow_ref": f"SH-TX-{order_id}"
+                 })
+
+                 # 3. Record in MIRA-Bridge for Tax Compliance
+                 if hasattr(self.core, "mira_bridge"):
+                      self.core.mira_bridge.record_transaction(order)
+
             if order_id in self.settlements:
                 self.settlements[order_id]["status"] = "RELEASED"
                 self.core.shadow.commit("sky_i.payout.released", order_id, self.settlements[order_id])
-            return self.orders[order_id]
+            return order
         return None
+
+    def get_inventory_search(self, actor_ctx: dict, criteria: dict):
+        """B2B: Search available inventory packages."""
+        # Simplified: Return all active packages
+        return list(self.packages.values())
+
+    def hold_booking(self, actor_ctx: dict, package_id: str):
+        """B2B: Place a temporary hold on inventory."""
+        package = self.packages.get(package_id)
+        if not package or package.get("locked"):
+             return None
+
+        # Lock the package
+        package["locked"] = True
+
+        hold_id = f"HLD-{uuid.uuid4().hex[:6].upper()}"
+        hold = {
+            "hold_id": hold_id,
+            "package_id": package_id,
+            "agent_id": actor_ctx["identity_id"],
+            "status": "HELD",
+            "expires_at": (datetime.now(UTC) + timedelta(hours=24)).isoformat()
+        }
+        self.core.shadow.commit("b2b.booking.hold", actor_ctx["identity_id"], hold)
+        return hold

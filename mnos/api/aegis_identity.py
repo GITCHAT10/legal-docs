@@ -1,6 +1,8 @@
 from fastapi import APIRouter, HTTPException
 
-def create_identity_router(identity_core, policy_engine):
+from fastapi import APIRouter, Depends, HTTPException
+
+def create_identity_router(identity_core, policy_engine, gateway=None):
     router = APIRouter(prefix="/aegis/identity", tags=["identity"])
 
     @router.post("/create")
@@ -53,5 +55,15 @@ def create_identity_router(identity_core, policy_engine):
         if not profile:
             raise HTTPException(status_code=404, detail="Identity not found")
         return profile
+
+    @router.post("/login")
+    async def login(realm: str, auth_method: str, credentials: dict):
+        """Unified AEGIS Gateway Entry."""
+        if not gateway:
+            raise HTTPException(status_code=501, detail="Identity Gateway not initialized")
+        try:
+            return gateway.login(realm, auth_method, credentials)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
 
     return router

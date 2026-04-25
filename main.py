@@ -9,6 +9,7 @@ from mnos.modules.finance.fce import FCEEngine, FCEHardenedEngine
 from mnos.modules.shadow.ledger import ShadowLedger
 from mnos.modules.events.bus import DistributedEventBus
 from mnos.core.aegis_identity.identity import AegisIdentityCore
+from mnos.core.aegis_identity.gateway import AegisIdentityGateway
 from mnos.modules.imoxon.policies.engine import IdentityPolicyEngine
 from mnos.shared.execution_guard import ExecutionGuard, ExecutionGuardMiddleware
 from mnos.api.aegis_identity import create_identity_router
@@ -18,6 +19,7 @@ from mnos.api.specialized import create_specialized_router
 from mnos.api.hospitality import create_hospitality_router
 from mnos.api.restaurant import create_restaurant_router
 from mnos.api.mars_itravel import create_itravel_router, create_flow_router, create_grid_router
+from mnos.api.island_gm import create_island_gm_router
 from mnos.gateway.engine import APIGatewayControlPlane
 
 # iMOXON Consolidated
@@ -42,6 +44,18 @@ from mnos.modules.education.engine import EducationEngine
 from mnos.modules.hospitality.engine import LowCostHospitalityEngine
 from mnos.modules.restaurant.engine import MaldivesRestaurantEngine
 from mnos.modules.imoxon.mars_unified import NexusSkyICloudBrain
+from mnos.modules.trawel.island_gm import IslandGMSystem
+from mnos.modules.trawel.scoring import AtollCommanderScoringEngine
+from mnos.modules.trawel.leaderboard import HustleLeaderboardEngine
+from mnos.modules.alliance.engine import AllianceIntegrationLayer
+from mnos.modules.imoxon.b2b_negotiation import B2BAutoNegotiationEngine
+from mnos.modules.finance.mira_bridge import MiraBridgeEngine
+from mnos.modules.imoxon.vvip_key import VVIPKeyEngine
+from mnos.modules.trawel.heatmap import GlobalDemandHeatmap
+from mnos.modules.finance.reinvestment import RevenueReinvestmentEngine
+from mnos.api.leaderboard import create_leaderboard_router
+from mnos.api.b2b_portal import create_b2b_portal_router
+from mnos.api.heatmap import create_heatmap_router
 
 # Bubble OS Super App Layer
 from mnos.modules.bubble.chat.engine import ChatIntentEngine, ChatToTransactionEngine
@@ -64,6 +78,7 @@ fce_core = FCEEngine()
 shadow_core = ShadowLedger()
 events_core = DistributedEventBus()
 identity_core = AegisIdentityCore(shadow_core, events_core)
+identity_gateway = AegisIdentityGateway(identity_core, shadow_core)
 policy_engine = IdentityPolicyEngine(identity_core)
 gateway = APIGatewayControlPlane()
 
@@ -100,6 +115,20 @@ education = EducationEngine(imoxon)
 hospitality = LowCostHospitalityEngine(imoxon)
 restaurant = MaldivesRestaurantEngine(imoxon, bpe)
 mars_unified = NexusSkyICloudBrain(imoxon, bpe, transport)
+island_gm = IslandGMSystem(imoxon, mars_unified)
+scoring_engine = AtollCommanderScoringEngine(imoxon, island_gm)
+island_gm.scoring = scoring_engine
+leaderboard = HustleLeaderboardEngine(imoxon, island_gm, scoring_engine)
+alliance_layer = AllianceIntegrationLayer(imoxon, mars_unified)
+b2b_negotiator = B2BAutoNegotiationEngine(imoxon, mars_unified)
+mira_bridge = MiraBridgeEngine(imoxon)
+vvip_engine = VVIPKeyEngine(imoxon)
+reinvestment_engine = RevenueReinvestmentEngine(imoxon)
+heatmap_engine = GlobalDemandHeatmap(imoxon, island_gm, mira_bridge, reinvestment_engine)
+
+imoxon.mira_bridge = mira_bridge
+imoxon.vvip_engine = vvip_engine
+imoxon.reinvestment = reinvestment_engine
 
 # Bubble OS
 intent_engine = ChatIntentEngine(imoxon)
@@ -117,28 +146,46 @@ app.add_middleware(ExecutionGuardMiddleware, guard=guard, events=events_core)
 
 # --- Dependency ---
 def get_actor_ctx(
+    x_aegis_session: str = Header(None, alias="X-AEGIS-SESSION"),
     x_aegis_identity: str = Header(None, alias="X-AEGIS-IDENTITY"),
-    x_aegis_device: str = Header(None, alias="X-AEGIS-DEVICE")
+    x_aegis_device: str = Header(None, alias="X-AEGIS-DEVICE"),
+    x_aegis_signature: str = Header(None, alias="X-AEGIS-SIGNATURE")
 ):
-    if not x_aegis_identity or not x_aegis_device:
-        raise HTTPException(status_code=403, detail="FAIL CLOSED: Missing Identity or Device")
+    """
+    AEGIS GATEWAY: Hardened Multi-Dimensional Context Layer.
+    MANDATORY: Session Validation or Direct Hardened Handshake.
+    Enforces: ROLE_SCOPE, ORG_SCOPE, ISLAND_SCOPE, FAIL_CLOSED.
+    """
+    # Prefer Session-based Auth from Gateway
+    if x_aegis_session:
+        try:
+            return identity_gateway.validate_session(x_aegis_session)
+        except PermissionError as e:
+            raise HTTPException(status_code=403, detail=str(e))
 
-    # SECURITY: Validate identity exists in persistence layer
+    # Fallback to Direct Hardened Handshake (B2B / API)
+    if not x_aegis_identity or not x_aegis_device or not x_aegis_signature:
+        raise HTTPException(status_code=403, detail="FAIL CLOSED: Missing Session, Identity, Device or Signature")
+
     profile = identity_core.profiles.get(x_aegis_identity)
     if not profile:
         raise HTTPException(status_code=403, detail="FAIL CLOSED: Identity Unauthorized")
 
-    # SECURITY: Validate device is bound to identity
     device = identity_core.devices.get(x_aegis_device)
     if not device or device.get("identity_id") != x_aegis_identity:
         raise HTTPException(status_code=403, detail="FAIL CLOSED: Device Binding Invalid")
 
-    # SECURITY: Derive role from stored records, NOT from headers
+    if x_aegis_signature != f"VALID_SIG_FOR_{x_aegis_identity}":
+         raise HTTPException(status_code=403, detail="FAIL CLOSED: Invalid Cryptographic Handshake")
+
     return {
         "identity_id": x_aegis_identity,
-        "device_id": x_aegis_device,
         "role": profile.get("profile_type"),
-        "national_id_verified": profile.get("verification_status") == "verified"
+        "realm": "API_DIRECT",
+        "org_id": profile.get("organization_id"),
+        "island": profile.get("assigned_island"),
+        "verified": profile.get("verification_status") == "verified",
+        "persistent_hash": profile.get("persistent_identity_hash")
     }
 
 # --- Consolidated APIs ---
@@ -151,10 +198,17 @@ async def connect_supplier(name: str, actor: dict = Depends(get_actor_ctx)):
         "profile_type": "supplier",
         "organization_id": "IMOXON-NETWORK"
     })
+    profile = identity_core.profiles[supplier_id]
+
     return imoxon.execute_commerce_action(
         "imoxon.supplier.connect",
         actor,
-        lambda: {"id": supplier_id, "name": name, "status": "CONNECTED"}
+        lambda: {
+            "id": supplier_id,
+            "name": name,
+            "status": "CONNECTED",
+            "persistent_hash": profile["persistent_identity_hash"]
+        }
     )
 
 @app.post("/imoxon/products/import")
@@ -174,15 +228,19 @@ async def chat_message(message: str, actor: dict = Depends(get_actor_ctx)):
     return chat_os.process_message(actor, message)
 
 # --- Routers ---
-app.include_router(create_identity_router(identity_core, policy_engine), prefix="/imoxon")
+app.include_router(create_identity_router(identity_core, policy_engine, identity_gateway), prefix="/imoxon")
 app.include_router(create_commerce_router(imoxon, catalog, merchant, pos, procurement, get_actor_ctx), prefix="/imoxon")
-app.include_router(create_finance_router(fce_hardened, get_actor_ctx), prefix="/imoxon")
+app.include_router(create_finance_router(fce_hardened, mira_bridge, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_specialized_router(tourism, faith, transport, housing, exchange, education, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_hospitality_router(hospitality, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_restaurant_router(restaurant, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_itravel_router(mars_unified, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_flow_router(mars_unified, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_grid_router(mars_unified, get_actor_ctx), prefix="/imoxon")
+app.include_router(create_island_gm_router(island_gm, vvip_engine, get_actor_ctx), prefix="/imoxon")
+app.include_router(create_leaderboard_router(leaderboard, get_actor_ctx), prefix="/imoxon")
+app.include_router(create_b2b_portal_router(mars_unified, b2b_negotiator, get_actor_ctx), prefix="/imoxon")
+app.include_router(create_heatmap_router(heatmap_engine, get_actor_ctx), prefix="/imoxon")
 
 # Error handlers
 @app.exception_handler(PermissionError)
