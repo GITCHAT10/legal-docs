@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Header, HTTPException
 
 def create_commerce_router(imoxon, catalog, merchant, pos, procurement, get_actor_ctx):
-    router = APIRouter(prefix="/commerce", tags=["commerce"])
+    router = APIRouter(tags=["commerce"])
 
     @router.post("/vendors/approve")
     async def approve_vendor(data: dict, actor: dict = Depends(get_actor_ctx)):

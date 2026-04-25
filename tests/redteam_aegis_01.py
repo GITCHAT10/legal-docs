@@ -35,7 +35,7 @@ def test_attack_fake_device_binding(setup_valid_entities):
     }
     resp = client.get("/imoxon/grid-control/dashboard", headers=headers)
     assert resp.status_code == 403
-    assert "Device Binding Invalid" in resp.json()["detail"]
+    assert "DEVICE_BINDING_INVALID" in resp.json()["detail"]
 
 def test_attack_privilege_escalation(setup_valid_entities):
     """Attack: Guest attempts to build a TRAWEL package."""
@@ -59,8 +59,8 @@ def test_attack_identity_spoofing():
         "X-AEGIS-SIGNATURE": "VALID_SIG_FOR_non-existent-uuid"
     }
     resp = client.get("/imoxon/grid-control/dashboard", headers=headers)
-    assert resp.status_code == 403
-    assert "Identity Unauthorized" in resp.json()["detail"]
+    assert resp.status_code == 401
+    assert "INVALID_IDENTITY" in resp.json()["detail"]
 
 def test_attack_forged_signature(setup_valid_entities):
     """Attack: Correct ID/Device but malicious signature."""
@@ -72,7 +72,7 @@ def test_attack_forged_signature(setup_valid_entities):
     }
     resp = client.get("/imoxon/grid-control/dashboard", headers=headers)
     assert resp.status_code == 403
-    assert "Invalid Cryptographic Handshake" in resp.json()["detail"]
+    assert "HANDSHAKE_FAILED" in resp.json()["detail"]
 
 def test_attack_unverified_critical_action(setup_valid_entities):
     """Attack: Non-verified admin attempts to register property (requires verification)."""

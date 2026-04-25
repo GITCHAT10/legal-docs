@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 def create_finance_router(fce_hardened, mira_bridge, get_actor_ctx):
-    router = APIRouter(prefix="/finance", tags=["finance"])
+    router = APIRouter(tags=["finance"])
 
     @router.post("/payouts/release")
     async def release_payout(milestone: str, ref_id: str, total_amount: float, actor: dict = Depends(get_actor_ctx)):

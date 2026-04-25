@@ -152,33 +152,44 @@ def get_actor_ctx(
     x_aegis_signature: str = Header(None, alias="X-AEGIS-SIGNATURE")
 ):
     """
-    AEGIS GATEWAY: Hardened Multi-Dimensional Context Layer.
-    MANDATORY: Session Validation or Direct Hardened Handshake.
-    Enforces: ROLE_SCOPE, ORG_SCOPE, ISLAND_SCOPE, FAIL_CLOSED.
+    AEGIS AUTH HARDENING: Production Security Layer.
+    Forces identity verification via AEGIS registry and validates device binding.
+    LOGS all attempts to SHADOW ledger.
     """
     # Prefer Session-based Auth from Gateway
     if x_aegis_session:
         try:
-            return identity_gateway.validate_session(x_aegis_session)
+            actor = identity_gateway.validate_session(x_aegis_session)
+            shadow_core.commit("aegis.auth.session.success", actor["identity_id"], {"session_id": x_aegis_session})
+            return actor
         except PermissionError as e:
+            shadow_core.commit("aegis.auth.session.failure", "UNKNOWN", {"reason": str(e)})
             raise HTTPException(status_code=403, detail=str(e))
 
     # Fallback to Direct Hardened Handshake (B2B / API)
     if not x_aegis_identity or not x_aegis_device or not x_aegis_signature:
-        raise HTTPException(status_code=403, detail="FAIL CLOSED: Missing Session, Identity, Device or Signature")
+        shadow_core.commit("aegis.auth.direct.failure", "UNKNOWN", {"reason": "Missing Headers"})
+        raise HTTPException(status_code=401, detail="AEGIS_REQUIRED: Missing Identity, Device or Signature")
 
+    # 1. Identity lookup via AEGIS registry (persistence)
     profile = identity_core.profiles.get(x_aegis_identity)
     if not profile:
-        raise HTTPException(status_code=403, detail="FAIL CLOSED: Identity Unauthorized")
+        shadow_core.commit("aegis.auth.identity.invalid", x_aegis_identity, {"reason": "Not in Registry"})
+        raise HTTPException(status_code=401, detail="INVALID_IDENTITY: Unauthorized")
 
+    # 2. Validate device binding (device.owner_id == identity.id)
     device = identity_core.devices.get(x_aegis_device)
     if not device or device.get("identity_id") != x_aegis_identity:
-        raise HTTPException(status_code=403, detail="FAIL CLOSED: Device Binding Invalid")
+        shadow_core.commit("aegis.auth.device.mismatch", x_aegis_identity, {"device_id": x_aegis_device})
+        raise HTTPException(status_code=403, detail="DEVICE_BINDING_INVALID: Access Denied")
 
+    # 3. Cryptographic Signature Validation
     if x_aegis_signature != f"VALID_SIG_FOR_{x_aegis_identity}":
-         raise HTTPException(status_code=403, detail="FAIL CLOSED: Invalid Cryptographic Handshake")
+         shadow_core.commit("aegis.auth.sig.failed", x_aegis_identity, {"sig": x_aegis_signature})
+         raise HTTPException(status_code=403, detail="HANDSHAKE_FAILED: Invalid Signature")
 
-    return {
+    # 4. Success: Derive role from database (NO HEADER TRUST)
+    actor = {
         "identity_id": x_aegis_identity,
         "role": profile.get("profile_type"),
         "realm": "API_DIRECT",
@@ -187,6 +198,8 @@ def get_actor_ctx(
         "verified": profile.get("verification_status") == "verified",
         "persistent_hash": profile.get("persistent_identity_hash")
     }
+    shadow_core.commit("aegis.auth.direct.success", x_aegis_identity, {"role": actor["role"]})
+    return actor
 
 # --- Consolidated APIs ---
 
@@ -204,12 +217,16 @@ async def connect_supplier(name: str, actor: dict = Depends(get_actor_ctx)):
         "imoxon.supplier.connect",
         actor,
         lambda: {
-            "id": supplier_id,
+            "supplier_id": supplier_id,
             "name": name,
             "status": "CONNECTED",
             "persistent_hash": profile["persistent_identity_hash"]
         }
     )
+
+@app.post("/imoxon/orders/create")
+async def imoxon_create_order(data: dict, actor: dict = Depends(get_actor_ctx)):
+    return procurement.create_purchase_request(actor, data.get("items"), data.get("amount"))
 
 @app.post("/imoxon/products/import")
 async def import_product(sid: str, raw: dict, actor: dict = Depends(get_actor_ctx)):
@@ -218,10 +235,6 @@ async def import_product(sid: str, raw: dict, actor: dict = Depends(get_actor_ct
 @app.post("/imoxon/products/approve")
 async def approve_product(pid: str, actor: dict = Depends(get_actor_ctx)):
     return catalog.approve_product(actor, pid)
-
-@app.post("/imoxon/b2b/procurement-request")
-async def b2b_procure(data: dict, actor: dict = Depends(get_actor_ctx)):
-    return procurement.create_b2b_request(actor, data)
 
 @app.post("/bubble/chat/message")
 async def chat_message(message: str, actor: dict = Depends(get_actor_ctx)):
