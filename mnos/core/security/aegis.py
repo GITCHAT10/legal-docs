@@ -22,7 +22,9 @@ class HardwareRegistry:
             "AUDITOR-1.4": "nexus-admin-01",
             "SPAMMER": "nexus-001",
             "GUEST-1.4": "nexus-001",
-            "DASHBOARD_ACTOR": "nexus-admin-01"
+            "DASHBOARD_ACTOR": "nexus-admin-01",
+            "API-TEST": "nexus-001",
+            "API-EXEC": "nexus-001"
         }
         self._session_device_map: Dict[str, str] = {} # session_id -> device_id mapping
         self._used_nonces: Set[str] = set()
