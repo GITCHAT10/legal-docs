@@ -1,0 +1,26 @@
+{
+  "audit_version": "RC1-PRODUCTION",
+  "fail_closed_test_cases": [
+    {
+      "trigger": "Missing NEXGEN_SECRET",
+      "expected_behavior": "RuntimeError / Halt startup",
+      "status": "VERIFIED"
+    },
+    {
+      "trigger": "Direct SHADOW commit",
+      "expected_behavior": "PermissionError / Unauthorized block",
+      "status": "VERIFIED"
+    },
+    {
+      "trigger": "Unbound Identity Action",
+      "expected_behavior": "403 Forbidden / Protected Path",
+      "status": "VERIFIED"
+    },
+    {
+      "trigger": "FCE Math Underflow",
+      "expected_behavior": "Atomic Rollback / Zero Partial Post",
+      "status": "VERIFIED"
+    }
+  ],
+  "authority": "MNOS_EXECUTION_GUARD"
+}

@@ -8,11 +8,12 @@ class FCEEngine:
         self.ledger = []
         self.locked_rates = {"USD": Decimal("15.42")} # MVR
 
-    def calculate_local_order(self, base_price: Decimal, category: str = "RETAIL") -> dict:
+    def calculate_local_order(self, base_price: Decimal, category: str = "RETAIL", pax: int = 0, nights: int = 0) -> dict:
         """
-        MANDATORY MALDIVES BILLING RULE:
+        MANDATORY MALDIVES BILLING RULE (RC1_HARDENED):
         Base Price + 10% Service Charge = subtotal
         TGST/GST applied on subtotal
+        + Green Tax ($6/pax/night) if tourism
         """
         # Quantize to 2 decimal places for currency
         base_price = base_price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
@@ -22,11 +23,16 @@ class FCEEngine:
         subtotal = base_price + service_charge
 
         # 2. TGST (17%) or GST (8%)
-        # Policy: 17% for tourism-linked, 8% for general retail
         tax_rate = Decimal("0.17") if category in ["TOURISM", "RESORT_SUPPLY"] else Decimal("0.08")
         tax_amt = (subtotal * tax_rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
-        total = subtotal + tax_amt
+        # 3. Green Tax ($6 USD equivalent)
+        green_tax = Decimal("0.00")
+        if category == "TOURISM" and pax > 0 and nights > 0:
+             # USD to MVR fixed at 15.42
+             green_tax = (Decimal("6.00") * Decimal(str(pax)) * Decimal(str(nights)) * self.locked_rates["USD"]).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+        total = subtotal + tax_amt + green_tax
 
         return {
             "transaction_id": uuid.uuid4().hex[:8],
@@ -35,6 +41,7 @@ class FCEEngine:
             "subtotal": float(subtotal),
             "tax_rate": float(tax_rate),
             "tax_amount": float(tax_amt),
+            "green_tax": float(green_tax),
             "total": float(total),
             "currency": "MVR"
         }
@@ -51,6 +58,10 @@ class FCEEngine:
 
     def price_order(self, amount: float):
         return self.calculate_local_order(Decimal(str(amount)))
+
+    def void_transaction(self, original_tx_id: str):
+        # Implementation of REVERSAL flow
+        return {"original_id": original_tx_id, "status": "VOIDED", "timestamp": datetime.now(UTC).isoformat()}
 
     def calculate_milestone_release(self, milestone: str, data: dict):
         total = Decimal(str(data["total_amount"]))

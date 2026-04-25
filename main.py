@@ -51,12 +51,14 @@ app = FastAPI(title="iMOXON N-DEOS: Consolidated Architecture Final")
 
 # --- System Law ---
 # SECURITY: Fail-closed if secret is missing in production environment.
-# In development, we allow a fallback, but the auditor flagged the hardcoded string.
+# PRODUCTION_RC1: Hard-enforcement.
 NEXGEN_SECRET = os.environ.get("NEXGEN_SECRET")
 if not NEXGEN_SECRET:
-    # Explicitly check for dev mode or similar if allowed, else raise
-    # For this submission, we enforce existence or a safer placeholder.
-    os.environ["NEXGEN_SECRET"] = "FALLBACK-DEV-SECRET-NOT-FOR-PROD"
+    raise RuntimeError("FAIL CLOSED: NEXGEN_SECRET must be set via environment.")
+
+# Database Initialization
+from mnos.db.session import init_db
+init_db()
 
 fce_core = FCEEngine()
 shadow_core = ShadowLedger()
