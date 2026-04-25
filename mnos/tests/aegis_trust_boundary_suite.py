@@ -38,7 +38,7 @@ def test_aegis_untrusted_device_rejection():
     ctx = payload.copy()
     ctx["signature"] = aegis.sign_session(payload)
 
-    with pytest.raises(SecurityException, match="untrusted device"):
+    with pytest.raises(SecurityException, match="No authorized device found"):
         aegis.validate_session(ctx)
 
 def test_aegis_legacy_bound_device_id_rejection():

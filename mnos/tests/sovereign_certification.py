@@ -22,7 +22,7 @@ def test_aegis_spoof_attack():
         "nonce": "N-BAD"
     }
     ctx["signature"] = aegis_sign(ctx)
-    with pytest.raises(SecurityException, match="untrusted device"):
+    with pytest.raises(SecurityException, match="No authorized device found"):
         guard.execute_sovereign_action("test", {}, ctx, lambda x: "fail")
 
 def test_shadow_genesis_tamper_fail_closed():
@@ -54,7 +54,7 @@ def test_shadow_sync_disconnection_lifecycle():
     ctx = {
         "user_id": "CEO-01",
         "session_id": "S-01",
-        "device_id": "nexus-001",
+        "device_id": "nexus-admin-01",
         "issued_at": int(time.time()),
         "nonce": "N-SYNC"
     }

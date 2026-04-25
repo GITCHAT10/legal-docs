@@ -12,6 +12,18 @@ class HardwareRegistry:
     def __init__(self):
         # In production, this would be backed by a secure DB/HSM
         self._registry: Set[str] = {"nexus-001", "nexus-admin-01"}
+        # P0: User-to-Device authoritative mapping (No client trust)
+        self._user_device_authority: Dict[str, str] = {
+            "CEO-01": "nexus-admin-01",
+            "GUEST-01": "nexus-001",
+            "GUEST-VAL-01": "nexus-001",
+            "GUEST-VAL-02": "nexus-001",
+            "WF-BOOKING": "nexus-admin-01",
+            "AUDITOR-1.4": "nexus-admin-01",
+            "SPAMMER": "nexus-001",
+            "GUEST-1.4": "nexus-001",
+            "DASHBOARD_ACTOR": "nexus-admin-01"
+        }
         self._session_device_map: Dict[str, str] = {} # session_id -> device_id mapping
         self._used_nonces: Set[str] = set()
         self._rate_limits: Dict[str, List[float]] = {} # device_id -> timestamps
@@ -41,13 +53,17 @@ class HardwareRegistry:
     def verify_device(self, device_id: str) -> bool:
         return device_id in self._registry
 
+    def get_authorized_device_for_user(self, user_id: str) -> str:
+        """Autoritative lookup of device DNA by user identity."""
+        return self._user_device_authority.get(user_id)
+
     def resolve_binding(self, session_id: str) -> str:
         """Resolves trusted device binding from server-side store."""
         return self._session_device_map.get(session_id)
 
     def bind_session(self, session_id: str, device_id: str):
         if device_id not in self._registry:
-            raise SecurityException(f"Cannot bind untrusted device {device_id}")
+            raise SecurityException(f"AEGIS: Cannot bind untrusted device {device_id}")
         self._session_device_map[session_id] = device_id
 
     def check_nonce(self, nonce: str):
@@ -124,19 +140,26 @@ class AegisService:
             raise SecurityException("AEGIS: Session signature forgery detected.")
 
         # P0: Server-side binding resolution (Trust Anchor)
+        user_id = payload.get("user_id")
         session_id = payload.get("session_id")
         device_id = payload.get("device_id")
 
-        # Resolving trusted binding from server store
-        server_bound_device = self.registry.resolve_binding(session_id)
+        # Autoritative Lookup: What device is this user allowed to use?
+        server_trusted_device = self.registry.get_authorized_device_for_user(user_id)
+        if not server_trusted_device:
+             raise SecurityException(f"AEGIS: No authorized device found for user {user_id}")
 
-        # If no binding exists in simulator, we auto-bind first trusted device access for this sess
+        if device_id != server_trusted_device:
+             raise SecurityException(f"AEGIS: Device mismatch. User {user_id} is not authorized on {device_id}")
+
+        # Check existing session binding
+        server_bound_device = self.registry.resolve_binding(session_id)
         if not server_bound_device:
              self.registry.bind_session(session_id, device_id)
              server_bound_device = device_id
 
-        if not device_id or device_id != server_bound_device:
-            raise SecurityException("AEGIS: Device binding violation (Hardware DNA Mismatch).")
+        if device_id != server_bound_device:
+            raise SecurityException("AEGIS: Session/Device hijacking attempt detected.")
 
         if not self.registry.verify_device(device_id):
             raise SecurityException(f"AEGIS: Unauthorized device {device_id}. Access Denied.")

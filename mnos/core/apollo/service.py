@@ -7,6 +7,7 @@ class DeploymentStatus(str, Enum):
     CANARY = "CANARY"
     LIVE = "LIVE"
     ROLLED_BACK = "ROLLED_BACK"
+    STAGING = "STAGING"
 
 class ApolloControlPlane:
     """
@@ -16,6 +17,7 @@ class ApolloControlPlane:
     def __init__(self):
         self.deployments: Dict[str, Dict[str, Any]] = {}
         self.health_metrics: Dict[str, float] = {"error_rate": 0.0, "latency": 0.0}
+        self.multi_sig_approvals: Dict[str, Set[str]] = {} # deployment_id -> approvers
 
     def propose_release(self, version: str, manifest: Dict[str, Any]) -> str:
         deployment_id = f"DEP-{version}-{int(datetime.now(timezone.utc).timestamp())}"
@@ -34,6 +36,19 @@ class ApolloControlPlane:
         self.deployments[deployment_id]["status"] = DeploymentStatus.CANARY
         self.deployments[deployment_id]["traffic"] = traffic_percent
         print(f"[APOLLO] Deployment {deployment_id} promoted to CANARY ({traffic_percent}% traffic)")
+
+    def approve_production_unlock(self, deployment_id: str, approver_id: str):
+        """2/3 multi-sig for production release."""
+        if deployment_id not in self.multi_sig_approvals:
+            self.multi_sig_approvals[deployment_id] = set()
+
+        self.multi_sig_approvals[deployment_id].add(approver_id)
+        count = len(self.multi_sig_approvals[deployment_id])
+        print(f"[APOLLO] Multi-sig Approval for {deployment_id}: {approver_id} ({count}/3)")
+
+        if count >= 2:
+            self.deployments[deployment_id]["status"] = DeploymentStatus.LIVE
+            print(f"[APOLLO] PRODUCTION UNLOCKED: {deployment_id} is now LIVE.")
 
     def check_health(self) -> bool:
         """Health-gate for rollouts."""

@@ -37,7 +37,7 @@ def test_ledger_tampering_fail_closed():
     ctx = {
         "user_id": "CEO-01",
         "session_id": "S-LEGER-01",
-        "device_id": "nexus-001",
+        "device_id": "nexus-admin-01",
         "issued_at": int(time.time()),
         "nonce": "N-LEGER-01"
     }
@@ -55,7 +55,7 @@ def test_ledger_tampering_fail_closed():
         new_ctx = {
             "user_id": "CEO-01",
             "session_id": "S-LEGER-02",
-            "device_id": "nexus-001",
+            "device_id": "nexus-admin-01",
             "issued_at": int(time.time()),
             "nonce": "N-LEGER-02"
         }
@@ -72,7 +72,7 @@ def test_partial_transaction_failure_recovery():
     ctx = {
         "user_id": "CEO-01",
         "session_id": "S-ATOMIC-01",
-        "device_id": "nexus-001",
+        "device_id": "nexus-admin-01",
         "issued_at": int(time.time()),
         "nonce": "N-ATOMIC-01"
     }

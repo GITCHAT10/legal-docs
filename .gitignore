@@ -2,8 +2,7 @@ __pycache__/
 *.pyc
 AUDIT_EXPORTS/
 INVESTOR_DATA_ROOM/
-*.md
-*.json
-*.txt
-README.md
-pytest.ini
+SECURITY_NOTES.md
+HASH_CHAIN_VALIDATION.md
+SEAL_TRANSITION_REPORT.md
+SKY-i_Core_v1.4_COURT_VALID_Report.md

@@ -7,6 +7,7 @@ from mnos.modules.shadow.service import shadow
 from mnos.modules.fce.service import fce
 from mnos.shared.execution_guard import guard, in_sovereign_context
 from mnos.config import config
+import mnos.modules.workflows.booking
 
 def aegis_sign(payload):
     return aegis.sign_session(payload)
@@ -44,7 +45,7 @@ def test_revoked_unknown_device_rejection():
     }
     ctx["signature"] = aegis_sign(ctx)
 
-    with pytest.raises(SecurityException, match="untrusted device"):
+    with pytest.raises(SecurityException, match="is not authorized on"):
         guard.execute_sovereign_action("test", {}, ctx, lambda x: "fail")
 
 def test_valid_signed_device_acceptance():
@@ -74,21 +75,21 @@ def test_shadow_genesis_tamper_rejection():
 def test_shadow_middle_chain_tamper_rejection():
     """P1: Prove that modifying a middle block breaks the hash chain."""
     ctx = {
-        "user_id": "CEO-01", "session_id": "S-1", "device_id": "nexus-001",
+        "user_id": "CEO-01", "session_id": "S-1", "device_id": "nexus-admin-01",
         "issued_at": int(time.time()), "nonce": "N-1"
     }
     ctx["signature"] = aegis_sign(ctx)
     guard.execute_sovereign_action("nexus.booking.created", {}, ctx, lambda x: "ok")
 
     ctx2 = {
-        "user_id": "CEO-01", "session_id": "S-2", "device_id": "nexus-001",
+        "user_id": "CEO-01", "session_id": "S-2", "device_id": "nexus-admin-01",
         "issued_at": int(time.time()), "nonce": "N-2"
     }
     ctx2["signature"] = aegis_sign(ctx2)
     guard.execute_sovereign_action("nexus.payment.received", {}, ctx2, lambda x: "ok")
 
-    # Chain: [0] Genesis, [1] event.1, [2] event.2
-    assert len(shadow.chain) == 3
+    # Chain: [0] Genesis, [1] booking.created, [2] payment.received (via workflow), [3] payment.received (direct)
+    assert len(shadow.chain) == 4
 
     # Tamper with event.1
     shadow.chain[1]["payload"]["action"] = "MODIFIED"
@@ -97,7 +98,7 @@ def test_shadow_middle_chain_tamper_rejection():
 def test_fail_closed_on_identity_failure():
     """P0: Prove workflow is blocked if identity validation fails."""
     ctx = {
-        "user_id": "GUEST", "session_id": "S-FAIL", "device_id": "nexus-001",
+        "user_id": "GUEST-01", "session_id": "S-FAIL", "device_id": "nexus-001",
         "issued_at": 0, # EXPIRED
         "nonce": "N-FAIL"
     }
