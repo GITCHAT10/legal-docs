@@ -16,6 +16,8 @@ from mnos.api.commerce import create_commerce_router
 from mnos.api.finance import create_finance_router
 from mnos.api.specialized import create_specialized_router
 from mnos.api.hospitality import create_hospitality_router
+from mnos.api.restaurant import create_restaurant_router
+from mnos.api.mars_itravel import create_itravel_router, create_flow_router, create_grid_router
 from mnos.gateway.engine import APIGatewayControlPlane
 
 # iMOXON Consolidated
@@ -38,6 +40,8 @@ from mnos.modules.housing.engine import HousingEngine
 from mnos.modules.exchange.engine import ExchangeEngine
 from mnos.modules.education.engine import EducationEngine
 from mnos.modules.hospitality.engine import LowCostHospitalityEngine
+from mnos.modules.restaurant.engine import MaldivesRestaurantEngine
+from mnos.modules.imoxon.mars_unified import NexusSkyICloudBrain
 
 # Bubble OS Super App Layer
 from mnos.modules.bubble.chat.engine import ChatIntentEngine, ChatToTransactionEngine
@@ -94,6 +98,8 @@ housing = HousingEngine(imoxon)
 exchange = ExchangeEngine(imoxon)
 education = EducationEngine(imoxon)
 hospitality = LowCostHospitalityEngine(imoxon)
+restaurant = MaldivesRestaurantEngine(imoxon, bpe)
+mars_unified = NexusSkyICloudBrain(imoxon, bpe, transport)
 
 # Bubble OS
 intent_engine = ChatIntentEngine(imoxon)
@@ -173,6 +179,10 @@ app.include_router(create_commerce_router(imoxon, catalog, merchant, pos, procur
 app.include_router(create_finance_router(fce_hardened, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_specialized_router(tourism, faith, transport, housing, exchange, education, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_hospitality_router(hospitality, get_actor_ctx), prefix="/imoxon")
+app.include_router(create_restaurant_router(restaurant, get_actor_ctx), prefix="/imoxon")
+app.include_router(create_itravel_router(mars_unified, get_actor_ctx), prefix="/imoxon")
+app.include_router(create_flow_router(mars_unified, get_actor_ctx), prefix="/imoxon")
+app.include_router(create_grid_router(mars_unified, get_actor_ctx), prefix="/imoxon")
 
 # Error handlers
 @app.exception_handler(PermissionError)

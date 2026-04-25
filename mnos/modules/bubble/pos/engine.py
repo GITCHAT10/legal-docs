@@ -60,3 +60,27 @@ class BubblePOSEngine:
 
     def get_stock_level(self, merchant_id: str, item_id: str) -> float:
         return self.tenants.get(merchant_id, {}).get(item_id, 0.0)
+
+    def sync_offline_batch(self, merchant_id: str, transactions: list):
+        """
+        Adoption of Stocky POS / AI Restaurant offline sync.
+        Synchronizes a batch of transactions recorded while the island node was offline.
+        """
+        results = []
+        for tx in transactions:
+            # 1. Deduct Inventory
+            for item in tx.get("items", []):
+                self.update_inventory(merchant_id, item["id"], item["qty"], action="DEDUCT")
+
+            # 2. Record Financial Entry (Retroactive)
+            pricing = self.mnos.fce.finalize_invoice(tx.get("amount"), "RETAIL")
+            entry = {
+                "sync_id": f"OFFLINE-{uuid.uuid4().hex[:6]}",
+                "original_ts": tx.get("timestamp"),
+                "pricing": pricing,
+                "status": "SYNCED_TO_SHADOW"
+            }
+            self.mnos.shadow.commit("bpe.offline_sync", merchant_id, entry)
+            results.append(entry)
+
+        return {"merchant_id": merchant_id, "synced_count": len(results), "records": results}

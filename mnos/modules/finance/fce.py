@@ -8,11 +8,12 @@ class FCEEngine:
         self.ledger = []
         self.locked_rates = {"USD": Decimal("15.42")} # MVR
 
-    def calculate_local_order(self, base_price: Decimal, category: str = "RETAIL") -> dict:
+    def calculate_local_order(self, base_price: Decimal, category: str = "RETAIL", green_tax_usd: Decimal = Decimal("0")) -> dict:
         """
         MANDATORY MALDIVES BILLING RULE:
         Base Price + 10% Service Charge = subtotal
         TGST/GST applied on subtotal
+        Green Tax (if applicable, only for accommodation)
         """
         # Quantize to 2 decimal places for currency
         base_price = base_price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
@@ -26,7 +27,11 @@ class FCEEngine:
         tax_rate = Decimal("0.17") if category in ["TOURISM", "RESORT_SUPPLY"] else Decimal("0.08")
         tax_amt = (subtotal * tax_rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
-        total = subtotal + tax_amt
+        # 3. Green Tax (USD converted to MVR)
+        mvr_rate = self.locked_rates.get("USD", Decimal("15.42"))
+        green_tax_mvr = (green_tax_usd * mvr_rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+        total = subtotal + tax_amt + green_tax_mvr
 
         return {
             "transaction_id": uuid.uuid4().hex[:8],
@@ -35,6 +40,7 @@ class FCEEngine:
             "subtotal": float(subtotal),
             "tax_rate": float(tax_rate),
             "tax_amount": float(tax_amt),
+            "green_tax": float(green_tax_mvr),
             "total": float(total),
             "currency": "MVR"
         }

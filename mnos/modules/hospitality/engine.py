@@ -97,7 +97,9 @@ class LowCostHospitalityEngine:
         subtotal_mvr = subtotal_usd * mvr_rate
 
         # Apply Maldives Taxes via FCE
-        pricing = self.core.fce.calculate_local_order(subtotal_mvr, "TOURISM")
+        # Green Tax Logic: $6 per night per guest (assumed 1 guest for base calculation)
+        green_tax_usd = Decimal("6.0") * nights if prop["type"] == "GUESTHOUSE" else Decimal("0")
+        pricing = self.core.fce.calculate_local_order(subtotal_mvr, "TOURISM", green_tax_usd)
 
         booking = {
             "booking_id": f"BK-{uuid.uuid4().hex[:6].upper()}",
