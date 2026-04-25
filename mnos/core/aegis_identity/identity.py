@@ -25,7 +25,7 @@ class AegisIdentityCore:
             "created_at": datetime.now(UTC).isoformat()
         }
         self.profiles[identity_id] = profile
-        self.shadow.commit("identity.created", profile)
+        self.shadow.commit("identity.created", identity_id, profile)
         self.events.publish("IDENTITY_CREATED", profile)
         return identity_id
 
@@ -39,7 +39,7 @@ class AegisIdentityCore:
             "created_at": datetime.now(UTC).isoformat()
         }
         self.devices[device_id] = device
-        self.shadow.commit("identity.device.bound", device)
+        self.shadow.commit("identity.device.bound", identity_id, device)
         return device_id
 
     def assign_role(self, identity_id: str, role_name: str, scope: dict) -> str:
@@ -52,7 +52,7 @@ class AegisIdentityCore:
             "is_active": True
         }
         self.roles[binding_id] = role_binding
-        self.shadow.commit("identity.role.assigned", role_binding)
+        self.shadow.commit("identity.role.assigned", identity_id, role_binding)
         return binding_id
 
     def record_consent(self, identity_id: str, consent_type: str) -> str:
@@ -65,7 +65,7 @@ class AegisIdentityCore:
             "granted_at": datetime.now(UTC).isoformat()
         }
         self.consents[consent_id] = consent
-        self.shadow.commit("identity.consent.recorded", consent)
+        self.shadow.commit("identity.consent.recorded", identity_id, consent)
         return consent_id
 
     def verify_identity(self, identity_id: str, verifier_id: str, method: str = "document"):
@@ -79,7 +79,7 @@ class AegisIdentityCore:
                 "verified_at": datetime.now(UTC).isoformat()
             }
             self.verifications[identity_id] = verification
-            self.shadow.commit("identity.verified", verification)
+            self.shadow.commit("identity.verified", identity_id, verification)
             return True
         return False
 
@@ -93,5 +93,5 @@ class AegisIdentityCore:
             "bound_at": datetime.now(UTC).isoformat()
         }
         self.bindings[binding_id] = binding
-        self.shadow.commit("identity.asset.bound", binding)
+        self.shadow.commit("identity.asset.bound", identity_id, binding)
         return binding_id

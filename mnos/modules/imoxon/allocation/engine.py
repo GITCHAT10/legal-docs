@@ -1,17 +1,54 @@
+import uuid
+from typing import List, Dict
+
 class AllocationEngine:
-    def __init__(self, guard, events):
-        self.guard = guard
-        self.events = events
+    """
+    iMOXON Allocation Engine: Enforces fair distribution and SKU splitting.
+    Priority: Medical > Gov > Resort
+    """
+    def __init__(self, shadow):
+        self.shadow = shadow
+        self.batches = {} # batch_id -> {total, allocated, remaining}
 
-    def lock_allocation(self, actor_ctx: dict, lot_id: str, resort_id: str):
-        return self.guard.execute_sovereign_action(
-            "imoxon.allocation.lock",
-            actor_ctx,
-            self._internal_lock,
-            lot_id, resort_id
-        )
+    def process_intake(self, actor_id: str, sku: str, total_qty: int):
+        batch_id = f"BAT-{uuid.uuid4().hex[:6].upper()}"
+        self.batches[batch_id] = {
+            "sku": sku,
+            "total": total_qty,
+            "allocated": 0,
+            "remaining": total_qty,
+            "allocations": []
+        }
+        self.shadow.commit("allocation.intake", actor_id, {"batch_id": batch_id, "sku": sku, "qty": total_qty})
+        return batch_id
 
-    def _internal_lock(self, lot_id, resort_id):
-        entry = {"lot": lot_id, "resort": resort_id, "status": "LOCKED"}
-        self.events.publish("ALLOCATION_LOCKED", entry)
-        return entry
+    def allocate(self, actor_id: str, batch_id: str, requests: List[Dict]):
+        """
+        requests: [{entity_id, type, requested_qty}]
+        Sorting by priority rules.
+        """
+        if batch_id not in self.batches:
+            raise ValueError("Batch not found")
+
+        batch = self.batches[batch_id]
+        # Sort: Medical (1), Gov (2), Resort (3)
+        priority_map = {"medical": 1, "gov": 2, "resort": 3}
+        sorted_reqs = sorted(requests, key=lambda x: priority_map.get(x["type"], 99))
+
+        for req in sorted_reqs:
+            if batch["remaining"] <= 0:
+                break
+
+            alloc_qty = min(req["requested_qty"], batch["remaining"])
+            batch["allocated"] += alloc_qty
+            batch["remaining"] -= alloc_qty
+
+            alloc_record = {
+                "entity_id": req["entity_id"],
+                "type": req["type"],
+                "qty": alloc_qty
+            }
+            batch["allocations"].append(alloc_record)
+
+        self.shadow.commit("allocation.locked", actor_id, {"batch_id": batch_id, "allocations": batch["allocations"]})
+        return batch["allocations"]

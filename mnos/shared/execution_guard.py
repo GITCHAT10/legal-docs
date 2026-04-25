@@ -50,7 +50,7 @@ class ExecutionGuard:
                 "input": serializable_input or kwargs,
                 "status": "INTENT"
             }
-            self.shadow.commit(f"{action_type}.intent", intent_payload)
+            self.shadow.commit(f"{action_type}.intent", identity_id, intent_payload)
 
             # EXECUTE BUSINESS LOGIC
             result = func(*args, **kwargs)
@@ -63,7 +63,7 @@ class ExecutionGuard:
                 "result": result,
                 "status": "COMMITTED"
             }
-            self.shadow.commit(f"{action_type}.completed", commit_payload)
+            self.shadow.commit(f"{action_type}.completed", identity_id, commit_payload)
 
             return result
 
@@ -75,7 +75,7 @@ class ExecutionGuard:
                 "error": str(e),
                 "status": "FAILED_ROLLBACK"
             }
-            self.shadow.commit(f"{action_type}.failed", fail_payload)
+            self.shadow.commit(f"{action_type}.failed", identity_id or "UNKNOWN", fail_payload)
             raise RuntimeError(f"SOVEREIGN EXECUTION FAILED: {str(e)}")
         finally:
             # Clear context

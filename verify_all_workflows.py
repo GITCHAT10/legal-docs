@@ -41,12 +41,18 @@ async def verify_workflows():
         # 4. Checkout Flow
         print("[4] Checkout Flow...")
         res = await client.post("/commerce/orders/create", json={"vendor_id": merchant_id, "amount": 1000}, headers=h_buyer)
+        if res.status_code != 200:
+             print(f"    Checkout Flow Failed: {res.text}")
+             raise RuntimeError(f"Checkout Flow Failed: {res.text}")
         results.append({"name": "Checkout Flow", "res": "SUCCESS", "total": res.json()["pricing"]["total"]})
 
         # 5. Payout Flow
         print("[5] Payout Flow...")
         await client.post("/commerce/milestones/verify", json={"milestone": "AWARD", "ref_id": "rfp_1", "timestamp": "now"}, headers=h_merch)
-        res = await client.post("/commerce/payouts/release", params={"milestone": "AWARD", "ref_id": "rfp_1", "total_amount": 1000}, headers=h_merch)
+        res = await client.post("/finance/payouts/release", params={"milestone": "AWARD", "ref_id": "rfp_1", "total_amount": 1000}, headers=h_merch)
+        if res.status_code != 200:
+             print(f"    Payout Flow Failed: {res.text}")
+             raise RuntimeError(f"Payout Flow Failed: {res.text}")
         results.append({"name": "Payout Flow", "res": "SUCCESS", "amount": res.json()["release_amount"]})
 
         # 6. Faith/Charity

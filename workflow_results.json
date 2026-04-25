@@ -2,12 +2,12 @@
   {
     "name": "User Onboarding",
     "res": "SUCCESS",
-    "id": "7c2e3f5e-1112-4e5f-95ba-9927e6b07980"
+    "id": "8ee9579f-d157-49b5-8696-3f2f5fe3bb16"
   },
   {
     "name": "Merchant Onboarding",
     "res": "SUCCESS",
-    "id": "27130ae2-1e79-495e-9387-3ff20857d149"
+    "id": "38604512-7684-46a7-83b3-704873882b36"
   },
   {
     "name": "Coupon Flow",
@@ -35,10 +35,9 @@
     "name": "Transport Flow",
     "res": "SUCCESS",
     "split": {
-      "total": 23.76,
-      "hub_net": 20.2,
-      "platform_cut": 3.56,
-      "currency": "MVR"
+      "fare": 20,
+      "operator_cut": 18.0,
+      "platform_fee": 2.0
     }
   },
   {

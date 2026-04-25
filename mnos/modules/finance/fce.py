@@ -1,5 +1,7 @@
 from decimal import Decimal, ROUND_HALF_UP
 import uuid
+from typing import Dict, Any
+from datetime import datetime, UTC
 
 class FCEEngine:
     def __init__(self):
@@ -68,3 +70,56 @@ class FCEEngine:
             "platform_cut": float(platform_cut),
             "currency": "MVR"
         }
+
+    def process_clearing_settlement(self, amount: float, parties: dict):
+        """
+        N-DEOS Financial Clearing: Multi-party T+1 settlement.
+        Parties: {resort, supplier, logistics, tax}
+        """
+        amt = Decimal(str(amount))
+        # FX Lock simulated
+        settlement = {
+            "clearing_id": uuid.uuid4().hex[:8],
+            "timestamp": datetime.now(UTC).isoformat(),
+            "status": "PENDING_T+1",
+            "distributions": {k: float(amt * Decimal(str(v))) for k, v in parties.items()}
+        }
+        return settlement
+
+class FCEHardenedEngine:
+    """
+    FCE Hardened Engine: Legacy wrapper for Phase 1.
+    """
+    def __init__(self, shadow_ledger):
+        self.shadow = shadow_ledger
+        self.engine = FCEEngine()
+        self.escrows = {}
+
+    def calculate_maldives_order(self, base_price: Decimal):
+        return self.engine.calculate_local_order(base_price, "RESORT_SUPPLY")
+
+    def create_escrow(self, actor_id: str, amount: float, ref_id: str):
+        escrow_id = f"ESC-{uuid.uuid4().hex[:8].upper()}"
+        self.escrows[escrow_id] = {
+            "amount": amount,
+            "ref_id": ref_id,
+            "status": "LOCKED",
+            "released_amount": 0.0
+        }
+        self.shadow.commit("fce.escrow_locked", actor_id, {"escrow_id": escrow_id, "amount": amount})
+        return escrow_id
+
+    def release_milestone(self, actor_id: str, escrow_id: str, milestone_pct: int):
+        milestone_map = {10: "AWARD", 40: "PORT", 20: "QC", 30: "ACCEPTANCE"}
+        milestone_name = milestone_map.get(milestone_pct)
+
+        escrow = self.escrows.get(escrow_id)
+        release_res = self.engine.calculate_milestone_release(milestone_name, {"total_amount": escrow["amount"]})
+
+        escrow["released_amount"] += release_res["release_amount"]
+        self.shadow.commit("fce.milestone_released", actor_id, {
+            "escrow_id": escrow_id,
+            "percentage": milestone_pct,
+            "amount": release_res["release_amount"]
+        })
+        return release_res["release_amount"]
