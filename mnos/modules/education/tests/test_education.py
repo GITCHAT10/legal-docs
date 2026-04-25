@@ -1,6 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
-from mnos.modules.education.api.employer import app, AEGIS_KEY
+from mnos.modules.education.api.employer import app, AEGIS_KEY, shadow
 from mnos.modules.education.core.digital_twin import DigitalTwinEngine, SimulationResult
 from mnos.modules.education.models.schemas import JobDemand, SkillVerification
 from datetime import datetime, UTC
@@ -83,6 +83,8 @@ def test_certify_student_endpoint_success():
     response = client.post("/certify", json=cert_data, headers=headers)
     assert response.status_code == 200
     assert response.json()["correlation_id"] == "CERT-CORR-123"
+    # Verify SHADOW audit trace
+    assert any(entry["event_type"] == "STUDENT_CERTIFICATION" for entry in shadow.chain)
 
 def test_certify_student_endpoint_auth_failure():
     cert_data = {

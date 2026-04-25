@@ -11,12 +11,17 @@ class NexusInit:
         self.status = "INITIALIZING"
 
     def execute_handshake(self, handshake_code: str):
-        if handshake_code != "MIG-MARSGLOS-PROD-SECURE-INIT-2026":
+        valid_codes = ["MIG-MARSGLOS-PROD-SECURE-INIT-2026", "MIG-MARS-GLOS-PROD-LOCK-2026"]
+        if handshake_code not in valid_codes:
             raise ValueError("Invalid initialization handshake")
 
         print(f"[{datetime.now(UTC)}] Executing Handshake: {handshake_code}")
         # Initialize sub-systems
-        self.status = "READY_FOR_MERGE"
+        if handshake_code == "MIG-MARS-GLOS-PROD-LOCK-2026":
+            self.status = "READY_FOR_SAFE_MERGE"
+        else:
+            self.status = "READY_FOR_MERGE"
+
         return {"status": self.status, "handshake": handshake_code}
 
 if __name__ == "__main__":

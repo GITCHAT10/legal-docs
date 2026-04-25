@@ -2,9 +2,13 @@ from fastapi import FastAPI, HTTPException, Depends, Header
 from typing import List, Annotated
 import os
 from mnos.modules.education.models.schemas import JobDemand, SkillVerification, StudentMatch, CertificationRequest
+from mnos.modules.shadow.ledger import ShadowLedger
 from datetime import datetime, UTC
 
 app = FastAPI(title="MARS-GLOS Employer API", version="1.0.0")
+
+# Initialize SHADOW Ledger
+shadow = ShadowLedger()
 
 # AEGIS Authentication via Environment Variables
 AEGIS_KEY = os.getenv("AEGIS_SECRET_KEY", "MIG-SECURE-KEY-FALLBACK")
@@ -40,8 +44,10 @@ async def list_job_demands():
 async def verify_student_skill(verification: SkillVerification):
     """
     Verify student skills based on simulation performance.
+    Mandatory SHADOW logging for auditability.
     """
     verifications.append(verification)
+    shadow.commit("SKILL_VERIFICATION", "SYSTEM_SIMULATOR", verification.model_dump())
     return verification
 
 @app.get("/match/{job_id}", response_model=List[StudentMatch])
@@ -68,6 +74,7 @@ async def certify_student(
     """
     Process certification requests via the 'Law of the Button' UI-driven action.
     Requires AEGIS authentication and employer role.
+    Mandatory SHADOW logging for auditability.
     """
     # Enforce human-in-the-loop: actor_id in request must match authenticated user
     if request.actor_id != user["id"]:
@@ -76,8 +83,8 @@ async def certify_student(
     if request.actor_role != "employer":
         raise HTTPException(status_code=403, detail="Only employers can certify")
 
-    # In a real system, this would involve ExecutionGuard and SHADOW logging
     certifications.append(request)
+    shadow.commit("STUDENT_CERTIFICATION", user["id"], request.model_dump())
     return request
 
 @app.get("/health")

@@ -2,6 +2,13 @@ from datetime import datetime, UTC
 import hashlib
 import json
 from typing import Any
+from datetime import datetime, UTC
+
+class ShadowEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return super().default(obj)
 
 class ShadowLedger:
     """
@@ -26,5 +33,5 @@ class ShadowLedger:
         return entry["hash"]
 
     def _hash_entry(self, entry: dict) -> str:
-        canonical = json.dumps(entry, sort_keys=True)
+        canonical = json.dumps(entry, sort_keys=True, cls=ShadowEncoder)
         return hashlib.sha256(canonical.encode()).hexdigest()

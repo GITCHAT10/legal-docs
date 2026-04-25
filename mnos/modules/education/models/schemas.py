@@ -78,6 +78,7 @@ class CertificationRequest(MARSBaseModel):
     actor_id: str  # The human authority approving the certification
     actor_role: str = "employer" # Added for RBAC validation
     correlation_id: str
+    forensic_audit_trace: str = Field(default="REQUIRED") # Enforced trace field
     timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     @field_validator('correlation_id')
