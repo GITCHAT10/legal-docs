@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
-from datetime import datetime, UTC, UTC, UTC, UTC, UTC, UTC, UTC, UTC
+from datetime import datetime
 from united_transfer_system.models.base import LegType, JourneyStatus
 
 class LegBase(BaseModel):

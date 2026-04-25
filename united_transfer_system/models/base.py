@@ -39,7 +39,7 @@ class Partner(Base):
 class Journey(Base):
     id = Column(Integer, primary_key=True, index=True)
     tenant_id = Column(String, index=True, nullable=False, default="default")
-    trace_id = Column(String, index=True, nullable=False) # MANDATORY: trace_id + aegis_id + device_id + ts
+    trace_id = Column(String, index=True, nullable=False)
     aegis_id = Column(String, index=True)
     device_id = Column(String, index=True)
 
@@ -55,7 +55,7 @@ class Journey(Base):
 class Leg(Base):
     id = Column(Integer, primary_key=True, index=True)
     journey_id = Column(Integer, ForeignKey("journey.id"), nullable=False)
-    trace_id = Column(String, index=True, nullable=False) # MANDATORY
+    trace_id = Column(String, index=True, nullable=False)
     aegis_id = Column(String, index=True)
     device_id = Column(String, index=True)
 
@@ -100,7 +100,7 @@ class Wallet(Base):
 class Transaction(Base):
     id = Column(Integer, primary_key=True, index=True)
     wallet_id = Column(Integer, ForeignKey("wallet.id"), nullable=False)
-    trace_id = Column(String, index=True, nullable=False) # MANDATORY
+    trace_id = Column(String, index=True, nullable=False)
     aegis_id = Column(String, index=True)
     device_id = Column(String, index=True)
 

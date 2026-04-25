@@ -2,7 +2,7 @@ import pytest
 from decimal import Decimal
 from mnos.edge.node import EdgeNode
 from mnos.core.events.durable_bus import event_bus
-from iMOXON.AI_ECON.engine import ai_econ
+from mnos.modules.imoxon.ai_econ.engine import ai_econ
 from mnos.modules.fce.clearing import fce_clearing
 from mnos.modules.ut_simulation.waterfall import waterfall_sim
 from mnos.modules.ut_simulation.oracle import dispatch_oracle
@@ -42,5 +42,4 @@ def test_ut_waterfall_sim():
 
 def test_dispatch_oracle_scoring():
     score = dispatch_oracle.calculate_consolidation_score(0.9, 0.8, 1.0, 0.9)
-    # 0.9*0.4 + 0.8*0.3 + 1.0*0.2 + 0.9*0.1 = 0.36 + 0.24 + 0.2 + 0.09 = 0.89
     assert score == 0.89

@@ -9,6 +9,7 @@ from mnos.modules.fce.router import router as finance_router
 from mnos.modules.maintain.router import router as maintenance_router
 from mnos.modules.shadow.router import router as shadow_router
 from united_transfer_system.api.router import router as united_transfer_router
+from mnos.core.governance.api.router import router as governance_router
 from mnos.core.apollo.api.router import router as apollo_router
 from mnos.core.events.websockets import router as ws_router
 
@@ -34,6 +35,7 @@ app.include_router(finance_router, prefix=f"{settings.API_V1_STR}/finance", tags
 app.include_router(maintenance_router, prefix=f"{settings.API_V1_STR}/maintenance", tags=["maintenance"])
 app.include_router(shadow_router, prefix=f"{settings.API_V1_STR}/shadow", tags=["audit"])
 app.include_router(united_transfer_router, prefix=f"{settings.API_V1_STR}/united-transfer", tags=["united-transfer"])
+app.include_router(governance_router, prefix=f"{settings.API_V1_STR}/governance", tags=["governance"])
 app.include_router(apollo_router, prefix=f"{settings.API_V1_STR}/apollo", tags=["apollo"])
 app.include_router(ws_router, tags=["events"])
 

@@ -15,7 +15,6 @@ class GuestCreate(GuestBase):
     first_name: str
     last_name: str
     email: EmailStr
-    trace_id: str
 
 class GuestUpdate(GuestBase):
     pass

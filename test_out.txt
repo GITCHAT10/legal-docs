@@ -3,166 +3,20 @@ platform linux -- Python 3.12.13, pytest-9.0.3, pluggy-1.6.0 -- /home/jules/.pye
 cachedir: .pytest_cache
 rootdir: /app
 plugins: anyio-4.13.0
-collecting ... collected 1 item
+collecting ... collected 0 items / 1 error
 
-mnos/tests/test_full_booking_flow.py::test_full_booking_flow FAILED      [100%]
-
-=================================== FAILURES ===================================
-____________________________ test_full_booking_flow ____________________________
-
-self = <sqlalchemy.orm.clsregistry._class_resolver object at 0x7fc10d929b40>
-
-    def _resolve_name(self) -> Union[Table, Type[Any], _ModNS]:
-        name = self.arg
-        d = self._dict
-        rval = None
-        try:
-            for token in name.split("."):
-                if rval is None:
->                   rval = d[token]
-                           ^^^^^^^^
-
-/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/clsregistry.py:516:
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/util/_collections.py:340: in __missing__
-    self[key] = val = self.creator(key)
-                      ^^^^^^^^^^^^^^^^^
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-
-self = <sqlalchemy.orm.clsregistry._class_resolver object at 0x7fc10d929b40>
-key = 'Guest'
-
-    def _access_cls(self, key: str) -> Any:
-        cls = self.cls
-
-        manager = attributes.manager_of_class(cls)
-        decl_base = manager.registry
-        assert decl_base is not None
-        decl_class_registry = decl_base._class_registry
-        metadata = decl_base.metadata
-
-        if self.favor_tables:
-            if key in metadata.tables:
-                return metadata.tables[key]
-            elif key in metadata._schemas:
-                return _GetTable(key, getattr(cls, "metadata", metadata))
-
-        if key in decl_class_registry:
-            return _determine_container(key, decl_class_registry[key])
-
-        if not self.favor_tables:
-            if key in metadata.tables:
-                return metadata.tables[key]
-            elif key in metadata._schemas:
-                return _GetTable(key, getattr(cls, "metadata", metadata))
-
-        if "_sa_module_registry" in decl_class_registry and key in cast(
-            _ModuleMarker, decl_class_registry["_sa_module_registry"]
-        ):
-            registry = cast(
-                _ModuleMarker, decl_class_registry["_sa_module_registry"]
-            )
-            return registry.resolve_attr(key)
-        elif self._resolvers:
-            for resolv in self._resolvers:
-                value = resolv(key)
-                if value is not None:
-                    return value
-
->       return self.fallback[key]
-               ^^^^^^^^^^^^^^^^^^
-E       KeyError: 'Guest'
-
-/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/clsregistry.py:484: KeyError
-
-The above exception was the direct cause of the following exception:
-
-    def test_full_booking_flow():
-        db = SessionLocal()
-        try:
-            # 1. Setup Room
->           room = res_service.create_room(db, room_in=res_schemas.RoomCreate(
-                tenant_id="test", trace_id=str(uuid.uuid4()), room_number="101",
-                room_type="DELUXE", status=res_models.RoomStatus.READY, base_price=500.0, capacity=2
-            ))
-
-mnos/tests/test_full_booking_flow.py:13:
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-mnos/modules/inn/reservations/service.py:156: in create_room
-    db_room = models.Room(
-<string>:4: in __init__
-    ???
-/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/state.py:591: in _initialize_instance
-    manager.dispatch.init(self, args, kwargs)
-/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/event/attr.py:515: in __call__
-    fn(*args, **kw)
-/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/mapper.py:4419: in _event_on_init
-    instrumenting_mapper._check_configure()
-/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/mapper.py:2410: in _check_configure
-    _configure_registries({self.registry}, cascade=True)
-/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/mapper.py:4227: in _configure_registries
-    _do_configure_registries(registries, cascade)
-/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/mapper.py:4268: in _do_configure_registries
-    mapper._post_configure_properties()
-/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/mapper.py:2427: in _post_configure_properties
-    prop.init()
-/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/interfaces.py:595: in init
-    self.do_init()
-/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/relationships.py:1655: in do_init
-    self._setup_entity()
-/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/relationships.py:1865: in _setup_entity
-    self._clsregistry_resolve_name(argument)(),
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/clsregistry.py:520: in _resolve_name
-    self._raise_for_name(name, err)
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-
-self = <sqlalchemy.orm.clsregistry._class_resolver object at 0x7fc10d929b40>
-name = 'Guest', err = KeyError('Guest')
-
-    def _raise_for_name(self, name: str, err: Exception) -> NoReturn:
-        generic_match = re.match(r"(.+)\[(.+)\]", name)
-
-        if generic_match:
-            clsarg = generic_match.group(2).strip("'")
-            raise exc.InvalidRequestError(
-                f"When initializing mapper {self.prop.parent}, "
-                f'expression "relationship({self.arg!r})" seems to be '
-                "using a generic class as the argument to relationship(); "
-                "please state the generic argument "
-                "using an annotation, e.g. "
-                f'"{self.prop.key}: Mapped[{generic_match.group(1)}'
-                f"['{clsarg}']] = relationship()\""
-            ) from err
-        else:
->           raise exc.InvalidRequestError(
-                "When initializing mapper %s, expression %r failed to "
-                "locate a name (%r). If this is a class name, consider "
-                "adding this relationship() to the %r class after "
-                "both dependent classes have been defined."
-                % (self.prop.parent, self.arg, name, self.cls)
-            ) from err
-E           sqlalchemy.exc.InvalidRequestError: When initializing mapper Mapper[Reservation(reservation)], expression 'Guest' failed to locate a name ('Guest'). If this is a class name, consider adding this relationship() to the <class 'mnos.modules.inn.reservations.models.Reservation'> class after both dependent classes have been defined.
-
-/home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/orm/clsregistry.py:501: InvalidRequestError
-=============================== warnings summary ===============================
-mnos/core/db/base_class.py:4
-  /app/mnos/core/db/base_class.py:4: MovedIn20Warning: The ``as_declarative()`` function is now available as sqlalchemy.orm.as_declarative() (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
-    @as_declarative()
-
-mnos/modules/inn/reservations/schemas.py:14
-  /app/mnos/modules/inn/reservations/schemas.py:14: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
-    class Stay(StayBase):
-
-mnos/modules/inn/reservations/schemas.py:38
-  /app/mnos/modules/inn/reservations/schemas.py:38: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
-    class Reservation(ReservationBase):
-
-mnos/modules/inn/reservations/schemas.py:58
-  /app/mnos/modules/inn/reservations/schemas.py:58: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
-    class Room(RoomBase):
-
--- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+==================================== ERRORS ====================================
+____________ ERROR collecting mnos/tests/test_national_os_cycle.py _____________
+ImportError while importing test module '/app/mnos/tests/test_national_os_cycle.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/home/jules/.pyenv/versions/3.12.13/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+mnos/tests/test_national_os_cycle.py:3: in <module>
+    from mnos.modules.mercury_vine.services.intelligence import forecast_engine
+E   ModuleNotFoundError: No module named 'mnos.modules.mercury_vine'
 =========================== short test summary info ============================
-FAILED mnos/tests/test_full_booking_flow.py::test_full_booking_flow - sqlalch...
-======================== 1 failed, 4 warnings in 1.31s =========================
+ERROR mnos/tests/test_national_os_cycle.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+=============================== 1 error in 0.19s ===============================

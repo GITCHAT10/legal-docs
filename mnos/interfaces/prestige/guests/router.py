@@ -36,7 +36,9 @@ def create_guest(
             status_code=400,
             detail="A guest with this email already exists.",
         )
-    guest = models.Guest(**guest_in.dict())
+    from mnos.shared.context.execution import set_execution_context
+    trace_id = set_execution_context(aegis_id=current_user.email, device_id="D-GUEST-API")
+    guest = models.Guest(**guest_in.dict(), trace_id=trace_id)
     db.add(guest)
     db.commit()
     db.refresh(guest)

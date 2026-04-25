@@ -1,1 +1,1 @@
-from united_transfer_system.models.base import *
+from .base import Journey, Leg, Telemetry, Partner, Wallet, Transaction, CharterManifest, LegType, JourneyStatus, PartnerTier
