@@ -5,6 +5,8 @@ from sqlalchemy.orm import Session
 from mnos.modules.shadow import models
 
 def commit_evidence(db: Session, trace_id: str, payload: dict) -> models.Evidence:
+    if db is None:
+        return None
     # Get last evidence for chaining
     last = db.query(models.Evidence).order_by(models.Evidence.id.desc()).first()
     prev_hash = last.current_hash if last else "0" * 64

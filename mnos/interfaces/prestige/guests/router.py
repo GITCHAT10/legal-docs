@@ -36,9 +36,7 @@ def create_guest(
             status_code=400,
             detail="A guest with this email already exists.",
         )
-    import uuid
-    trace_id = f"GUEST-CREATE-{uuid.uuid4().hex[:8]}"
-    guest = models.Guest(**guest_in.dict(), trace_id=trace_id)
+    guest = models.Guest(**guest_in.dict())
     db.add(guest)
     db.commit()
     db.refresh(guest)

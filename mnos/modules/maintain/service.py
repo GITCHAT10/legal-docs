@@ -6,10 +6,11 @@ from mnos.modules.shadow import service as shadow_service
 from datetime import datetime, timedelta
 import uuid
 
-def create_ticket(db: Session, room_id: int, title: str, description: str, priority: enums.TicketPriority, severity: enums.TicketSeverity = enums.TicketSeverity.MEDIUM, actor: str = "SYSTEM") -> models.MaintenanceTicket:
+def create_ticket(db: Session, room_id: int, title: str, description: str, priority: enums.TicketPriority, severity: enums.TicketSeverity = enums.TicketSeverity.MEDIUM, trace_id: Optional[str] = None, actor: str = "SYSTEM") -> models.MaintenanceTicket:
     try:
+        if not trace_id:
+            trace_id = f"MAINT-CREATE-{uuid.uuid4().hex[:8]}"
         is_blocking = priority in [enums.TicketPriority.P1, enums.TicketPriority.P2] or severity == enums.TicketSeverity.CRITICAL
-        trace_id = f"MAINT-CREATE-{uuid.uuid4().hex[:8]}"
 
         # Simple SLA calculation
         sla_hours = {"P1 Safety": 2, "P2 Revenue Blocking": 4, "P3 Guest Comfort": 12, "P4 Cosmetic": 48}
