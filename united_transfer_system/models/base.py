@@ -43,7 +43,7 @@ class Journey(Base):
     aegis_id = Column(String, index=True)
     device_id = Column(String, index=True)
 
-    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     external_reference = Column(String, index=True) # TA/DMC ref
     status = Column(Enum(JourneyStatus), default=JourneyStatus.CREATED)
@@ -65,8 +65,8 @@ class Leg(Base):
 
     origin = Column(String, nullable=False)
     destination = Column(String, nullable=False)
-    departure_time = Column(DateTime)
-    arrival_time = Column(DateTime)
+    departure_time = Column(DateTime(timezone=True))
+    arrival_time = Column(DateTime(timezone=True))
 
     status = Column(String, default="scheduled")
     qr1_verified = Column(Boolean, default=False) # PICKUP
@@ -80,7 +80,7 @@ class Leg(Base):
 class Telemetry(Base):
     id = Column(Integer, primary_key=True, index=True)
     leg_id = Column(Integer, ForeignKey("leg.id"), nullable=False)
-    timestamp = Column(DateTime, default=lambda: datetime.now(UTC))
+    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     latitude = Column(Float, nullable=False)
     longitude = Column(Float, nullable=False)
@@ -106,7 +106,7 @@ class Transaction(Base):
 
     amount = Column(Numeric(12, 2), nullable=False)
     type = Column(String) # PAYOUT, WITHDRAWAL
-    timestamp = Column(DateTime, default=lambda: datetime.now(UTC))
+    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     leg_id = Column(Integer, ForeignKey("leg.id"))
 
@@ -116,8 +116,8 @@ class CharterManifest(Base):
     id = Column(Integer, primary_key=True, index=True)
     trace_id = Column(String, index=True, nullable=False)
     vessel_id = Column(String, nullable=False)
-    departure_time = Column(DateTime, nullable=False)
+    departure_time = Column(DateTime(timezone=True), nullable=False)
 
     passengers = Column(JSON) # List of passenger details for MoT/Coast Guard
-    filed_at = Column(DateTime)
+    filed_at = Column(DateTime(timezone=True))
     status = Column(String, default="draft") # draft, filed, accepted

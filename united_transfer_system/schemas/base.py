@@ -49,3 +49,10 @@ class AvailabilityQuery(BaseModel):
     destination: str
     departure_date: datetime
     pax_count: int = 1
+
+class HandshakeInput(BaseModel):
+    leg_id: int
+    scan_type: str # pickup or dropoff
+    master_code: str
+    actor_id: str
+    actor_role: str

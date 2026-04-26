@@ -21,7 +21,8 @@ async def create_journey(db: Session, *, obj_in: schemas.JourneyCreate, ctx: Dic
     for leg_in in obj_in.legs:
         db_leg = models.Leg(
             journey_id=db_journey.id,
-            trace_id=f"LEG-{uuid.uuid4().hex[:8]}",
+            # Link leg trace to journey trace for unified auditability
+            trace_id=db_journey.trace_id,
             type=leg_in.type,
             origin=leg_in.origin,
             destination=leg_in.destination,
