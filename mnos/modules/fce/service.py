@@ -4,7 +4,7 @@ from mnos.modules.fce import models
 import uuid
 import hashlib
 from datetime import datetime, date, UTC
-from .tax_logic import calculate_maldives_taxes
+from .tax_calculator import calculate_sovereign_tax
 from mnos.modules.shadow import service as shadow_service
 from fastapi import HTTPException
 from decimal import Decimal
@@ -38,16 +38,15 @@ def finalize_invoice(
         raise HTTPException(status_code=400, detail="Folio already finalized")
 
     # 1. Calculate sovereign taxes (MIRA-compliant)
-    subtotal = folio.subtotal_amount
+    subtotal = Decimal(str(folio.subtotal_amount))
 
     # Use fixed tax logic
-    taxes = calculate_maldives_taxes(
-        base_amount=subtotal,
-        business_date=date.today(),
-        is_tourism=folio.is_tourist
+    taxes = calculate_sovereign_tax(
+        subtotal=subtotal,
+        guest_type="TOURIST" if folio.is_tourist else "LOCAL"
     )
 
-    total_with_taxes = taxes["total_amount"]
+    total_with_taxes = float(taxes["total"])
 
     # 2. Dual-QR validation (if amount > threshold)
     if total_with_taxes > DUAL_QR_THRESHOLD_MVR and not force_override:
@@ -67,8 +66,7 @@ def finalize_invoice(
     folio.status = models.FolioStatus.FINALIZED
     folio.finalized_by = actor
     folio.finalized_at = datetime.now(UTC)
-    folio.mira_gst_amount = taxes.get("tgst", 0.0) or taxes.get("gst", 0.0)
-    folio.mira_green_tax_amount = taxes.get("green_tax", 0.0)
+    folio.mira_gst_amount = float(taxes["tax"])
     folio.total_amount = total_with_taxes
     folio.qr_authorization_id = str(qr_authorization_id) if qr_authorization_id else None
 
@@ -146,17 +144,11 @@ def post_charge(db: Session, folio_id: int, charge_data: Dict, trace_id: str, te
         folio = db.query(models.Folio).filter(models.Folio.id == folio_id).first()
         if not folio: raise ValueError(f"Folio {folio_id} not found")
 
-        biz_date = charge_data.get("business_date")
-        if isinstance(biz_date, str): biz_date = date.fromisoformat(biz_date)
-        elif not biz_date: biz_date = date.today()
-
         # ENFORCEMENT: 10% Service Charge + 17% TGST (tourism flows)
-        taxes = calculate_maldives_taxes(
-            charge_data["base_amount"],
-            biz_date,
-            charge_data.get("apply_green_tax", False),
-            charge_data.get("nights", 0),
-            is_tourism=folio.is_tourist
+        subtotal = Decimal(str(charge_data["base_amount"]))
+        taxes = calculate_sovereign_tax(
+            subtotal=subtotal,
+            guest_type="TOURIST" if folio.is_tourist else "LOCAL"
         )
 
         line = models.FolioLine(
@@ -164,11 +156,11 @@ def post_charge(db: Session, folio_id: int, charge_data: Dict, trace_id: str, te
             trace_id=trace_id,
             folio_id=folio_id,
             type=charge_data["type"],
-            base_amount=taxes["base_amount"],
-            service_charge=taxes["service_charge"],
-            tgst=taxes.get("tgst", 0.0),
-            green_tax=taxes.get("green_tax", 0.0),
-            amount=taxes["total_amount"],
+            base_amount=float(subtotal),
+            service_charge=float(taxes.get("service_charge", 0.0)),
+            tgst=float(taxes["tax"]) if taxes.get("schema") == "TOURIST_10SC_17TGST" else 0.0,
+            green_tax=0.0, # Placeholder for explicit Green Tax
+            amount=float(taxes["total"]),
             description=charge_data.get("description"),
             created_by=actor
         )
