@@ -1,0 +1,22 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.0.3, pluggy-1.6.0
+rootdir: /app
+plugins: anyio-4.13.0
+collected 1 item
+
+united_transfer_system/tests/test_ut_trust.py .                          [100%]
+
+=============================== warnings summary ===============================
+mnos/core/db/base_class.py:7
+  /app/mnos/core/db/base_class.py:7: MovedIn20Warning: The ``as_declarative()`` function is now available as sqlalchemy.orm.as_declarative() (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    @as_declarative()
+
+united_transfer_system/tests/test_ut_trust.py::test_ut_trust_gates
+united_transfer_system/tests/test_ut_trust.py::test_ut_trust_gates
+united_transfer_system/tests/test_ut_trust.py::test_ut_trust_gates
+united_transfer_system/tests/test_ut_trust.py::test_ut_trust_gates
+  /home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/sql/schema.py:3624: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    return util.wrap_callable(lambda ctx: fn(), fn)  # type: ignore
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 1 passed, 5 warnings in 0.95s =========================

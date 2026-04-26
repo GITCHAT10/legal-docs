@@ -32,7 +32,9 @@ class Folio(Base, TraceableMixin):
     status = Column(Enum(FolioStatus), default=FolioStatus.OPEN)
     finalized_by = Column(String)
     finalized_at = Column(DateTime)
-    total_amount = Column(Float, default=0.0)
+
+    subtotal_amount = Column(Float, default=0.0) # Base + Service Charge
+    total_amount = Column(Float, default=0.0)    # Final authoritative amount
     paid_amount = Column(Float, default=0.0)
     currency = Column(String, default="USD")
 
@@ -41,6 +43,8 @@ class Folio(Base, TraceableMixin):
     mira_green_tax_amount = Column(Float, default=0.0)
     mira_receipt_number = Column(String, index=True)
     qr_authorization_id = Column(String)
+
+    is_tourist = Column(Boolean, default=True)
 
     lines = relationship("FolioLine", back_populates="folio")
     transactions = relationship("FolioTransaction", back_populates="folio")

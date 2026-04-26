@@ -38,12 +38,16 @@ def finalize_invoice(
         raise HTTPException(status_code=400, detail="Folio already finalized")
 
     # 1. Calculate sovereign taxes (MIRA-compliant)
-    subtotal = folio.total_amount # Simplified for sandbox
-    mira_gst = subtotal * 0.12 # 12% GST
+    subtotal = folio.subtotal_amount
 
-    # Mock Green Tax calculation
-    green_tax = 6.0 * 15.42 # Mock 1 night
-    total_with_taxes = subtotal + mira_gst + green_tax
+    # Use fixed tax logic
+    taxes = calculate_maldives_taxes(
+        base_amount=subtotal,
+        business_date=date.today(),
+        is_tourism=folio.is_tourist
+    )
+
+    total_with_taxes = taxes["total_amount"]
 
     # 2. Dual-QR validation (if amount > threshold)
     if total_with_taxes > DUAL_QR_THRESHOLD_MVR and not force_override:
@@ -63,8 +67,8 @@ def finalize_invoice(
     folio.status = models.FolioStatus.FINALIZED
     folio.finalized_by = actor
     folio.finalized_at = datetime.now(UTC)
-    folio.mira_gst_amount = mira_gst
-    folio.mira_green_tax_amount = green_tax
+    folio.mira_gst_amount = taxes.get("tgst", 0.0) or taxes.get("gst", 0.0)
+    folio.mira_green_tax_amount = taxes.get("green_tax", 0.0)
     folio.total_amount = total_with_taxes
     folio.qr_authorization_id = str(qr_authorization_id) if qr_authorization_id else None
 
@@ -151,7 +155,8 @@ def post_charge(db: Session, folio_id: int, charge_data: Dict, trace_id: str, te
             charge_data["base_amount"],
             biz_date,
             charge_data.get("apply_green_tax", False),
-            charge_data.get("nights", 0)
+            charge_data.get("nights", 0),
+            is_tourism=folio.is_tourist
         )
 
         line = models.FolioLine(
@@ -161,8 +166,8 @@ def post_charge(db: Session, folio_id: int, charge_data: Dict, trace_id: str, te
             type=charge_data["type"],
             base_amount=taxes["base_amount"],
             service_charge=taxes["service_charge"],
-            tgst=taxes["tgst"],
-            green_tax=taxes["green_tax"],
+            tgst=taxes.get("tgst", 0.0),
+            green_tax=taxes.get("green_tax", 0.0),
             amount=taxes["total_amount"],
             description=charge_data.get("description"),
             created_by=actor
@@ -171,6 +176,7 @@ def post_charge(db: Session, folio_id: int, charge_data: Dict, trace_id: str, te
 
         before_state = {"total_amount": folio.total_amount}
         folio.total_amount += line.amount
+        folio.subtotal_amount += (line.base_amount + line.service_charge)
         db.add(folio)
         db.flush()
 
