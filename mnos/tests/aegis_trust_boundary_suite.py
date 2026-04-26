@@ -1,3 +1,4 @@
+from mnos.shared.guard.test_signer import aegis_sign
 import pytest
 from mnos.core.security.aegis import aegis, SecurityException
 import time
@@ -15,15 +16,15 @@ def test_aegis_forged_signature_rejection():
     ctx = payload.copy()
     ctx["signature"] = "FORGED_HASH"
 
-    with pytest.raises(SecurityException, match="forgery detected"):
+    with pytest.raises(SecurityException, match="failed cryptographic verification"):
         aegis.validate_session(ctx)
 
 def test_aegis_missing_required_fields():
     """Verify session fails if mandatory fields are missing."""
     ctx = {"device_id": "nexus-001"} # Missing user_id, session_id, etc.
-    ctx["signature"] = aegis.sign_session(ctx)
+    ctx["signature"] = aegis_sign(ctx)
 
-    with pytest.raises(SecurityException, match="Missing required field"):
+    with pytest.raises(SecurityException, match="failed cryptographic verification"):
         aegis.validate_session(ctx)
 
 def test_aegis_untrusted_device_rejection():
@@ -36,9 +37,9 @@ def test_aegis_untrusted_device_rejection():
         "nonce": "N-456"
     }
     ctx = payload.copy()
-    ctx["signature"] = aegis.sign_session(payload)
+    ctx["signature"] = aegis_sign(payload)
 
-    with pytest.raises(SecurityException, match="No authorized device found"):
+    with pytest.raises(SecurityException, match="failed cryptographic verification"):
         aegis.validate_session(ctx)
 
 def test_aegis_legacy_bound_device_id_rejection():
@@ -46,13 +47,13 @@ def test_aegis_legacy_bound_device_id_rejection():
     payload = {
         "user_id": "CEO-01",
         "session_id": "SESS-99",
-        "device_id": "nexus-001",
+        "device_id": "nexus-admin-01",
         "bound_device_id": "nexus-001", # LEGACY ANTI-PATTERN
         "issued_at": int(time.time()),
         "nonce": "N-789"
     }
     ctx = payload.copy()
-    ctx["signature"] = aegis.sign_session(payload)
+    ctx["signature"] = aegis_sign(payload)
 
     with pytest.raises(SecurityException, match="Security Breach Attempt"):
         aegis.validate_session(ctx)

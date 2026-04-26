@@ -1,3 +1,4 @@
+from mnos.shared.guard.test_signer import aegis_sign
 import sys
 import os
 from decimal import Decimal
@@ -10,8 +11,6 @@ from mnos.modules.fce.service import fce
 from mnos.modules.shadow.service import shadow
 from mnos.core.security.aegis import aegis, SecurityException
 
-def aegis_sign(payload):
-    return aegis.sign_session(payload)
 
 def run_proof():
     print("--- 🏛️ NEXUS ASI SKY-i OS FINAL CERTIFICATION PROOF ---")

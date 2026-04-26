@@ -1,3 +1,5 @@
+from mnos.shared.guard.test_signer import aegis_sign
+from mnos.shared.guard.test_signer import aegis_sign
 import pytest
 import uuid
 from decimal import Decimal
@@ -17,8 +19,6 @@ def reset_ledger():
     shadow._seed_ledger()
     knowledge_core.ingest("TEST_DNA", "Bookings and Arrivals and Emergencies active.")
 
-def aegis_sign(payload):
-    return aegis.sign_session(payload)
 
 def test_fail_closed_fce():
     """Verify FCE blocks over-limit transactions."""
@@ -76,7 +76,7 @@ def test_concurrent_integrity_sim():
         "issued_at": int(time.time()),
         "nonce": "N-102-ARR"
     }
-    ctx_arr["signature"] = aegis.sign_session(ctx_arr)
+    ctx_arr["signature"] = aegis_sign(ctx_arr)
     whatsapp.receive_message("+9601002", "Arrival", ctx_arr)
 
     # Chain:

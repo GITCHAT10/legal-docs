@@ -1,12 +1,19 @@
+from mnos.shared.guard.test_signer import aegis_sign
 import pytest
 from decimal import Decimal
 from mnos.modules.fce.service import fce, FinancialException
 from mnos.modules.shadow.service import shadow
 from mnos.shared.execution_guard import guard
 from mnos.core.security.aegis import aegis, SecurityException
+from mnos.core.apollo.registry import apollo_registry
 
-def aegis_sign(payload):
-    return aegis.sign_session(payload)
+@pytest.fixture(autouse=True)
+def reset_system():
+    # Reset Registry State
+    apollo_registry._system_locked = False
+    apollo_registry._used_nonces = set()
+    shadow.chain = []
+    shadow._seed_ledger()
 
 def test_identity_spoof_attack():
     """Simulate session payload tampering."""
@@ -25,7 +32,7 @@ def test_identity_spoof_attack():
     bad_payload["device_id"] = "nexus-attacker"
     bad_payload["signature"] = sig
 
-    with pytest.raises(SecurityException, match="forgery detected"):
+    with pytest.raises(SecurityException, match="failed cryptographic verification"):
         guard.execute_sovereign_action("test", {}, bad_payload, lambda x: "fail")
 
 def test_ledger_tampering_fail_closed():

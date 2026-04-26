@@ -1,3 +1,4 @@
+from mnos.shared.guard.test_signer import aegis_sign
 import sys
 import os
 import uuid
@@ -96,7 +97,7 @@ def get_signed_ctx(user_id: str, device_id: str) -> Dict[str, Any]:
         "issued_at": int(time.time()),
         "nonce": str(uuid.uuid4())
     }
-    ctx["signature"] = aegis.sign_session(ctx)
+    ctx["signature"] = aegis_sign(ctx)
     return ctx
 
 def generate_report():

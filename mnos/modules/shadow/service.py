@@ -4,6 +4,7 @@ import copy
 from datetime import datetime, timezone
 from typing import Dict, Any, List
 from mnos.config import config
+from mnos.core.apollo.registry import apollo_registry
 
 class ShadowLedger:
     """
@@ -149,15 +150,18 @@ class ShadowLedger:
         recomputed_genesis_hash = self._calculate_hash(genesis)
         if genesis["hash"] != recomputed_genesis_hash:
              print("!!! SHADOW: Genesis Hash Recomputation Mismatch. Identity/Timeline compromised !!!")
+             apollo_registry.lock_system("SHADOW_INTEGRITY_COMPROMISED")
              return False
 
         # 2. Verify Genesis semantics
         if genesis["entry_id"] != 0 or genesis["previous_hash"] != config.GENESIS_PREVIOUS_HASH:
              print("!!! SHADOW: Genesis Semantic Corruption Detected !!!")
+             apollo_registry.lock_system("SHADOW_INTEGRITY_COMPROMISED")
              return False
 
         if genesis["hash"] != config.CORE_V1_ROOT_HASH:
              print(f"!!! SHADOW: Genesis Root Anchor Violation !!!")
+             apollo_registry.lock_system("SHADOW_INTEGRITY_COMPROMISED")
              return False
 
         # 3. Verify Full Chain Linkage
@@ -165,8 +169,10 @@ class ShadowLedger:
             current = self.chain[i]
             previous = self.chain[i-1]
             if current["hash"] != self._calculate_hash(current):
+                apollo_registry.lock_system("SHADOW_INTEGRITY_COMPROMISED")
                 return False
             if current["previous_hash"] != previous["hash"]:
+                apollo_registry.lock_system("SHADOW_INTEGRITY_COMPROMISED")
                 return False
         return True
 

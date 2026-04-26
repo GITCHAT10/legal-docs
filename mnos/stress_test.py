@@ -1,3 +1,4 @@
+from mnos.shared.guard.test_signer import aegis_sign
 import sys
 import os
 import uuid
@@ -48,7 +49,7 @@ def stress_test():
         "issued_at": int(time.time()),
         "nonce": "N-STRESS-INIT"
     }
-    ctx_stress["signature"] = aegis.sign_session(ctx_stress)
+    ctx_stress["signature"] = aegis_sign(ctx_stress)
     guard.execute_sovereign_action("nexus.booking.created", {"data": "test"}, ctx_stress, lambda x: None)
 
     original_integrity = shadow.verify_integrity()
@@ -81,7 +82,7 @@ def stress_test():
         "nonce": "N-STRESS-01"
     }
     from mnos.core.security.aegis import aegis
-    ctx["signature"] = aegis.sign_session(ctx)
+    ctx["signature"] = aegis_sign(ctx)
 
     whatsapp.receive_message("+9602", "book room", ctx.copy())
 
@@ -95,12 +96,12 @@ def stress_test():
 
     ctx3 = ctx_base.copy()
     ctx3["nonce"] = "N-STRESS-02"
-    ctx3["signature"] = aegis.sign_session(ctx3)
+    ctx3["signature"] = aegis_sign(ctx3)
     whatsapp.receive_message("+9603", "arrival at airport", ctx3)
 
     ctx4 = ctx_base.copy()
     ctx4["nonce"] = "N-STRESS-03"
-    ctx4["signature"] = aegis.sign_session(ctx4)
+    ctx4["signature"] = aegis_sign(ctx4)
     whatsapp.receive_message("+9604", "emergency help", ctx4)
     print(f"Final Ledger Size: {len(shadow.chain)}")
     print(f"Final Integrity: {shadow.verify_integrity()}")

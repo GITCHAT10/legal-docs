@@ -1,3 +1,4 @@
+from mnos.shared.guard.test_signer import aegis_sign
 import sys
 import os
 from decimal import Decimal
@@ -10,8 +11,6 @@ from mnos.modules.shadow.service import shadow
 from mnos.core.security.aegis import aegis, SecurityException
 from mnos.shared.execution_guard import guard, in_sovereign_context
 
-def aegis_sign(payload):
-    return aegis.sign_session(payload)
 
 def verify_all():
     print("--- 🛡️ MNOS SOVEREIGN CORE: RC3 SECURITY INTEGRITY CHECK ---")

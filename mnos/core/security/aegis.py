@@ -31,6 +31,11 @@ class HardwareRegistry:
         self._rate_limits: Dict[str, List[float]] = {} # device_id -> timestamps
         self._anomaly_scores: Dict[str, int] = {} # device_id -> score
 
+    def reset_state(self):
+        self._used_nonces.clear()
+        self._rate_limits.clear()
+        self._anomaly_scores.clear()
+
     def check_rate_limit(self, device_id: str):
         """Simple rate limiting: Max 10 requests per 10 seconds."""
         import time
@@ -101,77 +106,29 @@ class AegisService:
 
     def validate_session(self, session_context: Dict[str, Any]) -> bool:
         """
-        Core session validation logic (FORTRESS HARDENED).
-        MANDATE: Never trust client fields. Resolve binding server-side.
+        CRYPTO-VERIFIED SOVEREIGN IDENTITY:
+        Validated against server-side Apollo Registry.
         """
-        import time
+        from mnos.core.apollo.registry import apollo_registry
+
+        if apollo_registry.is_locked():
+             raise SecurityException("SYSTEM HALT: Sovereign execution blocked.")
+
         signature = session_context.get("signature")
         if not signature:
-            raise SecurityException("AEGIS: Missing session signature. Rejecting unsigned context.")
+             raise SecurityException("AEGIS: Request missing cryptographic signature.")
 
-        # P0: Required signed fields (MANDATORY)
-        required_fields = ["user_id", "session_id", "device_id", "issued_at", "nonce"]
-        for field in required_fields:
-            if field not in session_context:
-                raise SecurityException(f"AEGIS: Missing required field '{field}' in session context.")
+        # FINAL CRYPTO LOCK: Registry verification
+        if not apollo_registry.verify_request(session_context, signature):
+             raise SecurityException("AEGIS: Request failed cryptographic verification protocol.")
 
-        # P0: Freshness window check (5 minutes)
-        now = int(time.time())
-        issued_at = int(session_context["issued_at"])
-        if abs(now - issued_at) > 300:
-             raise SecurityException("AEGIS: Session context expired or stale.")
-
-        # P0: Replay resistance
-        self.registry.check_nonce(session_context["nonce"])
-
-        # P0: Rate Limiting & Anomaly Detection
-        device_id = session_context.get("device_id")
-        if device_id:
-            self.registry.check_rate_limit(device_id)
-
-        # Extract payload for HMAC verification
-        payload = {k: v for k, v in session_context.items() if k != "signature"}
+        # P0: Enforcement of Rate-Limiting and Anomaly Detection
+        device_id = session_context.get("verified_device_id") or session_context.get("device_id")
+        self.registry.check_rate_limit(device_id)
 
         # P0: Reject legacy anti-patterns
-        if "bound_device_id" in payload:
+        if "bound_device_id" in session_context:
             raise SecurityException("AEGIS: Client-provided 'bound_device_id' REJECTED. Security Breach Attempt.")
-
-        # P0: HMAC-SHA256 Verification
-        expected_sig = self.sign_session(payload)
-        if not hmac.compare_digest(expected_sig, signature):
-            raise SecurityException("AEGIS: Session signature forgery detected.")
-
-        # P0: Server-side binding resolution (Trust Anchor)
-        user_id = payload.get("user_id")
-        session_id = payload.get("session_id")
-        device_id = payload.get("device_id")
-
-        # Autoritative Lookup: What device is this user allowed to use?
-        server_trusted_device = self.registry.get_authorized_device_for_user(user_id)
-        if not server_trusted_device:
-             raise SecurityException(f"AEGIS: No authorized device found for user {user_id}")
-
-        if device_id != server_trusted_device:
-             raise SecurityException(f"AEGIS: Device mismatch. User {user_id} is not authorized on {device_id}")
-
-        # Check existing session binding
-        server_bound_device = self.registry.resolve_binding(session_id)
-        if not server_bound_device:
-             self.registry.bind_session(session_id, device_id)
-             server_bound_device = device_id
-
-        if device_id != server_bound_device:
-            raise SecurityException("AEGIS: Session/Device hijacking attempt detected.")
-
-        if not self.registry.verify_device(device_id):
-            raise SecurityException(f"AEGIS: Unauthorized device {device_id}. Access Denied.")
-
-        # Context Cleansing
-        session_context.pop("roles", None)
-        session_context.pop("bound_device_id", None)
-
-        # Inject verified hardware DNA
-        session_context["verified_device_id"] = device_id
 
         return True
 

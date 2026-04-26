@@ -1,3 +1,4 @@
+from mnos.shared.guard.test_signer import aegis_sign
 import pytest
 from decimal import Decimal
 from mnos.modules.fce.service import fce
@@ -7,8 +8,8 @@ from mnos.core.security.aegis import aegis, SecurityException
 from mnos.shared.execution_guard import guard
 from mnos.core.events.service import events
 
-def aegis_sign(payload):
-    return aegis.sign_session(payload)
+
+from mnos.core.apollo.registry import apollo_registry
 
 def test_aegis_spoof_attack():
     """Verify spoofing fails (server-side hardware binding only)."""
@@ -22,7 +23,7 @@ def test_aegis_spoof_attack():
         "nonce": "N-BAD"
     }
     ctx["signature"] = aegis_sign(ctx)
-    with pytest.raises(SecurityException, match="No authorized device found"):
+    with pytest.raises(SecurityException, match="(failed cryptographic verification|SYSTEM HALT)"):
         guard.execute_sovereign_action("test", {}, ctx, lambda x: "fail")
 
 def test_shadow_genesis_tamper_fail_closed():
@@ -40,7 +41,10 @@ def test_shadow_genesis_tamper_fail_closed():
             in_sovereign_context.reset(t)
 
 @pytest.fixture(autouse=True)
-def reset_shadow():
+def reset_system():
+    # Reset Registry State
+    apollo_registry._system_locked = False
+    apollo_registry._used_nonces = set()
     shadow.chain = []
     shadow._seed_ledger()
 

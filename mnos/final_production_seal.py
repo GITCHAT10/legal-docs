@@ -1,3 +1,4 @@
+from mnos.shared.guard.test_signer import aegis_sign
 import sys
 import os
 import uuid
@@ -25,7 +26,7 @@ def verify_hardening_patch_v2():
         "issued_at": int(time.time()),
         "nonce": "N-SPOOF"
     }
-    ctx_spoof["signature"] = aegis.sign_session(ctx_spoof)
+    ctx_spoof["signature"] = aegis_sign(ctx_spoof)
     try:
         aegis.validate_session(ctx_spoof)
         print(" !!! FAILED: AEGIS trusted client-supplied device_id !!!")

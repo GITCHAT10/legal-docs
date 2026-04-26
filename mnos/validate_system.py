@@ -1,3 +1,4 @@
+from mnos.shared.guard.test_signer import aegis_sign
 import sys
 import os
 from decimal import Decimal
@@ -39,7 +40,7 @@ def run_validation():
         "issued_at": int(time.time()),
         "nonce": "N-VAL-01"
     }
-    ctx["signature"] = aegis.sign_session(ctx)
+    ctx["signature"] = aegis_sign(ctx)
 
     # 3. ExMAIL Booking (Positive Sentiment -> Task Conversion)
     print("\n[SCENARIO 1: ExMAIL Positive Booking]")
@@ -60,7 +61,7 @@ def run_validation():
         "issued_at": int(time.time()),
         "nonce": "N-VAL-02"
     }
-    ctx2["signature"] = aegis.sign_session(ctx2)
+    ctx2["signature"] = aegis_sign(ctx2)
     res_mail2 = exmail_authority.ingest_inbound_exmail(
         "angry.guest@example.com",
         "HELP NOW",

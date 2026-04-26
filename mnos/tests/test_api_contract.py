@@ -1,3 +1,4 @@
+from mnos.shared.guard.test_signer import aegis_sign
 import pytest
 from decimal import Decimal
 from mnos.api import verify_session, calculate_folio, execute_sovereign
@@ -12,7 +13,7 @@ def test_api_verify_session():
         "issued_at": int(time.time()),
         "nonce": "N-API-01"
     }
-    ctx["signature"] = aegis.sign_session(ctx)
+    ctx["signature"] = aegis_sign(ctx)
     assert verify_session(ctx) is True
 
 def test_api_calculate_folio():
@@ -29,7 +30,7 @@ def test_api_execute_sovereign():
         "issued_at": int(time.time()),
         "nonce": "N-API-02"
     }
-    ctx["signature"] = aegis.sign_session(ctx)
+    ctx["signature"] = aegis_sign(ctx)
 
     def mock_logic(p): return "api_ok"
 

@@ -1,6 +1,7 @@
 from decimal import Decimal, ROUND_HALF_UP
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from mnos.config import config
+from mnos.modules.fce.pricing_engine import pricing_engine
 
 class FinancialException(Exception):
     pass
@@ -32,7 +33,8 @@ class FceService:
         nights: int = 1,
         stay_hours: float = 24.0,
         is_child: bool = False,
-        effective_tgst: Decimal = None
+        effective_tgst: Decimal = None,
+        biological_outcomes: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Hardened MIRA Compliance Logic:
@@ -43,7 +45,21 @@ class FceService:
         """
         tgst_rate = effective_tgst if effective_tgst is not None else config.TGST
 
-        subtotal = base_amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        # Integrate Biological ROI and ESG Regen Premium
+        outcome_fees = Decimal("0.00")
+        if biological_outcomes:
+            recovered_hours = biological_outcomes.get("recovered_hours", 0)
+            hourly_rate = biological_outcomes.get("recovered_hour_rate", Decimal("50.00"))
+            outcome_fees += pricing_engine.calculate_recovered_hour_fee(recovered_hours, hourly_rate)
+
+            healthspan_days = biological_outcomes.get("healthspan_gain_days", 0)
+            dividend_rate = biological_outcomes.get("longevity_dividend_rate", Decimal("100.00"))
+            outcome_fees += pricing_engine.calculate_longevity_dividend(healthspan_days, dividend_rate)
+
+            regen_score = biological_outcomes.get("regen_score", 0)
+            outcome_fees += pricing_engine.calculate_esg_regen_premium(regen_score, base_amount)
+
+        subtotal = (base_amount + outcome_fees).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         service_charge = (subtotal * config.SERVICE_CHARGE).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         taxable_amount = subtotal + service_charge
         tgst = (taxable_amount * tgst_rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
