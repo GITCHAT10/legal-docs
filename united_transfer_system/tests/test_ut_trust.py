@@ -23,7 +23,8 @@ Base.metadata.create_all(bind=engine)
 @pytest.fixture
 def db():
     from sqlalchemy.orm import sessionmaker
-    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    from mnos.core.db.session import SovereignSession
+    SessionLocal = sessionmaker(class_=SovereignSession, autocommit=False, autoflush=False, bind=engine)
     db = SessionLocal()
     try:
         yield db
@@ -40,6 +41,7 @@ def test_ut_trust_gates(db):
     assert guest_fin["tax_type"] == "TGST"
     assert guest_fin["sc"] == 100.0 # 10%
     assert guest_fin["tax"] == 187.0 # 17% of 1100
+    assert guest_fin["total"] == 1287.0
     assert guest_fin["currency"] == "USD"
 
     # Case B: Local (Citizen)
@@ -47,10 +49,11 @@ def test_ut_trust_gates(db):
     assert local_fin["tax_type"] == "GST"
     assert local_fin["sc"] == 0.0
     assert local_fin["tax"] == 80.0 # 8%
+    assert local_fin["total"] == 1080.0
     assert local_fin["currency"] == "MVR"
 
     # --- GATE 2: LEDGER INTEGRITY ---
-    trace_id = "TEST-TRACE-001"
+    trace_id = str(uuid.uuid4())
     ledger_service.commit_evidence(db, trace_id, "ACTOR_1", "TEST_ACTION", "ENTITY", "E1", {"p": 1})
     ledger_service.commit_evidence(db, trace_id, "ACTOR_1", "TEST_ACTION_2", "ENTITY", "E1", {"p": 2})
 
@@ -61,7 +64,7 @@ def test_ut_trust_gates(db):
 
     # --- GATE 3: DUAL-QR HARDENING ---
     booking_in = JourneyCreate(
-        trace_id=f"TR-{uuid.uuid4().hex[:8]}",
+        trace_id=str(uuid.uuid4()),
         legs=[LegCreate(type=LegType.SEA, origin="A", destination="B", departure_time=datetime.now(UTC))]
     )
     journey = loop.run_until_complete(booking_service.create_journey(db, obj_in=booking_in, ctx={"aegis_id": "P1", "device_id": "D1"}))
@@ -86,7 +89,7 @@ def test_ut_trust_gates(db):
     # Check Ledger linkage for handshakes
     handshake_ev = db.query(Evidence).filter(Evidence.action == "LEG_DROPOFF").first()
     assert handshake_ev is not None
-    assert handshake_ev.trace_id == journey.trace_id
+    assert str(handshake_ev.trace_id) == str(journey.trace_id)
 
     print("LOCK TRUST LAYER: All Trust Gates Passed.")
     loop.close()

@@ -2,10 +2,104 @@ from typing import Dict, Optional, Any, List
 from sqlalchemy.orm import Session
 from mnos.modules.fce import models
 import uuid
+import hashlib
 from datetime import datetime, date, UTC
 from .tax_logic import calculate_maldives_taxes
 from mnos.modules.shadow import service as shadow_service
 from fastapi import HTTPException
+from decimal import Decimal
+
+# Mock settings
+DUAL_QR_THRESHOLD_MVR = 50000.0
+USD_TO_MVR_RATE = 15.42
+
+def _generate_mira_receipt(folio_id: int, total_amount: float, timestamp: datetime) -> str:
+    date_str = timestamp.strftime("%Y%m%d")
+    folio_hash = hashlib.sha256(str(folio_id).encode()).hexdigest()[:8].upper()
+    region_code = "MV"
+    return f"MIRA-{date_str}-{folio_hash}-{region_code}"
+
+def finalize_invoice(
+    db: Session,
+    folio_id: int,
+    actor: str,
+    qr_authorization_id: Optional[int] = None,
+    force_override: bool = False,
+    tenant_id: str = "default"
+) -> models.Invoice:
+    """
+    Finalize folio invoice with sovereign compliance.
+    """
+    folio = db.query(models.Folio).filter(models.Folio.id == folio_id).first()
+    if not folio:
+        raise HTTPException(status_code=404, detail="Folio not found")
+
+    if folio.status == models.FolioStatus.FINALIZED:
+        raise HTTPException(status_code=400, detail="Folio already finalized")
+
+    # 1. Calculate sovereign taxes (MIRA-compliant)
+    subtotal = folio.total_amount # Simplified for sandbox
+    mira_gst = subtotal * 0.12 # 12% GST
+
+    # Mock Green Tax calculation
+    green_tax = 6.0 * 15.42 # Mock 1 night
+    total_with_taxes = subtotal + mira_gst + green_tax
+
+    # 2. Dual-QR validation (if amount > threshold)
+    if total_with_taxes > DUAL_QR_THRESHOLD_MVR and not force_override:
+        if not qr_authorization_id:
+            raise HTTPException(status_code=403, detail="Dual-QR authorization required for high-value invoice")
+
+        qr_auth = db.query(models.QRAuthorizationRequest).filter(
+            models.QRAuthorizationRequest.id == qr_authorization_id,
+            models.QRAuthorizationRequest.status == "AUTHORIZED",
+            models.QRAuthorizationRequest.folio_id == folio_id
+        ).first()
+
+        if not qr_auth:
+            raise HTTPException(status_code=403, detail="Invalid or unauthorized Dual-QR")
+
+    # 3. Update folio
+    folio.status = models.FolioStatus.FINALIZED
+    folio.finalized_by = actor
+    folio.finalized_at = datetime.now(UTC)
+    folio.mira_gst_amount = mira_gst
+    folio.mira_green_tax_amount = green_tax
+    folio.total_amount = total_with_taxes
+    folio.qr_authorization_id = str(qr_authorization_id) if qr_authorization_id else None
+
+    folio.mira_receipt_number = _generate_mira_receipt(folio_id, total_with_taxes, folio.finalized_at)
+
+    # 4. Create Invoice
+    invoice = models.Invoice(
+        tenant_id=tenant_id,
+        folio_id=folio_id,
+        invoice_number=f"INV-{uuid.uuid4().hex[:8].upper()}",
+        total_amount=total_with_taxes
+    )
+    db.add(invoice)
+    db.flush()
+
+    # 5. COMMIT BEFORE SHADOW LOG
+    db.commit()
+    db.refresh(invoice)
+
+    # 6. Generate SHADOW Audit entry
+    shadow_service.commit_evidence(db, invoice.trace_id, {
+        "actor": actor,
+        "action": "INVOICE_FINALIZED",
+        "entity_type": "INVOICE",
+        "entity_id": invoice.id,
+        "payload": {
+            "folio_id": str(folio_id),
+            "total": str(total_with_taxes),
+            "mira_receipt": folio.mira_receipt_number,
+            "dual_qr_used": bool(qr_authorization_id)
+        }
+    })
+    db.commit()
+
+    return invoice
 
 def open_folio(db: Session, reservation_id: str, trace_id: str, tenant_id: str = "default", actor: str = "SYSTEM") -> models.Folio:
     try:
@@ -38,73 +132,6 @@ def open_folio(db: Session, reservation_id: str, trace_id: str, tenant_id: str =
     except Exception:
         db.rollback()
         raise
-
-def finalize_invoice(db: Session, folio_id: int, trace_id: Optional[str] = None, tenant_id: str = "default", actor: str = "SYSTEM") -> models.Invoice:
-    """
-    Harden Finance: Lock exchange rate and generate ledger entry.
-    Law: Base + 10% SC -> Subtotal -> 17% TGST.
-    """
-    try:
-        if not trace_id:
-            trace_id = f"INV-FIN-{uuid.uuid4().hex[:8]}"
-
-        folio = db.query(models.Folio).filter(models.Folio.id == folio_id).first()
-        if not folio:
-            raise HTTPException(status_code=404, detail="Folio not found")
-
-        # idempotency / guard against double-finalization
-        # LAW: assert invoice.status != "FINALIZED"
-        if folio.status == models.FolioStatus.FINALIZED:
-            existing_invoice = db.query(models.Invoice).filter(models.Invoice.folio_id == folio_id).first()
-            if existing_invoice:
-                return existing_invoice
-            # If status is finalized but no invoice found, we still block to maintain integrity
-            raise HTTPException(status_code=400, detail="Folio already finalized")
-
-        # 1. Lock Exchange Rate (Mock for sandbox)
-        exchange_rate = 15.42 # USD/MVR
-
-        # 2. Update Folio Status
-        folio.status = models.FolioStatus.FINALIZED
-        folio.finalized_by = actor
-        folio.finalized_at = datetime.now(UTC)
-
-        # 3. Create Invoice
-        invoice = models.Invoice(
-            tenant_id=tenant_id,
-            trace_id=trace_id,
-            folio_id=folio_id,
-            invoice_number=f"INV-{uuid.uuid4().hex[:8].upper()}",
-            total_amount=folio.total_amount
-        )
-        db.add(invoice)
-        db.flush()
-
-        # 4. COMMIT BEFORE SHADOW LOG
-        db.commit()
-        db.refresh(invoice)
-
-        # 5. Generate SHADOW Audit entry
-        shadow_service.commit_evidence(db, trace_id, {
-            "actor": actor,
-            "action": "invoice_finalized",
-            "entity_type": "INVOICE",
-            "entity_id": invoice.id,
-            "financial_lock": {
-                "amount": invoice.total_amount,
-                "exchange_rate": exchange_rate,
-                "currency": folio.currency
-            }
-        })
-        db.commit()
-
-        return invoice
-    except HTTPException:
-        db.rollback()
-        raise
-    except Exception as e:
-        db.rollback()
-        raise e
 
 def post_charge(db: Session, folio_id: int, charge_data: Dict, trace_id: str, tenant_id: str = "default", actor: str = "SYSTEM") -> models.FolioLine:
     try:

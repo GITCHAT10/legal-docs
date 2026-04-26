@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, ForeignKey, Enum, DateTime, Floa
 from sqlalchemy.orm import relationship
 import enum
 from datetime import datetime, UTC
-from mnos.core.db.base_class import Base
+from mnos.core.db.base_class import Base, TraceableMixin
 
 class LegType(str, enum.Enum):
     AIR = "air"
@@ -27,7 +27,7 @@ class PartnerTier(str, enum.Enum):
     STABILIZING = "stabilizing"
     RESTRICTED = "restricted"
 
-class Partner(Base):
+class Partner(Base, TraceableMixin):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True)
     tier = Column(Enum(PartnerTier), default=PartnerTier.STABILIZING)
@@ -36,14 +36,11 @@ class Partner(Base):
 
     legs = relationship("Leg", back_populates="partner")
 
-class Journey(Base):
+class Journey(Base, TraceableMixin):
     id = Column(Integer, primary_key=True, index=True)
     tenant_id = Column(String, index=True, nullable=False, default="default")
-    trace_id = Column(String, index=True, nullable=False)
     aegis_id = Column(String, index=True)
     device_id = Column(String, index=True)
-
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     external_reference = Column(String, index=True) # TA/DMC ref
     status = Column(Enum(JourneyStatus), default=JourneyStatus.CREATED)
@@ -52,10 +49,9 @@ class Journey(Base):
 
     __table_args__ = (UniqueConstraint('tenant_id', 'trace_id', name='_journey_tenant_trace_uc'),)
 
-class Leg(Base):
+class Leg(Base, TraceableMixin):
     id = Column(Integer, primary_key=True, index=True)
     journey_id = Column(Integer, ForeignKey("journey.id"), nullable=False)
-    trace_id = Column(String, index=True, nullable=False)
     aegis_id = Column(String, index=True)
     device_id = Column(String, index=True)
 
@@ -77,7 +73,7 @@ class Leg(Base):
     partner = relationship("Partner", back_populates="legs")
     telemetry = relationship("Telemetry", back_populates="leg")
 
-class Telemetry(Base):
+class Telemetry(Base, TraceableMixin):
     id = Column(Integer, primary_key=True, index=True)
     leg_id = Column(Integer, ForeignKey("leg.id"), nullable=False)
     timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
@@ -89,7 +85,7 @@ class Telemetry(Base):
 
     leg = relationship("Leg", back_populates="telemetry")
 
-class Wallet(Base):
+class Wallet(Base, TraceableMixin):
     id = Column(Integer, primary_key=True, index=True)
     owner_id = Column(String, unique=True, index=True) # Driver/Vessel ID
     balance = Column(Numeric(12, 2), default=0.0)
@@ -97,10 +93,9 @@ class Wallet(Base):
 
     transactions = relationship("Transaction", back_populates="wallet")
 
-class Transaction(Base):
+class Transaction(Base, TraceableMixin):
     id = Column(Integer, primary_key=True, index=True)
     wallet_id = Column(Integer, ForeignKey("wallet.id"), nullable=False)
-    trace_id = Column(String, index=True, nullable=False)
     aegis_id = Column(String, index=True)
     device_id = Column(String, index=True)
 
@@ -112,9 +107,8 @@ class Transaction(Base):
 
     wallet = relationship("Wallet", back_populates="transactions")
 
-class CharterManifest(Base):
+class CharterManifest(Base, TraceableMixin):
     id = Column(Integer, primary_key=True, index=True)
-    trace_id = Column(String, index=True, nullable=False)
     vessel_id = Column(String, nullable=False)
     departure_time = Column(DateTime(timezone=True), nullable=False)
 

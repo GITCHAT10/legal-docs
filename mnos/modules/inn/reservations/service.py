@@ -1,7 +1,7 @@
 from typing import List, Optional, Any
 from sqlalchemy.orm import Session
 from mnos.modules.inn.reservations import models, schemas
-from mnos.core.events.dispatcher import event_dispatcher
+from mnos.core.events.dispatcher import event_dispatcher, CanonicalEvent
 from mnos.modules.shadow import service as shadow_service
 import uuid
 from datetime import date
@@ -52,7 +52,13 @@ def create_reservation(db: Session, *, reservation_in: schemas.ReservationCreate
 
         db.commit()
         db.refresh(db_reservation)
-        event_dispatcher.dispatch("reservation_confirmed", {"reservation_id": db_reservation.id})
+
+        # Standardized Event Dispatching
+        event_dispatcher.dispatch(CanonicalEvent.RESERVATION_CREATED, {
+            "reservation_id": db_reservation.id,
+            "guest_id": db_reservation.guest_id
+        }, ctx={"trace_id": db_reservation.trace_id, "aegis_id": actor})
+
         return db_reservation
     except Exception:
         db.rollback()

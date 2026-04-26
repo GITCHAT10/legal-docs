@@ -3,6 +3,7 @@ from united_transfer_system import models, schemas
 import uuid
 import logging
 from typing import Dict, Any, Optional
+from mnos.core.events.dispatcher import event_dispatcher, CanonicalEvent
 
 async def create_journey(db: Session, *, obj_in: schemas.JourneyCreate, ctx: Dict[str, Any]) -> models.Journey:
     # 1. Create Journey record
@@ -21,7 +22,6 @@ async def create_journey(db: Session, *, obj_in: schemas.JourneyCreate, ctx: Dic
     for leg_in in obj_in.legs:
         db_leg = models.Leg(
             journey_id=db_journey.id,
-            # Link leg trace to journey trace for unified auditability
             trace_id=db_journey.trace_id,
             type=leg_in.type,
             origin=leg_in.origin,
@@ -33,6 +33,21 @@ async def create_journey(db: Session, *, obj_in: schemas.JourneyCreate, ctx: Dic
 
     db.commit()
     db.refresh(db_journey)
+
+    # Standardized Event Dispatching
+    event_dispatcher.dispatch(
+        CanonicalEvent.TRANSFER_PROVISIONED,
+        {
+            "journey_id": db_journey.id,
+            "trace_id": str(db_journey.trace_id)
+        },
+        ctx={
+            "trace_id": str(db_journey.trace_id),
+            "aegis_id": ctx.get("aegis_id"),
+            "device_id": ctx.get("device_id")
+        }
+    )
+
     return db_journey
 
 def get_availability(db: Session, query: schemas.AvailabilityQuery):

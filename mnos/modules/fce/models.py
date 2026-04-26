@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, ForeignKey, Enum, Float, DateTim
 from sqlalchemy.orm import relationship
 import enum
 from datetime import datetime, UTC
-from mnos.core.db.base_class import Base
+from mnos.core.db.base_class import Base, TraceableMixin
 
 class FolioStatus(str, enum.Enum):
     OPEN = "open"
@@ -22,12 +22,10 @@ class ChargeType(str, enum.Enum):
     TAX = "tax"
     OTHER = "other"
 
-class Folio(Base):
+class Folio(Base, TraceableMixin):
     id = Column(Integer, primary_key=True, index=True)
     tenant_id = Column(String, index=True, nullable=False, default="default")
-    trace_id = Column(String, index=True, nullable=False)
     version = Column(Integer, default=1, nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
     created_by = Column(String, default="SYSTEM")
 
     external_reservation_id = Column(String, index=True, nullable=False)
@@ -38,17 +36,21 @@ class Folio(Base):
     paid_amount = Column(Float, default=0.0)
     currency = Column(String, default="USD")
 
+    # MIRA Specifics
+    mira_gst_amount = Column(Float, default=0.0)
+    mira_green_tax_amount = Column(Float, default=0.0)
+    mira_receipt_number = Column(String, index=True)
+    qr_authorization_id = Column(String)
+
     lines = relationship("FolioLine", back_populates="folio")
     transactions = relationship("FolioTransaction", back_populates="folio")
 
     __table_args__ = (UniqueConstraint('tenant_id', 'trace_id', name='_folio_tenant_trace_uc'),)
 
-class FolioLine(Base):
+class FolioLine(Base, TraceableMixin):
     id = Column(Integer, primary_key=True, index=True)
     tenant_id = Column(String, index=True, nullable=False, default="default")
-    trace_id = Column(String, index=True, nullable=False)
     version = Column(Integer, default=1, nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
     created_by = Column(String, default="SYSTEM")
 
     folio_id = Column(Integer, ForeignKey("folio.id"), nullable=False)
@@ -65,12 +67,10 @@ class FolioLine(Base):
     folio = relationship("Folio", back_populates="lines")
     __table_args__ = (UniqueConstraint('tenant_id', 'trace_id', name='_folioline_tenant_trace_uc'),)
 
-class FolioTransaction(Base):
+class FolioTransaction(Base, TraceableMixin):
     id = Column(Integer, primary_key=True, index=True)
     tenant_id = Column(String, index=True, nullable=False, default="default")
-    trace_id = Column(String, index=True, nullable=False)
     version = Column(Integer, default=1, nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
     created_by = Column(String, default="SYSTEM")
 
     folio_id = Column(Integer, ForeignKey("folio.id"), nullable=False)
@@ -82,12 +82,19 @@ class FolioTransaction(Base):
     folio = relationship("Folio", back_populates="transactions")
     __table_args__ = (UniqueConstraint('tenant_id', 'trace_id', name='_foliotransaction_tenant_trace_uc'),)
 
-class Invoice(Base):
+class Invoice(Base, TraceableMixin):
     id = Column(Integer, primary_key=True, index=True)
     tenant_id = Column(String, index=True, nullable=False, default="default")
-    trace_id = Column(String, index=True, nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
 
     folio_id = Column(Integer, ForeignKey("folio.id"), nullable=False)
     invoice_number = Column(String, unique=True, index=True)
     total_amount = Column(Float)
+
+class QRAuthorizationRequest(Base, TraceableMixin):
+    id = Column(Integer, primary_key=True, index=True)
+    folio_id = Column(Integer, ForeignKey("folio.id"), nullable=False)
+    status = Column(String, default="PENDING") # PENDING, AUTHORIZED, REJECTED
+    intent_payload = Column(JSON)
+    intent_signature_hash = Column(String)
+    auth_payload = Column(JSON)
+    auth_signature_hash = Column(String)
