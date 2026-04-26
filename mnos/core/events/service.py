@@ -36,7 +36,8 @@ class EventBus:
         "gatekeeper.access_processed",
         "aviation.advisory_issued",
         "environment.infra_failure",
-        "radar.vessel_linked"
+        "radar.vessel_linked",
+        "nexus.security.kinetic_defense"
     }
 
     def __init__(self):

@@ -5,8 +5,10 @@ const WarRoomUI = () => {
   const [alertLevel, setAlertLevel] = useState('Normal');
   const [events, setEvents] = useState([
     { id: 'EVT-001', zone: 'Perimeter A', type: 'Person', confidence: 0.92, time: '12:00:01', hash: '8a2f...' },
-    { id: 'EVT-002', zone: 'North Beach', type: 'Boat', confidence: 0.88, time: '12:05:15', hash: '3c1d...' }
+    { id: 'EVT-002', zone: 'Sala_Fushi_Dock', type: 'Boat', confidence: 0.88, time: '12:05:15', hash: '3c1d...', mfr_score: '2/3' }
   ]);
+
+  const [syncStatus, setSyncStatus] = useState('LOCAL_AUTONOMOUS');
 
   return (
     <div className="flex flex-col h-screen bg-slate-900 text-slate-100 font-mono">
@@ -20,6 +22,10 @@ const WarRoomUI = () => {
           <div className="flex flex-col items-end">
             <span className="text-xs text-slate-400 uppercase tracking-widest">Alert Level</span>
             <span className={`text-lg font-bold ${alertLevel === 'Secure' ? 'text-red-500' : 'text-green-500'}`}>{alertLevel}</span>
+          </div>
+          <div className="flex flex-col items-end border-l border-slate-700 pl-8">
+            <span className="text-xs text-slate-400 uppercase tracking-widest">Cognitive Isolation</span>
+            <span className="text-lg font-bold text-cyan-400 italic">{syncStatus}</span>
           </div>
           <div className="flex flex-col items-end border-l border-slate-700 pl-8">
             <span className="text-xs text-slate-400 uppercase tracking-widest">SHADOW Ledger</span>
@@ -64,6 +70,12 @@ const WarRoomUI = () => {
                     <span className="text-slate-500">{e.time}</span>
                   </div>
                   <div className="text-sm">{e.type} detected in {e.zone}</div>
+                  {e.mfr_score && (
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-[10px] text-slate-400 uppercase">MFR:</span>
+                      <span className={`text-xs font-bold ${e.mfr_score === '3/3' ? 'text-green-500' : 'text-red-500'}`}>{e.mfr_score}</span>
+                    </div>
+                  )}
                   <div className="text-[10px] text-slate-600 mt-2 truncate">Hash: {e.hash}</div>
                 </div>
               ))}
@@ -99,7 +111,8 @@ const WarRoomUI = () => {
         </h3>
         <div className="space-y-1">
           <div className="text-slate-500">[2026-04-22T12:00:01Z] EVENT_TYPE: nexus.guest.arrival | HASH: 0523eb... | PREV: 000000... | STATUS: COMMITTED</div>
-          <div className="text-slate-500">[2026-04-22T12:05:15Z] EVENT_TYPE: nexus.security.alert | HASH: 3c1d92... | PREV: 0523eb... | STATUS: COMMITTED</div>
+          <div className="text-slate-500">[2026-04-22T12:05:15Z] EVENT_TYPE: nexus.security.alert | HASH: 3c1d92... | PREV: 0523eb... | STATUS: COMMITTED | MFR_FAIL: JETTY-B</div>
+          <div className="text-red-400">[2026-04-22T12:05:16Z] EVENT_TYPE: nexus.security.kinetic_defense | KINETIC_LOCK: FUEL_PUMPS_OFF | HMS_LOCKED</div>
           <div className="text-blue-400">[LIVE] --- WAITING FOR NEXT SOVEREIGN HANDSHAKE ---</div>
         </div>
       </footer>

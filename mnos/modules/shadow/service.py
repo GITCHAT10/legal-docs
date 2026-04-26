@@ -99,7 +99,9 @@ class ShadowLedger:
             "timestamp": entry["timestamp"],
             "device_id": entry.get("actor_id", "SYSTEM"),
             "event_payload": payload,
-            "previous_hash": entry["previous_hash"]
+            "previous_hash": entry["previous_hash"],
+            "gps_coords": payload.get("gps_coords", "0.0,0.0"),
+            "frame_hash": payload.get("frame_hash", "NONE")
         }
 
         # VELANA SENTINEL / EGATE: [timestamp, device_id, identity_token, event_payload, previous_hash]

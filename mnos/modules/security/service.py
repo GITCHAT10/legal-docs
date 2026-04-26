@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Dict, Any, List
 from mnos.shared.execution_guard import guard
 from mnos.core.events.service import events
@@ -16,6 +17,31 @@ class SecurityModule:
     TL-4 Enforcement: Breach of Restricted Zone
     TL-5 Critical: System Interference
     """
+
+    def verify_mfr(self, event_data: Dict[str, Any]) -> int:
+        """
+        Multi-Factor Reality (MFR) Triple-Lock:
+        1. Sensor A (OCR/Visual)
+        2. Sensor B (AIS/MQTT Signal)
+        3. Sensor C (Thermal Heat Sig)
+        Returns score (0-3).
+        """
+        score = 0
+        frigate_after = event_data.get("frigate_event", {}).get("after", {})
+
+        # Sensor A: Visual OCR match
+        if frigate_after.get("label") and frigate_after.get("confidence", 0) > 0.85:
+            score += 1
+
+        # Sensor B: AIS/MQTT Transponder Signal
+        if event_data.get("ais_transponder_verified") or event_data.get("mqtt_signal_match"):
+            score += 1
+
+        # Sensor C: Thermal Heat Signature
+        if event_data.get("thermal_sig_verified") or event_data.get("heat_signature_confirmed"):
+            score += 1
+
+        return score
 
     def evaluate_threat(self, event_payload: Dict[str, Any]) -> int:
         """
@@ -38,6 +64,13 @@ class SecurityModule:
         # TL-3 Alert: Loitering > 180s in Perimeter
         if "Sala_Fushi_Perimeter" in zones and duration > 180:
             return 3
+
+        # DEFCON 2: MFR failure on Docking attempt
+        if "Sala_Fushi_Dock" in zones:
+            mfr_score = self.verify_mfr(event_payload)
+            if mfr_score < 3:
+                print(f"[Security] DEFCON 2: MFR FAILURE ({mfr_score}/3). Docking unauthorized.")
+                return 4 # Trigger Enforcement Level (TL-4)
 
         # TL-2 Verification: Unknown Person (Public Beach/Perimeter)
         if "Sala_Fushi_Perimeter" in zones and confidence > 0.70:
@@ -97,6 +130,20 @@ class SecurityModule:
         """Broadcasts alerts to staff and operators."""
         print(f"[Security] ALERT: {payload.get('message')}")
         return {"status": "alerted", "notified": ["staff", "operators"]}
+
+    def execute_kinetic_interdiction(self, payload: Dict[str, Any]):
+        """Active Defense: Kinetic Enforcement."""
+        print(f"[Security] KINETIC INTERDICTION ACTIVE")
+        print(f"[Security] ACTION: KILL POWER to fuel pumps.")
+        print(f"[Security] ACTION: DISABLE HMS Terminals.")
+        print(f"[Security] ACTION: ACTIVATE Strobe Deterrence.")
+
+        return {
+            "fuel_pumps": "killed",
+            "hms_terminals": "disabled",
+            "strobe_deterrence": "active",
+            "reporting_metadata": payload.get("reporting_metadata")
+        }
 
     def process_security_event(self, event_data: Dict[str, Any], session_context: Dict[str, Any]):
         """
@@ -163,6 +210,30 @@ class SecurityModule:
                 self.execute_TL5_response
             )
         elif threat_level == 4:
+            # Check for MFR failure interdiction
+            if "Dock" in zone:
+                 # v10.0 Enforcement: Sign the context for each action
+                 mfr_payload = session_context.copy()
+                 mfr_payload.pop("signature", None)
+                 mfr_payload["nonce"] = f"mfr-{datetime.now(timezone.utc).timestamp()}"
+                 mfr_ctx = mfr_payload.copy()
+                 from mnos.core.security.aegis import aegis
+                 mfr_ctx["signature"] = aegis.sign_session(mfr_payload)
+
+                 guard.execute_sovereign_action(
+                    "nexus.security.kinetic_defense",
+                    {
+                        "zone": zone,
+                        "threat_level": 4,
+                        "mfr_score": self.verify_mfr(event_data),
+                        "chosen_action": "Kinetic_Interdiction",
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "reporting_metadata": reporting_metadata
+                    },
+                    mfr_ctx,
+                    self.execute_kinetic_interdiction
+                )
+
             guard.execute_sovereign_action(
                 "nexus.security.lockdown",
                 {

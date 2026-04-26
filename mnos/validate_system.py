@@ -96,7 +96,31 @@ def run_validation():
     res_gate = gatekeeper.process_gate_access("GATE-A", {"plate_match": True, "aegis_device_present": True}, get_signed_ctx("VIMAN-001", "VIMAN_RESIDENTIAL"))
     print(f"Result: {res_gate['status']}")
 
-    # 8. Final Output & Compliance
+    # 8. Scenario 6: IRON CURTAIN Kinetic Defense (MFR Failure)
+    from mnos.modules.security.service import security_module
+    import uuid
+    ctx_security = get_signed_ctx(str(uuid.uuid4()), "ADDU_FORTRESS", "security_bridge")
+    print("\n[SCENARIO 6: IRON CURTAIN MFR FAILURE]")
+    security_module.process_security_event({
+        "frigate_event": {
+            "after": {
+                "label": "Unknown Vessel",
+                "confidence": 0.98,
+                "current_zones": ["Sala_Fushi_Dock"]
+            }
+        },
+        "ais_transponder_verified": False,
+        "thermal_sig_verified": False,
+        "multi_signal_vetted": True,
+        "reporting_metadata": {
+            "reporting_currency_usd": "USD",
+            "reporting_currency_local": "MVR",
+            "reporting_fx_rate_locked": 15.42,
+            "reporting_jurisdiction": "MV"
+        }
+    }, ctx_security)
+
+    # 9. Final Output & Compliance
     if not integrity_ok:
         print("\n!!! VALIDATION FAILED: Ledger compromised.")
         sys.exit(1)
