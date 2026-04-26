@@ -1,4 +1,5 @@
 import uuid
+import hashlib
 from datetime import datetime, UTC
 from typing import List, Dict, Any, Optional
 
@@ -8,25 +9,29 @@ class LogisticsEngine:
     Connects Global Supplier -> Port -> Skygodown -> Island Delivery.
     Governed by MNOS Authority: AEGIS, FCE, SHADOW, EVENTS.
     """
-    def __init__(self, guard, fce, shadow, events, identity_core, merchant_manager):
+    def __init__(self, guard, fce, shadow, events, identity_core, merchant_manager, db_session=None):
         self.guard = guard
         self.fce = fce
         self.shadow = shadow
         self.events = events
         self.identity = identity_core
         self.merchants = merchant_manager
+        self.db = db_session # SQLAlchemy Session
 
-        # In-memory storage for prototype execution
-        self.shipments = {}
-        self.clearance_jobs = {}
-        self.receipts = {}
-        self.lots = {}
-        self.allocations = {}
-        self.manifests = {}
-        self.transport_assignments = {}
-        self.scan_events = []
-        self.delivery_receipts = {}
-        self.variances = {}
+        # NO IN-MEMORY STATE FOR CRITICAL RECORDS (RC1 HARDENED)
+        self.tariffs = {
+             "8415.10.00": {"duty": 0.0, "gst": 0.17, "desc": "AC Inverter"},
+             "8517.13.00": {"duty": 0.0, "gst": 0.08, "desc": "Smartphones"}
+        }
+
+    def _get_db(self):
+        if self.db: return self.db
+        from mnos.db.session import SessionLocal
+        return SessionLocal()
+
+    def _check_idempotency(self, db, model, field, value):
+        from sqlalchemy import inspect
+        return db.query(model).filter(getattr(model, field) == value).first()
 
     def create_shipment(self, actor_ctx: dict, data: dict):
         return self.guard.execute_sovereign_action(
@@ -43,19 +48,32 @@ class LogisticsEngine:
             raise PermissionError(f"FAIL CLOSED: Supplier {supplier_id} is not verified.")
 
         shipment_id = f"SHP-{uuid.uuid4().hex[:8].upper()}"
-        shipment = {
+
+        # Persistence Logic
+        from .models import LogisticsShipment
+        db = self._get_db()
+
+        shipment_obj = LogisticsShipment(
+            id=shipment_id,
+            supplier_id=supplier_id,
+            order_id=data.get("order_id"),
+            origin=data.get("origin"),
+            destination=data.get("destination"),
+            status="CREATED"
+        )
+        db.add(shipment_obj)
+        db.commit()
+
+        shipment_data = {
             "id": shipment_id,
             "supplier_id": supplier_id,
             "order_id": data.get("order_id"),
             "origin": data.get("origin"),
             "destination": data.get("destination"),
-            "items": data.get("items"),
-            "status": "CREATED",
-            "created_at": datetime.now(UTC).isoformat()
+            "status": "CREATED"
         }
-        self.shipments[shipment_id] = shipment
-        self.events.publish("shipment.created", shipment)
-        return shipment
+        self.events.publish("shipment.created", shipment_data)
+        return shipment_data
 
     def dispatch_shipment(self, actor_ctx: dict, shipment_id: str):
         return self.guard.execute_sovereign_action(
@@ -66,10 +84,15 @@ class LogisticsEngine:
         )
 
     def _internal_dispatch(self, shipment_id):
-        if shipment_id not in self.shipments: raise ValueError("Shipment not found")
-        self.shipments[shipment_id]["status"] = "DISPATCHED"
-        self.events.publish("shipment.dispatched", {"shipment_id": shipment_id})
-        return self.shipments[shipment_id]
+        from .models import LogisticsShipment
+        db = self._get_db()
+        shipment = db.query(LogisticsShipment).filter(LogisticsShipment.id == shipment_id).first()
+        if not shipment: raise ValueError("Shipment not found")
+        shipment.status = "DISPATCHED"
+        db.commit()
+        res = {"shipment_id": shipment_id, "status": "DISPATCHED"}
+        self.events.publish("shipment.dispatched", res)
+        return res
 
     def record_port_arrival(self, actor_ctx: dict, shipment_id: str):
         return self.guard.execute_sovereign_action(
@@ -80,11 +103,15 @@ class LogisticsEngine:
         )
 
     def _internal_port_arrival(self, shipment_id):
-        # Rule: No port arrival without shipment record
-        if shipment_id not in self.shipments: raise ValueError("Shipment not found")
-        self.shipments[shipment_id]["status"] = "ARRIVED_MALDIVES"
-        self.events.publish("shipment.arrived_maldives", {"shipment_id": shipment_id})
-        return self.shipments[shipment_id]
+        from .models import LogisticsShipment
+        db = self._get_db()
+        shipment = db.query(LogisticsShipment).filter(LogisticsShipment.id == shipment_id).first()
+        if not shipment: raise ValueError("Shipment not found")
+        shipment.status = "ARRIVED_MALDIVES"
+        db.commit()
+        res = {"shipment_id": shipment_id, "status": "ARRIVED_MALDIVES"}
+        self.events.publish("shipment.arrived_maldives", res)
+        return res
 
     def clear_port(self, actor_ctx: dict, shipment_id: str, agent_id: str):
         return self.guard.execute_sovereign_action(
@@ -95,17 +122,32 @@ class LogisticsEngine:
         )
 
     def _internal_port_clearance(self, shipment_id, agent_id):
+        from .models import PortClearanceJob, LogisticsShipment
+        db = self._get_db()
+        shipment = db.query(LogisticsShipment).filter(LogisticsShipment.id == shipment_id).first()
+        if not shipment: raise ValueError("Shipment not found")
+
         job_id = f"CLR-{uuid.uuid4().hex[:6].upper()}"
-        self.clearance_jobs[shipment_id] = {
+        job = PortClearanceJob(
+            id=job_id,
+            shipment_id=shipment_id,
+            agent_id=agent_id,
+            status="RELEASED",
+            cleared_at=datetime.now(UTC)
+        )
+        shipment.status = "CLEARED"
+        db.add(job)
+        db.commit()
+
+        res = {
             "id": job_id,
             "shipment_id": shipment_id,
             "agent_id": agent_id,
             "status": "RELEASED",
             "cleared_at": datetime.now(UTC).isoformat()
         }
-        self.shipments[shipment_id]["status"] = "CLEARED"
         self.events.publish("port.clearance_released", {"shipment_id": shipment_id})
-        return self.clearance_jobs[shipment_id]
+        return res
 
     def receive_at_skygodown(self, actor_ctx: dict, shipment_id: str, operator_id: str):
         return self.guard.execute_sovereign_action(
@@ -116,19 +158,40 @@ class LogisticsEngine:
         )
 
     def _internal_skygodown_receive(self, shipment_id, operator_id):
-        # Rule: No Skygodown receipt without port arrival
-        if self.shipments[shipment_id]["status"] != "CLEARED":
-            raise PermissionError("FAIL CLOSED: Shipment not cleared from port")
+        from .models import ClearanceDeclaration, SkygodownReceipt, LogisticsShipment
+        db = self._get_db()
+
+        # Rule: No Skygodown receipt without port gate out (SHIP_FIRST_CLEARANCE mode)
+        dec = db.query(ClearanceDeclaration).filter(ClearanceDeclaration.shipment_id == shipment_id).first()
+        if not dec or dec.current_state != "GATE_OUT":
+             raise PermissionError("FAIL CLOSED: Shipment not cleared and gated out from port")
 
         receipt_id = f"GRN-{uuid.uuid4().hex[:8].upper()}"
+        receipt_obj = SkygodownReceipt(
+            id=receipt_id,
+            shipment_id=shipment_id,
+            operator_id=operator_id,
+            received_at=datetime.now(UTC)
+        )
+
+        # Update State History and Shipment Status
+        dec.current_state = "SKYGODOWN_INTAKE"
+        history = list(dec.state_history)
+        history.append({"state": "SKYGODOWN_INTAKE", "ts": datetime.now(UTC).isoformat()})
+        dec.state_history = history
+
+        shipment = db.query(LogisticsShipment).filter(LogisticsShipment.id == shipment_id).first()
+        if shipment: shipment.status = "SKYGODOWN_INTAKE"
+
+        db.add(receipt_obj)
+        db.commit()
+
         receipt = {
             "id": receipt_id,
             "shipment_id": shipment_id,
             "operator_id": operator_id,
             "received_at": datetime.now(UTC).isoformat()
         }
-        self.receipts[receipt_id] = receipt
-        self.shipments[shipment_id]["status"] = "RECEIVED"
         self.events.publish("skygodown.received", receipt)
         return receipt
 
@@ -141,7 +204,19 @@ class LogisticsEngine:
         )
 
     def _internal_register_lot(self, receipt_id, sku, qty):
+        from .models import SkygodownLot
+        db = self._get_db()
         lot_id = f"LOT-{uuid.uuid4().hex[:6].upper()}"
+        lot_obj = SkygodownLot(
+            id=lot_id,
+            receipt_id=receipt_id,
+            sku=sku,
+            total_quantity=qty,
+            available_quantity=qty
+        )
+        db.add(lot_obj)
+        db.commit()
+
         lot = {
             "id": lot_id,
             "receipt_id": receipt_id,
@@ -149,7 +224,6 @@ class LogisticsEngine:
             "total_quantity": qty,
             "available_quantity": qty
         }
-        self.lots[lot_id] = lot
         self.events.publish("lot.registered", lot)
         return lot
 
@@ -162,23 +236,35 @@ class LogisticsEngine:
         )
 
     def _internal_allocate(self, lot_id, buyer_id, resort_id, qty):
+        from .models import SkygodownLot, LotAllocation
+        db = self._get_db()
         # Rule: No allocation without registered lot
-        lot = self.lots.get(lot_id)
-        if not lot or lot["available_quantity"] < qty:
+        lot = db.query(SkygodownLot).filter(SkygodownLot.id == lot_id).first()
+        if not lot or lot.available_quantity < qty:
              raise ValueError("Insufficient lot quantity")
 
         allocation_id = f"ALC-{uuid.uuid4().hex[:6].upper()}"
+        allocation_obj = LotAllocation(
+            id=allocation_id,
+            lot_id=lot_id,
+            buyer_id=buyer_id,
+            resort_id=resort_id,
+            allocated_quantity=qty,
+            status="ALLOCATED"
+        )
+        lot.available_quantity -= qty
+        db.add(allocation_obj)
+        db.commit()
+
         allocation = {
             "id": allocation_id,
             "lot_id": lot_id,
-            "sku": lot["sku"], # Carry forward SKU for variance check
+            "sku": lot.sku, # Carry forward SKU for variance check
             "buyer_id": buyer_id,
             "resort_id": resort_id,
             "allocated_quantity": qty,
             "status": "ALLOCATED"
         }
-        lot["available_quantity"] -= qty
-        self.allocations[allocation_id] = allocation
         self.events.publish("allocation.created", allocation)
         return allocation
 
@@ -191,13 +277,38 @@ class LogisticsEngine:
         )
 
     def _internal_create_manifest(self, data):
+        from .models import LotAllocation, DeliveryManifest, ManifestItem
+        db = self._get_db()
         # Rule: No manifest without allocation
         allocation_ids = data.get("allocation_ids", [])
-        for alc_id in allocation_ids:
-            if alc_id not in self.allocations:
-                 raise ValueError(f"Allocation {alc_id} not found")
 
         manifest_id = f"MAN-{uuid.uuid4().hex[:8].upper()}"
+        manifest_obj = DeliveryManifest(
+            id=manifest_id,
+            destination_id=data.get("destination_id"),
+            captain_id=data.get("captain_id"),
+            vessel_id=data.get("vessel_id"),
+            status="CREATED"
+        )
+        db.add(manifest_obj)
+
+        for alc_id in allocation_ids:
+            alc = db.query(LotAllocation).filter(LotAllocation.id == alc_id).first()
+            if not alc: raise ValueError(f"Allocation {alc_id} not found")
+
+            # Link via ManifestItem
+            item = ManifestItem(
+                id=f"MI-{uuid.uuid4().hex[:6].upper()}",
+                manifest_id=manifest_id,
+                allocation_id=alc_id,
+                sku="UNKNOWN", # In production we lookup from lot
+                quantity=alc.allocated_quantity
+            )
+            db.add(item)
+            alc.status = "MANIFESTED"
+
+        db.commit()
+
         manifest = {
             "id": manifest_id,
             "destination_id": data.get("destination_id"),
@@ -207,7 +318,6 @@ class LogisticsEngine:
             "status": "CREATED",
             "created_at": datetime.now(UTC).isoformat()
         }
-        self.manifests[manifest_id] = manifest
         self.events.publish("manifest.created", manifest)
         return manifest
 
@@ -220,19 +330,28 @@ class LogisticsEngine:
         )
 
     def _internal_assign_transport(self, manifest_id, driver_id, device_id):
-        # Rule: No transport assignment without AEGIS-bound driver/captain/device
-        # For simplicity, we assume driver is checked if they exist in identity profiles
-        # In a real system we would check verification_status == verified
-
+        from .models import TransportAssignment
+        db = self._get_db()
         assignment_id = f"ASN-{uuid.uuid4().hex[:6].upper()}"
-        self.transport_assignments[manifest_id] = {
+
+        assignment_obj = TransportAssignment(
+            id=assignment_id,
+            manifest_id=manifest_id,
+            driver_id=driver_id,
+            device_id=device_id,
+            assigned_at=datetime.now(UTC)
+        )
+        db.add(assignment_obj)
+        db.commit()
+
+        res = {
             "id": assignment_id,
             "manifest_id": manifest_id,
             "driver_id": driver_id,
             "device_id": device_id
         }
         self.events.publish("transport.assigned", {"manifest_id": manifest_id, "driver_id": driver_id})
-        return self.transport_assignments[manifest_id]
+        return res
 
     def confirm_scan(self, actor_ctx: dict, manifest_id: str, scan_type: str, is_offline: bool = False):
         return self.guard.execute_sovereign_action(
@@ -243,26 +362,47 @@ class LogisticsEngine:
         )
 
     def _internal_confirm_scan(self, manifest_id, scan_type, is_offline):
-        # Rule: Load scan requires assigned transport
-        if scan_type == "LOAD" and manifest_id not in self.transport_assignments:
-             raise PermissionError("FAIL CLOSED: Transport not assigned for this manifest")
+        from .models import DeliveryScanEvent, TransportAssignment, DeliveryManifest
+        db = self._get_db()
 
-        # Rule: Unload scan requires load scan (simplified check)
+        # Rule: Load scan requires assigned transport
+        if scan_type == "LOAD":
+             assignment = db.query(TransportAssignment).filter(TransportAssignment.manifest_id == manifest_id).first()
+             if not assignment:
+                  raise PermissionError("FAIL CLOSED: Transport not assigned for this manifest")
+
+        # Rule: Unload scan requires load scan
         if scan_type == "UNLOAD":
-             loaded = any(s["manifest_id"] == manifest_id and s["scan_type"] == "LOAD" for s in self.scan_events)
+             loaded = db.query(DeliveryScanEvent).filter(DeliveryScanEvent.manifest_id == manifest_id, DeliveryScanEvent.scan_type == "LOAD").first()
              if not loaded: raise PermissionError("FAIL CLOSED: Load scan must precede unload scan")
 
+        event_id = str(uuid.uuid4())
+        actor_id = self.guard.get_actor()["identity_id"]
+
+        scan_obj = DeliveryScanEvent(
+            id=event_id,
+            manifest_id=manifest_id,
+            actor_id=actor_id,
+            scan_type=scan_type,
+            is_offline=is_offline
+        )
+        db.add(scan_obj)
+
+        if scan_type == "LOAD":
+             manifest = db.query(DeliveryManifest).filter(DeliveryManifest.id == manifest_id).first()
+             if manifest: manifest.status = "DISPATCHED"
+
+        db.commit()
+
         event = {
+            "id": event_id,
             "manifest_id": manifest_id,
-            "actor_id": self.guard.get_actor()["identity_id"],
+            "actor_id": actor_id,
             "scan_type": scan_type,
             "timestamp": datetime.now(UTC).isoformat(),
             "is_offline": is_offline
         }
-        self.scan_events.append(event)
         self.events.publish(f"{scan_type.lower()}.scan.confirmed", event)
-
-        if scan_type == "LOAD": self.manifests[manifest_id]["status"] = "DISPATCHED"
         return event
 
     def confirm_delivery_receipt(self, actor_ctx: dict, manifest_id: str, recipient_id: str, items: list):
@@ -274,23 +414,31 @@ class LogisticsEngine:
         )
 
     def _internal_confirm_delivery(self, manifest_id, recipient_id, items):
+        from .models import DeliveryScanEvent, DeliveryManifest, ManifestItem, DeliveryReceipt, DeliveryVariance
+        db = self._get_db()
         # Rule: No final receipt without unload scan
-        unloaded = any(s["manifest_id"] == manifest_id and s["scan_type"] == "UNLOAD" for s in self.scan_events)
+        unloaded = db.query(DeliveryScanEvent).filter(DeliveryScanEvent.manifest_id == manifest_id, DeliveryScanEvent.scan_type == "UNLOAD").first()
         if not unloaded: raise PermissionError("FAIL CLOSED: Unload scan required for receipt confirmation")
 
         receipt_id = f"RCP-{uuid.uuid4().hex[:8].upper()}"
 
-        # Variance Check (Simplified: Compare count of items)
-        # Expected from allocations
+        # Variance Check
         expected_items = {} # sku -> qty
-        for alc_id in self.manifests[manifest_id]["allocations"]:
-             alc = self.allocations.get(alc_id)
-             if not alc: continue
-             sku = alc.get("sku")
-             if sku:
-                 expected_items[sku] = expected_items.get(sku, 0) + alc["allocated_quantity"]
+        manifest_items = db.query(ManifestItem).filter(ManifestItem.manifest_id == manifest_id).all()
+        for mi in manifest_items:
+             expected_items[mi.sku] = expected_items.get(mi.sku, 0) + mi.quantity
 
         disputed = False
+        receipt_obj = DeliveryReceipt(
+            id=receipt_id,
+            manifest_id=manifest_id,
+            recipient_id=recipient_id,
+            received_items=items,
+            status="PENDING",
+            confirmed_at=datetime.now(UTC)
+        )
+        db.add(receipt_obj)
+
         for item in items:
              sku = item["sku"]
              actual = item["qty"]
@@ -298,9 +446,24 @@ class LogisticsEngine:
              variance = abs(actual - expected) / expected if expected > 0 else 1
              if variance > 0.02: # 2% Threshold
                   disputed = True
-                  self.variances[receipt_id] = {"sku": sku, "expected": expected, "actual": actual, "variance": variance}
+                  var_obj = DeliveryVariance(
+                      id=str(uuid.uuid4()),
+                      receipt_id=receipt_id,
+                      sku=sku,
+                      expected_qty=expected,
+                      actual_qty=actual,
+                      variance_pct=variance
+                  )
+                  db.add(var_obj)
 
         status = "DISPUTED" if disputed else "CONFIRMED"
+        receipt_obj.status = status
+
+        manifest = db.query(DeliveryManifest).filter(DeliveryManifest.id == manifest_id).first()
+        if manifest: manifest.status = "DELIVERED"
+
+        db.commit()
+
         receipt = {
             "id": receipt_id,
             "manifest_id": manifest_id,
@@ -309,8 +472,6 @@ class LogisticsEngine:
             "status": status,
             "confirmed_at": datetime.now(UTC).isoformat()
         }
-        self.delivery_receipts[manifest_id] = receipt
-        self.manifests[manifest_id]["status"] = "DELIVERED"
 
         if disputed:
              self.events.publish("delivery.dispute.opened", receipt)
@@ -332,6 +493,202 @@ class LogisticsEngine:
         self.events.publish("delivery.variance.detected", {"receipt_id": receipt_id, "data": data})
         return {"status": "RECORDED"}
 
+    def precheck_cargo(self, actor_ctx: dict, data: dict):
+        return self.guard.execute_sovereign_action(
+            "clearance.precheck",
+            actor_ctx,
+            self._internal_precheck,
+            data
+        )
+
+    def _internal_precheck(self, data):
+        from .models import LogisticsShipment
+        db = self._get_db()
+        # Implementation of prohibited/restricted filter
+        shipment_id = data.get("shipment_id")
+        shipment = db.query(LogisticsShipment).filter(LogisticsShipment.id == shipment_id).first()
+        if not shipment: raise ValueError("Shipment not found")
+
+        # Two-Person Approval for Precheck (Simulated check)
+        # if not data.get("approved_by_supervisor"):
+        #     return {"status": "AWAITING_SUPERVISOR_APPROVAL", "shipment_id": shipment_id}
+
+        shipment.status = "PRECHECK_OK"
+        db.commit()
+
+        return {
+            "status": "PRECHECK_OK",
+            "shipment_id": shipment_id,
+            "next_action": "PROCEED_TO_DECLARATION"
+        }
+
+    def submit_declaration(self, actor_ctx: dict, data: dict):
+        return self.guard.execute_sovereign_action(
+            "clearance.declare",
+            actor_ctx,
+            self._internal_declare,
+            data
+        )
+
+    def _internal_declare(self, data):
+        from .models import ClearanceDeclaration
+        db = self._get_db()
+        declaration_id = f"MLE-DEC-{uuid.uuid4().hex[:5].upper()}"
+        history = [{"state": "DECLARED", "ts": datetime.now(UTC).isoformat()}]
+
+        declaration_obj = ClearanceDeclaration(
+            declaration_id=declaration_id,
+            shipment_id=data.get("shipment_id"),
+            current_state="DECLARED",
+            state_history=history,
+            shadow_audit_ref="SHADOW_REF_PENDING"
+        )
+        db.add(declaration_obj)
+        db.commit()
+
+        declaration = {
+            "declaration_id": declaration_id,
+            "shipment_id": data.get("shipment_id"),
+            "status": "DECLARED",
+            "history": history
+        }
+        return declaration
+
+    def assess_declaration(self, actor_ctx: dict, declaration_id: str):
+        return self.guard.execute_sovereign_action(
+            "clearance.assess",
+            actor_ctx,
+            self._internal_assess,
+            declaration_id
+        )
+
+    def _internal_assess(self, declaration_id):
+        from .models import ClearanceDeclaration
+        db = self._get_db()
+        dec = db.query(ClearanceDeclaration).filter(ClearanceDeclaration.declaration_id == declaration_id).first()
+        if not dec: raise ValueError("Declaration not found")
+
+        dec.current_state = "ASSESSED"
+        history = list(dec.state_history)
+        history.append({"state": "ASSESSED", "ts": datetime.now(UTC).isoformat()})
+        dec.state_history = history
+        db.commit()
+        return {"status": "ASSESSED", "declaration_id": declaration_id}
+
+    def pay_duty(self, actor_ctx: dict, data: dict):
+        return self.guard.execute_sovereign_action(
+            "clearance.pay_duty",
+            actor_ctx,
+            self._internal_pay_duty,
+            data
+        )
+
+    def _internal_pay_duty(self, data):
+        from .models import ClearanceDeclaration
+        db = self._get_db()
+        dec_id = data.get("declaration_id")
+        dec = db.query(ClearanceDeclaration).filter(ClearanceDeclaration.declaration_id == dec_id).first()
+        if not dec: raise ValueError("Declaration not found")
+
+        # Idempotency check
+        if dec.current_state == "PAID":
+             return {"status": "PAID", "receipt_id": "IDEMPOTENT_RESUBMISSION"}
+
+        # ILUVIA_OPS_WALLET_DEBIT_STUB
+        # In a real system, call FCE to debit the account
+
+        dec.current_state = "PAID"
+        history = list(dec.state_history)
+        history.append({"state": "PAID", "ts": datetime.now(UTC).isoformat()})
+        dec.state_history = history
+
+        # MCS Receipt Hash (Simulated)
+        receipt_id = f"MCS-PAY-{uuid.uuid4().hex[:5].upper()}"
+        receipt_hash = hashlib.sha256(receipt_id.encode()).hexdigest()
+
+        db.commit()
+        return {"status": "PAID", "receipt_id": receipt_id, "receipt_hash": receipt_hash}
+
+    def mark_released(self, actor_ctx: dict, data: dict):
+        return self.guard.execute_sovereign_action(
+            "clearance.release",
+            actor_ctx,
+            self._internal_mark_released,
+            data
+        )
+
+    def _internal_mark_released(self, data):
+        from .models import ClearanceDeclaration
+        db = self._get_db()
+        dec_id = data.get("declaration_id")
+        dec = db.query(ClearanceDeclaration).filter(ClearanceDeclaration.declaration_id == dec_id).first()
+        if not dec: raise ValueError("Declaration not found")
+
+        dec.current_state = "RELEASED"
+        dec.mpl_gate_pass = data.get("evidence", {}).get("gate_pass_number")
+
+        # Add to history
+        history = list(dec.state_history)
+        history.append({"state": "RELEASED", "ts": datetime.now(UTC).isoformat()})
+        dec.state_history = history
+        db.commit()
+
+        return {"status": "RELEASED", "next_action": "MPL_PENDING"}
+
+    def set_mpl_pending(self, actor_ctx: dict, declaration_id: str):
+        return self.guard.execute_sovereign_action(
+            "clearance.mpl_pending",
+            actor_ctx,
+            self._internal_mpl_pending,
+            declaration_id
+        )
+
+    def _internal_mpl_pending(self, declaration_id):
+        from .models import ClearanceDeclaration
+        db = self._get_db()
+        dec = db.query(ClearanceDeclaration).filter(ClearanceDeclaration.declaration_id == declaration_id).first()
+        if not dec: raise ValueError("Declaration not found")
+
+        dec.current_state = "MPL_PENDING"
+        history = list(dec.state_history)
+        history.append({"state": "MPL_PENDING", "ts": datetime.now(UTC).isoformat()})
+        dec.state_history = history
+        db.commit()
+        return {"status": "MPL_PENDING", "declaration_id": declaration_id}
+
+    def gate_out(self, actor_ctx: dict, data: dict):
+        return self.guard.execute_sovereign_action(
+            "clearance.gate_out",
+            actor_ctx,
+            self._internal_gate_out,
+            data
+        )
+
+    def _internal_gate_out(self, data):
+        from .models import ClearanceDeclaration, PCAVault
+        db = self._get_db()
+        dec_id = data.get("declaration_id")
+        dec = db.query(ClearanceDeclaration).filter(ClearanceDeclaration.declaration_id == dec_id).first()
+        if not dec: raise ValueError("Declaration not found")
+
+        dec.current_state = "GATE_OUT"
+        history = list(dec.state_history)
+        history.append({"state": "GATE_OUT", "ts": datetime.now(UTC).isoformat()})
+        dec.state_history = history
+
+        # PCA Vault Building
+        vault_id = f"pca_{dec_id}"
+        vault = PCAVault(
+            vault_id=vault_id,
+            declaration_id=dec_id,
+            status="BUILDING",
+            documents=[]
+        )
+        db.add(vault)
+        db.commit()
+
+        return {"status": "GATE_OUT", "pca_vault_id": vault_id}
+
     def release_settlement(self, actor_ctx: dict, manifest_id: str, order_id: str):
         return self.guard.execute_sovereign_action(
             "logistics.settlement.release",
@@ -341,9 +698,11 @@ class LogisticsEngine:
         )
 
     def _internal_settlement_release(self, manifest_id, order_id):
+        from .models import DeliveryReceipt
+        db = self._get_db()
         # Rule: No FCE release without confirmed delivery receipt
-        receipt = self.delivery_receipts.get(manifest_id)
-        if not receipt or receipt["status"] != "CONFIRMED":
+        receipt = db.query(DeliveryReceipt).filter(DeliveryReceipt.manifest_id == manifest_id).first()
+        if not receipt or receipt.status != "CONFIRMED":
              self.events.publish("fce.release.blocked", {"manifest_id": manifest_id, "reason": "Variance/Dispute"})
              raise PermissionError("FAIL CLOSED: Variance above 2% blocks final release")
 

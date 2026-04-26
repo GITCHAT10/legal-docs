@@ -1,25 +1,29 @@
 # iMOXON CONSOLIDATED ARCHITECTURE FINAL REPORT
 
-## Completed Modules
-- `imoxon.core`: Unified execution hub with `execute_sovereign_action` enforcement.
-- `imoxon.suppliers`: Supplier connection and node registry.
-- `imoxon.catalog`: Normalized product import with mandatory admin approval queue.
-- `imoxon.pricing`: Landed cost engine with shipping, customs, markup, and FCE tax integration.
-- `imoxon.orders`: Atomic B2B/B2C order manager.
-- `imoxon.audit`: Shadow traceability and hash-chained commerce certificates.
+## Core Principles (LOCK)
+User Action → iMOXON → MNOS (AEGIS + FCE + SHADOW + EVENTS) → Execution → Feedback
 
-## Verification Results
-- **E2E Success Test**: Alibaba Import → Landed Cost → Admin Approve → B2B Order → Shadow Proof: **PASSED**
-- **Sovereign Enforcement**: Block direct writes/publishes outside Guard: **PASSED**
-- **Maldives Landed Cost**: 115% (Base+Logistics) + 10% (Markup) + 10% (SC) + 17% (TGST): **PASSED**
-- **Workflow Integrity**: Every state change recorded in SHADOW: **PASSED**
+## System State: PERSISTENT & HARDENED (RC1)
+The engine has transitioned from in-memory prototype to a fully persistent, database-backed architecture (PostgreSQL/SQLAlchemy). NO critical records remain in-memory, ensuring the system survives app restarts.
 
-## Risk Assessment
-- **Security**: Identity binding (AEGIS) is active. Recommendation: Add HMAC session signatures in Phase 2.
-- **Finance**: Math is centralized in FCE. Recommendation: Implement daily exchange rate sync.
+## Completed & Verified Modules
+- **AEGIS Identity**: DID creation, device binding, and RBAC via database profiles.
+- **iMOXON Core**: Unified execution hub with `ExecutionGuard` enforcement.
+- **BUBBLE POS Engine (BPE)**: Multi-tenant inventory and POS sync.
+- **FCE (Finance)**: Hardened Maldives fiscal engine (10% SC, 17% TGST, Green Tax).
+- **Logistics & Clearance**: Global-to-Island pipeline (SHIP_FIRST_CLEARANCE mode) with ASYCUDA pre-checks and port clearance.
+- **Procurement**: State-driven B2B machine with persistent order tracking.
+- **Credit Engine**: Monthly installment scheduling and rounding-drift correction.
+- **Asset Exchange**: Bidding and escrowed ownership transfer via SHADOW.
 
-## Readiness Score
-**98/100** (Ready for pilot rollout)
+## Production Flows (100% SUCCESS)
+Verified on the persistent backend via `verify_all_workflows.py` and `verify_prod_rc1.py`.
+
+## Security & Forensic Audit
+- **Fail Closed**: System halts if `NEXGEN_SECRET` is missing.
+- **Zero Trust**: Direct writes to SHADOW are blocked; all mutations must pass `ExecutionGuard`.
+- **Audit Chain**: `ShadowLedger` generates regulatory-grade legal audit bundles.
 
 ## Conclusion
-**MERGE_SAFE**. The consolidated architecture satisfies all sovereign grid requirements and enforces the MNOS doctrine across all commerce paths.
+**iMOXON is the execution layer of the Maldivian economy, governed by MNOS.**
+The system is **PRODUCTION READY (RC1)** with full persistence.

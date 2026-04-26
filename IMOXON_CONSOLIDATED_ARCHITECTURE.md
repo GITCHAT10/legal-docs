@@ -1,36 +1,27 @@
-# IMOXON CONSOLIDATED ARCHITECTURE
+# iMOXON Consolidated Architecture
 
-## Overview
-iMOXON is the unified Maldives B2B + B2C sourcing, procurement, marketplace, finance, and logistics operating layer. It consolidates multiple disparate commerce systems into a single, sovereign-hardened grid.
+## Component Overview
 
-## Core Positioning
-iMOXON = Maldives Commerce + Sourcing Grid
+### 1. Super App Layer (BUBBLE OS)
+- **iMOXON Interface**: Marketplace and Merchant dashboards.
+- **Bubble SDK**: Bridge for local mini-apps.
+- **ChatIntent**: Natural language to transaction mapping.
 
-## Final Module Structure
-```text
-mnos/modules/imoxon/
-  core/           # Unified execution hub
-  catalog/        # Normalized product data
-  suppliers/      # Sourcing grid nodes
-  marketplace/    # B2B/B2C logic
-  procurement/    # Bulk RFP/PO engine
-  pricing/        # Landed cost & tax core
-  orders/         # Transaction manager
-  warehouse/      # Inventory & stock
-  logistics/      # Dispatch & routing
-  finance/        # Settlement & payout
-  trust/          # KYC & risk scoring
-  audit/          # Shadow traceability
-  integrations/   # External supplier bridges
-```
+### 2. Governance Layer (MNOS/MAC EOS)
+- **AEGIS**: Identity authority (DID, KYB/KYC).
+- **FCE**: Financial authority (Tax, Escrow, Clearing).
+- **SHADOW**: Forensic truth (Immutable ledger).
+- **EVENTS**: Orchestration (System-wide bus).
 
-## Architecture Rule
-All commerce actions MUST flow through:
-**AEGIS → iMOXON CORE → FCE → EVENTS → SHADOW**
+### 3. Execution Layer (iMOXON Core)
+- **BPE**: POS and Inventory.
+- **Logistics**: Clearance and transport.
+- **Procurement**: Supply chain and B2B.
 
-### Enforcements
-- No direct database writes.
-- No product listing without admin approval.
-- No order settlement without FCE validation.
-- Every state change is audited via the SHADOW hash chain.
-- Landed cost calculation includes 15% shipping/customs + 10% markup + 17% TGST (B2B).
+## Transaction Security
+Every mutating action must pass through the `ExecutionGuard`.
+Direct writes to modules are prohibited by `_sovereign_context` enforcement.
+
+## Failover (Protocol 0200)
+Supports island-local operation during connectivity loss.
+Transaction WAL and post-connectivity reconciliation.

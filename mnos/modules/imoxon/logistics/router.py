@@ -4,7 +4,9 @@ from .schemas import (
     ShipmentCreateSchema, PortClearanceSchema, ReceiptSchema,
     LotRegistrationSchema, AllocationCreateSchema, ManifestCreateSchema,
     TransportAssignSchema, ScanEventSchema, ReceiptConfirmSchema,
-    SettlementReleaseSchema, VarianceReportSchema
+    SettlementReleaseSchema, VarianceReportSchema,
+    ClearancePrecheckSchema, GoodsDeclarationSchema, DutyPaymentSchema,
+    ReleaseMarkSchema, GateOutSchema
 )
 
 def create_logistics_router(engine, get_actor_ctx):
@@ -63,21 +65,78 @@ def create_logistics_router(engine, get_actor_ctx):
     async def report_variance(receipt_id: str, data: VarianceReportSchema, actor: dict = Depends(get_actor_ctx)):
         return engine.report_variance(actor, receipt_id, data.model_dump())
 
+    @router.post("/clearance/v1/precheck")
+    async def precheck_cargo(data: ClearancePrecheckSchema, actor: dict = Depends(get_actor_ctx)):
+        return engine.precheck_cargo(actor, data.model_dump())
+
+    @router.post("/clearance/v1/declare")
+    async def submit_declaration(data: GoodsDeclarationSchema, actor: dict = Depends(get_actor_ctx)):
+        return engine.submit_declaration(actor, data.model_dump())
+
+    @router.post("/clearance/v1/assess")
+    async def assess_declaration(declaration_id: str, actor: dict = Depends(get_actor_ctx)):
+        return engine.assess_declaration(actor, declaration_id)
+
+    @router.post("/clearance/v1/pay-duty")
+    async def pay_duty(data: DutyPaymentSchema, actor: dict = Depends(get_actor_ctx)):
+        # CustomsPayConnector logic integrated
+        return engine.pay_duty(actor, data.model_dump())
+
+    @router.post("/clearance/v1/mark-released")
+    async def mark_released(data: ReleaseMarkSchema, actor: dict = Depends(get_actor_ctx)):
+        return engine.mark_released(actor, data.model_dump())
+
+    @router.post("/clearance/v1/mpl-pending")
+    async def mpl_pending(declaration_id: str, actor: dict = Depends(get_actor_ctx)):
+        return engine.set_mpl_pending(actor, declaration_id)
+
+    @router.post("/clearance/v1/gate-out")
+    async def gate_out(data: GateOutSchema, actor: dict = Depends(get_actor_ctx)):
+        return engine.gate_out(actor, data.model_dump())
+
+    @router.get("/clearance/v1/status/{declaration_id}")
+    async def poll_clearance_status(declaration_id: str):
+        from mnos.modules.imoxon.logistics.models import ClearanceDeclaration
+        with engine._get_db() as db:
+            dec = db.query(ClearanceDeclaration).filter(ClearanceDeclaration.declaration_id == declaration_id).first()
+            if not dec:
+                 raise HTTPException(status_code=404, detail="Declaration not found")
+            return {
+                "declaration_id": dec.declaration_id,
+                "status": dec.current_state,
+                "history": dec.state_history
+            }
+
     @router.post("/settlement/release")
     async def settlement_release(data: SettlementReleaseSchema, actor: dict = Depends(get_actor_ctx)):
         return engine.release_settlement(actor, data.manifest_id, data.order_id)
 
     @router.get("/track/{shipment_id}")
     async def track_shipment(shipment_id: str):
-        if shipment_id not in engine.shipments:
-             raise HTTPException(status_code=404, detail="Shipment not found")
-        return engine.shipments[shipment_id]
+        from mnos.modules.imoxon.logistics.models import LogisticsShipment
+        with engine._get_db() as db:
+            shipment = db.query(LogisticsShipment).filter(LogisticsShipment.id == shipment_id).first()
+            if not shipment:
+                 raise HTTPException(status_code=404, detail="Shipment not found")
+            return {
+                "id": shipment.id,
+                "status": shipment.status,
+                "origin": shipment.origin,
+                "destination": shipment.destination
+            }
 
     @router.get("/manifest/{manifest_id}")
     async def get_manifest(manifest_id: str):
-        if manifest_id not in engine.manifests:
-             raise HTTPException(status_code=404, detail="Manifest not found")
-        return engine.manifests[manifest_id]
+        from mnos.modules.imoxon.logistics.models import DeliveryManifest
+        with engine._get_db() as db:
+            manifest = db.query(DeliveryManifest).filter(DeliveryManifest.id == manifest_id).first()
+            if not manifest:
+                 raise HTTPException(status_code=404, detail="Manifest not found")
+            return {
+                "id": manifest.id,
+                "status": manifest.status,
+                "destination_id": manifest.destination_id
+            }
 
     @router.get("/audit/{trace_id}")
     async def get_audit_trail(trace_id: str):

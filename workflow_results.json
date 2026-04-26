@@ -2,12 +2,12 @@
   {
     "name": "User Onboarding",
     "res": "SUCCESS",
-    "id": "f78977f1-8339-46ea-b066-edce86cd163f"
+    "id": "81bbfeab-e619-45d9-90d9-1fd11dfbad0c"
   },
   {
     "name": "Merchant Onboarding",
     "res": "SUCCESS",
-    "id": "cbad6047-799d-464e-a09d-e91b9ecb0b2a"
+    "id": "14862635-7da9-48bb-821c-ae9b7b488a58"
   },
   {
     "name": "Coupon Flow",
@@ -16,7 +16,7 @@
   {
     "name": "Checkout Flow",
     "res": "SUCCESS",
-    "total": 1287.0
+    "total": 1188.0
   },
   {
     "name": "Payout Flow",

@@ -19,6 +19,18 @@ def create_specialized_router(tourism, faith, transport, housing, exchange, educ
     async def lease_housing(data: dict, actor: dict = Depends(get_actor_ctx)):
         return housing.create_lease(actor, data)
 
+    @router.post("/exchange/asset/list")
+    async def exchange_list(data: dict, actor: dict = Depends(get_actor_ctx)):
+        return exchange.list_asset(actor, data)
+
+    @router.post("/exchange/asset/bid")
+    async def exchange_bid(asset_id: str, bid_amount: float, actor: dict = Depends(get_actor_ctx)):
+        return exchange.place_bid(actor, asset_id, bid_amount)
+
+    @router.post("/exchange/asset/finalize")
+    async def exchange_finalize(asset_id: str, winning_bid_id: str, actor: dict = Depends(get_actor_ctx)):
+        return exchange.finalize_exchange(actor, asset_id, winning_bid_id)
+
     @router.post("/exchange/transfer")
     async def transfer_exchange(data: dict, actor: dict = Depends(get_actor_ctx)):
         return exchange.transfer_asset(actor, data)

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 from datetime import datetime
 
 class ShipmentItemSchema(BaseModel):
@@ -61,3 +61,29 @@ class VarianceReportSchema(BaseModel):
 class SettlementReleaseSchema(BaseModel):
     manifest_id: str
     order_id: str
+
+class ClearancePrecheckSchema(BaseModel):
+    shipment_id: str
+    items: List[Dict]
+    total_cif_value_mvr: float
+    importer_registration: str
+
+class GoodsDeclarationSchema(BaseModel):
+    shipment_id: str
+    declaration_type: str
+    documents: Dict[str, str]
+
+class DutyPaymentSchema(BaseModel):
+    declaration_id: str
+    amount_mvr: float
+    payment_source: str
+    breakdown: Dict[str, float]
+
+class ReleaseMarkSchema(BaseModel):
+    declaration_id: str
+    evidence: Dict[str, Any]
+
+class GateOutSchema(BaseModel):
+    declaration_id: str
+    mpl_gate_pass: str
+    vehicle_details: Dict[str, str]

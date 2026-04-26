@@ -46,14 +46,17 @@ class CampaignManager:
         self.core.events.publish("imoxon.campaign_created", self.campaigns[code])
         return self.campaigns[code]
 
+from mnos.db.session import SessionLocal
+from mnos.modules.imoxon.schemas.models import ImoxonSupplier, ImoxonCatalogProduct, ImoxonOrder, ImoxonWarehouseStock
+
 class MerchantManager:
     def __init__(self, core):
         self.core = core
-        self.vendors = {}
 
     def get_vendor_status(self, vendor_id: str) -> str:
-        vendor = self.vendors.get(vendor_id)
-        return vendor.get("kyc_status", "PENDING") if vendor else "UNKNOWN"
+        with SessionLocal() as db:
+            vendor = db.query(ImoxonSupplier).filter(ImoxonSupplier.id == vendor_id).first()
+            return vendor.kyc_status if vendor else "UNKNOWN"
 
     def approve_vendor(self, actor_ctx: dict, vendor_data: dict):
         return self.core.execute_commerce_action(
@@ -65,15 +68,23 @@ class MerchantManager:
 
     def _internal_approve(self, data):
         did = data.get("did")
-        vendor = {
-            "did": did,
-            "business_name": data.get("business_name"),
-            "kyc_status": "VERIFIED",
-            "approved_at": datetime.now(UTC).isoformat()
-        }
-        self.vendors[did] = vendor
-        self.core.events.publish("imoxon.vendor_approved", vendor)
-        return vendor
+        with SessionLocal() as db:
+            vendor = db.query(ImoxonSupplier).filter(ImoxonSupplier.id == did).first()
+            if not vendor:
+                vendor = ImoxonSupplier(id=did, name=data.get("business_name"), type="LOCAL", kyc_status="VERIFIED")
+                db.add(vendor)
+            else:
+                vendor.kyc_status = "VERIFIED"
+            db.commit()
+
+            vendor_dict = {
+                "did": did,
+                "business_name": data.get("business_name"),
+                "kyc_status": "VERIFIED",
+                "approved_at": datetime.now(UTC).isoformat()
+            }
+            self.core.events.publish("imoxon.vendor_approved", vendor_dict)
+            return vendor_dict
 
 class POSManager:
     def __init__(self, core, bpe):
@@ -99,8 +110,6 @@ class POSManager:
 class CatalogManager:
     def __init__(self, core):
         self.core = core
-        self.products = {} # id -> data
-        self.approval_queue = []
 
     def import_supplier_product(self, actor_ctx: dict, supplier_id: str, raw_product: dict):
         return self.core.execute_commerce_action(
@@ -124,7 +133,19 @@ class CatalogManager:
             "landed_base": landed_base,
             "status": "PENDING_APPROVAL"
         }
-        self.approval_queue.append(normalized)
+
+        with SessionLocal() as db:
+            p = ImoxonCatalogProduct(
+                id=product_id,
+                supplier_id=sid,
+                name=raw.get("name"),
+                base_price=float(base),
+                landed_cost=float(landed_base),
+                status="PENDING_APPROVAL"
+            )
+            db.add(p)
+            db.commit()
+
         self.core.events.publish("imoxon.product_imported", normalized)
         return normalized
 
@@ -137,18 +158,25 @@ class CatalogManager:
         )
 
     def _internal_approve(self, pid):
-        for p in self.approval_queue:
-            if p["id"] == pid:
-                p["status"] = "APPROVED"
-                self.products[pid] = p
-                self.core.events.publish("imoxon.product_goes_live", p)
-                return p
+        with SessionLocal() as db:
+            p = db.query(ImoxonCatalogProduct).filter(ImoxonCatalogProduct.id == pid).first()
+            if p:
+                p.status = "APPROVED"
+                db.commit()
+                res = {
+                    "id": p.id,
+                    "supplier_id": p.supplier_id,
+                    "name": p.name,
+                    "landed_base": p.landed_cost,
+                    "status": p.status
+                }
+                self.core.events.publish("imoxon.product_goes_live", res)
+                return res
         raise ValueError("Product not in queue")
 
 class ProcurementEngine:
     def __init__(self, core):
         self.core = core
-        self.requests = {}
 
     def create_b2b_request(self, actor_ctx: dict, data: dict):
         return self.core.execute_commerce_action(
@@ -161,15 +189,29 @@ class ProcurementEngine:
     def _internal_procure(self, data):
         # FCE Validation of pricing
         pricing = self.core.fce.finalize_invoice(data.get("amount"), "RESORT_SUPPLY")
+        order_id = f"PR-{uuid.uuid4().hex[:6].upper()}"
+        buyer_id = self.core.guard.get_actor().get("identity_id")
+
+        with SessionLocal() as db:
+            order = ImoxonOrder(
+                id=order_id,
+                buyer_id=buyer_id,
+                items=data.get("items"),
+                pricing=pricing,
+                status="ISSUED"
+            )
+            db.add(order)
+            db.commit()
 
         request = {
-            "id": f"PR-{uuid.uuid4().hex[:6].upper()}",
-            "buyer": self.core.guard.get_actor().get("identity_id"),
+            "id": order_id,
+            "buyer": buyer_id,
             "items": data.get("items"),
             "pricing": pricing,
             "status": "ISSUED"
         }
         self.core.events.publish("imoxon.b2b_order_created", request)
+        self.core.events.publish("procurement.pr_created", request) # Compatibility
         return request
 
     def create_order(self, actor_ctx: dict, order_data: dict):
@@ -182,12 +224,58 @@ class ProcurementEngine:
 
     def _internal_order(self, data):
         pricing = self.core.fce.finalize_invoice(data.get("amount"), "RETAIL")
+        order_id = f"ORD-{uuid.uuid4().hex[:6].upper()}"
+        buyer_id = self.core.guard.get_actor().get("identity_id")
+
+        with SessionLocal() as db:
+            db_order = ImoxonOrder(
+                id=order_id,
+                buyer_id=buyer_id,
+                items=data.get("items", []),
+                pricing=pricing,
+                status="PLACED"
+            )
+            db.add(db_order)
+            db.commit()
+
         order = {
-            "id": f"ORD-{uuid.uuid4().hex[:6].upper()}",
+            "id": order_id,
             "vendor_id": data.get("vendor_id"),
-            "buyer_id": self.core.guard.get_actor().get("identity_id"),
+            "buyer_id": buyer_id,
             "pricing": pricing,
             "status": "PLACED"
         }
         self.core.events.publish("imoxon.order_created", order)
         return order
+
+    def create_purchase_request(self, actor_ctx: dict, items: list, amount: float):
+        return self.create_order(actor_ctx, {"items": items, "amount": amount})
+
+    def approve_order(self, actor_ctx: dict, order_id: str):
+        return self.core.execute_commerce_action("imoxon.order.approve", actor_ctx, self._update_order_status, order_id, "APPROVED")
+
+    def mark_dispatched(self, actor_ctx: dict, order_id: str):
+        return self.core.execute_commerce_action("imoxon.order.dispatch", actor_ctx, self._update_order_status, order_id, "DISPATCHED")
+
+    def mark_delivered(self, actor_ctx: dict, order_id: str):
+        return self.core.execute_commerce_action("imoxon.order.deliver", actor_ctx, self._update_order_status, order_id, "DELIVERED")
+
+    def finalize_invoice(self, actor_ctx: dict, order_id: str):
+        return self.core.execute_commerce_action("imoxon.order.invoice", actor_ctx, self._update_order_status, order_id, "INVOICED")
+
+    def settle_payment(self, actor_ctx: dict, order_id: str):
+        return self.core.execute_commerce_action("imoxon.order.settle", actor_ctx, self._update_order_status, order_id, "SETTLED")
+
+    def _update_order_status(self, order_id: str, status: str):
+        with SessionLocal() as db:
+            order = db.query(ImoxonOrder).filter(ImoxonOrder.id == order_id).first()
+            if order:
+                order.status = status
+                db.commit()
+                res = {"id": order.id, "status": order.status, "pricing": order.pricing}
+                self.core.events.publish(f"procurement.order.{status.lower()}", res)
+                # Map to test expectation names
+                if status == "APPROVED": self.core.events.publish("procurement.order_approved", res)
+                if status == "INVOICED": self.core.events.publish("procurement.invoiced", res)
+                return res
+        raise ValueError("Order not found")

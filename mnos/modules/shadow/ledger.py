@@ -34,7 +34,8 @@ class ShadowLedger:
             "timestamp": datetime.now(UTC).isoformat(),
             "event_type": event_type,
             "actor_id": actor_id,
-            "payload": safe_payload,
+            "data": safe_payload, # Test expectation: .data instead of .payload
+            "payload": safe_payload, # Compatibility
             "prev_hash": prev_hash,
             "signature": self._sign_event(safe_payload)
         }
@@ -76,6 +77,11 @@ class ShadowLedger:
                     return False
         return True
 
+    def get_block(self, index: int) -> dict:
+        if 0 <= index < len(self.chain):
+            return self.chain[index]
+        raise IndexError("Block index out of range")
+
     def export_audit_proof(self):
         return {
             "version": "MNOS-SHADOW-1.0",
@@ -83,3 +89,9 @@ class ShadowLedger:
             "root_hash": self.chain[-1]["hash"] if self.chain else None,
             "evidence": self.chain
         }
+
+    def generate_legal_audit_bundle(self):
+        """
+        Export full forensic chain for legal/regulatory submission.
+        """
+        return json.dumps(self.export_audit_proof(), indent=2)

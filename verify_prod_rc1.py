@@ -68,6 +68,17 @@ async def run_production_rc1_audit():
         shp_id = res.json()["id"]
         # Deliver
         await client.post("/api/v1/logistics/port/arrival", params={"shipment_id": shp_id}, headers=h)
+
+        # Verify Persistence
+        from mnos.modules.imoxon.logistics.models import LogisticsShipment
+        from mnos.db.session import SessionLocal
+        with SessionLocal() as db:
+            shp = db.query(LogisticsShipment).filter(LogisticsShipment.id == shp_id).first()
+            if shp and shp.status == "ARRIVED_MALDIVES":
+                 print("    PASS: Database Persistence Verified.")
+            else:
+                 print(f"    FAIL: Database Persistence Mismatch ({shp.status if shp else 'None'})")
+
         print("    PASS: State Machine Transitions verified.")
 
         # 5. ZERO TRUST REJECTION

@@ -108,6 +108,35 @@ class DeliveryVariance(Base):
     variance_pct = Column(Float)
     notes = Column(Text)
 
+class ClearanceDeclaration(Base):
+    __tablename__ = 'clearance_declarations'
+    declaration_id = Column(String(32), primary_key=True)
+    shipment_id = Column(String(32), nullable=False)
+    current_state = Column(String(30), nullable=False) # PRECHECK, DECLARED, PAID, RELEASED, GATE_OUT
+    state_history = Column(JSON, nullable=False)
+    mpl_gate_pass = Column(String(32))
+    pca_vault_id = Column(String(32))
+    shadow_audit_ref = Column(String(64), nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+class PCAVault(Base):
+    __tablename__ = 'pca_vault'
+    vault_id = Column(String(32), primary_key=True)
+    declaration_id = Column(String(32), ForeignKey('clearance_declarations.declaration_id'))
+    status = Column(String(30)) # BUILDING, READY, SEALED
+    documents = Column(JSON) # List of doc types and hashes
+    retention_until = Column(DateTime)
+    sealed_at = Column(DateTime)
+
+class TariffEntry(Base):
+    __tablename__ = 'tariffs'
+    hs_code = Column(String(20), primary_key=True)
+    description = Column(Text)
+    duty_pct = Column(Float)
+    gst_rate = Column(Float)
+    restriction_flag = Column(Boolean, default=False)
+
 class LogisticsAuditEvent(Base):
     __tablename__ = 'logistics_audit_events'
     id = Column(String(50), primary_key=True)

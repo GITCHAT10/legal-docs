@@ -97,6 +97,61 @@ class FCEEngine:
         }
         return settlement
 
+    def calculate_installment_plan(self, total_amount: float, months: int) -> dict:
+        """
+        iMOXON Installment Flow: Splits payment into scheduled monthly chunks.
+        """
+        total = Decimal(str(total_amount))
+        monthly_base = (total / Decimal(str(months))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+        # Adjust last installment for rounding drift
+        last_installment = total - (monthly_base * Decimal(str(months - 1)))
+
+        schedule = []
+        for i in range(1, months):
+            schedule.append({
+                "period": i,
+                "amount": float(monthly_base),
+                "status": "SCHEDULED"
+            })
+
+        schedule.append({
+            "period": months,
+            "amount": float(last_installment),
+            "status": "SCHEDULED"
+        })
+
+        return {
+            "plan_id": f"CRED-{uuid.uuid4().hex[:6].upper()}",
+            "total_amount": float(total),
+            "months": months,
+            "monthly_amount": float(monthly_base),
+            "schedule": schedule,
+            "status": "ACTIVE"
+        }
+
+    def calculate_payout(self, order_total: float, commission_rate: float = 0.05) -> dict:
+        """
+        iMOXON Payout Flow: Calculates net payout after platform commission and taxes.
+        """
+        total = Decimal(str(order_total))
+        commission = (total * Decimal(str(commission_rate))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+        # Taxes on commission (e.g., 8% GST on the service provided by the platform)
+        commission_tax = (commission * Decimal("0.08")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+        net_payout = total - commission - commission_tax
+
+        return {
+            "payout_id": f"PAY-{uuid.uuid4().hex[:6].upper()}",
+            "order_total": float(total),
+            "commission": float(commission),
+            "commission_tax": float(commission_tax),
+            "net_payout": float(net_payout),
+            "scheduled_date": datetime.now(UTC).isoformat(),
+            "status": "SCHEDULED"
+        }
+
 class FCEHardenedEngine:
     """
     FCE Hardened Engine: Legacy wrapper for Phase 1.

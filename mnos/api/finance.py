@@ -18,12 +18,7 @@ def create_finance_router(fce_hardened, get_actor_ctx):
 
     @router.post("/installment")
     async def create_installment(total: float, months: int, actor: dict = Depends(get_actor_ctx)):
-        plan = {
-            "total": total,
-            "months": months,
-            "monthly": round(total / months, 2),
-            "status": "ACTIVE"
-        }
-        return plan
+        from main import fce_core
+        return fce_core.calculate_installment_plan(total, months)
 
     return router

@@ -21,5 +21,7 @@ def get_db():
 
 def init_db():
     from mnos.db.schema import Base
-    from mnos.modules.imoxon.schemas.models import ImoxonSupplier # Ensure all models imported
+    # Ensure all models are imported so metadata is populated
+    from mnos.modules.imoxon.schemas.models import ImoxonSupplier, ImoxonCatalogProduct, ImoxonOrder, ImoxonWarehouseStock
+    from mnos.modules.imoxon.logistics.models import LogisticsShipment, LogisticsShipmentItem, PortClearanceJob, SkygodownReceipt, SkygodownLot, LotAllocation, DeliveryManifest, ManifestItem, TransportAssignment, DeliveryScanEvent, DeliveryReceipt, DeliveryVariance, ClearanceDeclaration, PCAVault, TariffEntry, LogisticsAuditEvent
     Base.metadata.create_all(bind=engine)

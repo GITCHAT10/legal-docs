@@ -1,0 +1,13 @@
+🚀 STARTING PERSISTENCE & RESTART RESILIENCE TEST
+------------------------------------------------------------
+[1] Creating initial state...
+[STREAM] IDENTITY_CREATED published to GLOBAL (ID: eba0ead3)
+[STREAM] imoxon.vendor_approved published to GLOBAL (ID: 66bc197e)
+[STREAM] shipment.created published to GLOBAL (ID: 1d8087e9)
+    Shipment Created: SHP-68B5BC54
+[2] Simulating engine re-instantiation...
+[3] Verifying data survives in new engine instances...
+    Merchant Status (New Instance): VERIFIED
+    Shipment Status (Database): CREATED
+------------------------------------------------------------
+✅ PERSISTENCE VERIFIED: NO CRITICAL IN-MEMORY STATE DETECTED

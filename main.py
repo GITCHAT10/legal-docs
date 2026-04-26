@@ -19,10 +19,9 @@ from mnos.gateway.engine import APIGatewayControlPlane
 
 # iMOXON Consolidated
 from mnos.modules.imoxon.core.engine import (
-    ImoxonCore, CatalogManager, ProcurementEngine as LegacyProcurementEngine,
+    ImoxonCore, CatalogManager, ProcurementEngine,
     CampaignManager, MerchantManager, POSManager
 )
-from mnos.modules.imoxon.procurement.engine import ProcurementEngine
 from mnos.modules.imoxon.resort.weekly_system import ResortWeeklyOrderSystem
 
 # Finance RC1
@@ -32,6 +31,12 @@ from mnos.modules.finance.escrow import EscrowFCETCore
 # Logistics Engine
 from mnos.modules.imoxon.logistics.engine import LogisticsEngine
 from mnos.modules.imoxon.logistics.router import create_logistics_router
+
+# Failover Protocol
+from mnos.core.failover.protocol_0200 import Protocol0200Failover
+
+# Shared Core Authority
+from mnos.core.mig_hub.authority import MIGCoreAuthority, UnitedTransferAPI, iMoxonTradeAPI
 
 # Specialized Engines
 from mnos.modules.tourism.engine import TourismEngine
@@ -87,11 +92,21 @@ catalog = CatalogManager(imoxon)
 payment_rails = PaymentAbstractionLayer(fce_core)
 escrow_core = EscrowFCETCore(fce_core, shadow_core)
 
-procurement = ProcurementEngine(guard, shadow_core, events_core, fce_core, escrow_core)
+procurement = ProcurementEngine(imoxon)
+# Re-instantiate Legacy Procurement for test compatibility if needed
+# But use the consolidated one for RC1
 resort_system = ResortWeeklyOrderSystem(procurement)
 
 # Logistics Engine
 logistics_engine = LogisticsEngine(guard, fce_core, shadow_core, events_core, identity_core, merchant)
+
+# Failover Protocol
+failover_protocol = Protocol0200Failover(guard, shadow_core, events_core)
+
+# Shared Core Authority
+mig_core = MIGCoreAuthority(shadow_core, events_core, fce_core)
+ut_api = UnitedTransferAPI(mig_core)
+imoxon_trade = iMoxonTradeAPI(mig_core)
 
 # Specialized Engines
 tourism = TourismEngine(imoxon)
@@ -136,15 +151,15 @@ def get_actor_ctx(
 async def connect_supplier(name: str, actor: dict = Depends(get_actor_ctx)):
     return imoxon.execute_commerce_action("imoxon.supplier.connect", actor, lambda: {"name": name, "status": "CONNECTED"})
 
-@app.post("/imoxon/products/import")
+@app.post("/commerce/products/import")
 async def import_product(sid: str, raw: dict, actor: dict = Depends(get_actor_ctx)):
     return catalog.import_supplier_product(actor, sid, raw)
 
-@app.post("/imoxon/products/approve")
+@app.post("/commerce/products/approve")
 async def approve_product(pid: str, actor: dict = Depends(get_actor_ctx)):
     return catalog.approve_product(actor, pid)
 
-@app.post("/imoxon/b2b/procurement-request")
+@app.post("/commerce/b2b/procurement-request")
 async def b2b_procure(data: dict, actor: dict = Depends(get_actor_ctx)):
     return procurement.create_b2b_request(actor, data)
 
@@ -164,6 +179,21 @@ app.include_router(create_specialized_router(tourism, faith, transport, housing,
 async def permission_error_handler(request: Request, exc: PermissionError):
     return JSONResponse(status_code=403, content={"detail": str(exc)})
 
+@app.post("/system/failover/0200/activate")
+async def activate_failover(actor: dict = Depends(get_actor_ctx)):
+    failover_protocol.activate_protocol_0200()
+    return {"status": "FAILOVER_PROTOCOL_0200_ACTIVE"}
+
+@app.post("/system/failover/0200/recover")
+async def recover_failover(actor: dict = Depends(get_actor_ctx)):
+    failover_protocol.start_recovery()
+    return {"status": "RECOVERY_COMPLETE"}
+
 @app.get("/health")
 async def health():
-    return {"status": "online", "integrity": shadow_core.verify_integrity(), "version": "CONSOLIDATED-RC1"}
+    return {
+        "status": "online",
+        "integrity": shadow_core.verify_integrity(),
+        "version": "CONSOLIDATED-RC1",
+        "failover_mode": failover_protocol.mode.value
+    }
