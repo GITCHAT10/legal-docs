@@ -1,8 +1,8 @@
 from sqlalchemy import Column, Integer, String, Date, DateTime, UniqueConstraint
 from datetime import datetime, UTC
-from mnos.core.db.base_class import Base
+from mnos.core.db.base_class import Base, TraceableMixin
 
-class Guest(Base):
+class Guest(Base, TraceableMixin):
     id = Column(Integer, primary_key=True, index=True)
     tenant_id = Column(String, index=True, nullable=False, default="default")
     trace_id = Column(String, index=True, nullable=False)

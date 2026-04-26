@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, ForeignKey, Enum, DateTime, Uniq
 from sqlalchemy.orm import relationship
 import enum
 from datetime import datetime
-from mnos.core.db.base_class import Base
+from mnos.core.db.base_class import Base, TraceableMixin
 
 class TransferType(str, enum.Enum):
     BOAT = "boat"
@@ -16,7 +16,7 @@ class TransferStatus(str, enum.Enum):
     COMPLETED = "completed"
     CANCELLED = "cancelled"
 
-class Vehicle(Base):
+class Vehicle(Base, TraceableMixin):
     id = Column(Integer, primary_key=True, index=True)
     tenant_id = Column(String, index=True, nullable=False, default="default")
     trace_id = Column(String, index=True, nullable=False)
@@ -31,7 +31,7 @@ class Vehicle(Base):
 
     __table_args__ = (UniqueConstraint('tenant_id', 'trace_id', name='_vehicle_tenant_trace_uc'),)
 
-class TransferRequest(Base):
+class TransferRequest(Base, TraceableMixin):
     id = Column(Integer, primary_key=True, index=True)
     tenant_id = Column(String, index=True, nullable=False, default="default")
     trace_id = Column(String, index=True, nullable=False)
@@ -51,7 +51,7 @@ class TransferRequest(Base):
     vehicle = relationship("Vehicle")
     __table_args__ = (UniqueConstraint('tenant_id', 'trace_id', name='_transfer_tenant_trace_uc'),)
 
-class Manifest(Base):
+class Manifest(Base, TraceableMixin):
     id = Column(Integer, primary_key=True, index=True)
     tenant_id = Column(String, index=True, nullable=False, default="default")
     trace_id = Column(String, index=True, nullable=False)

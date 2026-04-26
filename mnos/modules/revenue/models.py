@@ -1,9 +1,9 @@
 from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, UniqueConstraint, JSON
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from mnos.core.db.base_class import Base
+from mnos.core.db.base_class import Base, TraceableMixin
 
-class PartnerContract(Base):
+class PartnerContract(Base, TraceableMixin):
     """
     GOVERN Layer: Contract definition.
     Defines profit sharing rules for partners.
@@ -20,7 +20,7 @@ class PartnerContract(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     __table_args__ = (UniqueConstraint('tenant_id', 'trace_id', name='_contract_tenant_trace_uc'),)
 
-class RevenueSplit(Base):
+class RevenueSplit(Base, TraceableMixin):
     """
     REVENUE Layer: Profit distribution logic.
     Linked to FCE FolioLines.

@@ -1,8 +1,8 @@
 from sqlalchemy import Column, Integer, String, DateTime, JSON
-from mnos.core.db.base_class import Base
+from mnos.core.db.base_class import Base, TraceableMixin
 from datetime import datetime
 
-class Evidence(Base):
+class Evidence(Base, TraceableMixin):
     id = Column(Integer, primary_key=True, index=True)
     trace_id = Column(String, index=True, nullable=False)
     actor = Column(String)

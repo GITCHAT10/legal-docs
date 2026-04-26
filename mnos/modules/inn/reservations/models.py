@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, Date, ForeignKey, Enum, Float, D
 from sqlalchemy.orm import relationship
 import enum
 from datetime import datetime, UTC
-from mnos.core.db.base_class import Base
+from mnos.core.db.base_class import Base, TraceableMixin
 
 class ReservationStatus(str, enum.Enum):
     PENDING = "pending"
@@ -19,7 +19,7 @@ class RoomStatus(str, enum.Enum):
     OCCUPIED = "occupied"
     OUT_OF_ORDER = "ooo"
 
-class Room(Base):
+class Room(Base, TraceableMixin):
     id = Column(Integer, primary_key=True, index=True)
     tenant_id = Column(String, index=True, nullable=False, default="default")
     trace_id = Column(String, index=True, nullable=False)
@@ -36,7 +36,7 @@ class Room(Base):
     __table_args__ = (UniqueConstraint('tenant_id', 'room_number', name='_room_tenant_number_uc'),
                       UniqueConstraint('tenant_id', 'trace_id', name='_room_tenant_trace_uc'))
 
-class Reservation(Base):
+class Reservation(Base, TraceableMixin):
     id = Column(Integer, primary_key=True, index=True)
     tenant_id = Column(String, index=True, nullable=False, default="default")
     trace_id = Column(String, index=True, nullable=False)
@@ -55,7 +55,7 @@ class Reservation(Base):
 
     __table_args__ = (UniqueConstraint('tenant_id', 'trace_id', name='_res_tenant_trace_uc'),)
 
-class Stay(Base):
+class Stay(Base, TraceableMixin):
     id = Column(Integer, primary_key=True, index=True)
     tenant_id = Column(String, index=True, nullable=False, default="default")
     trace_id = Column(String, index=True, nullable=False)
