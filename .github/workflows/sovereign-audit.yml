@@ -1,0 +1,27 @@
+name: iMOXON Sovereign Audit CI
+
+on:
+  pull_request:
+    paths:
+      - "mnos/**"
+      - "united_transfer_system/**"
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          pip install pytest sqlalchemy pydantic fastapi
+      - name: Run Sovereign Audit Tests
+        env:
+          AEGIS_API_KEY: ${{ secrets.AEGIS_API_KEY }}
+          MIRA_AUDIT_TOKEN: ${{ secrets.MIRA_AUDIT_TOKEN }}
+          NEXGEN_SOVEREIGN_SECRET: "CI_TEST_SECRET"
+        run: |
+          pytest united_transfer_system/tests/test_ut_trust.py

@@ -16,14 +16,16 @@ class SyncBuffer:
         self._buffer: List[Dict[str, Any]] = []
         self._buffer_size = buffer_size
 
+    def append(self, transaction: Dict[str, Any]):
+        """Alias for queue_transaction to support AEGIS Edge Node API."""
+        self.queue_transaction(transaction["trace_id"], transaction)
+
     def queue_transaction(self, trace_id: str, payload: Dict[str, Any]):
         self._buffer.append({
             "trace_id": trace_id,
             "payload": payload,
             "offline_timestamp": datetime.now(UTC).isoformat()
         })
-
-        # In a real system, we might trigger process_sync if buffer is full
 
     def process_sync(self, db: Session) -> List[str]:
         """
@@ -43,7 +45,7 @@ class SyncBuffer:
                     "action": "OFFLINE_SYNC",
                     "original_payload": tx["payload"],
                     "offline_at": tx["offline_timestamp"],
-                    "compliance_tags": ["BUBBLE-SYNC"]
+                    "compliance_tags": tx["payload"].get("compliance_tags", ["BUBBLE-SYNC"])
                 })
                 sealed_traces.append(tx["trace_id"])
 
