@@ -43,11 +43,18 @@ class IdentityPolicyEngine:
 
     def _has_role(self, identity_id, role_name):
         if not identity_id: return False
-        # Simplified check for demo
-        profile = self.identity_core.profiles.get(identity_id)
-        return profile and profile.get("profile_type") == role_name
+        from mnos.db.session import SessionLocal
+        from mnos.db.schema import AegisIdentityProfile
+        import uuid
+        with SessionLocal() as db:
+            profile = db.query(AegisIdentityProfile).filter(AegisIdentityProfile.identity_id == uuid.UUID(identity_id)).first()
+            return profile and profile.profile_type == role_name
 
     def _is_verified(self, identity_id):
         if not identity_id: return False
-        profile = self.identity_core.profiles.get(identity_id)
-        return profile and profile.get("verification_status") == "verified"
+        from mnos.db.session import SessionLocal
+        from mnos.db.schema import AegisIdentityProfile
+        import uuid
+        with SessionLocal() as db:
+            profile = db.query(AegisIdentityProfile).filter(AegisIdentityProfile.identity_id == uuid.UUID(identity_id)).first()
+            return profile and profile.verification_status == "verified"

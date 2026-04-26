@@ -21,4 +21,11 @@ def create_finance_router(fce_hardened, get_actor_ctx):
         from main import fce_core
         return fce_core.calculate_installment_plan(total, months)
 
+    @router.post("/customs/pay-duty")
+    async def customs_pay_duty(declaration_id: str, amount: float, supervisor_id: str = None, actor: dict = Depends(get_actor_ctx)):
+        from mnos.modules.imoxon.integrations.customs_pay import CustomsPayConnector
+        from main import fce_core
+        connector = CustomsPayConnector(fce_core)
+        return connector.settle_duty(actor["identity_id"], amount, declaration_id, supervisor_id)
+
     return router
