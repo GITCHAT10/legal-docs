@@ -64,6 +64,11 @@ from mnos.modules.bubble.chat.engine import ChatIntentEngine, ChatToTransactionE
 from mnos.modules.bubble.sdk.core.bridge import BubbleSDK
 from mnos.modules.bubble.pos.engine import BubblePOSEngine
 from mnos.modules.bubble.pos.bridge import BubbleBPEBridge
+from mnos.modules.bubble.orchestrator import OrderExecutionValidator
+
+# ExMail Communication OS
+from mnos.modules.exmail.service import ExMailEngine
+from mnos.modules.exmail.escalation import EscalationEngine
 
 app = FastAPI(title="iMOXON N-DEOS: Consolidated Architecture Final")
 
@@ -137,6 +142,11 @@ imoxon.reinvestment = reinvestment_engine
 intent_engine = ChatIntentEngine(imoxon)
 chat_os = ChatToTransactionEngine(imoxon, intent_engine)
 sdk = BubbleSDK(imoxon)
+iluvia_orchestrator = OrderExecutionValidator(shadow_core, events_core)
+
+# ExMail OS
+exmail_engine = ExMailEngine(identity_core, shadow_core, events_core)
+escalation_engine = EscalationEngine(shadow_core, events_core)
 
 # L1 & L2 Security
 @app.middleware("http")
@@ -159,41 +169,50 @@ def get_actor_ctx(
     Forces identity verification via AEGIS registry and validates device binding.
     LOGS all attempts to SHADOW ledger.
     """
+    SYSTEM_CTX = {"identity_id": "SYSTEM", "role": "admin", "realm": "SYSTEM"}
+
     # Prefer Session-based Auth from Gateway
     if x_aegis_session:
         try:
             actor = identity_gateway.validate_session(x_aegis_session)
-            shadow_core.commit("aegis.auth.session.success", actor["identity_id"], {"session_id": x_aegis_session})
+            with guard.sovereign_context(SYSTEM_CTX):
+                shadow_core.commit("aegis.auth.session.success", actor["identity_id"], {"session_id": x_aegis_session})
             return actor
         except PermissionError as e:
-            shadow_core.commit("aegis.auth.session.failure", "UNKNOWN", {"reason": str(e)})
+            with guard.sovereign_context(SYSTEM_CTX):
+                shadow_core.commit("aegis.auth.session.failure", "UNKNOWN", {"reason": str(e)})
             raise HTTPException(status_code=403, detail=str(e))
 
     # Fallback to Direct Hardened Handshake (B2B / API)
     if not x_aegis_identity or not x_aegis_device or not x_aegis_signature:
-        shadow_core.commit("aegis.auth.direct.failure", "UNKNOWN", {"reason": "Missing Headers"})
+        with guard.sovereign_context(SYSTEM_CTX):
+            shadow_core.commit("aegis.auth.direct.failure", "UNKNOWN", {"reason": "Missing Headers"})
         raise HTTPException(status_code=401, detail="AEGIS_REQUIRED: Missing Identity, Device or Signature")
 
     # 1. Identity lookup via AEGIS registry (persistence)
     profile = identity_core.profiles.get(x_aegis_identity)
     if not profile:
-        shadow_core.commit("aegis.auth.identity.invalid", x_aegis_identity, {"reason": "Not in Registry"})
+        with guard.sovereign_context(SYSTEM_CTX):
+            shadow_core.commit("aegis.auth.identity.invalid", x_aegis_identity, {"reason": "Not in Registry"})
         raise HTTPException(status_code=401, detail="INVALID_IDENTITY: Unauthorized")
 
     # 2. Validate device binding (device.owner_id == identity.id)
     device = identity_core.devices.get(x_aegis_device)
     if not device or device.get("identity_id") != x_aegis_identity:
-        shadow_core.commit("aegis.auth.device.mismatch", x_aegis_identity, {"device_id": x_aegis_device})
+        with guard.sovereign_context(SYSTEM_CTX):
+            shadow_core.commit("aegis.auth.device.mismatch", x_aegis_identity, {"device_id": x_aegis_device})
         raise HTTPException(status_code=403, detail="DEVICE_BINDING_INVALID: Access Denied")
 
     # 3. Cryptographic Signature Validation
     if x_aegis_signature != f"VALID_SIG_FOR_{x_aegis_identity}":
-         shadow_core.commit("aegis.auth.sig.failed", x_aegis_identity, {"sig": x_aegis_signature})
-         raise HTTPException(status_code=403, detail="HANDSHAKE_FAILED: Invalid Signature")
+        with guard.sovereign_context(SYSTEM_CTX):
+            shadow_core.commit("aegis.auth.sig.failed", x_aegis_identity, {"sig": x_aegis_signature})
+        raise HTTPException(status_code=403, detail="HANDSHAKE_FAILED: Invalid Signature")
 
     # 4. Success: Derive role from database (NO HEADER TRUST)
     actor = {
         "identity_id": x_aegis_identity,
+        "device_id": x_aegis_device, # MANDATORY for ExecutionGuard
         "role": profile.get("profile_type"),
         "realm": "API_DIRECT",
         "org_id": profile.get("organization_id"),
@@ -201,7 +220,8 @@ def get_actor_ctx(
         "verified": profile.get("verification_status") == "verified",
         "persistent_hash": profile.get("persistent_identity_hash")
     }
-    shadow_core.commit("aegis.auth.direct.success", x_aegis_identity, {"role": actor["role"]})
+    with guard.sovereign_context(SYSTEM_CTX):
+        shadow_core.commit("aegis.auth.direct.success", x_aegis_identity, {"role": actor["role"]})
     return actor
 
 # --- Consolidated APIs ---
@@ -209,22 +229,25 @@ def get_actor_ctx(
 @app.post("/imoxon/suppliers/connect")
 async def connect_supplier(name: str, actor: dict = Depends(get_actor_ctx)):
     # Create a profile in Aegis for the supplier to get a real ID
-    supplier_id = identity_core.create_profile({
-        "full_name": name,
-        "profile_type": "supplier",
-        "organization_id": "IMOXON-NETWORK"
-    })
-    profile = identity_core.profiles[supplier_id]
-
-    return imoxon.execute_commerce_action(
-        "imoxon.supplier.connect",
-        actor,
-        lambda: {
+    # This must be guarded as it mutates SHADOW
+    def _internal_connect():
+        supplier_id = identity_core.create_profile({
+            "full_name": name,
+            "profile_type": "supplier",
+            "organization_id": "IMOXON-NETWORK"
+        })
+        profile = identity_core.profiles[supplier_id]
+        return {
             "supplier_id": supplier_id,
             "name": name,
             "status": "CONNECTED",
             "persistent_hash": profile["persistent_identity_hash"]
         }
+
+    return guard.execute_sovereign_action(
+        "imoxon.supplier.connect",
+        actor,
+        _internal_connect
     )
 
 @app.post("/imoxon/orders/create")
@@ -242,6 +265,36 @@ async def approve_product(pid: str, actor: dict = Depends(get_actor_ctx)):
 @app.post("/bubble/chat/message")
 async def chat_message(message: str, actor: dict = Depends(get_actor_ctx)):
     return chat_os.process_message(actor, message)
+
+@app.post("/bubble/execution/confirm")
+async def confirm_execution(order_id: str, signal: dict, actor: dict = Depends(get_actor_ctx)):
+    """ILUVIA Reality Check: Confirm order via physical signal."""
+    return guard.execute_sovereign_action(
+        "bubble.execution.confirm",
+        actor,
+        iluvia_orchestrator.confirm_real_world,
+        order_id, signal
+    )
+
+@app.post("/exmail/ingest")
+async def exmail_ingest(channel: str, payload: dict, actor: dict = Depends(get_actor_ctx)):
+    """ExMail Ingestion: Normalize and route incoming communication."""
+    return guard.execute_sovereign_action(
+        "exmail.ingest",
+        actor,
+        exmail_engine.ingest,
+        channel, payload
+    )
+
+@app.post("/exmail/escalation/check")
+async def trigger_escalation_check(actor: dict = Depends(get_actor_ctx)):
+    """Manual trigger for Escalation Engine check."""
+    guard.execute_sovereign_action(
+        "exmail.escalation.check",
+        actor,
+        escalation_engine.run_check
+    )
+    return {"status": "ESCALATION_CHECK_TRIGGERED"}
 
 # --- Routers ---
 app.include_router(create_identity_router(identity_core, policy_engine, identity_gateway), prefix="/imoxon")
@@ -263,6 +316,11 @@ app.include_router(create_laundry_router(laundry_engine, get_actor_ctx), prefix=
 @app.exception_handler(PermissionError)
 async def permission_error_handler(request: Request, exc: PermissionError):
     return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+@app.exception_handler(RuntimeError)
+async def runtime_error_handler(request: Request, exc: RuntimeError):
+    # Sovereign Execution Failures (re-raised by Guard)
+    return JSONResponse(status_code=500, content={"detail": str(exc)})
 
 @app.get("/health")
 async def health():

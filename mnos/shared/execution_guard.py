@@ -4,6 +4,7 @@ from typing import Callable, Any, Dict, Optional
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+from contextlib import contextmanager
 
 # Context variable to track sovereign authorization
 _sovereign_context = contextvars.ContextVar("sovereign_context", default=None)
@@ -16,6 +17,15 @@ class ExecutionGuard:
         self.shadow = shadow
         self.events = events
 
+    @contextmanager
+    def sovereign_context(self, actor_context: Dict):
+        """Context manager to set and clear sovereign context."""
+        token = _sovereign_context.set({"token": str(uuid.uuid4()), "actor": actor_context})
+        try:
+            yield
+        finally:
+            _sovereign_context.reset(token)
+
     def execute_sovereign_action(self, action_type: str, actor_context: Dict, func: Callable, *args, **kwargs) -> Any:
         """
         MANDATORY ENTRYPOINT for all mutating commerce actions.
@@ -26,8 +36,10 @@ class ExecutionGuard:
         role = actor_context.get("role")
 
         # 1. AEGIS Identity & Binding Check
-        if not identity_id or not device_id:
-            raise PermissionError(f"FAIL CLOSED: Missing Identity or Device Binding for {action_type}")
+        # SYSTEM level actions might not have device_id
+        if actor_context.get("realm") != "SYSTEM":
+            if not identity_id or not device_id:
+                raise PermissionError(f"FAIL CLOSED: Missing Identity or Device Binding for {action_type}")
 
         # ZERO_TRUST_DEFAULT_DENY for sensitive procurement actions
         sensitive_actions = ["procurement.order.settle", "finance.escrow.release"]
@@ -35,56 +47,52 @@ class ExecutionGuard:
              raise PermissionError(f"ZERO TRUST REJECTION: National ID binding required for {action_type}")
 
         # 2. Role / Permission Validation
-        valid, msg = self.policy_engine.validate_action(action_type, actor_context)
-        if not valid:
-            raise PermissionError(f"FAIL CLOSED: Policy Violation - {msg}")
+        if actor_context.get("realm") != "SYSTEM":
+            valid, msg = self.policy_engine.validate_action(action_type, actor_context)
+            if not valid:
+                raise PermissionError(f"FAIL CLOSED: Policy Violation - {msg}")
 
         # 3. Set Sovereign Context (Authorized)
-        token = str(uuid.uuid4())
-        _sovereign_context.set({"token": token, "actor": actor_context})
+        with self.sovereign_context(actor_context):
+            try:
+                # BEGIN ATOMIC TX (Simulated via context and SHADOW intent)
+                # Filter non-serializable args for intent log
+                serializable_input = [a for a in args if isinstance(a, (str, int, float, dict, list, bool))]
+                intent_payload = {
+                    "action": action_type,
+                    "actor_aegis_id": identity_id,
+                    "actor_device_id": device_id,
+                    "actor_role": role,
+                    "input": serializable_input or kwargs,
+                    "status": "INTENT"
+                }
+                self.shadow.commit(f"{action_type}.intent", identity_id, intent_payload)
 
-        try:
-            # BEGIN ATOMIC TX (Simulated via context and SHADOW intent)
-            # Filter non-serializable args for intent log
-            serializable_input = [a for a in args if isinstance(a, (str, int, float, dict, list, bool))]
-            intent_payload = {
-                "action": action_type,
-                "actor_aegis_id": identity_id,
-                "actor_device_id": device_id,
-                "actor_role": role,
-                "input": serializable_input or kwargs,
-                "status": "INTENT"
-            }
-            self.shadow.commit(f"{action_type}.intent", identity_id, intent_payload)
+                # EXECUTE BUSINESS LOGIC
+                result = func(*args, **kwargs)
 
-            # EXECUTE BUSINESS LOGIC
-            result = func(*args, **kwargs)
+                # 4. COMMIT TO SHADOW
+                commit_payload = {
+                    "action": action_type,
+                    "actor_aegis_id": identity_id,
+                    "actor_device_id": device_id,
+                    "result": result,
+                    "status": "COMMITTED"
+                }
+                self.shadow.commit(f"{action_type}.completed", identity_id, commit_payload)
 
-            # 4. COMMIT TO SHADOW
-            commit_payload = {
-                "action": action_type,
-                "actor_aegis_id": identity_id,
-                "actor_device_id": device_id,
-                "result": result,
-                "status": "COMMITTED"
-            }
-            self.shadow.commit(f"{action_type}.completed", identity_id, commit_payload)
+                return result
 
-            return result
-
-        except Exception as e:
-            # ROLLBACK LOGIC
-            fail_payload = {
-                "action": action_type,
-                "actor_aegis_id": identity_id,
-                "error": str(e),
-                "status": "FAILED_ROLLBACK"
-            }
-            self.shadow.commit(f"{action_type}.failed", identity_id or "UNKNOWN", fail_payload)
-            raise RuntimeError(f"SOVEREIGN EXECUTION FAILED: {str(e)}")
-        finally:
-            # Clear context
-            _sovereign_context.set(None)
+            except Exception as e:
+                # ROLLBACK LOGIC
+                fail_payload = {
+                    "action": action_type,
+                    "actor_aegis_id": identity_id,
+                    "error": str(e),
+                    "status": "FAILED_ROLLBACK"
+                }
+                self.shadow.commit(f"{action_type}.failed", identity_id or "UNKNOWN", fail_payload)
+                raise RuntimeError(f"SOVEREIGN EXECUTION FAILED: {str(e)}")
 
     @staticmethod
     def is_authorized() -> bool:
@@ -100,11 +108,10 @@ class ExecutionGuardMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.guard = guard
         self.events = events
-        self.violation_counts = {}
 
     async def dispatch(self, request: Request, call_next):
         # Operational paths to guard
-        guarded_paths = ["/supply", "/finance", "/aegis/asset", "/commerce"]
+        guarded_paths = ["/supply", "/finance", "/aegis/asset", "/commerce", "/bubble", "/exmail"]
 
         if any(request.url.path.startswith(path) for path in guarded_paths):
             identity_id = request.headers.get("X-AEGIS-IDENTITY")
@@ -117,9 +124,6 @@ class ExecutionGuardMiddleware(BaseHTTPMiddleware):
             # Require Device Binding for Mutating Actions
             if request.method in ["POST", "PUT", "DELETE"] and not device_id:
                  return self._violation("Missing Device Binding for Sensitive Action")
-
-            # In a real system, we'd verify HMAC/Signature here.
-            # For this audit, we enforce header presence.
 
         response = await call_next(request)
         return response
