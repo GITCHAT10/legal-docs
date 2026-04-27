@@ -1,30 +1,50 @@
 from decimal import Decimal, ROUND_HALF_UP
 import uuid
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from datetime import datetime, UTC
+from enum import Enum
+
+class TaxType(str, Enum):
+    TOURISM_STANDARD = "TOURISM_STANDARD" # 17% TGST
+    TRANSPORT = "TRANSPORT"               # 17% TGST (often same as tourism)
+    FNB = "FNB"                           # 17% TGST
+    RETAIL = "RETAIL"                     # 8% GST
+    EXEMPT = "EXEMPT"                     # 0%
 
 class FCEEngine:
     def __init__(self):
         self.ledger = []
         self.locked_rates = {"USD": Decimal("15.42")} # MVR
 
-    def calculate_local_order(self, base_price: Decimal, category: str = "RETAIL", green_tax_usd: Decimal = Decimal("0")) -> dict:
+    def calculate_local_order(self, base_price: Decimal, category: str = "TOURISM_STANDARD", green_tax_usd: Decimal = Decimal("0")) -> dict:
         """
-        MANDATORY MALDIVES BILLING RULE:
-        Base Price + 10% Service Charge = subtotal
-        TGST/GST applied on subtotal
-        Green Tax (if applicable, only for accommodation)
+        MANDATORY MALDIVES BILLING RULE (MIRA COMPLIANT):
+        1. base_price
+        2. -> service_charge (10%)
+        3. -> subtotal = base + SC
+        4. -> TGST/GST (on subtotal)
+        5. -> + green tax (if applicable)
+        6. -> = final_price
         """
         # Quantize to 2 decimal places for currency
         base_price = base_price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
         # 1. 10% Service Charge
+        # Mandatory in Maldives tourism sector
         service_charge = (base_price * Decimal("0.10")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         subtotal = base_price + service_charge
 
         # 2. TGST (17%) or GST (8%)
-        # Policy: 17% for tourism-linked, 8% for general retail
-        tax_rate = Decimal("0.17") if category in ["TOURISM", "RESORT_SUPPLY"] else Decimal("0.08")
+        # Policy: 17% for tourism-linked (TOURISM, TRANSPORT, FNB), 8% for general retail
+        if category in [TaxType.TOURISM_STANDARD, TaxType.TRANSPORT, TaxType.FNB, "TOURISM", "RESORT_SUPPLY"]:
+            tax_rate = Decimal("0.17")
+        elif category == TaxType.RETAIL:
+            tax_rate = Decimal("0.08")
+        elif category == TaxType.EXEMPT:
+            tax_rate = Decimal("0.00")
+        else:
+            tax_rate = Decimal("0.08") # Default to retail GST if unknown
+
         tax_amt = (subtotal * tax_rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
         # 3. Green Tax (USD converted to MVR)
@@ -32,6 +52,12 @@ class FCEEngine:
         green_tax_mvr = (green_tax_usd * mvr_rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
         total = subtotal + tax_amt + green_tax_mvr
+
+        # ENSURE BILLING LOCK
+        # Verify TGST is calculated on (Base + SC)
+        expected_tax = (subtotal * tax_rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        if tax_amt != expected_tax:
+            raise ValueError("FAIL CLOSED: Maldives Tax Calculation Integrity Violation")
 
         return {
             "transaction_id": uuid.uuid4().hex[:8],

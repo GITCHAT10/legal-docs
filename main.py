@@ -62,6 +62,8 @@ from mnos.modules.air_grid.engine import AirGridEngine
 from mnos.api.air_grid.router import create_air_grid_router
 from mnos.modules.air_grid.ut_bridge import UTMVPBridge
 from mnos.api.air_grid.ops_router import create_ops_router
+from mnos.modules.exmail.service import ExMailService
+from mnos.modules.exmail.revenue_engine import EmailRevenueEngine
 
 # Bubble OS Super App Layer
 from mnos.modules.bubble.chat.engine import ChatIntentEngine, ChatToTransactionEngine
@@ -134,6 +136,8 @@ laundry_engine = MaldivesLaundryEngine(imoxon, mars_unified)
 heatmap_engine = GlobalDemandHeatmap(imoxon, island_gm, mira_bridge, reinvestment_engine)
 ut_mvp_bridge = UTMVPBridge(imoxon)
 air_grid_engine = AirGridEngine(imoxon, ut_bridge=ut_mvp_bridge)
+exmail_service = ExMailService(imoxon)
+email_revenue_engine = EmailRevenueEngine(imoxon, imoxon.pricing)
 
 imoxon.mira_bridge = mira_bridge
 imoxon.vvip_engine = vvip_engine
@@ -266,6 +270,13 @@ app.include_router(create_heatmap_router(heatmap_engine, get_actor_ctx), prefix=
 app.include_router(create_laundry_router(laundry_engine, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_air_grid_router(air_grid_engine, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_ops_router(ut_mvp_bridge, get_actor_ctx), prefix="/imoxon")
+
+# --- ROS Event Wiring ---
+def ros_event_listener(event_type, payload):
+    # Route global events to revenue engine
+    email_revenue_engine.handle_event(event_type, payload)
+
+events_core.subscribe("*", ros_event_listener)
 
 # Error handlers
 @app.exception_handler(PermissionError)

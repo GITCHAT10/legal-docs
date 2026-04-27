@@ -1,11 +1,18 @@
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Dict, Any, Optional
 from enum import Enum
+from mnos.modules.finance.fce import TaxType
 
-class TaxContext(str, Enum):
-    TOURISM = "TOURISM"   # 17% TGST
-    RETAIL = "RETAIL"     # 8% GST
-    INTERNAL = "INTERNAL" # 0% Tax (or configured)
+class ProductType(str, Enum):
+    ACCOMMODATION = "ACCOMMODATION"
+    TRANSFER_SEA = "TRANSFER_SEA"
+    TRANSFER_AIR = "TRANSFER_AIR"
+    ACTIVITY = "ACTIVITY"
+    FNB = "FNB"
+    RETAIL = "RETAIL"
+    SERVICE = "SERVICE"
+    PACKAGE = "PACKAGE"
+    FEE = "FEE"
 
 class Channel(str, Enum):
     OTA = "OTA"           # 10% markup
@@ -15,107 +22,103 @@ class Channel(str, Enum):
 class PricingEngine:
     """
     Prestige Pricing Engine: Net rates + margin bands + FX + FCE validation.
-    Implements the commission waterfall: net -> margin -> fee -> commission -> platform.
+    Implements the commission waterfall and enforces ROS/MNOS doctrine.
     """
     def __init__(self, fce):
         self.fce = fce
-        # Default FX Rates (MVR base)
         self.fx_rates = {
             "USD": Decimal("15.42"),
             "EUR": Decimal("16.80"),
             "MVR": Decimal("1.00")
         }
-        # Margin Bands based on product category
+        # Standard Margin Bands
         self.margin_bands = {
-            "ACCOMMODATION": Decimal("0.15"), # 15%
-            "TRANSFER": Decimal("0.10"),      # 10%
-            "EXCURSION": Decimal("0.20"),     # 20%
-            "PACKAGE": Decimal("0.18"),       # 18%
+            ProductType.ACCOMMODATION: Decimal("0.15"),
+            ProductType.TRANSFER_SEA: Decimal("0.10"),
+            ProductType.TRANSFER_AIR: Decimal("0.08"),
+            ProductType.ACTIVITY: Decimal("0.20"),
+            ProductType.PACKAGE: Decimal("0.18"),
             "DEFAULT": Decimal("0.10")
         }
-        # Platform/Agent Fees
         self.commission_rates = {
-            "AGENT_STANDARD": Decimal("0.10"),
-            "PLATFORM_FEE": Decimal("0.02")
+            "B2B": Decimal("0.12"),
+            "B2C": Decimal("0.00"),
+            "PLATFORM": Decimal("0.02")
         }
 
-    def calculate_quote(self, net_amount: Decimal, currency: str, category: str,
-                        tax_context: TaxContext = TaxContext.TOURISM,
+    def calculate_quote(self,
+                        net_amount: Decimal,
+                        currency: str,
+                        product_type: ProductType,
+                        trace_id: str,
+                        tax_type: TaxType = TaxType.TOURISM_STANDARD,
                         channel: Channel = Channel.DIRECT,
-                        agent_type: str = "AGENT_STANDARD",
+                        agent_type: str = "B2B",
                         allotment_override_pct: Optional[Decimal] = None) -> Dict[str, Any]:
         """
-        Executes the full commission waterfall and FX conversion.
-        Includes Allotment Overrides logic and Channel-based modifiers.
+        Executes the full ROS Pricing Pipeline.
         """
-        # 0. INPUT VALIDATION
-        if net_amount <= 0:
-            raise ValueError("FAIL CLOSED: Amount must be greater than zero")
+        # 0. STRICT VALIDATION
+        if net_amount is None or net_amount <= 0:
+            raise ValueError(f"FAIL CLOSED: Valid net_amount required (Trace: {trace_id})")
 
-        # 1. Convert to MVR (Base Currency)
+        # 1. FX CONVERSION (Locked MVR base)
         fx_rate = self.fx_rates.get(currency.upper(), self.fx_rates["USD"])
-        net_mvr = (net_amount * fx_rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        base_mvr = (net_amount * fx_rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
-        # 2. Apply Channel Rules (Moat/Revenue Optimization)
-        channel_applied_net = net_mvr
+        # 2. CHANNEL MODIFIERS
         channel_modifier = Decimal("1.0")
         if channel == Channel.OTA:
             channel_modifier = Decimal("1.10")
         elif channel == Channel.SOVEREIGN:
             channel_modifier = Decimal("0.95")
 
-        channel_applied_net = (net_mvr * channel_modifier).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        modified_base = (base_mvr * channel_modifier).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
-        # 3. Apply Allotment Override (if applicable)
-        applied_net_mvr = channel_applied_net
+        # 3. ALLOTMENT OVERRIDES
+        applied_net = modified_base
         if allotment_override_pct:
-            applied_net_mvr = (channel_applied_net * (Decimal("1.0") + allotment_override_pct)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            applied_net = (modified_base * (Decimal("1.0") + allotment_override_pct)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
-        # 4. Apply Margin Band
-        margin_pct = self.margin_bands.get(category.upper(), self.margin_bands["DEFAULT"])
-        margin_amount = (applied_net_mvr * margin_pct).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        gross_amount = applied_net_mvr + margin_amount
+        # 4. MARGIN APPLICATION
+        margin_pct = self.margin_bands.get(product_type, self.margin_bands["DEFAULT"])
+        margin_amount = (applied_net * margin_pct).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        gross_before_tax = applied_net + margin_amount
 
-        # 5. Calculate Waterfall Splits
-        agent_comm_rate = self.commission_rates.get(agent_type, self.commission_rates["AGENT_STANDARD"])
-        agent_commission = (gross_amount * agent_comm_rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        # 5. COMMISSION WATERFALL
+        comm_rate = self.commission_rates.get(agent_type, self.commission_rates["B2B"])
+        commission = (gross_before_tax * comm_rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
-        platform_fee_rate = self.commission_rates["PLATFORM_FEE"]
-        platform_fee = (gross_amount * platform_fee_rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        platform_fee = (gross_before_tax * self.commission_rates["PLATFORM"]).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
-        # 6. FCE Validation (Apply Maldives Taxes: Base + SC + GST/TGST)
-        # Enforces Maldives Billing Rule: Base + 10% SC = subtotal -> Tax on subtotal
-        fce_result = self.fce.calculate_local_order(gross_amount, tax_context.value)
+        # 6. FCE TAX ENGINE (Maldives Billing Rule: Base + 10% SC -> Tax)
+        fce_result = self.fce.calculate_local_order(gross_before_tax, tax_type.value)
 
-        # Audit Trace for SHADOW
-        price_trace = {
-            "net_orig": float(net_amount),
-            "currency": currency.upper(),
-            "fx_rate": float(fx_rate),
-            "channel": channel.value,
-            "channel_modifier": float(channel_modifier),
-            "allotment_override": float(allotment_override_pct or 0),
+        # 7. ROS FULL BREAKDOWN
+        price_breakdown = {
+            "base_price": float(base_mvr),
+            "cost_price": float(applied_net),
+            "markup_pct": float(channel_modifier - 1),
             "margin_pct": float(margin_pct),
             "margin_amount": float(margin_amount),
-            "gross_mvr": float(gross_amount),
-            "agent_commission": float(agent_commission),
+            "commission_b2b": float(commission) if agent_type == "B2B" else 0,
+            "commission_b2c": float(commission) if agent_type == "B2C" else 0,
             "platform_fee": float(platform_fee),
-            "tax_context": tax_context.value,
-            "fce_breakdown": fce_result
+            "service_charge": fce_result["service_charge"],
+            "tgst": fce_result["tax_amount"],
+            "green_tax": fce_result["green_tax"],
+            "discount": float(base_mvr - modified_base) if channel == Channel.SOVEREIGN else 0,
+            "final_price": fce_result["total"],
+            "currency": "MVR",
+            "fx_rate_locked": float(fx_rate),
+            "trace_id": trace_id
         }
 
         return {
-            "currency_orig": currency.upper(),
-            "net_orig": float(net_amount),
-            "fx_rate": float(fx_rate),
-            "net_mvr": float(net_mvr),
-            "gross_mvr": float(gross_amount),
-            "agent_commission": float(agent_commission),
-            "platform_fee": float(platform_fee),
-            "fce_breakdown": fce_result,
+            "status": "PRICED_LOCKED",
             "total_mvr": fce_result["total"],
-            "price_trace": price_trace,
-            "status": "PRICED_LOCKED"
+            "breakdown": price_breakdown,
+            "price_trace": price_breakdown # ROS compliance
         }
 
     def update_fx_rate(self, currency: str, rate: Decimal):
