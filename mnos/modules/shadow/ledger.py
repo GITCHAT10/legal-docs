@@ -17,7 +17,9 @@ class ShadowLedger:
     def commit(self, event_type: str, actor_id: str, payload: dict) -> str:
         # SECURITY: Enforcement of ExecutionGuard Authority
         from mnos.shared.execution_guard import ExecutionGuard
-        if not ExecutionGuard.is_authorized():
+
+        is_system = ExecutionGuard.is_system_context()
+        if not (ExecutionGuard.is_authorized() or is_system):
              raise PermissionError("FAIL CLOSED: Unauthorized direct write to SHADOW Ledger blocked.")
 
         prev_hash = self.chain[-1]["hash"] if self.chain else self.genesis_hash
@@ -25,6 +27,8 @@ class ShadowLedger:
         # Deepcopy payload to prevent retro-active changes breaking the hash
         safe_payload = copy.deepcopy(payload)
 
+        from mnos.shared.execution_guard import _sovereign_context
+        ctx = _sovereign_context.get()
         block = {
             "index": len(self.chain),
             "timestamp": datetime.now(UTC).isoformat(),
@@ -32,8 +36,12 @@ class ShadowLedger:
             "actor_id": actor_id,
             "payload": safe_payload,
             "prev_hash": prev_hash,
-            "signature": self._sign_event(safe_payload)
+            "signature": self._sign_event(safe_payload),
+            "trace_id": ctx.get("trace_id") if ctx else None
         }
+
+        if is_system:
+            block["system_override"] = True
 
         block["hash"] = self._calculate_hash(block)
         self.chain.append(block)

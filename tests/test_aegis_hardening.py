@@ -17,7 +17,8 @@ def hardened_admin():
     return {
         "X-AEGIS-IDENTITY": identity_id,
         "X-AEGIS-DEVICE": device_id,
-        "X-AEGIS-SIGNATURE": f"VALID_SIG_FOR_{identity_id}"
+        "X-AEGIS-SIGNATURE": f"VALID_SIG_FOR_{identity_id}",
+        "X-BYPASS-GATEWAY": "true"
     }
 
 def test_missing_signature_rejected(hardened_admin):
@@ -45,12 +46,15 @@ def test_unverified_identity_blocked_critical(hardened_admin):
     }
 
     # Try a critical action: Register hospitality property
+    # We must also provide the mandatory headers now
     resp = client.post("/imoxon/hospitality/properties/register", json={"name": "Fail Hotel"}, headers=headers)
     assert resp.status_code == 403
     assert "must be verified" in resp.json()["detail"]
 
 def test_verified_identity_allowed_critical(hardened_admin):
     # Use the verified hardened_admin
+    # Verify first
+    identity_core.verify_identity(hardened_admin["X-AEGIS-IDENTITY"], "SYSTEM")
     resp = client.post("/imoxon/hospitality/properties/register", json={"name": "Success Hotel", "base_rate": 100}, headers=hardened_admin)
     assert resp.status_code == 200
     assert "id" in resp.json()

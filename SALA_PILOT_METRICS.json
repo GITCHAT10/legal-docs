@@ -1,0 +1,48 @@
+{
+  "node_id": "Sala-Omadhoo",
+  "status": "ACTIVE",
+  "deployment_log": [
+    {
+      "timestamp": "2026-04-27T07:22:28.683495+00:00",
+      "step": "DEPLO_START",
+      "message": "Starting deployment for Sala-Omadhoo"
+    },
+    {
+      "timestamp": "2026-04-27T07:22:28.683532+00:00",
+      "step": "EDGE_PROVISION",
+      "message": "AIRBOX, SIGDOC, FCE-INVOICE initialized."
+    },
+    {
+      "timestamp": "2026-04-27T07:22:28.684262+00:00",
+      "step": "OFFLINE_QUEUE",
+      "message": "Storage created at mnos/edge/storage/Sala-Omadhoo"
+    },
+    {
+      "timestamp": "2026-04-27T07:22:28.685767+00:00",
+      "step": "ORCA_TALENT",
+      "message": "Onboarded 2 staff members."
+    },
+    {
+      "timestamp": "2026-04-27T07:22:28.685814+00:00",
+      "step": "FAIL_CLOSED_VALIDATION",
+      "message": "Rule 'No Event -> No Invoice' verified."
+    },
+    {
+      "timestamp": "2026-04-27T07:22:28.685822+00:00",
+      "step": "DEPLOY_COMPLETE",
+      "message": "Node Sala-Omadhoo transition to ACTIVE."
+    }
+  ],
+  "staff_onboarded": [
+    {
+      "name": "Ahmed Ibrahim",
+      "identity_id": "a0bf776f-9cc5-4541-9172-6cef8a4e1d1a",
+      "status": "ready"
+    },
+    {
+      "name": "Aishath Mohamed",
+      "identity_id": "14d905e6-3a5d-430e-8963-06006d2cc3f1",
+      "status": "ready"
+    }
+  ]
+}

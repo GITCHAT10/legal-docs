@@ -1,0 +1,39 @@
+_format_version: "3.4"
+_transform: true
+
+services:
+  - name: mac-eos-core
+    url: http://mnos-core:8080
+    routes:
+      - name: sovereign-api-v1
+        paths: ["/api/v1"]
+        strip_path: false
+    plugins:
+      - name: aegis-auth-sovereign
+        config:
+          aegis_endpoint: "http://aegis-identity:8081/verify"
+          fail_closed: true
+      - name: fce-tax-injection
+        config:
+          default_sector: "tourism"
+          mira_compliance: true
+      - name: shadow-audit-logger
+        config:
+          shadow_endpoint: "http://shadow-ledger:8082/seal"
+          log_level: "forensic"
+
+  - name: ut-mobility-engine
+    url: http://ut-engine:8083
+    routes:
+      - name: ut-api
+        paths: ["/api/ut"]
+    plugins:
+      - name: aegis-auth-sovereign
+        config:
+          required_roles: ["driver", "captain", "operator"]
+
+upstreams:
+  - name: mnos-core
+    targets:
+      - target: 10.20.30.10:8080
+        weight: 100

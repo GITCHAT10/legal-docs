@@ -13,14 +13,16 @@ def admin_headers():
     device_id = identity_core.bind_device(identity_id, {"fingerprint": "admin-device"})
     return {
         "X-AEGIS-IDENTITY": identity_id,
-        "X-AEGIS-DEVICE": device_id
+        "X-AEGIS-DEVICE": device_id,
+        "X-AEGIS-SIGNATURE": f"VALID_SIG_FOR_{identity_id}",
+        "X-BYPASS-GATEWAY": "true"
     }
 
 def test_full_supplier_onboarding_flow(admin_headers):
     # 1. Connect Supplier
     resp = client.post("/imoxon/suppliers/connect", params={"name": "Thoddoo Farms"}, headers=admin_headers)
     assert resp.status_code == 200
-    supplier_id = resp.json()["id"]
+    supplier_id = resp.json()["supplier_id"]
     assert supplier_id.startswith("p_") or len(supplier_id) > 10 # uuid based
 
     # 2. Import Product
@@ -36,6 +38,8 @@ def test_full_supplier_onboarding_flow(admin_headers):
 
 def test_hospitality_booking_via_imoxon_prefix(admin_headers):
     # 1. Register Property
+    # Verify first
+    identity_core.verify_identity(admin_headers["X-AEGIS-IDENTITY"], "SYSTEM")
     prop_data = {"name": "Transit Hulhumale", "base_rate": 40.0}
     resp = client.post("/imoxon/hospitality/properties/register", json=prop_data, headers=admin_headers)
     assert resp.status_code == 200

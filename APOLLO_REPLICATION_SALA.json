@@ -1,0 +1,21 @@
+{
+  "bundle_id": "APOLLO-REP-TEMPLATE-2026",
+  "source_node": "REPLACEMENT_NODE_ID",
+  "services": [
+    "AIRBOX-AGI-OCR",
+    "SIGDOC-SEALER",
+    "FCE-INVOICE-MIRA",
+    "AIRCHAT-MULTILINGUAL",
+    "EXMAIL-ORCA-SYNC",
+    "AIRMOVIE-EDGE"
+  ],
+  "dependencies": {
+    "mnos-core": "RC1",
+    "aegis-identity": "v10.0",
+    "shadow-ledger": "MILITARY-WORM"
+  },
+  "replication_command": "PYTHONPATH=. python3 scripts/apollo_deploy_sala.py --node-id <NEW_NODE_ID>",
+  "sanitized": true,
+  "no_keys": true,
+  "no_identities": true
+}
