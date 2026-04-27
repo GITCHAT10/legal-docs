@@ -5,11 +5,20 @@ class FCESovereignService:
     """
     FCE Sovereignty Service for SALA Node.
     Enforces MIRA-compliant Maldives Billing Rules.
+    Implements Invoice Idempotency.
     """
     def __init__(self, mira_mode: bool = True):
         self.mira_mode = mira_mode
+        self.generated_invoices = {} # idempotency_key -> invoice
 
-    def calculate_order(self, base_price: float, category: str = "RETAIL") -> Dict[str, Any]:
+    def calculate_order(self, base_price: float, category: str = "RETAIL", idempotency_key: str = None) -> Dict[str, Any]:
+        """
+        Calculates order with MIRA rules.
+        Locks result to idempotency_key to prevent double invoice generation.
+        """
+        if idempotency_key and idempotency_key in self.generated_invoices:
+            return self.generated_invoices[idempotency_key]
+
         base = Decimal(str(base_price)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
         # 1. 10% Service Charge
@@ -22,12 +31,18 @@ class FCESovereignService:
 
         total = subtotal + tax_amt
 
-        return {
+        invoice = {
             "base": float(base),
             "service_charge": float(sc),
             "subtotal": float(subtotal),
             "tax_rate": float(tax_rate),
             "tax_amount": float(tax_amt),
             "total": float(total),
-            "currency": "MVR"
+            "currency": "MVR",
+            "idempotency_key": idempotency_key
         }
+
+        if idempotency_key:
+            self.generated_invoices[idempotency_key] = invoice
+
+        return invoice

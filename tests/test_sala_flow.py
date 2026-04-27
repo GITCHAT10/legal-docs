@@ -37,7 +37,8 @@ def run_test_scenario():
 
     # 3. CREATE ORDER (Online)
     print("[2] Creating Online Order...")
-    order = upos.create_order("MERC-01", actor_id, [{"id": "item-1", "qty": 1}], 1000.0)
+    order = upos.create_order("MERC-01", actor_id, [{"id": "item-1", "qty": 1}], 1000.0,
+                              idempotency_key="test-order-1", trace_id="test-trace-1")
     # Expected: 1000 + 100 (SC) = 1100. 1100 * 0.08 = 88. Total = 1188.
     print(f"    ✔ Order Total: {order['pricing']['total']}")
     assert order['pricing']['total'] == 1188.0
@@ -51,10 +52,12 @@ def run_test_scenario():
     tx_offline = {
         "event_type": "upos.order.completed",
         "actor_id": actor_id,
+        "trace_id": "test-trace-2",
         "payload": {
             "merchant_id": "MERC-01",
             "items": [{"id": "item-2", "qty": 1}],
-            "amount": 2000.0
+            "amount": 2000.0,
+            "idempotency_key": "test-order-2"
         }
     }
     res = edge.record_transaction(tx_offline)

@@ -1,0 +1,1 @@
+{"event_type": "bad.event", "actor_id": "test-merchant", "trace_id": "", "payload": {"idempotency_key": "order-001"}}
