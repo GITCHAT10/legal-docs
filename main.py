@@ -59,6 +59,8 @@ from mnos.api.b2b_portal import create_b2b_portal_router
 from mnos.api.heatmap import create_heatmap_router
 from mnos.api.laundry import create_laundry_router
 from mnos.api.orca import create_orca_router
+from mnos.api.pms.reservations import create_pms_router
+from mnos.api.pms.folio import create_folio_router
 
 # Bubble OS Super App Layer
 from mnos.modules.ai_ml.engine import SovereignAIEngine, PredictiveMLEngine
@@ -160,6 +162,18 @@ escalation_engine = EscalationEngine(shadow_core, events_core)
 
 # SILENT SHIELD
 shield_edge = SilentShieldEdge(shadow_core, events_core)
+
+# PMS Reservation Engine
+from mnos.modules.pms.reservations.services.availability_engine import AvailabilityEngine
+from mnos.modules.pms.reservations.services.booking_logic import BookingLogic
+pms_availability = AvailabilityEngine(shadow_core)
+pms_booking = BookingLogic(pms_availability, guard, shadow_core, events_core)
+
+# PMS Folio & Billing Engine
+from mnos.modules.pms.folio.services.billing_engine import BillingEngine
+from mnos.modules.pms.folio.services.folio_logic import FolioLogic
+pms_billing = BillingEngine()
+pms_folio = FolioLogic(pms_billing, guard, shadow_core, events_core)
 
 # L1 & L2 Security
 @app.middleware("http")
@@ -347,6 +361,8 @@ app.include_router(create_b2b_portal_router(mars_unified, b2b_negotiator, get_ac
 app.include_router(create_heatmap_router(heatmap_engine, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_laundry_router(laundry_engine, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_orca_router(hospitality, bpe, shadow_core, get_actor_ctx), prefix="/orca")
+app.include_router(create_pms_router(pms_booking, pms_availability, get_actor_ctx), prefix="/pms")
+app.include_router(create_folio_router(pms_folio, get_actor_ctx), prefix="/pms/folio")
 
 # Error handlers
 @app.exception_handler(PermissionError)
