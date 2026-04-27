@@ -1,8 +1,21 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import Dict, Any
 
-def create_cloud_router(tenant_manager, compute_manager, orca_center, get_actor_ctx):
+def create_cloud_router(tenant_manager, compute_manager, orca_center, failover_orch, get_actor_ctx):
     router = APIRouter(prefix="/cloud", tags=["cloud"])
+
+    @router.get("/failover/status")
+    async def get_failover_status(actor: dict = Depends(get_actor_ctx)):
+        return failover_orch.get_failover_status()
+
+    @router.post("/failover/promote")
+    async def promote_node(node_id: str, remote_hash: str, actor: dict = Depends(get_actor_ctx)):
+        if actor.get("role") != "admin":
+             raise HTTPException(status_code=403, detail="Only admins can trigger manual promotion")
+        try:
+            return failover_orch.trigger_failover(node_id, remote_hash)
+        except PermissionError as e:
+            raise HTTPException(status_code=403, detail=str(e))
 
     @router.post("/tenants/provision")
     async def provision_tenant(name: str, tenant_type: str, island_id: str, actor: dict = Depends(get_actor_ctx)):

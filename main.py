@@ -137,6 +137,26 @@ mac_eos = MacEosBrain(
 )
 orca_center = OrcaCommandCenter(shadow_core, compute_manager, fabric_bridge)
 
+# APOLLO FAILOVER & REPLICATION
+from mnos.cloud.apollo.heartbeat import HeartbeatMonitor
+from mnos.cloud.apollo.replication import ApolloReplicationQueue
+from mnos.cloud.apollo.failover import FailoverOrchestrator
+from mnos.cloud.apollo.reconcile import ShadowReconciler
+from mnos.cloud.api_fabric.router import FabricRouter
+
+heartbeat_monitor = HeartbeatMonitor()
+replication_queue = ApolloReplicationQueue(shadow_core, identity_gateway)
+failover_orch = FailoverOrchestrator(heartbeat_monitor, shadow_core, orca_center)
+shadow_reconciler = ShadowReconciler(shadow_core, fce_core)
+fabric_router = FabricRouter()
+
+# Inject failover status into orca
+def record_failover(event):
+    if not hasattr(orca_center, "failover_history"):
+        orca_center.failover_history = []
+    orca_center.failover_history.append(event)
+orca_center.record_failover = record_failover
+
 # Finance RC1
 payment_rails = PaymentAbstractionLayer(fce_core)
 escrow_core = EscrowFCETCore(fce_core, shadow_core)
@@ -314,7 +334,7 @@ app.include_router(create_leaderboard_router(leaderboard, get_actor_ctx), prefix
 app.include_router(create_b2b_portal_router(mars_unified, b2b_negotiator, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_heatmap_router(heatmap_engine, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_laundry_router(laundry_engine, get_actor_ctx), prefix="/imoxon")
-app.include_router(create_cloud_router(tenant_manager, compute_manager, orca_center, get_actor_ctx), prefix="/imoxon")
+app.include_router(create_cloud_router(tenant_manager, compute_manager, orca_center, failover_orch, get_actor_ctx), prefix="/imoxon")
 
 # AIG Office Foundation
 from aig_office_foundation.api_routers import (
