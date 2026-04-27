@@ -1,0 +1,211 @@
+import uuid
+from typing import Dict, List, Optional
+from datetime import datetime
+from mnos.modules.ogx.schemas import (
+    PrecheckRequest, PrecheckResponse, OGXState, PriceInfo,
+    SessionConstraints, TelemetryIngest, ServiceRecoveryTrigger,
+    DegradationEvent, FailStopEvent, RecoveryQuorum
+)
+from mnos.modules.ogx.state import OGXStateMachine
+from mnos.modules.ogx.adapters import (
+    AegisAdapter, FceAdapter, EventsAdapter, ShadowAdapter, TerraformAdapter
+)
+from mnos.modules.ogx.exceptions import SecurityException, FinancialException, SovereignException
+
+class OGXSessionOrchestrator:
+    def __init__(self, state_machine: OGXStateMachine):
+        self.state_machine = state_machine
+        self.aegis = AegisAdapter()
+        self.fce = FceAdapter()
+        self.events = EventsAdapter()
+        self.shadow = ShadowAdapter()
+        self.terraform = TerraformAdapter()
+        self.active_sessions: Dict[str, Dict] = {}
+
+    def _ensure_not_fail_stop(self):
+        if self.state_machine.is_fail_stop():
+            raise SovereignException("CRITICAL: System in FAIL-STOP mode. All economic operations locked.")
+
+    def precheck(self, request: PrecheckRequest) -> PrecheckResponse:
+        # 1. verify guest with AEGIS (Fail-Closed)
+        if not self.aegis.verify_guest(request.guest_id):
+            self.shadow.log_event("PRECHECK_REJECTED", {"guest_id": request.guest_id, "reason": "UNVERIFIED_GUEST"})
+            raise SecurityException(f"Guest {request.guest_id} not verified by AEGIS")
+
+        # 2. get FCE quote
+        price_data = self.fce.get_quote(request.package_code)
+
+        # 3. validate current hub state
+        if self.state_machine.is_fail_stop():
+            return PrecheckResponse(
+                status="denied",
+                session_state=self.state_machine.current_state,
+                price=PriceInfo(**price_data),
+                constraints=SessionConstraints(dispense_allowed=False)
+            )
+
+        return PrecheckResponse(
+            status="approved",
+            session_state=self.state_machine.current_state,
+            price=PriceInfo(**price_data),
+            constraints=SessionConstraints()
+        )
+
+    def create_session(self, request: PrecheckRequest):
+        self._ensure_not_fail_stop()
+
+        # Enforce guest verification (Fail-Closed)
+        if not self.aegis.verify_guest(request.guest_id):
+            self.shadow.log_event("SESSION_CREATION_REJECTED", {"guest_id": request.guest_id, "reason": "UNVERIFIED_GUEST"})
+            raise SecurityException(f"Guest {request.guest_id} not verified by AEGIS")
+
+        session_id = f"OGX_SESS_{uuid.uuid4().hex.upper()}"
+        self.active_sessions[session_id] = {
+            "status": "CREATED",
+            "guest_id": request.guest_id,
+            "package_code": request.package_code,
+            "device_id": request.device_context.app_id
+        }
+        return {"session_id": session_id, "status": "CREATED"}
+
+    def start_session(self, session_id: str):
+        self._ensure_not_fail_stop()
+
+        if session_id not in self.active_sessions:
+            return {"error": "Session not found"}
+
+        session = self.active_sessions[session_id]
+
+        # AEGIS verify device trust
+        if not self.aegis.verify_device(session["device_id"]):
+            raise SecurityException(f"Device trust validation failed for {session['device_id']}")
+
+        # FCE preauth (Fail-Closed)
+        price_data = self.fce.get_quote(session["package_code"])
+        if not self.fce.preauthorize(session_id, price_data["total"]):
+            session["status"] = "BLOCKED"
+            self.shadow.log_event("SESSION_START_FAILED", {"session_id": session_id, "reason": "PREAUTH_FAILED"})
+            raise FinancialException(f"Pre-authorization failed for session {session_id}")
+
+        # SHADOW log
+        self.shadow.log_event("SESSION_START", {"session_id": session_id, "guest_id": session["guest_id"]})
+
+        session["status"] = "ACTIVE"
+        session["start_time"] = datetime.now()
+        return {"session_id": session_id, "status": "ACTIVE"}
+
+    def end_session(self, session_id: str):
+        self._ensure_not_fail_stop()
+
+        if session_id not in self.active_sessions:
+            return {"error": "Session not found"}
+
+        session = self.active_sessions[session_id]
+        # FCE post-folio
+        price_data = self.fce.get_quote(session["package_code"])
+        self.fce.post_folio(session_id, price_data["total"])
+
+        # SHADOW log
+        self.shadow.log_event("SESSION_END", {"session_id": session_id})
+
+        session["status"] = "COMPLETED"
+        session["end_time"] = datetime.now()
+        return {"session_id": session_id, "status": "COMPLETED"}
+
+    def get_session_status(self, session_id: str):
+        # Allowed in FAIL-STOP for audit/visibility
+        if session_id not in self.active_sessions:
+            return None
+        session = self.active_sessions[session_id]
+        return {
+            "session_id": session_id,
+            "status": session["status"],
+            "start_time": session.get("start_time"),
+            "end_time": session.get("end_time"),
+            "guest_id": session["guest_id"]
+        }
+
+    def ingest_telemetry(self, data: TelemetryIngest):
+        self._ensure_not_fail_stop()
+        self.events.ingest_telemetry(data.model_dump())
+        self.shadow.log_event("TELEMETRY", {"session_id": data.session_id, "sequence_hash": data.sequence_hash})
+        return {"status": "received"}
+
+class OGXDegradationEngine:
+    def __init__(self, state_machine: OGXStateMachine, orchestrator: OGXSessionOrchestrator):
+        self.state_machine = state_machine
+        self.orchestrator = orchestrator
+        self.events = EventsAdapter()
+        self.shadow = ShadowAdapter()
+        self.terraform = TerraformAdapter()
+
+    def handle_degradation(self, event: DegradationEvent):
+        if self.state_machine.is_fail_stop():
+             return {"status": "ignored", "reason": "Already in FAIL-STOP"}
+
+        self.state_machine.transition(OGXState.DEGRADED)
+        self.events.record_state_change(event.session_id, "DEGRADED")
+        self.shadow.log_event("DEGRADATION", event.model_dump())
+
+        if "freeze_esg_minting" in event.actions:
+            self.terraform.freeze_impact(event.session_id)
+
+        return {"new_state": OGXState.DEGRADED}
+
+    def handle_fail_stop(self, event: FailStopEvent):
+        self.state_machine.transition(OGXState.FAIL_STOP)
+        self.events.record_state_change(event.hub_id, "FAIL-STOP")
+        self.shadow.log_event("FAIL_STOP", event.model_dump())
+
+        # notify authorities as per specification
+        self.events.emit_alert({"reason_code": event.reason_code, "severity": "FATAL", "recipients": ["CFO", "Auditor"]})
+
+        return {"new_state": OGXState.FAIL_STOP}
+
+class OGXServiceRecovery:
+    def __init__(self, state_machine: OGXStateMachine):
+        self.state_machine = state_machine
+        self.shadow = ShadowAdapter()
+        self.aegis = AegisAdapter()
+
+    def trigger_lemonade_protocol(self, trigger: ServiceRecoveryTrigger):
+        # Fan out
+        self.shadow.log_event("SERVICE_RECOVERY_TRIGGERED", trigger.model_dump())
+        return {
+            "status": "recovery_initiated",
+            "offer": trigger.recovery_offer,
+            "guest_notified": True
+        }
+
+    def process_recovery_quorum(self, quorum: RecoveryQuorum):
+        """
+        Implementation of 3-of-4 approval logic for FAIL-STOP recovery.
+        Enforces distinct operators AND distinct roles.
+        Required roles: CFO, CTO, AUDITOR, ENGINEER.
+        """
+        required_roles = {"CFO", "CTO", "AUDITOR", "ENGINEER"}
+        operator_approvals = {} # operator_id -> approval
+        role_approvals = {}     # role -> operator_id
+
+        for approval in quorum.approvals:
+            role_upper = approval.role.upper()
+            if role_upper in required_roles:
+                if self.aegis.verify_operator(approval.operator_id):
+                    if approval.operator_id not in operator_approvals:
+                        if role_upper not in role_approvals:
+                            operator_approvals[approval.operator_id] = approval
+                            role_approvals[role_upper] = approval.operator_id
+
+        if len(role_approvals) >= 3:
+            self.state_machine.transition(OGXState.OPTIMAL)
+            audit_payload = {"approvals": [a.model_dump() for a in operator_approvals.values()]}
+            self.shadow.log_event("RECOVERY_APPROVED", audit_payload)
+            self.shadow.notarize_recovery("SYSTEM", audit_payload)
+            return {"status": "RECOVERED", "new_state": OGXState.OPTIMAL}
+
+        self.shadow.log_event("RECOVERY_REJECTED", {
+            "reason": "INSUFFICIENT_QUORUM",
+            "distinct_roles_count": len(role_approvals),
+            "distinct_operators_count": len(operator_approvals)
+        })
+        return {"status": "PENDING", "valid_approvals_count": len(role_approvals)}
