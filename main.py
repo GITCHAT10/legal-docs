@@ -145,7 +145,7 @@ from mnos.cloud.apollo.reconcile import ShadowReconciler
 from mnos.cloud.api_fabric.router import FabricRouter
 
 heartbeat_monitor = HeartbeatMonitor()
-replication_queue = ApolloReplicationQueue(shadow_core, identity_gateway)
+replication_queue = ApolloReplicationQueue(shadow_core, identity_gateway, tenant_manager.topology if hasattr(tenant_manager, 'topology') else None)
 failover_orch = FailoverOrchestrator(heartbeat_monitor, shadow_core, orca_center)
 shadow_reconciler = ShadowReconciler(shadow_core, fce_core)
 fabric_router = FabricRouter()

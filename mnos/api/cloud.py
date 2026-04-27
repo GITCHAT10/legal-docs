@@ -6,7 +6,10 @@ def create_cloud_router(tenant_manager, compute_manager, orca_center, failover_o
 
     @router.get("/failover/status")
     async def get_failover_status(actor: dict = Depends(get_actor_ctx)):
-        return failover_orch.get_failover_status()
+        status = failover_orch.get_failover_status()
+        # Enforce ORCA failover status requirements
+        status["heartbeat_health"] = failover_orch.heartbeat.node_status
+        return status
 
     @router.post("/failover/promote")
     async def promote_node(node_id: str, remote_hash: str, actor: dict = Depends(get_actor_ctx)):

@@ -48,7 +48,7 @@ def test_tampered_delta_rejected():
     # Missing signature
     bad_delta = {"trace_id": "T1", "payload": {}}
     with pytest.raises(PermissionError, match="Missing signature"):
-        queue.receive_delta(bad_delta)
+        queue.receive_delta(bad_delta, "MALE-CORE-01")
 
 def test_shadow_hash_mismatch_blocks_promotion():
     monitor = HeartbeatMonitor()
@@ -65,12 +65,35 @@ def test_duplicate_trace_id_idempotent():
 
     delta = {"trace_id": "STABLE-TX-01", "signature": "SIG-OK", "payload": {}}
 
-    res1 = queue.receive_delta(delta)
-    res2 = queue.receive_delta(delta)
+    res1 = queue.receive_delta(delta, "MALE-CORE-01")
+    res2 = queue.receive_delta(delta, "MALE-CORE-01")
 
     assert res1 == "QUEUED_INBOX"
     assert res2 == "ALREADY_PROCESSED"
     assert len(queue.inbox) == 1
+
+def test_offline_queue_replay_after_reconnect():
+    shadow = ShadowLedger()
+    queue = ApolloReplicationQueue(shadow, None)
+
+    delta = {"trace_id": "STABLE-TX-02", "signature": "SIG-OK", "payload": {}}
+    queue.offline_queue.append(delta)
+
+    replayed_count = queue.handle_reconnect()
+    assert replayed_count == 1
+    assert len(queue.inbox) == 1
+    assert len(queue.offline_queue) == 0
+
+def test_unknown_node_replication_denied():
+    from mnos.cloud.topology import AigAirCloudTopology
+    shadow = ShadowLedger()
+    topology = AigAirCloudTopology()
+    queue = ApolloReplicationQueue(shadow, None, topology)
+
+    delta = {"trace_id": "T1", "signature": "SIG-OK", "payload": {}}
+
+    with pytest.raises(PermissionError, match="unknown node"):
+        queue.receive_delta(delta, source_node_id="MALICIOUS-NODE")
 
 def test_financial_lock_on_reconcile_mismatch():
     shadow = ShadowLedger()
