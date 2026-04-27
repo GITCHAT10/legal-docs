@@ -1,36 +1,49 @@
 #!/bin/bash
-# MAC EOS Release Gate (Sovereign Deployer)
-# Enforces Blue/Green traffic shift and warmup probes.
+# scripts/deploy_gate.sh — PATCH v1.1
 
-VERSION=$2
-ENV=$4
-ROLLBACK=$1
+set -euo pipefail
 
-if [[ "$ROLLBACK" == "--rollback" ]]; then
-    echo "🚨 ROLLBACK TRIGGERED. Reverting to previous stable SHADOW state..."
-    # Logic to point ingress to previous version
-    exit 0
+echo "🔐 Running MAC EOS Pre-Merge Integrity Gates..."
+
+# Gate 1: Orchestrator fake-order test
+echo "✅ Gate 1: Fake order rejection"
+python -m pytest tests/test_mac_eos_integrity.py::test_fake_order_rejected -v
+if [ $? -ne 0 ]; then
+  echo "❌ Gate 1 FAILED: Orchestrator allows fake confirmations"
+  exit 1
 fi
 
-echo "🚀 DEPLOYING MAC EOS v$VERSION to $ENV..."
+# Gate 2: Auth compatibility test
+echo "✅ Gate 2: Session auth compatibility"
+python -m pytest tests/test_mac_eos_integrity.py::test_session_auth_allowed_on_dual_paths -v
+if [ $? -ne 0 ]; then
+  echo "❌ Gate 2 FAILED: Session auth broken on dual-auth paths"
+  exit 1
+fi
 
-# 1. Warmup Probes
-echo "🔍 Running 10 internal warmup probes..."
-for i in {1..10}; do
-    echo "Probe $i: OK"
-done
+# Gate 3: Strict path enforcement
+echo "✅ Gate 3: Strict path auth enforcement"
+python -m pytest tests/test_mac_eos_integrity.py::test_strict_path_rejects_session_auth -v
+if [ $? -ne 0 ]; then
+  echo "❌ Gate 3 FAILED: Strict paths accept weak auth"
+  exit 1
+fi
 
-# 2. SHADOW Chain Mismatch Check
-echo "📜 Validating SHADOW integrity..."
-# python scripts/shadow_genesis.py --verify
+# Gate 4: System invariant test
+echo "✅ Gate 4: Invariant no confirm without order"
+python -m pytest tests/test_mac_eos_integrity.py::test_invariant_no_confirm_without_order -v
+if [ $? -ne 0 ]; then
+  echo "❌ Gate 4 FAILED: System invariant violated"
+  exit 1
+fi
 
-# 3. Traffic Shift
-echo "⚡ Shifting Traffic: 10% -> 50% -> 100%"
-sleep 1
-echo "Traffic at 10%... [PASS]"
-sleep 1
-echo "Traffic at 50%... [PASS]"
-sleep 1
-echo "Traffic at 100%... [LIVE]"
+# Gate 5: SHADOW ledger integrity check
+echo "✅ Gate 5: SHADOW ledger genesis validation"
+python scripts/shadow_genesis.py --verify
+if [ $? -ne 0 ]; then
+  echo "❌ Gate 5 FAILED: SHADOW ledger integrity check failed"
+  exit 1
+fi
 
-echo "✅ DEPLOYMENT COMPLETE. MAC EOS v$VERSION is now sovereign."
+echo "🟢 All integrity gates passed. Merge approved."
+exit 0

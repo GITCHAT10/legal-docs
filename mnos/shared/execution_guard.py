@@ -1,13 +1,19 @@
 import contextvars
 import uuid
-from typing import Callable, Any, Dict, Optional
-from fastapi import Request
+from typing import Callable, Any, Dict, Optional, List
+from fastapi import Request, HTTPException, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from contextlib import contextmanager
 
 # Context variable to track sovereign authorization
 _sovereign_context = contextvars.ContextVar("sovereign_context", default=None)
+
+# Paths that require elevated guard (financial, supply, audit)
+STRICT_GUARD_PATHS = ["/supply", "/finance", "/aegis/asset", "/commerce", "/imoxon"]
+
+# Paths that support dual auth (user-facing: chat, email, portal)
+DUAL_AUTH_PATHS = ["/bubble", "/exmail", "/iluvia/app", "/orca", "/pms"]
 
 class ExecutionGuard:
     def __init__(self, identity_core, policy_engine, fce, shadow, events):
@@ -36,15 +42,12 @@ class ExecutionGuard:
         role = actor_context.get("role")
 
         # 1. AEGIS Identity & Binding Check
-        # SYSTEM level actions might not have device_id
         if actor_context.get("realm") != "SYSTEM":
-            if not identity_id or not device_id:
-                raise PermissionError(f"FAIL CLOSED: Missing Identity or Device Binding for {action_type}")
-
-        # ZERO_TRUST_DEFAULT_DENY for sensitive procurement actions
-        sensitive_actions = ["procurement.order.settle", "finance.escrow.release"]
-        if action_type in sensitive_actions and not actor_context.get("national_id_verified"):
-             raise PermissionError(f"ZERO TRUST REJECTION: National ID binding required for {action_type}")
+            if not identity_id:
+                raise PermissionError(f"FAIL CLOSED: Missing Identity for {action_type}")
+            # Device binding strictly required for sensitive mutations
+            if not device_id and any(action_type.startswith(p.strip('/')) for p in STRICT_GUARD_PATHS):
+                raise PermissionError(f"FAIL CLOSED: Missing Device Binding for sensitive action {action_type}")
 
         # 2. Role / Permission Validation
         if actor_context.get("realm") != "SYSTEM":
@@ -55,8 +58,7 @@ class ExecutionGuard:
         # 3. Set Sovereign Context (Authorized)
         with self.sovereign_context(actor_context):
             try:
-                # BEGIN ATOMIC TX (Simulated via context and SHADOW intent)
-                # Filter non-serializable args for intent log
+                # BEGIN ATOMIC TX
                 serializable_input = [a for a in args if isinstance(a, (str, int, float, dict, list, bool))]
                 intent_payload = {
                     "action": action_type,
@@ -66,7 +68,7 @@ class ExecutionGuard:
                     "input": serializable_input or kwargs,
                     "status": "INTENT"
                 }
-                self.shadow.commit(f"{action_type}.intent", identity_id, intent_payload)
+                self.shadow.commit(f"{action_type}.intent", identity_id or "SYSTEM", intent_payload)
 
                 # EXECUTE BUSINESS LOGIC
                 result = func(*args, **kwargs)
@@ -79,7 +81,7 @@ class ExecutionGuard:
                     "result": result,
                     "status": "COMMITTED"
                 }
-                self.shadow.commit(f"{action_type}.completed", identity_id, commit_payload)
+                self.shadow.commit(f"{action_type}.completed", identity_id or "SYSTEM", commit_payload)
 
                 return result
 
@@ -110,24 +112,44 @@ class ExecutionGuardMiddleware(BaseHTTPMiddleware):
         self.events = events
 
     async def dispatch(self, request: Request, call_next):
-        # Operational paths to guard
-        guarded_paths = ["/supply", "/finance", "/aegis/asset", "/commerce", "/bubble", "/exmail"]
+        path = request.url.path
 
-        if any(request.url.path.startswith(path) for path in guarded_paths):
-            session_id = request.headers.get("X-AEGIS-SESSION")
-            identity_id = request.headers.get("X-AEGIS-IDENTITY")
-            device_id = request.headers.get("X-AEGIS-DEVICE")
+        # Skip for public/internal endpoints
+        if path in ["/health", "/docs", "/openapi.json"]:
+            return await call_next(request)
 
-            # Hybrid Auth: Allow either a valid session or identity+device headers
+        # Determine required auth level
+        require_strict = any(path.startswith(p) for p in STRICT_GUARD_PATHS)
+        allow_dual = any(path.startswith(p) for p in DUAL_AUTH_PATHS)
+
+        if not (require_strict or allow_dual):
+            return await call_next(request)
+
+        session_id = request.headers.get("X-AEGIS-SESSION")
+        identity_id = request.headers.get("X-AEGIS-IDENTITY")
+        device_id = request.headers.get("X-AEGIS-DEVICE")
+
+        # 1. Strict Path Enforcement (Identity + Device required)
+        if require_strict:
+            if not identity_id or not device_id:
+                # Use sovereign context for logging infrastructure failure
+                with self.guard.sovereign_context({"identity_id": "SYSTEM", "role": "admin", "realm": "SYSTEM"}):
+                    self.guard.shadow.commit("shield.strict_auth_failed", "SYSTEM", {
+                        "path": path, "reason": "IDENTITY_DEVICE_REQUIRED"
+                    })
+                return self._violation("Strict endpoint requires X-AEGIS-IDENTITY + X-AEGIS-DEVICE", 403)
+
+        # 2. Dual Auth Paths (Session or Identity)
+        if allow_dual:
             if not session_id and not identity_id:
-                return self._violation("Missing Actor Identity or Session")
-
-            # Require Device Binding for Mutating Actions (if not using session)
-            if not session_id and request.method in ["POST", "PUT", "DELETE"] and not device_id:
-                 return self._violation("Missing Device Binding for Sensitive Action")
+                with self.guard.sovereign_context({"identity_id": "SYSTEM", "role": "admin", "realm": "SYSTEM"}):
+                    self.guard.shadow.commit("shield.dual_auth_failed", "SYSTEM", {
+                        "path": path, "reason": "NO_VALID_CREDENTIALS"
+                    })
+                return self._violation("Authentication required: provide Identity headers or session token", 401)
 
         response = await call_next(request)
         return response
 
-    def _violation(self, message):
-        return JSONResponse(status_code=403, content={"detail": f"EXECUTION GUARD REJECTION: {message}"})
+    def _violation(self, message, code):
+        return JSONResponse(status_code=code, content={"detail": message})
