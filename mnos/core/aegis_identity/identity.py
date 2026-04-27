@@ -28,7 +28,7 @@ class AegisIdentityCore:
         }
         self.profiles[identity_id] = profile
         from mnos.shared.execution_guard import ExecutionGuard
-        with ExecutionGuard.sovereign_context():
+        with ExecutionGuard.sovereign_context(trace_id=f"ID-CRE-{identity_id[:8]}"):
             self.shadow.commit("identity.created", identity_id, profile)
             self.events.publish("IDENTITY_CREATED", profile)
         return identity_id
@@ -44,7 +44,7 @@ class AegisIdentityCore:
         }
         self.devices[device_id] = device
         from mnos.shared.execution_guard import ExecutionGuard
-        with ExecutionGuard.sovereign_context():
+        with ExecutionGuard.sovereign_context(trace_id=f"DEV-BND-{device_id[:8]}"):
             self.shadow.commit("identity.device.bound", identity_id, device)
         return device_id
 
@@ -59,7 +59,7 @@ class AegisIdentityCore:
         }
         self.roles[binding_id] = role_binding
         from mnos.shared.execution_guard import ExecutionGuard
-        with ExecutionGuard.sovereign_context():
+        with ExecutionGuard.sovereign_context(trace_id=f"ROL-ASG-{binding_id[:8]}"):
             self.shadow.commit("identity.role.assigned", identity_id, role_binding)
         return binding_id
 
@@ -74,7 +74,7 @@ class AegisIdentityCore:
         }
         self.consents[consent_id] = consent
         from mnos.shared.execution_guard import ExecutionGuard
-        with ExecutionGuard.sovereign_context():
+        with ExecutionGuard.sovereign_context(trace_id=f"CON-REC-{consent_id[:8]}"):
             self.shadow.commit("identity.consent.recorded", identity_id, consent)
         return consent_id
 
@@ -90,7 +90,7 @@ class AegisIdentityCore:
             }
             self.verifications[identity_id] = verification
             from mnos.shared.execution_guard import ExecutionGuard
-            with ExecutionGuard.sovereign_context():
+            with ExecutionGuard.sovereign_context(trace_id=f"ID-VER-{identity_id[:8]}"):
                 self.shadow.commit("identity.verified", identity_id, verification)
             return True
         return False
@@ -106,6 +106,6 @@ class AegisIdentityCore:
         }
         self.bindings[binding_id] = binding
         from mnos.shared.execution_guard import ExecutionGuard
-        with ExecutionGuard.sovereign_context():
+        with ExecutionGuard.sovereign_context(trace_id=f"AST-BND-{binding_id[:8]}"):
             self.shadow.commit("identity.asset.bound", identity_id, binding)
         return binding_id

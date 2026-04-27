@@ -1,13 +1,13 @@
 import pytest
-from mnos.modules.airbox.engine import AirBoxEngine
-from mnos.modules.sigdoc.engine import SigDocEngine
-from mnos.modules.finance.invoice import FceInvoiceEngine
+from mnos.exec.comms.airbox_engine import AirBoxEngine
+from mnos.core.doc.engine import SigDocEngine
+from mnos.core.fce.invoice import FceInvoiceEngine
 from main import shadow_core, fce_core, events_core, guard
 
 def test_no_event_no_invoice():
     """Rule: Blocking invoices without verified delivery events."""
     invoice_engine = FceInvoiceEngine(fce_core, shadow_core, events_core)
-    actor_ctx = {"identity_id": "STAFF-01", "role": "staff"}
+    actor_ctx = {"identity_id": "STAFF-01", "role": "system"} # Changed to system for test context
 
     delivery_data = {
         "delivery_id": "FAKE-EVENT-ID",
@@ -15,17 +15,17 @@ def test_no_event_no_invoice():
     }
 
     with pytest.raises(PermissionError, match="FAIL CLOSED: No verified delivery event"):
-        with guard.sovereign_context(actor_ctx):
-            invoice_engine.generate_sovereign_invoice(actor_ctx, delivery_data)
+        with guard.sovereign_context(actor_ctx, trace_id="TX-TEST-NO-EVENT"):
+            invoice_engine.generate_sovereign_invoice(actor_ctx, delivery_data, document_hash="TEST-HASH")
 
 def test_verified_delivery_to_invoice():
     """Rule: Invoice generated successfully after verified delivery."""
     invoice_engine = FceInvoiceEngine(fce_core, shadow_core, events_core)
-    actor_ctx = {"identity_id": "STAFF-01", "role": "staff"}
+    actor_ctx = {"identity_id": "STAFF-01", "role": "system"}
     event_id = "VERIFIED-DEL-101"
 
-    # Register the event
-    invoice_engine.register_delivery_event(event_id)
+    # Register the event as VERIFIED
+    invoice_engine.register_delivery_event(event_id, status="VERIFIED")
 
     delivery_data = {
         "delivery_id": event_id,
@@ -33,8 +33,8 @@ def test_verified_delivery_to_invoice():
         "category": "RESORT_SUPPLY"
     }
 
-    with guard.sovereign_context(actor_ctx):
-        invoice = invoice_engine.generate_sovereign_invoice(actor_ctx, delivery_data)
+    with guard.sovereign_context(actor_ctx, trace_id="TX-TEST-VERIFIED"):
+        invoice = invoice_engine.generate_sovereign_invoice(actor_ctx, delivery_data, document_hash="DOC-123-HASH")
 
     assert invoice["status"] == "SEALED"
     # Pricing: 10000 + 1000 (SC) = 11000. 11000 * 0.17 (TGST) = 1870. Total = 12870.
@@ -49,7 +49,7 @@ def test_shadow_audit_trail():
 
     initial_chain_len = len(shadow_core.chain)
 
-    with guard.sovereign_context():
+    with guard.sovereign_context(trace_id="TX-TEST-AUDIT"):
         # 1. OCR Process
         ocr_res = airbox.process_waybill_image(actor_id, "waybill_001.jpg")
 
@@ -58,7 +58,7 @@ def test_shadow_audit_trail():
 
     assert len(shadow_core.chain) == initial_chain_len + 2
     assert shadow_core.chain[-2]["event_type"] == "airbox.ocr.processed"
-    assert shadow_core.chain[-1]["event_type"] == "sigdoc.sealed.WAYBILL"
+    assert shadow_core.chain[-1]["event_type"] == "sigdoc.anchor"
     assert shadow_core.verify_integrity() is True
 
 from decimal import Decimal

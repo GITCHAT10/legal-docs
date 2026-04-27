@@ -42,9 +42,16 @@ class ExecutionGuard:
         # 3. Set Sovereign Context (Authorized)
         token = str(uuid.uuid4())
 
+        # Mandatory Trace ID generation
+        trace_id = f"TX-{uuid.uuid4().hex[:6].upper()}"
+
         # Check if already in system context to allow nesting if needed
         # (though usually we reset it)
-        reset_token = _sovereign_context.set({"token": token, "actor": actor_context})
+        reset_token = _sovereign_context.set({
+            "token": token,
+            "actor": actor_context,
+            "trace_id": trace_id
+        })
 
         try:
             # BEGIN ATOMIC TX (Simulated via context and SHADOW intent)
@@ -56,7 +63,8 @@ class ExecutionGuard:
                 "actor_device_id": device_id,
                 "actor_role": role,
                 "input": serializable_input or kwargs,
-                "status": "INTENT"
+                "status": "INTENT",
+                "trace_id": trace_id
             }
             self.shadow.commit(f"{action_type}.intent", identity_id, intent_payload)
 
@@ -69,7 +77,8 @@ class ExecutionGuard:
                 "actor_aegis_id": identity_id,
                 "actor_device_id": device_id,
                 "result": result,
-                "status": "COMMITTED"
+                "status": "COMMITTED",
+                "trace_id": trace_id
             }
             self.shadow.commit(f"{action_type}.completed", identity_id, commit_payload)
 
@@ -95,17 +104,25 @@ class ExecutionGuard:
         return ctx and ctx.get("token") == "SYSTEM"
 
     @staticmethod
-    def sovereign_context(actor: Optional[Dict] = None):
+    def sovereign_context(actor: Optional[Dict] = None, trace_id: Optional[str] = None):
         """
         Bypassing the ExecutionGuard for direct SHADOW ledger commits or
         internal system mutations requires wrapping the action in this context.
         """
+        if not trace_id:
+            raise ValueError("FAIL CLOSED: trace_id is MANDATORY for sovereign_context")
+
         import contextlib
         @contextlib.contextmanager
         def _context():
+            # Mandatory role check for actor if provided
+            if actor and actor.get("role") != "admin" and actor.get("role") != "system":
+                 raise PermissionError("FAIL CLOSED: Invalid actor role for sovereign context")
+
             token = _sovereign_context.set({
                 "token": "SYSTEM",
-                "actor": actor or {"identity_id": "SYSTEM", "role": "admin"}
+                "actor": actor or {"identity_id": "SYSTEM", "role": "admin"},
+                "trace_id": trace_id
             })
             try:
                 yield
@@ -131,7 +148,7 @@ class ExecutionGuardMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         # Operational paths to guard
-        guarded_paths = ["/supply", "/finance", "/aegis/asset", "/commerce"]
+        guarded_paths = ["/supply", "/finance", "/aegis/asset", "/commerce", "/imoxon", "/bubble"]
 
         if any(request.url.path.startswith(path) for path in guarded_paths):
             identity_id = request.headers.get("X-AEGIS-IDENTITY")
@@ -152,4 +169,6 @@ class ExecutionGuardMiddleware(BaseHTTPMiddleware):
         return response
 
     def _violation(self, message):
+        if message == "Missing Actor Identity":
+            message = "Missing Identity or Device Binding"
         return JSONResponse(status_code=403, content={"detail": f"EXECUTION GUARD REJECTION: {message}"})

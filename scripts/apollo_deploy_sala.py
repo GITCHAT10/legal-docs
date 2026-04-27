@@ -5,9 +5,9 @@ from datetime import datetime, UTC
 from main import (
     identity_core, shadow_core, events_core, fce_core, guard
 )
-from mnos.modules.airbox.engine import AirBoxEngine
-from mnos.modules.sigdoc.engine import SigDocEngine
-from mnos.modules.finance.invoice import FceInvoiceEngine
+from mnos.exec.comms.airbox_engine import AirBoxEngine
+from mnos.core.doc.engine import SigDocEngine
+from mnos.core.fce.invoice import FceInvoiceEngine
 from mnos.modules.imoxon.staff_onboarding import StaffOnboardingFlow
 
 class ApolloDeployer:
@@ -44,7 +44,7 @@ class ApolloDeployer:
         ]
 
         # Identity creation needs to be wrapped in sovereign context for compliance
-        with guard.sovereign_context():
+        with guard.sovereign_context(trace_id=f"APOLLO-ONBOARD-{self.node_id}"):
             onboarded = staff_flow.onboard_staff_batch(staff_data)
 
         for s in onboarded:
@@ -55,10 +55,11 @@ class ApolloDeployer:
         print("[4] Validating Fail-Closed Rules...")
         # Rule: No invoice without delivery
         try:
-            with guard.sovereign_context():
+            with guard.sovereign_context(trace_id=f"APOLLO-VALIDATE-{self.node_id}"):
                 invoice_engine.generate_sovereign_invoice(
                     {"identity_id": onboarded[0]["identity_id"]},
-                    {"delivery_id": "NONE", "total_base": 1000}
+                    {"delivery_id": "NONE", "total_base": 1000},
+                    document_hash="MANDATORY-TEST-HASH"
                 )
         except PermissionError:
             print("    [PASS] Invoice generation blocked without delivery event.")

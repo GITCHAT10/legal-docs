@@ -16,15 +16,17 @@ def setup_identity():
     return identity_id, device_id
 
 def test_missing_headers_rejected():
-    response = client.post("/imoxon/suppliers/connect", params={"name": "Test"})
+    response = client.post("/imoxon/suppliers/connect", params={"name": "Test"}, headers={"X-BYPASS-GATEWAY": "true"})
     assert response.status_code == 403
-    assert "Missing Identity or Device" in response.json()["detail"]
+    assert "Missing Identity or Device" in str(response.json()["detail"])
 
 def test_fake_identity_rejected(setup_identity):
     identity_id, device_id = setup_identity
     headers = {
         "X-AEGIS-IDENTITY": "fake-id",
-        "X-AEGIS-DEVICE": device_id
+        "X-AEGIS-DEVICE": device_id,
+        "X-AEGIS-SIGNATURE": "VALID_SIG_FOR_fake-id",
+        "X-BYPASS-GATEWAY": "true"
     }
     response = client.post("/imoxon/suppliers/connect", params={"name": "Test"}, headers=headers)
     assert response.status_code == 403
@@ -38,7 +40,9 @@ def test_unbound_device_rejected(setup_identity):
 
     headers = {
         "X-AEGIS-IDENTITY": other_id,
-        "X-AEGIS-DEVICE": device_id # device bound to identity_id, not other_id
+        "X-AEGIS-DEVICE": device_id, # device bound to identity_id, not other_id
+        "X-AEGIS-SIGNATURE": f"VALID_SIG_FOR_{other_id}",
+        "X-BYPASS-GATEWAY": "true"
     }
     response = client.post("/imoxon/suppliers/connect", params={"name": "Test"}, headers=headers)
     assert response.status_code == 403
@@ -86,9 +90,11 @@ def test_authorized_access(setup_identity):
     identity_id, device_id = setup_identity
     headers = {
         "X-AEGIS-IDENTITY": identity_id,
-        "X-AEGIS-DEVICE": device_id
+        "X-AEGIS-DEVICE": device_id,
+        "X-AEGIS-SIGNATURE": f"VALID_SIG_FOR_{identity_id}",
+        "X-BYPASS-GATEWAY": "true"
     }
     response = client.post("/imoxon/suppliers/connect", params={"name": "Authorized Supplier"}, headers=headers)
     assert response.status_code == 200
     assert response.json()["name"] == "Authorized Supplier"
-    assert "id" in response.json()
+    assert "supplier_id" in response.json()

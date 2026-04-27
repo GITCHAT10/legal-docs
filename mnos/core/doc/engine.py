@@ -23,10 +23,12 @@ class SigDocEngine:
         # 2. Generate Seal (SHA-256)
         seal_hash = hashlib.sha256(canonical_json.encode()).hexdigest()
 
-        # 3. Commit to SHADOW
-        self.shadow.commit(f"sigdoc.sealed.{document_type}", actor_id, {
+        # 3. Commit to SHADOW (ANCHOR)
+        # Mandatory anchor for SIG.DOC
+        self.shadow.commit(f"sigdoc.anchor", actor_id, {
+            "document_type": document_type,
             "seal": seal_hash,
-            "metadata": payload
+            "timestamp": payload["timestamp"]
         })
 
         return seal_hash

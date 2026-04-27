@@ -14,13 +14,18 @@ class FceInvoiceEngine:
         self.events = events
         self.verified_deliveries = set() # manifest_id or event_id
 
-    def register_delivery_event(self, event_id: str):
-        self.verified_deliveries.add(event_id)
+    def register_delivery_event(self, event_id: str, status: str = "PENDING"):
+        if status == "VERIFIED":
+            self.verified_deliveries.add(event_id)
 
-    def generate_sovereign_invoice(self, actor_ctx: dict, delivery_data: dict) -> Dict[str, Any]:
+    def generate_sovereign_invoice(self, actor_ctx: dict, delivery_data: dict, document_hash: str = None) -> Dict[str, Any]:
         """
         NO EVENT -> NO INVOICE rule enforcement.
+        EVENT -> VERIFIED -> FCE
         """
+        if not document_hash:
+            raise PermissionError("FAIL CLOSED: SIG.DOC hash mandatory for sovereign invoice")
+
         delivery_id = delivery_data.get("delivery_id")
         if delivery_id not in self.verified_deliveries:
             raise PermissionError(f"FAIL CLOSED: No verified delivery event for ID {delivery_id}")
@@ -35,6 +40,7 @@ class FceInvoiceEngine:
         invoice = {
             "invoice_id": f"INV-{uuid.uuid4().hex[:8].upper()}",
             "delivery_id": delivery_id,
+            "document_hash": document_hash,
             "timestamp": datetime.now(UTC).isoformat(),
             "pricing": calculation,
             "status": "SEALED",
