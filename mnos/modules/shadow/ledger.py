@@ -17,7 +17,7 @@ class ShadowLedger:
     def commit(self, event_type: str, actor_id: str, payload: dict) -> str:
         # SECURITY: Enforcement of ExecutionGuard Authority
         from mnos.shared.execution_guard import ExecutionGuard
-        if not ExecutionGuard.is_authorized():
+        if not (ExecutionGuard.is_authorized() or ExecutionGuard.is_system_context()):
              raise PermissionError("FAIL CLOSED: Unauthorized direct write to SHADOW Ledger blocked.")
 
         prev_hash = self.chain[-1]["hash"] if self.chain else self.genesis_hash

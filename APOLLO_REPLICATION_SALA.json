@@ -1,0 +1,16 @@
+{
+  "bundle_id": "APOLLO-REP-SALA-2026",
+  "source_node": "Sala-Omadhoo",
+  "services": [
+    "AIRBOX-AGI-OCR",
+    "SIGDOC-SEALER",
+    "FCE-INVOICE-MIRA",
+    "AIRCHAT-MULTILINGUAL"
+  ],
+  "dependencies": {
+    "mnos-core": "RC1",
+    "aegis-identity": "v10.0",
+    "shadow-ledger": "MILITARY-WORM"
+  },
+  "replication_command": "PYTHONPATH=. python3 scripts/apollo_deploy_sala.py --node-id <NEW_NODE_ID>"
+}

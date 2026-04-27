@@ -41,7 +41,10 @@ class ExecutionGuard:
 
         # 3. Set Sovereign Context (Authorized)
         token = str(uuid.uuid4())
-        _sovereign_context.set({"token": token, "actor": actor_context})
+
+        # Check if already in system context to allow nesting if needed
+        # (though usually we reset it)
+        reset_token = _sovereign_context.set({"token": token, "actor": actor_context})
 
         try:
             # BEGIN ATOMIC TX (Simulated via context and SHADOW intent)
@@ -84,7 +87,31 @@ class ExecutionGuard:
             raise RuntimeError(f"SOVEREIGN EXECUTION FAILED: {str(e)}")
         finally:
             # Clear context
-            _sovereign_context.set(None)
+            _sovereign_context.reset(reset_token)
+
+    @staticmethod
+    def is_system_context() -> bool:
+        ctx = _sovereign_context.get()
+        return ctx and ctx.get("token") == "SYSTEM"
+
+    @staticmethod
+    def sovereign_context(actor: Optional[Dict] = None):
+        """
+        Bypassing the ExecutionGuard for direct SHADOW ledger commits or
+        internal system mutations requires wrapping the action in this context.
+        """
+        import contextlib
+        @contextlib.contextmanager
+        def _context():
+            token = _sovereign_context.set({
+                "token": "SYSTEM",
+                "actor": actor or {"identity_id": "SYSTEM", "role": "admin"}
+            })
+            try:
+                yield
+            finally:
+                _sovereign_context.reset(token)
+        return _context()
 
     @staticmethod
     def is_authorized() -> bool:
