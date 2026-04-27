@@ -2,6 +2,8 @@ import uuid
 from datetime import datetime, UTC
 from typing import Dict, List, Any, Optional
 
+from mnos.modules.imoxon.pricing.engine import PricingEngine
+
 class ImoxonCore:
     """
     Unified iMOXON Core: Governs B2B + B2C commerce flows.
@@ -12,6 +14,7 @@ class ImoxonCore:
         self.fce = fce
         self.shadow = shadow
         self.events = events
+        self.pricing = PricingEngine(fce)
 
     def execute_commerce_action(self, action_type: str, actor_ctx: Dict, logic_func: Any, *args, **kwargs):
         """Final approval gate and atomic execution."""
@@ -159,8 +162,14 @@ class ProcurementEngine:
         )
 
     def _internal_procure(self, data):
-        # FCE Validation of pricing
-        pricing = self.core.fce.finalize_invoice(data.get("amount"), "RESORT_SUPPLY")
+        # 1. Advanced Pricing Engine (Prestige DMC logic)
+        # Net -> Margin -> FX -> Waterfall -> FCE Validation
+        from decimal import Decimal
+        pricing = self.core.pricing.calculate_quote(
+            net_amount=Decimal(str(data.get("amount", 0))),
+            currency=data.get("currency", "USD"),
+            category=data.get("category", "DEFAULT")
+        )
 
         request = {
             "id": f"PR-{uuid.uuid4().hex[:6].upper()}",
@@ -181,7 +190,12 @@ class ProcurementEngine:
         )
 
     def _internal_order(self, data):
-        pricing = self.core.fce.finalize_invoice(data.get("amount"), "RETAIL")
+        from decimal import Decimal
+        pricing = self.core.pricing.calculate_quote(
+            net_amount=Decimal(str(data.get("amount", 0))),
+            currency=data.get("currency", "USD"),
+            category=data.get("category", "DEFAULT")
+        )
         order = {
             "id": f"ORD-{uuid.uuid4().hex[:6].upper()}",
             "vendor_id": data.get("vendor_id"),
