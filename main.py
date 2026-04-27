@@ -316,6 +316,15 @@ app.include_router(create_heatmap_router(heatmap_engine, get_actor_ctx), prefix=
 app.include_router(create_laundry_router(laundry_engine, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_cloud_router(tenant_manager, compute_manager, orca_center, get_actor_ctx), prefix="/imoxon")
 
+# AIG Office Foundation
+from aig_office_foundation.api_routers import (
+    create_aegis_router, create_vault_router, create_ai_router, create_compliance_router
+)
+app.include_router(create_aegis_router())
+app.include_router(create_vault_router())
+app.include_router(create_ai_router())
+app.include_router(create_compliance_router())
+
 # Error handlers
 @app.exception_handler(PermissionError)
 async def permission_error_handler(request: Request, exc: PermissionError):
