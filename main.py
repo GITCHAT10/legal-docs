@@ -60,6 +60,8 @@ from mnos.api.b2b_portal import create_b2b_portal_router
 from mnos.api.heatmap import create_heatmap_router
 from mnos.api.laundry import create_laundry_router
 from mnos.api.cloud import create_cloud_router
+from mnos.api.mail import create_mail_router
+from mnos.modules.exmail.webhook import create_exmail_router
 
 # Bubble OS Super App Layer
 from mnos.interfaces.airchat.engine import ChatIntentEngine, ChatToTransactionEngine
@@ -136,6 +138,23 @@ mac_eos = MacEosBrain(
     {"gateway": fabric_gateway, "bridge": fabric_bridge, "webhook": webhook_bus}
 )
 orca_center = OrcaCommandCenter(shadow_core, compute_manager, fabric_bridge)
+
+# ORCA SALES & EXMAIL
+from mnos.modules.orca_sales.engine import OrcaSalesEngine
+from mnos.modules.exmail.service import ExMailService
+from mnos.modules.exmail.adapter_mailchimp import MailchimpAdapter
+
+orca_sales = OrcaSalesEngine(shadow_core, guard)
+mc_adapter = MailchimpAdapter(
+    api_key=os.environ.get("MAILCHIMP_API_KEY", "dummy_key"),
+    webhook_secret=os.environ.get("MAILCHIMP_WEBHOOK_SECRET", "dummy_secret")
+)
+exmail_service = ExMailService(guard, shadow_core, events_core, orca_sales, mc_adapter)
+
+# Register AIR MAIL in Cloud Registry
+if not hasattr(orca_center, "cloud_registry"):
+    orca_center.cloud_registry = {}
+orca_center.cloud_registry["AIR_MAIL"] = {"module": "EXMAIL", "status": "ACTIVE"}
 
 # APOLLO FAILOVER & REPLICATION
 from mnos.cloud.apollo.heartbeat import HeartbeatMonitor
@@ -335,6 +354,8 @@ app.include_router(create_b2b_portal_router(mars_unified, b2b_negotiator, get_ac
 app.include_router(create_heatmap_router(heatmap_engine, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_laundry_router(laundry_engine, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_cloud_router(tenant_manager, compute_manager, orca_center, failover_orch, get_actor_ctx), prefix="/imoxon")
+app.include_router(create_exmail_router(exmail_service, get_actor_ctx), prefix="/imoxon")
+app.include_router(create_mail_router(exmail_service, get_actor_ctx), prefix="/imoxon")
 
 # AIG Office Foundation
 from aig_office_foundation.api_routers import (

@@ -28,7 +28,20 @@ class ApolloDeployer:
         airbox = AirBoxEngine(shadow_core)
         sigdoc = SigDocEngine(shadow_core)
         invoice_engine = FceInvoiceEngine(fce_core, shadow_core, events_core)
-        self._record("EDGE_PROVISION", "AIRBOX, SIGDOC, FCE-INVOICE initialized.")
+
+        # EXMAIL Setup
+        from mnos.modules.exmail.service import ExMailService
+        from mnos.modules.exmail.adapter_mailchimp import MailchimpAdapter
+        from mnos.modules.orca_sales.engine import OrcaSalesEngine
+
+        os.environ["MAILCHIMP_API_KEY"] = "sk_live_sala_001"
+        os.environ["MAILCHIMP_WEBHOOK_SECRET"] = "sh_sala_webhook_v1"
+
+        orca_sales = OrcaSalesEngine(shadow_core, guard)
+        mc_adapter = MailchimpAdapter("sk_live_sala_001", "sh_sala_webhook_v1")
+        exmail = ExMailService(guard, shadow_core, events_core, orca_sales, mc_adapter)
+
+        self._record("EDGE_PROVISION", "AIRBOX, SIGDOC, FCE-INVOICE, EXMAIL initialized.")
 
         # 2. Configure Offline Queue
         print("[2] Configuring Offline Queue...")
