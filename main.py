@@ -27,6 +27,9 @@ from mnos.modules.imoxon.core.engine import (
     ImoxonCore, CatalogManager, ProcurementEngine as LegacyProcurementEngine,
     CampaignManager, MerchantManager, POSManager
 )
+from mnos.exec.upos.engine import UPOSEngine
+from mnos.cloud.edge.node import EdgeNode
+from mnos.cloud.apollo.sync import ApolloSyncService
 from mnos.modules.imoxon.procurement.engine import ProcurementEngine
 from mnos.modules.imoxon.resort.weekly_system import ResortWeeklyOrderSystem
 
@@ -58,6 +61,7 @@ from mnos.api.leaderboard import create_leaderboard_router
 from mnos.api.b2b_portal import create_b2b_portal_router
 from mnos.api.heatmap import create_heatmap_router
 from mnos.api.laundry import create_laundry_router
+from mnos.api.upos import create_upos_router
 
 # Bubble OS Super App Layer
 from mnos.modules.bubble.chat.engine import ChatIntentEngine, ChatToTransactionEngine
@@ -243,7 +247,20 @@ async def approve_product(pid: str, actor: dict = Depends(get_actor_ctx)):
 async def chat_message(message: str, actor: dict = Depends(get_actor_ctx)):
     return chat_os.process_message(actor, message)
 
+# SALA Node Extensions
+from mnos.core.fce.service import FCESovereignService
+from mnos.core.shadow.service import ShadowSovereignLedger
+
+# Instantiate Sovereign versions for SALA Node
+fce_sovereign = FCESovereignService()
+shadow_sovereign = ShadowSovereignLedger()
+
+upos_engine = UPOSEngine(fce_sovereign, shadow_sovereign, events_core)
+edge_node = EdgeNode(node_id=os.environ.get("NODE_ID", "SALA-GENERIC"))
+apollo_sync = ApolloSyncService(edge_node, shadow_sovereign)
+
 # --- Routers ---
+app.include_router(create_upos_router(upos_engine, edge_node, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_identity_router(identity_core, policy_engine, identity_gateway), prefix="/imoxon")
 app.include_router(create_commerce_router(imoxon, catalog, merchant, pos, procurement, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_finance_router(fce_hardened, mira_bridge, get_actor_ctx), prefix="/imoxon")
