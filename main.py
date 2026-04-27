@@ -58,6 +58,7 @@ from mnos.api.leaderboard import create_leaderboard_router
 from mnos.api.b2b_portal import create_b2b_portal_router
 from mnos.api.heatmap import create_heatmap_router
 from mnos.api.laundry import create_laundry_router
+from mnos.api.orca import create_orca_router
 
 # Bubble OS Super App Layer
 from mnos.modules.bubble.chat.engine import ChatIntentEngine, ChatToTransactionEngine
@@ -311,6 +312,7 @@ app.include_router(create_leaderboard_router(leaderboard, get_actor_ctx), prefix
 app.include_router(create_b2b_portal_router(mars_unified, b2b_negotiator, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_heatmap_router(heatmap_engine, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_laundry_router(laundry_engine, get_actor_ctx), prefix="/imoxon")
+app.include_router(create_orca_router(hospitality, bpe, shadow_core, get_actor_ctx), prefix="/orca")
 
 # Error handlers
 @app.exception_handler(PermissionError)
