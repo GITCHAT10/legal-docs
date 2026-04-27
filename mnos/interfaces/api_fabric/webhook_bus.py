@@ -4,8 +4,8 @@ from typing import Dict, Any
 
 class ResilientWebhookBus:
     """
-    SOVEREIGN API FABRIC: Webhook Bus (Svix/Hookdeck style).
-    Handles high-reliability delivery with SHADOW forensic anchoring.
+    SOVEREIGN API FABRIC (PHASE 1): Reliable Webhook Bus.
+    Simplified delivery (Svix-centric) with mandatory SHADOW forensic anchoring.
     """
     def __init__(self, shadow, guard):
         self.shadow = shadow

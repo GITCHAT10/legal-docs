@@ -3,8 +3,8 @@ from typing import Dict, Any, List
 
 class SovereignGatewayOrchestrator:
     """
-    SOVEREIGN API FABRIC: Unified API Gateway (Kong/Apigee Based).
-    Gathers routes and applies AEGIS/FCE/SHADOW middleware.
+    SOVEREIGN API FABRIC (PHASE 1): Primary Kong Orchestrator.
+    Focuses on critical AEGIS/FCE/SHADOW middleware enforcement.
     """
     def __init__(self, guard, shadow):
         self.guard = guard
@@ -14,12 +14,11 @@ class SovereignGatewayOrchestrator:
     def deploy_sovereign_api(self, tenant_id: str, service_name: str, upstream_url: str) -> dict:
         route_id = f"FAB-{uuid.uuid4().hex[:6].upper()}"
 
-        # Policy Stack definition
+        # Phase 1 Essentials Policy Stack
         policies = {
-            "auth": "AEGIS-ZERO-TRUST",
-            "valuation": "FCE-TAX-INJECTION",
-            "audit": "SHADOW-FORENSIC-SEAL",
-            "routing": "CLOUDFLARE-EDGE-OPTIMIZED"
+            "auth": "AEGIS-ZERO-TRUST",      # Mandatory identity verification
+            "valuation": "FCE-TAX-INJECTION", # Mandatory MIRA compliance
+            "audit": "SHADOW-FORENSIC-SEAL"   # Mandatory forensic anchoring
         }
 
         api_config = {
@@ -29,7 +28,7 @@ class SovereignGatewayOrchestrator:
             "endpoint": f"/api/v1/{tenant_id}/{service_name}",
             "upstream": upstream_url,
             "applied_policies": policies,
-            "status": "ACTIVE"
+            "status": "ACTIVE_PHASE_1"
         }
 
         self.active_routes[route_id] = api_config

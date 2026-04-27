@@ -4,8 +4,8 @@ from typing import Dict, Any
 
 class InterfaceBridge:
     """
-    SOVEREIGN API FABRIC: Bridge Orchestrator.
-    Connects OTAs, IoT (MQTT), Vessels (GPS), and SaaS into MAC EOS EVENTS.
+    SOVEREIGN API FABRIC (PHASE 1): Core Signal Bridge.
+    Connects primary systems (OTA, UT Mobility, POS) into MAC EOS EVENTS.
     """
     def __init__(self, events, guard, shadow):
         self.events = events
@@ -35,10 +35,10 @@ class InterfaceBridge:
         return {"trace_id": trace_id, "mac_event": mac_event, "status": "INGESTED"}
 
     def _map_to_mac_event(self, signal_type: str) -> str:
+        # Phase 1: Focus on mission-critical economic signals
         mapping = {
             "ota_booking": "DMC.BOOKING_RECEIVED",
-            "gps_ping": "UT.VESSEL_LOCATION_UPDATED",
             "vessel_docked": "UT.VESSEL_ARRIVED",
-            "iot_motion": "INN.PRESENCE_DETECTED"
+            "pos_transaction": "UPOS.SALE_COMPLETED"
         }
         return mapping.get(signal_type, "FABRIC.GENERIC_SIGNAL")

@@ -32,8 +32,8 @@ from mnos.modules.imoxon.procurement.engine import ProcurementEngine
 from mnos.modules.imoxon.resort.weekly_system import ResortWeeklyOrderSystem
 
 # Finance RC1
-from mnos.modules.finance.payment_layer import PaymentAbstractionLayer
-from mnos.modules.finance.escrow import EscrowFCETCore
+from mnos.core.fce.payment_layer import PaymentAbstractionLayer
+from mnos.core.fce.escrow import EscrowFCETCore
 
 # Specialized Engines
 from mnos.modules.tourism.engine import TourismEngine
@@ -50,10 +50,10 @@ from mnos.modules.trawel.scoring import AtollCommanderScoringEngine
 from mnos.modules.trawel.leaderboard import HustleLeaderboardEngine
 from mnos.modules.alliance.engine import AllianceIntegrationLayer
 from mnos.modules.imoxon.b2b_negotiation import B2BAutoNegotiationEngine
-from mnos.modules.finance.mira_bridge import MiraBridgeEngine
+from mnos.core.fce.mira_bridge import MiraBridgeEngine
 from mnos.modules.imoxon.vvip_key import VVIPKeyEngine
 from mnos.modules.trawel.heatmap import GlobalDemandHeatmap
-from mnos.modules.finance.reinvestment import RevenueReinvestmentEngine
+from mnos.core.fce.reinvestment import RevenueReinvestmentEngine
 from mnos.modules.laundry.engine import MaldivesLaundryEngine
 from mnos.api.leaderboard import create_leaderboard_router
 from mnos.api.b2b_portal import create_b2b_portal_router
