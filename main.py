@@ -72,6 +72,10 @@ from mnos.modules.bubble.orchestrator import OrderExecutionValidator
 from mnos.modules.exmail.service import ExMailEngine
 from mnos.modules.exmail.escalation import EscalationEngine
 
+# SILENT SHIELD
+from mnos.modules.silent_shield.edge import SilentShieldEdge
+from mnos.shared.visibility.tier_gate import TierGate, get_channel
+
 app = FastAPI(title="iMOXON N-DEOS: Consolidated Architecture Final")
 
 # --- System Law ---
@@ -154,12 +158,37 @@ iluvia_orchestrator = OrderExecutionValidator(shadow_core, events_core, ml_engin
 exmail_engine = ExMailEngine(identity_core, shadow_core, events_core, ai_engine=ai_engine)
 escalation_engine = EscalationEngine(shadow_core, events_core)
 
+# SILENT SHIELD
+shield_edge = SilentShieldEdge(shadow_core, events_core)
+
 # L1 & L2 Security
 @app.middleware("http")
 async def gateway_middleware(request: Request, call_next):
+    # 1. SILENT SHIELD Edge Check (Simulated)
+    # Extract headers that would normally be set by Cloudflare
+    ip = request.client.host if request.client else "127.0.0.1"
+    ua = request.headers.get("user-agent", "")
+    token = request.headers.get("Authorization")
+
+    SYSTEM_CTX = {"identity_id": "SYSTEM", "role": "admin", "realm": "SYSTEM"}
+    with guard.sovereign_context(SYSTEM_CTX):
+        edge_res = shield_edge.process_request(ip, ua, request.url.path, token)
+    if edge_res["status"] == 429:
+         return JSONResponse(status_code=429, content={"detail": edge_res["message"]})
+
+    # 2. Inject Classified Channel for downstream
+    # request.scope["channel_type"] = edge_res["channel"]
+    # FastAPI Middleware doesn't easily modify request.headers in-flight for Depends,
+    # so we use a custom state or similar. For simplicity, we assume edge sets it.
+
     if request.url.path.startswith("/imoxon") or request.url.path.startswith("/bubble"):
         await gateway.enforce_policy(request)
-    return await call_next(request)
+
+    response = await call_next(request)
+
+    # Audit Trace
+    response.headers["X-Channel-Audit"] = edge_res["channel"]
+    return response
 
 app.add_middleware(ExecutionGuardMiddleware, guard=guard, events=events_core)
 
@@ -328,6 +357,32 @@ async def permission_error_handler(request: Request, exc: PermissionError):
 async def runtime_error_handler(request: Request, exc: RuntimeError):
     # Sovereign Execution Failures (re-raised by Guard)
     return JSONResponse(status_code=500, content={"detail": str(exc)})
+
+@app.get("/imoxon/inventory/rooms")
+async def get_rooms(channel: str = Depends(get_channel)):
+    """Sample route with SILENT SHIELD Tier Gating."""
+    # Mock inventory
+    rooms = [
+        {"id": "R1", "name": "Standard Room", "tier": "BASE", "bundle_eligible": False},
+        {"id": "R2", "name": "Deluxe Suite", "tier": "ENHANCED", "bundle_eligible": True},
+        {"id": "R3", "name": "VVIP ALPHA Villa", "tier": "ALPHA", "bundle_eligible": True}
+    ]
+
+    visible_rooms = []
+    for r in rooms:
+        # Check eligibility for bundle if suite/villa
+        gate_res = TierGate.apply_gate(channel, r["tier"], bundle_requested=r["bundle_eligible"])
+        if gate_res["status"] == "AUTHORIZED":
+            visible_rooms.append(r)
+        elif gate_res["status"] == "ROOM_ONLY":
+            # Strip bundle features if only ROOM_ONLY authorized
+            r_clean = r.copy()
+            r_clean["bundle_eligible"] = False
+            r_clean["note"] = gate_res["message"]
+            visible_rooms.append(r_clean)
+        # LIMITED_INVENTORY results in room being hidden or replaced by BASE
+
+    return visible_rooms
 
 @app.get("/health")
 async def health():
