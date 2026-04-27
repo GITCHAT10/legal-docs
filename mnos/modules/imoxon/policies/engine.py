@@ -66,6 +66,14 @@ class IdentityPolicyEngine:
             if not self._has_role(identity_id, "finance_operator") and not self._has_role(identity_id, "admin"):
                 return False, "Action requires finance or admin binding"
 
+        # Air Grid RBAC
+        air_grid_write_actions = ["air_grid.flight.ingest", "air_grid.transfer.assign", "air_grid.flight.landed"]
+        if action_type in air_grid_write_actions:
+             if not self._has_role(identity_id, "ops_lead") and \
+                not self._has_role(identity_id, "air_grid_controller") and \
+                not self._has_role(identity_id, "admin"):
+                 return False, f"Action {action_type} requires Air Grid write access (ops_lead/controller/admin)"
+
         # Hard Rules
         if action_type == "asset_assignment" and not identity_id:
             return False, "No asset assignment without identity binding"
