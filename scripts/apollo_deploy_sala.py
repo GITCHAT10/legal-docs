@@ -84,8 +84,13 @@ class ApolloDeployer:
         })
 
 if __name__ == "__main__":
-    deployer = ApolloDeployer("Sala-Omadhoo")
+    import argparse
+    parser = argparse.ArgumentParser(description="APOLLO Node Deployment Script")
+    parser.add_argument("--node-id", default="Sala-Omadhoo", help="Unique ID for the node being deployed")
+    args = parser.parse_args()
+
+    deployer = ApolloDeployer(args.node_id)
     report = deployer.run()
 
-    with open("SALA_PILOT_METRICS.json", "w") as f:
+    with open(f"METRICS_{args.node_id.upper()}.json", "w") as f:
         json.dump(report, f, indent=2)

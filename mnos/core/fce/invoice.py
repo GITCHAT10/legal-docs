@@ -33,9 +33,18 @@ class FceInvoiceEngine:
         # 1. Pricing Logic (MIRA 2026)
         base_amount = Decimal(str(delivery_data.get("total_base", 0)))
         category = delivery_data.get("category", "RESORT_SUPPLY")
+        green_tax_usd = Decimal(str(delivery_data.get("green_tax_usd", 0)))
+        pax = int(delivery_data.get("pax", 1))
+        nights = int(delivery_data.get("nights", 1))
 
         # Use FCE Core for standard calculation
-        calculation = self.fce.calculate_local_order(base_amount, category)
+        calculation = self.fce.calculate_local_order(
+            base_price=base_amount,
+            category=category,
+            green_tax_usd=green_tax_usd,
+            pax=pax,
+            nights=nights
+        )
 
         invoice = {
             "invoice_id": f"INV-{uuid.uuid4().hex[:8].upper()}",

@@ -11,13 +11,10 @@ class SigDocEngine:
     def __init__(self, shadow):
         self.shadow = shadow
 
-    def seal_document(self, actor_id: str, document_type: str, data: Dict[str, Any]) -> str:
+    def seal_document(self, actor_id: str, document_type: str, data: Dict[str, Any]) -> dict:
         # 1. Create canonical representation
-        payload = {
-            "document_type": document_type,
-            "content": data,
-            "timestamp": datetime.now(UTC).isoformat()
-        }
+        timestamp = datetime.now(UTC).isoformat()
+        payload = self._build_canonical_payload(document_type, data, timestamp)
         canonical_json = json.dumps(payload, sort_keys=True)
 
         # 2. Generate Seal (SHA-256)
@@ -28,13 +25,20 @@ class SigDocEngine:
         self.shadow.commit(f"sigdoc.anchor", actor_id, {
             "document_type": document_type,
             "seal": seal_hash,
-            "timestamp": payload["timestamp"]
+            "timestamp": timestamp
         })
 
-        return seal_hash
+        return {"seal": seal_hash, "timestamp": timestamp}
 
-    def verify_seal(self, seal_hash: str, document_data: Dict[str, Any]) -> bool:
-        # In a real system, we'd query SHADOW for this seal
-        # For simulation, we check if the hash matches the data
-        canonical_json = json.dumps(document_data, sort_keys=True)
+    def verify_seal(self, seal_hash: str, document_type: str, document_data: Dict[str, Any], timestamp: str) -> bool:
+        # Reconstruct canonical payload for verification
+        payload = self._build_canonical_payload(document_type, document_data, timestamp)
+        canonical_json = json.dumps(payload, sort_keys=True)
         return hashlib.sha256(canonical_json.encode()).hexdigest() == seal_hash
+
+    def _build_canonical_payload(self, doc_type: str, content: Dict[str, Any], timestamp: str) -> Dict[str, Any]:
+        return {
+            "document_type": doc_type,
+            "content": content,
+            "timestamp": timestamp
+        }

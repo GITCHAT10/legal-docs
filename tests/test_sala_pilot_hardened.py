@@ -41,6 +41,41 @@ def test_verified_delivery_to_invoice():
     assert invoice["pricing"]["total"] == 12870.0
     assert invoice["pricing"]["tax_amount"] == 1870.0
 
+def test_mira_green_tax_calculation():
+    """Verify Green Tax is applied per pax per night (15.42 MVR/USD)."""
+    # 2 pax, 3 nights, $6 Green Tax
+    # Total Green Tax = 2 * 3 * 6 = $36
+    # In MVR = 36 * 15.42 = 555.12
+    res = fce_core.calculate_local_order(Decimal("1000.0"), "TOURISM", green_tax_usd=Decimal("6.0"), pax=2, nights=3)
+
+    # Base + SC + TGST: 1000 + 100 + 187 = 1287
+    # Total: 1287 + 555.12 = 1842.12
+    assert res["green_tax"] == 555.12
+    assert res["total"] == 1842.12
+
+def test_sigdoc_verification_consistency():
+    """Verify that SIG.DOC can accurately verify its own seals using timestamps."""
+    sigdoc = SigDocEngine(shadow_core)
+    actor_id = "STAFF-03"
+    doc_type = "WAYBILL"
+    doc_data = {"item": "Cement", "qty": 100}
+
+    with guard.sovereign_context(trace_id="TX-SIG-CONSISTENCY"):
+        result = sigdoc.seal_document(actor_id, doc_type, doc_data)
+
+    seal_hash = result["seal"]
+    timestamp = result["timestamp"]
+
+    # Verification should pass with correct data and timestamp
+    assert sigdoc.verify_seal(seal_hash, doc_type, doc_data, timestamp) is True
+
+    # Verification should fail with incorrect timestamp
+    assert sigdoc.verify_seal(seal_hash, doc_type, doc_data, "2026-01-01T00:00:00Z") is False
+
+    # Verification should fail with tampered data
+    tampered_data = {"item": "Cement", "qty": 101}
+    assert sigdoc.verify_seal(seal_hash, doc_type, tampered_data, timestamp) is False
+
 def test_shadow_audit_trail():
     """Verify that every major step is recorded in the SHADOW ledger."""
     airbox = AirBoxEngine(shadow_core)
