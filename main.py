@@ -59,6 +59,7 @@ from mnos.api.leaderboard import create_leaderboard_router
 from mnos.api.b2b_portal import create_b2b_portal_router
 from mnos.api.heatmap import create_heatmap_router
 from mnos.api.laundry import create_laundry_router
+from mnos.api.cloud import create_cloud_router
 
 # Bubble OS Super App Layer
 from mnos.interfaces.airchat.engine import ChatIntentEngine, ChatToTransactionEngine
@@ -109,6 +110,32 @@ airbox = AirBoxEngine(shadow_core)
 sigdoc = SigDocEngine(shadow_core)
 invoice_engine = FceInvoiceEngine(fce_core, shadow_core, events_core)
 multilingual_chat = MultilingualChatEngine()
+
+# AIG AIR CLOUD & API FABRIC
+from mnos.air_cloud.compute import SovereignComputeManager
+from mnos.air_cloud.storage import SovereignStorageManager
+from mnos.air_cloud.failover import CloudFailoverEngine
+from mnos.interfaces.api_fabric.gateway import SovereignGatewayOrchestrator
+from mnos.interfaces.api_fabric.bridge import InterfaceBridge
+from mnos.interfaces.api_fabric.webhook_bus import ResilientWebhookBus
+from mnos.platform.mac_eos import MacEosBrain
+from mnos.platform.orca import OrcaCommandCenter
+from mnos.cloud.tenancy import TenantManager
+
+compute_manager = SovereignComputeManager()
+storage_manager = SovereignStorageManager()
+failover_engine = CloudFailoverEngine()
+fabric_gateway = SovereignGatewayOrchestrator(guard, shadow_core)
+fabric_bridge = InterfaceBridge(events_core, guard, shadow_core)
+webhook_bus = ResilientWebhookBus(shadow_core, guard)
+
+tenant_manager = TenantManager(identity_core, shadow_core)
+mac_eos = MacEosBrain(
+    {"guard": guard, "shadow": shadow_core, "events": events_core},
+    {"compute": compute_manager, "storage": storage_manager, "failover": failover_engine},
+    {"gateway": fabric_gateway, "bridge": fabric_bridge, "webhook": webhook_bus}
+)
+orca_center = OrcaCommandCenter(shadow_core, compute_manager, fabric_bridge)
 
 # Finance RC1
 payment_rails = PaymentAbstractionLayer(fce_core)
@@ -287,6 +314,7 @@ app.include_router(create_leaderboard_router(leaderboard, get_actor_ctx), prefix
 app.include_router(create_b2b_portal_router(mars_unified, b2b_negotiator, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_heatmap_router(heatmap_engine, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_laundry_router(laundry_engine, get_actor_ctx), prefix="/imoxon")
+app.include_router(create_cloud_router(tenant_manager, compute_manager, orca_center, get_actor_ctx), prefix="/imoxon")
 
 # Error handlers
 @app.exception_handler(PermissionError)
