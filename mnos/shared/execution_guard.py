@@ -114,15 +114,16 @@ class ExecutionGuardMiddleware(BaseHTTPMiddleware):
         guarded_paths = ["/supply", "/finance", "/aegis/asset", "/commerce", "/bubble", "/exmail"]
 
         if any(request.url.path.startswith(path) for path in guarded_paths):
+            session_id = request.headers.get("X-AEGIS-SESSION")
             identity_id = request.headers.get("X-AEGIS-IDENTITY")
             device_id = request.headers.get("X-AEGIS-DEVICE")
 
-            # Require AEGIS Identity for all guarded paths
-            if not identity_id:
-                return self._violation("Missing Actor Identity")
+            # Hybrid Auth: Allow either a valid session or identity+device headers
+            if not session_id and not identity_id:
+                return self._violation("Missing Actor Identity or Session")
 
-            # Require Device Binding for Mutating Actions
-            if request.method in ["POST", "PUT", "DELETE"] and not device_id:
+            # Require Device Binding for Mutating Actions (if not using session)
+            if not session_id and request.method in ["POST", "PUT", "DELETE"] and not device_id:
                  return self._violation("Missing Device Binding for Sensitive Action")
 
         response = await call_next(request)

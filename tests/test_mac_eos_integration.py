@@ -57,6 +57,10 @@ def test_escalation_logic(auth_headers):
 
 def test_iluvia_execution_confirm(auth_headers):
     order_id = "ORD-TEST-99"
+    # Setup order
+    from main import iluvia_orchestrator
+    iluvia_orchestrator.set_order_state(order_id, "EXECUTION_PENDING", "PROCUREMENT")
+
     signal = {"type": "QR_SCAN", "valid": True}
 
     response = client.post(f"/bubble/execution/confirm?order_id={order_id}", json=signal, headers=auth_headers)
@@ -68,7 +72,11 @@ def test_iluvia_execution_confirm(auth_headers):
     assert "execution.confirmed" in events
 
 def test_iluvia_execution_mismatch(auth_headers):
-    order_id = "ORD-TEST-100"
+    order_id = "ORD-REAL-01"
+    # Setup real order first to avoid order_not_found
+    from main import iluvia_orchestrator
+    iluvia_orchestrator.set_order_state(order_id, "EXECUTION_PENDING", "PROCUREMENT")
+
     # Procurement order (default) expects QR_SCAN or WAREHOUSE_INTAKE, not GPS
     signal = {"type": "GPS_GEOFENCE", "valid": True}
 
@@ -79,3 +87,30 @@ def test_iluvia_execution_mismatch(auth_headers):
     # Verify failure rollback log in SHADOW
     events = [b["event_type"] for b in shadow_core.chain]
     assert "bubble.execution.confirm.failed" in events
+
+def test_iluvia_fake_order_rejection(auth_headers):
+    order_id = "NON_EXISTENT_ORDER"
+    signal = {"type": "QR_SCAN", "valid": True}
+
+    response = client.post(f"/bubble/execution/confirm?order_id={order_id}", json=signal, headers=auth_headers)
+    assert response.status_code == 500
+    assert "ORDER_NOT_FOUND" in response.json()["detail"]
+
+def test_exmail_session_auth_path(auth_headers):
+    # Setup session in identity_gateway
+    from main import identity_gateway
+    session_id = "SESS-123"
+    identity_gateway.sessions[session_id] = {
+        "identity_id": auth_headers["X-AEGIS-IDENTITY"],
+        "device_id": auth_headers["X-AEGIS-DEVICE"],
+        "role": "admin",
+        "realm": "API_DIRECT"
+    }
+
+    payload = {"sender": "guest1", "content": "Hello"}
+    headers = {"X-AEGIS-SESSION": session_id, "X-ISLAND-ID": "GLOBAL"}
+
+    # Middleware should now allow this session
+    response = client.post("/exmail/ingest?channel=whatsapp", json=payload, headers=headers)
+    assert response.status_code == 200
+    assert response.json()["ai_action"] == "AUTO_SEND"

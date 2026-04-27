@@ -16,9 +16,7 @@ class OrderExecutionValidator:
         """
         order = self.orders.get(order_id)
         if not order:
-            # Fallback for demo: assume order exists and is in correct state
-            order = {"id": order_id, "state": "EXECUTION_PENDING", "type": "PROCUREMENT"}
-            self.orders[order_id] = order
+            raise ValueError(f"ORDER_NOT_FOUND: Cannot confirm non-existent order {order_id}")
 
         if order["state"] != "EXECUTION_PENDING":
              raise RuntimeError(f"INVALID STATE: Order {order_id} is in {order['state']}, not EXECUTION_PENDING")
