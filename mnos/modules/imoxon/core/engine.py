@@ -165,10 +165,18 @@ class ProcurementEngine:
         # 1. Advanced Pricing Engine (Prestige DMC logic)
         # Net -> Margin -> FX -> Waterfall -> FCE Validation
         from decimal import Decimal
+        from mnos.modules.imoxon.pricing.engine import TaxContext, Channel
+
+        amount = data.get("amount")
+        if amount is None or float(amount) <= 0:
+            raise ValueError("FAIL CLOSED: Valid amount required for procurement")
+
         pricing = self.core.pricing.calculate_quote(
-            net_amount=Decimal(str(data.get("amount", 0))),
+            net_amount=Decimal(str(amount)),
             currency=data.get("currency", "USD"),
-            category=data.get("category", "DEFAULT")
+            category=data.get("category", "DEFAULT"),
+            tax_context=TaxContext(data.get("tax_context", "TOURISM")),
+            channel=Channel(data.get("channel", "DIRECT"))
         )
 
         request = {
@@ -191,10 +199,18 @@ class ProcurementEngine:
 
     def _internal_order(self, data):
         from decimal import Decimal
+        from mnos.modules.imoxon.pricing.engine import TaxContext, Channel
+
+        amount = data.get("amount")
+        if amount is None or float(amount) <= 0:
+            raise ValueError("FAIL CLOSED: Valid amount required for order")
+
         pricing = self.core.pricing.calculate_quote(
-            net_amount=Decimal(str(data.get("amount", 0))),
+            net_amount=Decimal(str(amount)),
             currency=data.get("currency", "USD"),
-            category=data.get("category", "DEFAULT")
+            category=data.get("category", "DEFAULT"),
+            tax_context=TaxContext(data.get("tax_context", "TOURISM")),
+            channel=Channel(data.get("channel", "DIRECT"))
         )
         order = {
             "id": f"ORD-{uuid.uuid4().hex[:6].upper()}",

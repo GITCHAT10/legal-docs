@@ -6,6 +6,8 @@ class PricingRequest(BaseModel):
     net_amount: Decimal = Field(..., gt=0)
     currency: str = Field(..., pattern="^(USD|EUR|MVR)$")
     category: str = Field(..., pattern="^(ACCOMMODATION|TRANSFER|EXCURSION|PACKAGE|DEFAULT)$")
+    tax_context: Optional[str] = "TOURISM"
+    channel: Optional[str] = "DIRECT"
     agent_type: Optional[str] = "AGENT_STANDARD"
     allotment_override_pct: Optional[Decimal] = None
 
@@ -14,11 +16,10 @@ class PricingResult(BaseModel):
     net_orig: float
     fx_rate: float
     net_mvr: float
-    margin_pct: float
-    margin_amount: float
     gross_mvr: float
     agent_commission: float
     platform_fee: float
     fce_breakdown: Dict[str, Any]
     total_mvr: float
+    price_trace: Dict[str, Any]
     status: str
