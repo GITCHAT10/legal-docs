@@ -60,6 +60,8 @@ from mnos.api.heatmap import create_heatmap_router
 from mnos.api.laundry import create_laundry_router
 from mnos.modules.air_grid.engine import AirGridEngine
 from mnos.api.air_grid.router import create_air_grid_router
+from mnos.modules.air_grid.ut_bridge import UTMVPBridge
+from mnos.api.air_grid.ops_router import create_ops_router
 
 # Bubble OS Super App Layer
 from mnos.modules.bubble.chat.engine import ChatIntentEngine, ChatToTransactionEngine
@@ -130,7 +132,8 @@ vvip_engine = VVIPKeyEngine(imoxon)
 reinvestment_engine = RevenueReinvestmentEngine(imoxon)
 laundry_engine = MaldivesLaundryEngine(imoxon, mars_unified)
 heatmap_engine = GlobalDemandHeatmap(imoxon, island_gm, mira_bridge, reinvestment_engine)
-air_grid_engine = AirGridEngine(imoxon)
+ut_mvp_bridge = UTMVPBridge(imoxon)
+air_grid_engine = AirGridEngine(imoxon, ut_bridge=ut_mvp_bridge)
 
 imoxon.mira_bridge = mira_bridge
 imoxon.vvip_engine = vvip_engine
@@ -262,6 +265,7 @@ app.include_router(create_b2b_portal_router(mars_unified, b2b_negotiator, get_ac
 app.include_router(create_heatmap_router(heatmap_engine, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_laundry_router(laundry_engine, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_air_grid_router(air_grid_engine, get_actor_ctx), prefix="/imoxon")
+app.include_router(create_ops_router(ut_mvp_bridge, get_actor_ctx), prefix="/imoxon")
 
 # Error handlers
 @app.exception_handler(PermissionError)

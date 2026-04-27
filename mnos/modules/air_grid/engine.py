@@ -9,8 +9,9 @@ class AirGridEngine:
     """
     A.I.D.A.S. Air Traffic Command Engine: Orchestrates flight intake to island dispatch.
     """
-    def __init__(self, core):
+    def __init__(self, core, ut_bridge=None):
         self.core = core
+        self.ut_bridge = ut_bridge
         self.corridors = {
             "INDIA_SOUTH": {"preferred_transfer": "speedboat", "multiplier": Decimal("1.0")},
             "GCC_DXB": {"preferred_transfer": "seaplane", "multiplier": Decimal("1.15")},
@@ -34,6 +35,8 @@ class AirGridEngine:
 
     def _internal_ingest(self, data):
         flight_id = data.get("flight_id")
+        ut_ticket_ref = data.get("ut_ticket_ref")
+
         # 1. Normalize
         scheduled = datetime.fromisoformat(data.get("scheduled_arrival"))
         estimated = datetime.fromisoformat(data.get("estimated_arrival", data.get("scheduled_arrival")))
@@ -57,6 +60,17 @@ class AirGridEngine:
 
         self.flights[flight_id] = flight
         self.core.events.publish("air_grid.flight_updated", flight)
+
+        # 3. UT Connection: Auto-Reschedule
+        if self.ut_bridge and ut_ticket_ref:
+            self.ut_bridge.attempt_auto_adjust(
+                self.core.guard.get_actor(),
+                flight_id,
+                int(delay_min),
+                flight["pax_count"],
+                ut_ticket_ref
+            )
+
         return flight
 
     def _match_window(self, arrival_time: time) -> str:
