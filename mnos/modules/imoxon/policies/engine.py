@@ -5,6 +5,27 @@ class IdentityPolicyEngine:
     def validate_action(self, action_type: str, context: dict):
         identity_id = context.get("identity_id")
         device_id = context.get("device_id")
+        clearance_level = context.get("clearance_level", 1)
+
+        # 1. ULTRA-PREMIUM / PROTOCOL POLICY (Level 4)
+        if action_type.startswith("ultra.") or action_type == "imoxon.order.create_high_value":
+            if clearance_level < 4:
+                return False, f"FAIL CLOSED: Clearance Level 4 required for {action_type}"
+
+            # IP Whitelisting (Simulated)
+            if context.get("ip_address") and not self._is_ip_whitelisted(context.get("ip_address")):
+                return False, "FAIL CLOSED: Access restricted to whitelisted IP for Level 4"
+
+            # Biometric requirement (Simulated)
+            if not context.get("biometric_verified"):
+                return False, "FAIL CLOSED: Biometric verification required for Level 4 action"
+
+        # 2. Dual Approval Enforcement for high value
+        # This check is usually handled at the ExecutionGuard layer for state tracking,
+        # but the policy engine defines the requirement.
+        if action_type == "imoxon.payment.release_high_value" and context.get("amount", 0) >= 250000:
+            if not context.get("is_second_approval"):
+                 return False, "DUAL_APPROVAL_REQUIRED: Action requires a second signature from Clearance Level 4"
 
         # Staff Binding requirements
         staff_actions = ["onboarding", "uniform_assignment", "linen_assignment", "delivery_acceptance"]
@@ -64,3 +85,8 @@ class IdentityPolicyEngine:
         if not identity_id: return False
         profile = self.identity_core.profiles.get(identity_id)
         return profile and profile.get("verification_status") == "verified"
+
+    def _is_ip_whitelisted(self, ip_address: str) -> bool:
+        # Mock whitelist for demo
+        whitelist = ["10.0.0.1", "127.0.0.1"]
+        return ip_address in whitelist
