@@ -63,6 +63,11 @@ from mnos.api.cloud import create_cloud_router
 from mnos.api.mail import create_mail_router
 from mnos.modules.exmail.webhook import create_exmail_router
 
+# AIRMOVIE EDGE
+from mnos.exec.airmovie.engine import AirMovieEngine
+from mnos.exec.airmovie.sync import AirMovieSyncEngine
+from mnos.api.airmovie import create_airmovie_router
+
 # Bubble OS Super App Layer
 from mnos.interfaces.airchat.engine import ChatIntentEngine, ChatToTransactionEngine
 from mnos.interfaces.airchat.multilingual import MultilingualChatEngine
@@ -150,6 +155,10 @@ mc_adapter = MailchimpAdapter(
     webhook_secret=os.environ.get("MAILCHIMP_WEBHOOK_SECRET", "dummy_secret")
 )
 exmail_service = ExMailService(guard, shadow_core, events_core, orca_sales, mc_adapter)
+
+# AIRMOVIE
+airmovie_engine = AirMovieEngine(shadow_core, guard)
+airmovie_sync = AirMovieSyncEngine(shadow_core, guard)
 
 # Register AIR MAIL in Cloud Registry
 if not hasattr(orca_center, "cloud_registry"):
@@ -356,6 +365,7 @@ app.include_router(create_laundry_router(laundry_engine, get_actor_ctx), prefix=
 app.include_router(create_cloud_router(tenant_manager, compute_manager, orca_center, failover_orch, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_exmail_router(exmail_service, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_mail_router(exmail_service, get_actor_ctx), prefix="/imoxon")
+app.include_router(create_airmovie_router(airmovie_engine, airmovie_sync, get_actor_ctx), prefix="/imoxon")
 
 # AIG Office Foundation
 from aig_office_foundation.api_routers import (

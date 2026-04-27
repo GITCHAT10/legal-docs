@@ -5,7 +5,9 @@
     "AIRBOX-AGI-OCR",
     "SIGDOC-SEALER",
     "FCE-INVOICE-MIRA",
-    "AIRCHAT-MULTILINGUAL"
+    "AIRCHAT-MULTILINGUAL",
+    "EXMAIL-ORCA-SYNC",
+    "AIRMOVIE-EDGE"
   ],
   "dependencies": {
     "mnos-core": "RC1",
