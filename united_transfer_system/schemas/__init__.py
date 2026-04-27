@@ -6,5 +6,8 @@ from .base import (
     Journey,
     TelemetryCreate,
     AvailabilityQuery,
-    HandshakeInput
+    HandshakeInput,
+    PartnerCreate,
+    TransferRequest,
+    AssetSync
 )

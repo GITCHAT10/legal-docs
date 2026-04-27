@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, ForeignKey, Enum, DateTime, Floa
 from sqlalchemy.orm import relationship
 import enum
 from datetime import datetime, UTC
-from mnos.core.db.base_class import Base, TraceableMixin
+from mnos.core.db.base import Base, TraceableMixin
 
 class LegType(str, enum.Enum):
     AIR = "air"
@@ -36,6 +36,18 @@ class Partner(Base, TraceableMixin):
 
     legs = relationship("Leg", back_populates="partner")
 
+class Asset(Base, TraceableMixin):
+    """Base model for Vessels and Vehicles."""
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True)
+    type = Column(String) # vessel, vehicle
+    capacity = Column(Integer)
+    status = Column(String, default="available")
+    current_lat = Column(Float)
+    current_lon = Column(Float)
+
+    legs = relationship("Leg", back_populates="asset")
+
 class Journey(Base, TraceableMixin):
     id = Column(Integer, primary_key=True, index=True)
     tenant_id = Column(String, index=True, nullable=False, default="default")
@@ -56,6 +68,7 @@ class Leg(Base, TraceableMixin):
     device_id = Column(String, index=True)
 
     type = Column(Enum(LegType), nullable=False)
+    asset_id = Column(Integer, ForeignKey("asset.id"))
     provider_id = Column(String) # Driver/Vessel ID
     partner_id = Column(Integer, ForeignKey("partner.id"))
 
@@ -65,12 +78,13 @@ class Leg(Base, TraceableMixin):
     arrival_time = Column(DateTime(timezone=True))
 
     status = Column(String, default="scheduled")
-    qr1_verified = Column(Boolean, default=False) # PICKUP
-    qr2_verified = Column(Boolean, default=False) # DROP
-    master_voucher_code = Column(String, index=True) # The QR code base
+    qr1_verified = Column(Boolean, default=False) # Passenger Scan
+    qr2_verified = Column(Boolean, default=False) # Operator Scan
+    master_voucher_code = Column(String, index=True)
 
     journey = relationship("Journey", back_populates="legs")
     partner = relationship("Partner", back_populates="legs")
+    asset = relationship("Asset", back_populates="legs")
     telemetry = relationship("Telemetry", back_populates="leg")
 
 class Telemetry(Base, TraceableMixin):

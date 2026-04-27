@@ -1,7 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
 from datetime import datetime
-from united_transfer_system.models.base import LegType, JourneyStatus
+from united_transfer_system.models.base import LegType, JourneyStatus, PartnerTier
 
 class LegBase(BaseModel):
     type: LegType
@@ -12,11 +12,13 @@ class LegBase(BaseModel):
 class LegCreate(LegBase):
     pass
 
-class Leg(LegBase):
+class Leg(BaseModel):
     id: int
     journey_id: int
     status: str
     master_voucher_code: str
+    qr1_verified: bool
+    qr2_verified: bool
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -56,3 +58,21 @@ class HandshakeInput(BaseModel):
     master_code: str
     actor_id: str
     actor_role: str
+
+class PartnerCreate(BaseModel):
+    name: str
+    tier: PartnerTier = PartnerTier.STABILIZING
+
+class TransferRequest(BaseModel):
+    request_id: str
+    actor_id: str
+    origin: str
+    destination: str
+    time_window: datetime
+    passengers: int
+    priority: str = "NORMAL"
+
+class AssetSync(BaseModel):
+    name: str
+    type: str
+    capacity: int

@@ -20,14 +20,18 @@ async def create_journey(db: Session, *, obj_in: schemas.JourneyCreate, ctx: Dic
 
     # 2. Create Leg records
     for leg_in in obj_in.legs:
+        # Generate Master Voucher (Dual-QR Base)
+        master_code = f"QR-{uuid.uuid4().hex[:10].upper()}"
+
         db_leg = models.Leg(
             journey_id=db_journey.id,
-            trace_id=db_journey.trace_id,
+            # Ensure unique trace_id for each leg
+            trace_id=f"LEG-{uuid.uuid4().hex[:8]}",
             type=leg_in.type,
             origin=leg_in.origin,
             destination=leg_in.destination,
             departure_time=leg_in.departure_time,
-            master_voucher_code=f"QR-{uuid.uuid4().hex[:10].upper()}"
+            master_voucher_code=master_code
         )
         db.add(db_leg)
 
@@ -49,6 +53,21 @@ async def create_journey(db: Session, *, obj_in: schemas.JourneyCreate, ctx: Dic
     )
 
     return db_journey
+
+async def create_partner(db: Session, *, obj_in: schemas.PartnerCreate) -> models.Partner:
+    partner = models.Partner(
+        name=obj_in.name,
+        tier=obj_in.tier
+    )
+    partner.ensure_trace_id()
+    db.add(partner)
+    db.commit()
+    db.refresh(partner)
+    return partner
+
+async def process_transfer_request(db: Session, *, obj_in: schemas.TransferRequest) -> Dict[str, Any]:
+    # Placeholder for DEMAND ENGINE logic (Merging requests)
+    return {"request_id": obj_in.request_id, "status": "PENDING_FORMATION"}
 
 def get_availability(db: Session, query: schemas.AvailabilityQuery):
     return [
