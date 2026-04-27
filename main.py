@@ -61,6 +61,7 @@ from mnos.api.laundry import create_laundry_router
 from mnos.api.orca import create_orca_router
 
 # Bubble OS Super App Layer
+from mnos.modules.ai_ml.engine import SovereignAIEngine, PredictiveMLEngine
 from mnos.modules.bubble.chat.engine import ChatIntentEngine, ChatToTransactionEngine
 from mnos.modules.bubble.sdk.core.bridge import BubbleSDK
 from mnos.modules.bubble.pos.engine import BubblePOSEngine
@@ -139,14 +140,18 @@ imoxon.mira_bridge = mira_bridge
 imoxon.vvip_engine = vvip_engine
 imoxon.reinvestment = reinvestment_engine
 
+# AI/ML Sovereignty
+ai_engine = SovereignAIEngine(shadow_core, events_core)
+ml_engine = PredictiveMLEngine(shadow_core)
+
 # Bubble OS
 intent_engine = ChatIntentEngine(imoxon)
 chat_os = ChatToTransactionEngine(imoxon, intent_engine)
 sdk = BubbleSDK(imoxon)
-iluvia_orchestrator = OrderExecutionValidator(shadow_core, events_core)
+iluvia_orchestrator = OrderExecutionValidator(shadow_core, events_core, ml_engine=ml_engine)
 
 # ExMail OS
-exmail_engine = ExMailEngine(identity_core, shadow_core, events_core)
+exmail_engine = ExMailEngine(identity_core, shadow_core, events_core, ai_engine=ai_engine)
 escalation_engine = EscalationEngine(shadow_core, events_core)
 
 # L1 & L2 Security

@@ -5,9 +5,10 @@ class OrderExecutionValidator:
     ILUVIA Execution Validator: Reality check for orders.
     Bridges the gap between Digital Orders and Physical Signals.
     """
-    def __init__(self, shadow, event_bus):
+    def __init__(self, shadow, event_bus, ml_engine=None):
         self.shadow = shadow
         self.event_bus = event_bus
+        self.ml_engine = ml_engine
         self.orders = {} # Simulated order store for validation
 
     def confirm_real_world(self, order_id: str, signal: dict):
@@ -25,6 +26,10 @@ class OrderExecutionValidator:
 
         if signal["type"] in expected_signals and signal.get("valid"):
             order["state"] = "COMPLETED"
+
+            # Predictive outcome learning (ML)
+            if self.ml_engine:
+                 self.ml_engine.train_from_ledger("delivery_efficiency", "execution.confirmed")
 
             self.shadow.commit("execution.confirmed", order_id, {
                 "signal_type": signal["type"],

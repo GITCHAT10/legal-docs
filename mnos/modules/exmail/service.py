@@ -97,10 +97,11 @@ class ExMailEngine:
     ExMail Engine: Communication OS for MAC EOS.
     Handles ingestion, AI classification, and sovereign routing.
     """
-    def __init__(self, aegis, shadow, event_bus):
+    def __init__(self, aegis, shadow, event_bus, ai_engine=None):
         self.aegis = aegis
         self.shadow = shadow
         self.event_bus = event_bus
+        self.ai_engine = ai_engine
 
     def ingest(self, channel: str, raw_payload: dict):
         # 1. Normalize
@@ -111,7 +112,14 @@ class ExMailEngine:
         profile = self.aegis.profiles.get(profile_id) if profile_id else {"profile_type": "guest"}
         identity = {"identity_id": profile_id or "ANON", "role": profile.get("profile_type", "guest")}
 
-        # 3. AI Classification
+        # 3. AI Classification (Cognitive Processing)
+        if self.ai_engine:
+            cognitive_intent = self.ai_engine.analyze_intent(identity["identity_id"], msg['content'], raw_payload)
+            # Override intent if AI has high confidence
+            if cognitive_intent["intent_score"] >= 0.90:
+                 # Logic to merge legacy and cognitive classification
+                 pass
+
         classification = AIBrain.classify(msg['content'], identity["role"])
 
         # 4. Conversation Management
