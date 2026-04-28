@@ -114,33 +114,43 @@ class PricingEngine:
         return (amount * rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
     def calculate(self, req: PricingRequest, user_nationality: str = "Foreign") -> PricingResponse:
-        # 0. Generate Trace ID if missing
+        # 0. STRICT VALIDATION
+        if not req.net_amount or req.net_amount <= 0:
+            raise ValueError("FAIL CLOSED: Invalid or zero net_amount rejected by Pricing Engine")
+
+        # 1. Generate Trace ID if missing
         trace_id = req.context.trigger or f"TR-{uuid.uuid4().hex[:8].upper()}"
 
-        # 1. FX COMPLIANCE: Get legal rate
+        # 2. FX COMPLIANCE: Get legal rate
         locked_fx_rate = self.fx_compliance.get_compliant_fx_rate()
 
-        # 2. MALDIVIAN USER RULE: Force MVR if local
+        # 3. MALDIVIAN USER RULE: Force MVR if local
         display_currency = req.context.currency or "USD"
         if user_nationality == "Maldivian":
             display_currency = "MVR"
 
-        # 3. Tax Context
+        # 4. Tax Context
         tax_type = self.resolve_tax_type(req)
 
-        # 4. Context-Aware Margin
+        # 5. Context-Aware Margin
         base_margin = MARGIN_BANDS.get(req.product_type, Decimal("0.10"))
         applied_margin = self._scale_margin(base_margin, req.context)
         margin_amount = (req.net_amount * applied_margin).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         sell_price = req.net_amount + margin_amount
 
-        # 5. Commission Waterfall
+        # 6. Commission Waterfall
         agent_comm = (sell_price * COMMISSION_RATES["agent"]).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         platform_fee = (sell_price * COMMISSION_RATES["platform"]).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         net_profit = sell_price - req.net_amount - agent_comm - platform_fee
 
-        # 6. AUTHORITY CALL: Dual-Currency FCE Calculation
-        fce_category = "TOURISM_STANDARD" if tax_type == "TOURISM" else "RETAIL"
+        # 7. AUTHORITY CALL: Dual-Currency FCE Calculation
+        # Map dynamic tax types
+        category_map = {
+            "TOURISM": "TOURISM_STANDARD",
+            "RETAIL": "RETAIL",
+            "EXEMPT": "EXEMPT"
+        }
+        fce_category = category_map.get(tax_type.upper(), "TOURISM_STANDARD")
         fce_result = self.fce.calculate_local_order(
             base_price=sell_price,
             category=fce_category,
@@ -154,14 +164,14 @@ class PricingEngine:
         sc = Decimal(str(fce_result["service_charge"]))
         tgst = Decimal(str(fce_result["tax_amount"]))
 
-        # 7. Final FX Conversion for display
+        # 8. Final FX Conversion for display
         if display_currency == "MVR":
             final_gross_display = final_gross_mvr
         else:
             # Already in USD (input currency)
             final_gross_display = final_gross_input
 
-        # 8. Build Objects
+        # 9. Build Objects
         waterfall = MarginWaterfall(
             net_cost=req.net_amount,
             margin_applied=margin_amount,

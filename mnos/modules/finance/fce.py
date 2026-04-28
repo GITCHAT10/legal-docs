@@ -17,10 +17,10 @@ class FCEEngine:
         self.locked_rates = {"USD": Decimal("15.42")} # MVR
 
     def calculate_local_order(self,
-                             base_price: Decimal,
+                             base_price: Any,
                              category: str = "TOURISM_STANDARD",
-                             green_tax_usd: Decimal = Decimal("0"),
-                             locked_fx_rate: Decimal = Decimal("15.42"),
+                             green_tax_usd: Any = Decimal("0"),
+                             locked_fx_rate: Any = Decimal("15.42"),
                              input_currency: str = "USD") -> dict:
         """
         MANDATORY MALDIVES BILLING RULE (MIRA COMPLIANT):
@@ -33,6 +33,11 @@ class FCEEngine:
         6. -> = total (in input_currency)
         7. -> converted to MVR for ledger
         """
+        # Ensure Decimal
+        base_price = Decimal(str(base_price))
+        green_tax_usd = Decimal(str(green_tax_usd))
+        locked_fx_rate = Decimal(str(locked_fx_rate))
+
         # Quantize to 2 decimal places
         base_price = base_price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 

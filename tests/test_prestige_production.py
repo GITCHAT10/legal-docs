@@ -324,3 +324,58 @@ async def test_fx_compliance_buffer():
     # Upper bound (MMA * 1.02) = 15.7284 -> 15.72
     assert rate >= Decimal("15.42") * Decimal("0.98")
     assert rate <= Decimal("15.42") * Decimal("1.02")
+
+@pytest.mark.asyncio
+async def test_full_booking_lifecycle(db_session):
+    from mnos.modules.imoxon.booking.manager import BookingManager, BookingState
+    from mnos.modules.imoxon.core.engine import ImoxonCore
+    from mnos.modules.finance.fce import FCEEngine
+    from mnos.modules.finance.fx_compliance import FXComplianceEngine
+    from mnos.modules.events.bus import DistributedEventBus
+    from mnos.modules.shadow.ledger import ShadowLedger
+    from mnos.shared.execution_guard import ExecutionGuard
+    from prestige.services.inventory.realtime_ledger import RealtimeInventoryLedger
+
+    # 1. Setup Environment
+    shadow = ShadowLedger()
+    events = DistributedEventBus()
+    fce = FCEEngine()
+    class MockPolicy:
+        def validate_action(self, at, ctx): return True, "OK"
+    guard = ExecutionGuard(None, MockPolicy(), fce, shadow, events)
+    core = ImoxonCore(guard, fce, shadow, events)
+    inventory = RealtimeInventoryLedger(core)
+    manager = BookingManager(core, inventory)
+
+    actor = {"identity_id": "AGENT_01", "role": "agent", "device_id": "DEV_01"}
+
+    # 2. Step 1: QUOTE
+    from mnos.modules.imoxon.pricing.engine import PricingEngine, PricingRequest
+    pricing_engine = PricingEngine(fce, FXComplianceEngine())
+    req = PricingRequest(net_amount=Decimal("5000.00"), product_type="accommodation")
+    pricing_resp = pricing_engine.calculate(req)
+
+    with guard.sovereign_context(actor):
+        booking = manager.create_quote(actor, pricing_resp)
+        assert booking["state"] == BookingState.QUOTE
+        booking_id = booking["id"]
+
+        # 3. Step 2: CONFIRM
+        manager.confirm_booking(actor, booking_id, "VILLA_01", "2024-12-20", 1)
+        assert manager.bookings[booking_id]["state"] == BookingState.CONFIRMED
+
+        # 4. Step 3: PAYMENT
+        manager.record_payment(actor, booking_id, "WIRE-TRANS-999")
+        assert manager.bookings[booking_id]["state"] == BookingState.PAID
+
+        # 5. Step 4: INVOICE (Final)
+        final_booking = manager.lock_and_invoice(actor, booking_id)
+        assert final_booking["state"] == BookingState.INVOICED
+        assert "invoice" in final_booking
+        assert final_booking["invoice"]["total_mvr"] > 0
+        assert final_booking["invoice"]["tgst_usd_extracted"] > 0
+
+    # 6. Verify SHADOW Audit Chain
+    assert len(shadow.chain) >= 4
+    events_in_audit = [b["event_type"] for b in shadow.chain]
+    assert "booking.invoiced.completed" in events_in_audit
