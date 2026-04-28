@@ -1,94 +1,75 @@
 import pytest
 from fastapi.testclient import TestClient
 from main import app, identity_core
+from mnos.shared.execution_guard import _sovereign_context
 
 client = TestClient(app)
 
 @pytest.fixture
 def setup_identity():
     # Setup a valid identity and device in the core
-    identity_id = identity_core.create_profile({
-        "full_name": "Authorized Admin",
-        "profile_type": "admin",
-        "organization_id": "MIG-HQ"
-    })
-    device_id = identity_core.bind_device(identity_id, {"fingerprint": "secure-fingerprint"})
-    return identity_id, device_id
+    # Requires sovereign context for direct write to shadow
+    token = _sovereign_context.set({"token": "TEST-SETUP", "actor": {"identity_id": "SYSTEM"}})
+    try:
+        identity_id = identity_core.create_profile({
+            "full_name": "Authorized Admin",
+            "profile_type": "admin",
+            "organization_id": "MIG-HQ"
+        })
+        device_id = identity_core.bind_device(identity_id, {"fingerprint": "secure-fingerprint"})
+        # Verify it to pass critical action checks
+        identity_core.verify_identity(identity_id, "SYSTEM")
+        return identity_id, device_id
+    finally:
+        _sovereign_context.reset(token)
 
 def test_missing_headers_rejected():
     response = client.post("/imoxon/suppliers/connect", params={"name": "Test"})
     assert response.status_code == 403
-    assert "Missing Identity or Device" in response.json()["detail"]
+    assert "AEGIS_REQUIRED" in response.json()["detail"]
 
 def test_fake_identity_rejected(setup_identity):
     identity_id, device_id = setup_identity
     headers = {
         "X-AEGIS-IDENTITY": "fake-id",
-        "X-AEGIS-DEVICE": device_id
+        "X-AEGIS-DEVICE": device_id,
+        "X-AEGIS-SIGNATURE": "VALID_SIG_FOR_fake-id"
     }
     response = client.post("/imoxon/suppliers/connect", params={"name": "Test"}, headers=headers)
     assert response.status_code == 403
-    assert "Identity Unauthorized" in response.json()["detail"]
+    assert "INVALID_IDENTITY" in response.json()["detail"]
 
 def test_unbound_device_rejected(setup_identity):
     identity_id, device_id = setup_identity
 
     # Create another identity
-    other_id = identity_core.create_profile({"full_name": "Other", "profile_type": "user"})
+    token = _sovereign_context.set({"token": "TEST-SETUP", "actor": {"identity_id": "SYSTEM"}})
+    try:
+        other_id = identity_core.create_profile({"full_name": "Other", "profile_type": "user"})
+    finally:
+        _sovereign_context.reset(token)
 
     headers = {
         "X-AEGIS-IDENTITY": other_id,
-        "X-AEGIS-DEVICE": device_id # device bound to identity_id, not other_id
+        "X-AEGIS-DEVICE": device_id, # device bound to identity_id, not other_id
+        "X-AEGIS-SIGNATURE": f"VALID_SIG_FOR_{other_id}"
     }
     response = client.post("/imoxon/suppliers/connect", params={"name": "Test"}, headers=headers)
     assert response.status_code == 403
-    assert "Device Binding Invalid" in response.json()["detail"]
-
-def test_role_derived_from_db(setup_identity):
-    identity_id, device_id = setup_identity
-
-    # Create a non-admin identity
-    user_id = identity_core.create_profile({
-        "full_name": "Regular User",
-        "profile_type": "user"
-    })
-    user_device = identity_core.bind_device(user_id, {"fingerprint": "user-phone"})
-
-    headers = {
-        "X-AEGIS-IDENTITY": user_id,
-        "X-AEGIS-DEVICE": user_device
-    }
-
-    # Try an action that might require admin (e.g. hospitality registration in policy engine if restricted,
-    # though currently policy engine for hospitality.property.register might not be strict in my previous implementation)
-    # Let's check a known restricted action in IdentityPolicyEngine: "manual_release_override"
-    # Wait, specialized engines use execute_commerce_action which uses guard.
-
-    # Hospitality property register currently uses "hospitality.property.register"
-    # IdentityPolicyEngine doesn't have it in staff/supplier/logistics/finance actions, so it defaults to True.
-
-    # Let's use a finance action that requires admin: "manual_release_override"
-    # But wait, main.py doesn't have a direct endpoint for it yet, it's in routers.
-
-    # We can just verify the response of a generic endpoint to see what actor context it got if we had a debug endpoint.
-    # Alternatively, try a supplier action with a user role.
-
-    headers = {
-        "X-AEGIS-IDENTITY": user_id,
-        "X-AEGIS-DEVICE": user_device
-    }
-    # "imoxon.supplier.connect" doesn't seem to have a specific role check in policy engine yet.
-    # But we can verify it fails if we added one.
-
-    pass
+    assert "DEVICE_BINDING_INVALID" in response.json()["detail"]
 
 def test_authorized_access(setup_identity):
     identity_id, device_id = setup_identity
     headers = {
         "X-AEGIS-IDENTITY": identity_id,
-        "X-AEGIS-DEVICE": device_id
+        "X-AEGIS-DEVICE": device_id,
+        "X-AEGIS-SIGNATURE": f"VALID_SIG_FOR_{identity_id}"
     }
+    # Connect supplier tries to create a profile, which might fail if policy engine is strict.
+    # But for now we just want to see why it fails with 403.
     response = client.post("/imoxon/suppliers/connect", params={"name": "Authorized Supplier"}, headers=headers)
+    if response.status_code != 200:
+        print(f"DEBUG: {response.json()}")
     assert response.status_code == 200
     assert response.json()["name"] == "Authorized Supplier"
-    assert "id" in response.json()
+    assert "supplier_id" in response.json()

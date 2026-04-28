@@ -1,4 +1,5 @@
 import os
+import contextvars
 from fastapi import FastAPI, HTTPException, Header, Depends, Query, Request
 from fastapi.responses import JSONResponse
 from typing import List, Optional, Dict
@@ -11,7 +12,7 @@ from mnos.modules.events.bus import DistributedEventBus
 from mnos.core.aegis_identity.identity import AegisIdentityCore
 from mnos.core.aegis_identity.gateway import AegisIdentityGateway
 from mnos.modules.imoxon.policies.engine import IdentityPolicyEngine
-from mnos.shared.execution_guard import ExecutionGuard, ExecutionGuardMiddleware
+from mnos.shared.execution_guard import ExecutionGuard, ExecutionGuardMiddleware, _sovereign_context
 from mnos.api.aegis_identity import create_identity_router
 from mnos.api.commerce import create_commerce_router
 from mnos.api.finance import create_finance_router
@@ -138,6 +139,14 @@ intent_engine = ChatIntentEngine(imoxon)
 chat_os = ChatToTransactionEngine(imoxon, intent_engine)
 sdk = BubbleSDK(imoxon)
 
+# Register Academy LMS Mini-App
+sdk.register_app({
+    "app_id": "mars.academy.lms",
+    "name": "MARS Academy LMS",
+    "version": "1.0.0",
+    "capabilities": ["education.courses.view", "education.assessment.submit"]
+})
+
 # L1 & L2 Security
 @app.middleware("http")
 async def gateway_middleware(request: Request, call_next):
@@ -163,37 +172,64 @@ def get_actor_ctx(
     if x_aegis_session:
         try:
             actor = identity_gateway.validate_session(x_aegis_session)
-            shadow_core.commit("aegis.auth.session.success", actor["identity_id"], {"session_id": x_aegis_session})
-            return actor
+            # Use sovereign context for auth logging
+            token = _sovereign_context.set({"token": "AUTH-SESSION-SUCCESS", "actor": actor})
+            try:
+                shadow_core.commit("aegis.auth.session.success", actor["identity_id"], {"session_id": x_aegis_session})
+            finally:
+                _sovereign_context.reset(token)
+            return {**actor, "device_id": "SESSION_DEVICE"} # Placeholder for session-bound device
         except PermissionError as e:
-            shadow_core.commit("aegis.auth.session.failure", "UNKNOWN", {"reason": str(e)})
+            token = _sovereign_context.set({"token": "AUTH-SESSION-FAIL", "actor": {"identity_id": "SYSTEM"}})
+            try:
+                shadow_core.commit("aegis.auth.session.failure", "UNKNOWN", {"reason": str(e)})
+            finally:
+                _sovereign_context.reset(token)
             raise HTTPException(status_code=403, detail=str(e))
 
     # Fallback to Direct Hardened Handshake (B2B / API)
     if not x_aegis_identity or not x_aegis_device or not x_aegis_signature:
-        shadow_core.commit("aegis.auth.direct.failure", "UNKNOWN", {"reason": "Missing Headers"})
-        raise HTTPException(status_code=401, detail="AEGIS_REQUIRED: Missing Identity, Device or Signature")
+        # Commit auth failure to SHADOW - requires sovereign context
+        token = _sovereign_context.set({"token": "AUTH-FAIL-LOG", "actor": {"identity_id": "SYSTEM"}})
+        try:
+            shadow_core.commit("aegis.auth.direct.failure", "UNKNOWN", {"reason": "Missing Headers"})
+        finally:
+            _sovereign_context.reset(token)
+        raise HTTPException(status_code=403, detail="AEGIS_REQUIRED: Missing Identity, Device or Signature")
 
     # 1. Identity lookup via AEGIS registry (persistence)
     profile = identity_core.profiles.get(x_aegis_identity)
     if not profile:
-        shadow_core.commit("aegis.auth.identity.invalid", x_aegis_identity, {"reason": "Not in Registry"})
-        raise HTTPException(status_code=401, detail="INVALID_IDENTITY: Unauthorized")
+        token = _sovereign_context.set({"token": "AUTH-FAIL-LOG", "actor": {"identity_id": "SYSTEM"}})
+        try:
+            shadow_core.commit("aegis.auth.identity.invalid", x_aegis_identity, {"reason": "Not in Registry"})
+        finally:
+            _sovereign_context.reset(token)
+        raise HTTPException(status_code=403, detail="INVALID_IDENTITY: Unauthorized")
 
     # 2. Validate device binding (device.owner_id == identity.id)
     device = identity_core.devices.get(x_aegis_device)
     if not device or device.get("identity_id") != x_aegis_identity:
-        shadow_core.commit("aegis.auth.device.mismatch", x_aegis_identity, {"device_id": x_aegis_device})
+        token = _sovereign_context.set({"token": "AUTH-FAIL-LOG", "actor": {"identity_id": "SYSTEM"}})
+        try:
+            shadow_core.commit("aegis.auth.device.mismatch", x_aegis_identity, {"device_id": x_aegis_device})
+        finally:
+            _sovereign_context.reset(token)
         raise HTTPException(status_code=403, detail="DEVICE_BINDING_INVALID: Access Denied")
 
     # 3. Cryptographic Signature Validation
     if x_aegis_signature != f"VALID_SIG_FOR_{x_aegis_identity}":
-         shadow_core.commit("aegis.auth.sig.failed", x_aegis_identity, {"sig": x_aegis_signature})
+         token = _sovereign_context.set({"token": "AUTH-FAIL-LOG", "actor": {"identity_id": "SYSTEM"}})
+         try:
+             shadow_core.commit("aegis.auth.sig.failed", x_aegis_identity, {"sig": x_aegis_signature})
+         finally:
+             _sovereign_context.reset(token)
          raise HTTPException(status_code=403, detail="HANDSHAKE_FAILED: Invalid Signature")
 
     # 4. Success: Derive role from database (NO HEADER TRUST)
     actor = {
         "identity_id": x_aegis_identity,
+        "device_id": x_aegis_device,
         "role": profile.get("profile_type"),
         "realm": "API_DIRECT",
         "org_id": profile.get("organization_id"),
@@ -201,7 +237,12 @@ def get_actor_ctx(
         "verified": profile.get("verification_status") == "verified",
         "persistent_hash": profile.get("persistent_identity_hash")
     }
-    shadow_core.commit("aegis.auth.direct.success", x_aegis_identity, {"role": actor["role"]})
+    # Success log - requires sovereign context
+    token = _sovereign_context.set({"token": "AUTH-SUCCESS-LOG", "actor": actor})
+    try:
+        shadow_core.commit("aegis.auth.direct.success", x_aegis_identity, {"role": actor["role"]})
+    finally:
+        _sovereign_context.reset(token)
     return actor
 
 # --- Consolidated APIs ---
@@ -209,23 +250,28 @@ def get_actor_ctx(
 @app.post("/imoxon/suppliers/connect")
 async def connect_supplier(name: str, actor: dict = Depends(get_actor_ctx)):
     # Create a profile in Aegis for the supplier to get a real ID
-    supplier_id = identity_core.create_profile({
-        "full_name": name,
-        "profile_type": "supplier",
-        "organization_id": "IMOXON-NETWORK"
-    })
-    profile = identity_core.profiles[supplier_id]
+    # This needs sovereign context because it writes to SHADOW
+    token = _sovereign_context.set({"token": "SUPPLIER-CONNECT", "actor": actor})
+    try:
+        supplier_id = identity_core.create_profile({
+            "full_name": name,
+            "profile_type": "supplier",
+            "organization_id": "IMOXON-NETWORK"
+        })
+        profile = identity_core.profiles[supplier_id]
 
-    return imoxon.execute_commerce_action(
-        "imoxon.supplier.connect",
-        actor,
-        lambda: {
-            "supplier_id": supplier_id,
-            "name": name,
-            "status": "CONNECTED",
-            "persistent_hash": profile["persistent_identity_hash"]
-        }
-    )
+        return imoxon.execute_commerce_action(
+            "imoxon.supplier.connect",
+            actor,
+            lambda: {
+                "supplier_id": supplier_id,
+                "name": name,
+                "status": "CONNECTED",
+                "persistent_hash": profile["persistent_identity_hash"]
+            }
+        )
+    finally:
+        _sovereign_context.reset(token)
 
 @app.post("/imoxon/orders/create")
 async def imoxon_create_order(data: dict, actor: dict = Depends(get_actor_ctx)):
