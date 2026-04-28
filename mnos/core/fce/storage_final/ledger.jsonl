@@ -1,1 +1,0 @@
-{"id": "cad5f11a-0e1e-4d1f-9ab4-be0ae94efeb0", "transaction_id": "BANK-TX-555", "account_id": "7d919b29-ef72-46d6-9aa3-f5376f8af2d6", "entry_type": "credit", "amount": 118.8, "balance_after": 118.8, "event_type": "qr_payment", "metadata": {"invoice_id": "UPOS-C4A0DE51"}, "created_at": "2026-04-28T20:18:55.465261+00:00"}

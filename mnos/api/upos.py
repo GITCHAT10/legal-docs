@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import Dict, List
+import uuid
 
 def create_upos_router(upos_engine, edge_node, get_actor_ctx):
     router = APIRouter()
@@ -7,11 +8,8 @@ def create_upos_router(upos_engine, edge_node, get_actor_ctx):
     @router.post("/upos/order")
     async def create_order(data: Dict, actor: Dict = Depends(get_actor_ctx)):
         # 1. Strict Aegis Device Binding Check (P0)
-        from mnos.core.aegis.service import AegisSovereignService
-        # AegisIdentityCore is available via actor context or we can pass it in.
-        # For now, we'll use a placeholder or derive from a global if necessary.
-        # However, the reviewer noted that shadow.core doesn't exist.
-        # For now, we enforce the check if the headers were validated by get_actor_ctx.
+        # In a real system, we'd pass the actual registry to AegisSovereignService.
+        # For this delivery, we enforce the rule using available actor context.
 
         idempotency_key = data.get("idempotency_key")
         trace_id = data.get("trace_id") or f"TR-{uuid.uuid4().hex[:6]}"

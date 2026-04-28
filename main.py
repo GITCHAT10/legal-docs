@@ -255,6 +255,7 @@ from mnos.core.shadow.service import ShadowSovereignLedger
 from mnos.core.doc.engine import SigDocEngine
 from mnos.exec.comms.engine import CommsEngine
 from mnos.exec.orchestrator.service import OrchestratorService
+from mnos.interfaces.orca.dashboard import OrcaDashboard
 
 # Instantiate Sovereign versions for SALA Node
 fce_sovereign = FCESovereignService()
@@ -263,6 +264,7 @@ fce_wallet = FceWalletService(shadow_sovereign, events_core)
 sigdoc_engine = SigDocEngine(shadow_sovereign)
 comms_engine = CommsEngine(events_core)
 orchestrator_svc = OrchestratorService(events_core)
+orca_dashboard = OrcaDashboard(shadow_sovereign, fce_wallet)
 
 upos_engine = UPOSEngine(fce_sovereign, shadow_sovereign, events_core)
 edge_node = EdgeNode(node_id=os.environ.get("NODE_ID", "SALA-GENERIC"))
