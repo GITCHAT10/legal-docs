@@ -12,9 +12,9 @@ class APIGatewayControlPlane:
     async def enforce_policy(self, request: Request):
         island_id = request.headers.get("X-ISLAND-ID", "GLOBAL")
 
-        # 1. Rate Limiting
+        # 1. Rate Limiting (Increased for ROS Activation)
         load = self.rate_limits.get(island_id, 0)
-        if load > 100: # Threshold
+        if load > 1000: # Threshold increased
              raise HTTPException(status_code=429, detail=f"Rate limit exceeded for island {island_id}")
         self.rate_limits[island_id] = load + 1
 
