@@ -3,11 +3,14 @@ from datetime import datetime, UTC, timedelta
 import hashlib
 from typing import Dict, List, Optional
 from mnos.modules.education.academic_bridge import AcademicBridgeEngine
+from mnos.modules.education.mnu_bridge import MNUBridgeEngine
+from mnos.modules.education.national_ucos import NationalCredentialManager
 
 class EducationEngine:
     """
     UHA Education Engine: Manages versioned course management,
     staff enrollment, and Black Coral Standard certification.
+    Integrated with Maldives National University (MNU).
     """
     def __init__(self, core):
         self.core = core
@@ -15,7 +18,11 @@ class EducationEngine:
         self.enrollments = {}
         self.certificates = {}
         self.credentials = {} # credential_id -> full_data
+
+        # Bridge Engines
         self.academic_bridge = AcademicBridgeEngine(core, self)
+        self.mnu_bridge = MNUBridgeEngine(core)
+        self.national_uco_manager = NationalCredentialManager(core)
 
     def create_course(self, actor_ctx: dict, course_data: dict):
         return self.core.execute_commerce_action(
@@ -142,8 +149,12 @@ class EducationEngine:
         enrollment = self.enrollments[assessment_result["enrollment_id"]]
         course = self.get_course(enrollment["course_id"], enrollment["version"])
 
-        # 1. Retrieve Academic Baseline (30% weight)
-        academic_baseline = self.academic_bridge.get_baseline(student_id)
+        # 1. Retrieve Academic Baseline
+        academic_baseline = 0.0
+        if student_id in self.mnu_bridge.academic_records:
+             academic_baseline = self.mnu_bridge.academic_records[student_id]["overall_academic_baseline"]
+        elif student_id in self.academic_bridge.academic_records:
+             academic_baseline = self.academic_bridge.academic_records[student_id]["academic_baseline"]
 
         # 2. Calculate BCSI Score (70% Practical)
         scoring = BlackCoralScoringEngine(self.core)
@@ -158,24 +169,31 @@ class EducationEngine:
         if bcsi_data["haccp_gate"] == "HOLD":
              return {"status": "HOLD", "reason": "HACCP Hard Gate Triggered"}
 
-        # 3. Issue BCVP Credential
-        bcvp = BlackCoralVerificationEngine(self.core)
-        credential = bcvp.issue_credential(
-            trainee_id=student_id,
-            tier=bcsi_data["eligible_tier"] or "BCA",
-            competencies=bcsi_data["breakdown"]["pillars"],
-            bcsi_score=bcsi_data["bcsi_score"]
-        )
+        # 3. Issue Credential
+        if student_id in self.mnu_bridge.academic_records:
+            uco = self.national_uco_manager.issue_national_uco(
+                student_id, bcsi_data, mnu_program="MNU-DIP-HOSP", atoll="MLE"
+            )
+            cred_dict = uco.model_dump(mode='json')
+            cred_id = uco.credential_id
+        else:
+            bcvp = BlackCoralVerificationEngine(self.core)
+            cred_dict = bcvp.issue_credential(
+                trainee_id=student_id,
+                tier=bcsi_data["eligible_tier"] or "BCA",
+                competencies=bcsi_data["breakdown"]["pillars"],
+                bcsi_score=bcsi_data["bcsi_score"]
+            )
+            cred_id = f"BC-{bcsi_data['eligible_tier']}-{student_id[:8].upper()}"
 
         # Store for dashboard lookup
-        cred_id = f"BC-{bcsi_data['eligible_tier']}-{student_id[:8].upper()}"
         self.credentials[cred_id] = {
             "trainee_id": student_id,
-            "credential": credential,
+            "credential": cred_dict,
             "bcsi": bcsi_data
         }
 
-        return credential
+        return cred_dict
 
     def get_verification_dashboard_data(self, credential_id: str):
         """
@@ -186,7 +204,6 @@ class EducationEngine:
             return None
 
         trainee_id = entry["trainee_id"]
-        # Core has guard, guard has identity_core
         profile = self.core.guard.identity_core.profiles.get(trainee_id)
 
         dashboard = {
@@ -224,3 +241,6 @@ class EducationEngine:
 
     def process_transcript(self, actor_ctx: Dict, payload: Dict):
         return self.academic_bridge.process_transcript(actor_ctx, payload)
+
+    def process_mnu_transcript(self, actor_ctx: Dict, student_id: str, transcript: List[Dict]):
+        return self.mnu_bridge.align_transcript(student_id, transcript)

@@ -42,6 +42,7 @@ from mnos.modules.transport.engine import TransportEngine
 from mnos.modules.housing.engine import HousingEngine
 from mnos.modules.exchange.engine import ExchangeEngine
 from mnos.modules.education.engine import EducationEngine
+from mnos.modules.education.futures import BlackCoralFuturesEngine
 from mnos.modules.hospitality.engine import LowCostHospitalityEngine
 from mnos.modules.restaurant.engine import MaldivesRestaurantEngine
 from mnos.modules.imoxon.mars_unified import NexusSkyICloudBrain
@@ -60,6 +61,8 @@ from mnos.api.b2b_portal import create_b2b_portal_router
 from mnos.api.heatmap import create_heatmap_router
 from mnos.api.laundry import create_laundry_router
 from mnos.api.education import create_education_router
+from mnos.api.futures import create_futures_router
+from mnos.api.national_talent import create_national_talent_router
 
 # Bubble OS Super App Layer
 from mnos.modules.bubble.chat.engine import ChatIntentEngine, ChatToTransactionEngine
@@ -116,6 +119,7 @@ transport = TransportEngine(imoxon)
 housing = HousingEngine(imoxon)
 exchange = ExchangeEngine(imoxon)
 education = EducationEngine(imoxon)
+futures = BlackCoralFuturesEngine(imoxon, education)
 hospitality = LowCostHospitalityEngine(imoxon)
 restaurant = MaldivesRestaurantEngine(imoxon, bpe)
 mars_unified = NexusSkyICloudBrain(imoxon, bpe, transport)
@@ -306,6 +310,8 @@ app.include_router(create_b2b_portal_router(mars_unified, b2b_negotiator, get_ac
 app.include_router(create_heatmap_router(heatmap_engine, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_laundry_router(laundry_engine, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_education_router(education, get_actor_ctx), prefix="/imoxon")
+app.include_router(create_futures_router(futures, get_actor_ctx), prefix="/imoxon")
+app.include_router(create_national_talent_router(education, get_actor_ctx), prefix="/imoxon")
 
 # Error handlers
 @app.exception_handler(PermissionError)

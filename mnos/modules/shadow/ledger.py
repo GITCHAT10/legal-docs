@@ -36,7 +36,8 @@ class ShadowLedger:
         prev_hash = self.chain[-1]["hash"] if self.chain else self.genesis_hash
 
         # Deepcopy payload to prevent retro-active changes breaking the hash
-        safe_payload = copy.deepcopy(payload)
+        # Handle non-serializable objects (like datetime) before calculate_hash
+        safe_payload = self._sanitize_payload(copy.deepcopy(payload))
 
         block = {
             "index": len(self.chain),
@@ -55,6 +56,16 @@ class ShadowLedger:
         block["hash"] = self._calculate_hash(block)
         self.chain.append(block)
         return block["hash"]
+
+    def _sanitize_payload(self, data):
+        """Recursively convert datetime to ISO string for JSON serialization"""
+        if isinstance(data, dict):
+            return {k: self._sanitize_payload(v) for k, v in data.items()}
+        elif isinstance(data, list):
+            return [self._sanitize_payload(v) for v in data]
+        elif isinstance(data, datetime):
+            return data.isoformat()
+        return data
 
     def _calculate_hash(self, block: dict) -> str:
         # Use deepcopy here too just in case
