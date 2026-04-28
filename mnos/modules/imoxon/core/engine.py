@@ -165,18 +165,22 @@ class ProcurementEngine:
         # 1. Advanced Pricing Engine (Prestige DMC logic)
         # Net -> Margin -> FX -> Waterfall -> FCE Validation
         from decimal import Decimal
-        from mnos.modules.imoxon.pricing.engine import TaxContext, Channel
+        from mnos.modules.imoxon.pricing.engine import ProductType, Channel
+        from mnos.modules.finance.fce import TaxType
 
         amount = data.get("amount")
         if amount is None or float(amount) <= 0:
             raise ValueError("FAIL CLOSED: Valid amount required for procurement")
 
+        trace_id = data.get("trace_id", str(uuid.uuid4()))
+
         pricing = self.core.pricing.calculate_quote(
             net_amount=Decimal(str(amount)),
             currency=data.get("currency", "USD"),
-            category=data.get("category", "DEFAULT"),
-            tax_context=TaxContext(data.get("tax_context", "TOURISM")),
-            channel=Channel(data.get("channel", "DIRECT"))
+            product_type=ProductType(data.get("product_type", ProductType.PACKAGE)),
+            trace_id=trace_id,
+            tax_type=TaxType(data.get("tax_type", TaxType.TOURISM_STANDARD)),
+            channel=Channel(data.get("channel", Channel.DIRECT))
         )
 
         request = {
@@ -199,18 +203,22 @@ class ProcurementEngine:
 
     def _internal_order(self, data):
         from decimal import Decimal
-        from mnos.modules.imoxon.pricing.engine import TaxContext, Channel
+        from mnos.modules.imoxon.pricing.engine import ProductType, Channel
+        from mnos.modules.finance.fce import TaxType
 
         amount = data.get("amount")
         if amount is None or float(amount) <= 0:
             raise ValueError("FAIL CLOSED: Valid amount required for order")
 
+        trace_id = data.get("trace_id", str(uuid.uuid4()))
+
         pricing = self.core.pricing.calculate_quote(
             net_amount=Decimal(str(amount)),
             currency=data.get("currency", "USD"),
-            category=data.get("category", "DEFAULT"),
-            tax_context=TaxContext(data.get("tax_context", "TOURISM")),
-            channel=Channel(data.get("channel", "DIRECT"))
+            product_type=ProductType(data.get("product_type", ProductType.RETAIL)),
+            trace_id=trace_id,
+            tax_type=TaxType(data.get("tax_type", TaxType.RETAIL)),
+            channel=Channel(data.get("channel", Channel.DIRECT))
         )
         order = {
             "id": f"ORD-{uuid.uuid4().hex[:6].upper()}",

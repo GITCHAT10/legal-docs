@@ -273,8 +273,18 @@ app.include_router(create_ops_router(ut_mvp_bridge, get_actor_ctx), prefix="/imo
 
 # --- ROS Event Wiring ---
 def ros_event_listener(event_type, payload):
-    # Route global events to revenue engine
-    email_revenue_engine.handle_event(event_type, payload)
+    # Core ROS Revenue Triggers
+    ros_events = [
+        "price.drop",
+        "inventory.low",
+        "booking.abandoned",
+        "booking.created",
+        "pre.checkin",
+        "post.checkout",
+        "flight.landed"
+    ]
+    if event_type in ros_events:
+        email_revenue_engine.handle_event(event_type, payload)
 
 events_core.subscribe("*", ros_event_listener)
 
