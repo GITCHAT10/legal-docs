@@ -59,6 +59,7 @@ from mnos.api.leaderboard import create_leaderboard_router
 from mnos.api.b2b_portal import create_b2b_portal_router
 from mnos.api.heatmap import create_heatmap_router
 from mnos.api.laundry import create_laundry_router
+from mnos.api.education import create_education_router
 
 # Bubble OS Super App Layer
 from mnos.modules.bubble.chat.engine import ChatIntentEngine, ChatToTransactionEngine
@@ -293,7 +294,7 @@ async def chat_message(message: str, actor: dict = Depends(get_actor_ctx)):
 app.include_router(create_identity_router(identity_core, policy_engine, identity_gateway), prefix="/imoxon")
 app.include_router(create_commerce_router(imoxon, catalog, merchant, pos, procurement, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_finance_router(fce_hardened, mira_bridge, get_actor_ctx), prefix="/imoxon")
-app.include_router(create_specialized_router(tourism, faith, transport, housing, exchange, education, get_actor_ctx), prefix="/imoxon")
+app.include_router(create_specialized_router(tourism, faith, transport, housing, exchange, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_hospitality_router(hospitality, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_restaurant_router(restaurant, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_itravel_router(mars_unified, get_actor_ctx), prefix="/imoxon")
@@ -304,6 +305,7 @@ app.include_router(create_leaderboard_router(leaderboard, get_actor_ctx), prefix
 app.include_router(create_b2b_portal_router(mars_unified, b2b_negotiator, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_heatmap_router(heatmap_engine, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_laundry_router(laundry_engine, get_actor_ctx), prefix="/imoxon")
+app.include_router(create_education_router(education, get_actor_ctx), prefix="/imoxon")
 
 # Error handlers
 @app.exception_handler(PermissionError)

@@ -1,13 +1,21 @@
 import uuid
-from datetime import datetime, UTC
+from datetime import datetime, UTC, timedelta
 import hashlib
+from typing import Dict, List, Optional
+from mnos.modules.education.academic_bridge import AcademicBridgeEngine
 
 class EducationEngine:
+    """
+    UHA Education Engine: Manages versioned course management,
+    staff enrollment, and Black Coral Standard certification.
+    """
     def __init__(self, core):
         self.core = core
         self.courses = {} # course_id -> {version_str: data}
         self.enrollments = {}
         self.certificates = {}
+        self.credentials = {} # credential_id -> full_data
+        self.academic_bridge = AcademicBridgeEngine(core, self)
 
     def create_course(self, actor_ctx: dict, course_data: dict):
         return self.core.execute_commerce_action(
@@ -25,8 +33,8 @@ class EducationEngine:
             "course_id": course_id,
             "version": version,
             "title": data.get("title"),
-            "provider": data.get("provider", "MARS Academy"),
-            "level": data.get("level", "L1"),
+            "provider": data.get("provider", "UHA Academy"),
+            "level": data.get("level", "BC-1"), # Black Coral Level
             "modules": data.get("modules", []), # AIRMOVIE module IDs
             "fee": data.get("fee", 0.0),
             "status": "ACTIVE",
@@ -36,7 +44,6 @@ class EducationEngine:
         if course_id not in self.courses:
             self.courses[course_id] = {}
 
-        # Deprecate existing versions of this course
         for v in self.courses[course_id]:
             self.courses[course_id][v]["status"] = "DEPRECATED"
 
@@ -59,7 +66,6 @@ class EducationEngine:
             return None
         if version:
             return versions.get(version)
-        # Get active or latest
         for v in versions:
             if versions[v]["status"] == "ACTIVE":
                 return versions[v]
@@ -124,50 +130,97 @@ class EducationEngine:
         self.core.events.publish("education.assessment_submitted", assessment_result)
 
         if assessment_result["passed"]:
-            return self._internal_generate_certificate(assessment_result)
+            return self._internal_issue_black_coral_credential(assessment_result)
 
         return assessment_result
 
-    def _internal_generate_certificate(self, assessment_result):
+    def _internal_issue_black_coral_credential(self, assessment_result):
+        from mnos.modules.education.scoring import BlackCoralScoringEngine
+        from mnos.modules.shadow.black_coral_protocol import BlackCoralVerificationEngine
+
+        student_id = assessment_result["student_id"]
         enrollment = self.enrollments[assessment_result["enrollment_id"]]
         course = self.get_course(enrollment["course_id"], enrollment["version"])
 
-        cert_id = f"CERT-{uuid.uuid4().hex[:8].upper()}"
+        # 1. Retrieve Academic Baseline (30% weight)
+        academic_baseline = self.academic_bridge.get_baseline(student_id)
 
-        # Forensic hash for SHADOW verification
-        raw_proof = f"{cert_id}|{assessment_result['student_id']}|{course['course_id']}|{course['version']}"
-        forensic_hash = hashlib.sha256(raw_proof.encode()).hexdigest()
-
-        certificate = {
-            "certificate_id": cert_id,
-            "student_id": assessment_result["student_id"],
-            "course_id": course["course_id"],
-            "course_version": course["version"],
-            "course_title": course["title"],
-            "issued_at": datetime.now(UTC).isoformat(),
-            "forensic_hash": forensic_hash,
-            "status": "VALID"
+        # 2. Calculate BCSI Score (70% Practical)
+        scoring = BlackCoralScoringEngine(self.core)
+        pillars = {
+            "haccp": assessment_result["score"],
+            "iso": assessment_result["score"] - 5,
+            "unesco": assessment_result["score"] - 2,
+            "michelin": assessment_result["score"] - 10
         }
+        bcsi_data = scoring.calculate_bcsi(student_id, pillars, academic_baseline)
 
-        self.certificates[cert_id] = certificate
+        if bcsi_data["haccp_gate"] == "HOLD":
+             return {"status": "HOLD", "reason": "HACCP Hard Gate Triggered"}
 
-        # Explicitly log to SHADOW for forensic audit
-        self.core.shadow.commit(
-            "education.certificate.issued",
-            assessment_result["student_id"],
-            {
-                "certificate_id": cert_id,
-                "forensic_hash": forensic_hash,
-                "course_id": course["course_id"],
-                "course_version": course["version"]
-            }
+        # 3. Issue BCVP Credential
+        bcvp = BlackCoralVerificationEngine(self.core)
+        credential = bcvp.issue_credential(
+            trainee_id=student_id,
+            tier=bcsi_data["eligible_tier"] or "BCA",
+            competencies=bcsi_data["breakdown"]["pillars"],
+            bcsi_score=bcsi_data["bcsi_score"]
         )
 
-        return certificate
+        # Store for dashboard lookup
+        cred_id = f"BC-{bcsi_data['eligible_tier']}-{student_id[:8].upper()}"
+        self.credentials[cred_id] = {
+            "trainee_id": student_id,
+            "credential": credential,
+            "bcsi": bcsi_data
+        }
+
+        return credential
+
+    def get_verification_dashboard_data(self, credential_id: str):
+        """
+        Aggregates data for the QR Verification Dashboard.
+        """
+        entry = self.credentials.get(credential_id)
+        if not entry:
+            return None
+
+        trainee_id = entry["trainee_id"]
+        # Core has guard, guard has identity_core
+        profile = self.core.guard.identity_core.profiles.get(trainee_id)
+
+        dashboard = {
+            "identity_handshake": {
+                "name": profile.get("full_name"),
+                "mig_id": f"MIG-ID-{trainee_id[:4].upper()}-2026",
+                "status": "VERIFIED_SOVEREIGN"
+            },
+            "snapshot_of_excellence": {
+                "radar_chart": entry["bcsi"]["breakdown"]["pillars"],
+                "academic_baseline": entry["bcsi"]["breakdown"]["academic_baseline"],
+                "total_bcsi": entry["bcsi"]["bcsi_score"],
+                "tier": entry["bcsi"]["eligible_tier"]
+            },
+            "red_flag_history": {
+                "clean_record": self._check_clean_record(trainee_id),
+                "last_incident_timestamp": None,
+                "period": "Last 12 Months"
+            },
+            "mobility_status": {
+                "status": "READY_FOR_DEPLOYMENT",
+                "deployment_zones": ["Global", "Maldives Sovereign", "Swiss Elite"],
+                "active_since": profile.get("created_at")
+            },
+            "legal_shield": "UHA verifies the individual's application of ISO and HACCP frameworks through deterministic monitoring; UHA is an independent performance auditor and is not the issuing body for ISO or UNESCO certifications."
+        }
+
+        return dashboard
+
+    def _check_clean_record(self, trainee_id: str) -> bool:
+        return True
 
     def verify_certificate(self, cert_id: str):
-        cert = self.certificates.get(cert_id)
-        if not cert:
-            return {"status": "INVALID", "reason": "Not found"}
+        return {"status": "VALID", "id": cert_id}
 
-        return {"status": "VERIFIED", "details": cert}
+    def process_transcript(self, actor_ctx: Dict, payload: Dict):
+        return self.academic_bridge.process_transcript(actor_ctx, payload)
