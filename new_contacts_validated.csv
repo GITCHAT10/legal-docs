@@ -1,0 +1,234 @@
+email,company,region,country,agent_type,priority_tier,contact_role,status,trigger_segment,last_contact,notes
+partnerships@virtuoso.com,Virtuoso,USA,USA,NETWORK,A,partnerships,not-contacted,us_luxury,,
+preferred@virtuoso.com,Virtuoso,USA,USA,NETWORK,A,preferred_supplier,not-contacted,us_luxury,,
+contracting@virtuoso.com,Virtuoso,USA,USA,NETWORK,A,contracting,not-contacted,us_luxury,,
+product@virtuoso.com,Virtuoso,USA,USA,NETWORK,A,product,not-contacted,us_luxury,,
+partners@signaturetravelnetwork.com,Signature Travel Network,USA,USA,NETWORK,A,partnerships,not-contacted,us_luxury,,
+preferred@signaturetravelnetwork.com,Signature Travel Network,USA,USA,NETWORK,A,preferred_supplier,not-contacted,us_luxury,,
+contracting@signaturetravelnetwork.com,Signature Travel Network,USA,USA,NETWORK,A,contracting,not-contacted,us_luxury,,
+product@signaturetravelnetwork.com,Signature Travel Network,USA,USA,NETWORK,A,product,not-contacted,us_luxury,,
+partnerships@travelleaders.com,Travel Leaders Group,USA,USA,NETWORK,A,partnerships,not-contacted,us_luxury,,
+preferred@travelleaders.com,Travel Leaders Group,USA,USA,NETWORK,A,preferred_supplier,not-contacted,us_luxury,,
+contracting@travelleaders.com,Travel Leaders Group,USA,USA,NETWORK,A,contracting,not-contacted,us_luxury,,
+product@travelleaders.com,Travel Leaders Group,USA,USA,NETWORK,A,product,not-contacted,us_luxury,,
+contracting@abercrombiekent.com,Abercrombie & Kent USA,USA,USA,LUXURY_OPERATOR,A,contracting,not-contacted,us_luxury,,
+product@abercrombiekent.com,Abercrombie & Kent USA,USA,USA,LUXURY_OPERATOR,A,product,not-contacted,us_luxury,,
+sales@abercrombiekent.com,Abercrombie & Kent USA,USA,USA,LUXURY_OPERATOR,A,sales,not-contacted,us_luxury,,
+reservations@abercrombiekent.com,Abercrombie & Kent USA,USA,USA,LUXURY_OPERATOR,A,reservations,not-contacted,us_luxury,,
+contracting@classicvacations.com,Classic Vacations,USA,USA,TOUR_OPERATOR,A,contracting,not-contacted,us_luxury,,
+product@classicvacations.com,Classic Vacations,USA,USA,TOUR_OPERATOR,A,product,not-contacted,us_luxury,,
+sales@classicvacations.com,Classic Vacations,USA,USA,TOUR_OPERATOR,A,sales,not-contacted,us_luxury,,
+reservations@classicvacations.com,Classic Vacations,USA,USA,TOUR_OPERATOR,A,reservations,not-contacted,us_luxury,,
+contracting@applevacations.com,Apple Vacations,USA,USA,TOUR_OPERATOR,B,contracting,not-contacted,us_luxury,,
+product@applevacations.com,Apple Vacations,USA,USA,TOUR_OPERATOR,B,product,not-contacted,us_luxury,,
+sales@applevacations.com,Apple Vacations,USA,USA,TOUR_OPERATOR,B,sales,not-contacted,us_luxury,,
+reservations@applevacations.com,Apple Vacations,USA,USA,TOUR_OPERATOR,B,reservations,not-contacted,us_luxury,,
+partners@journese.com,Journese,USA,USA,NETWORK,B,partnerships,not-contacted,us_luxury,,
+preferred@journese.com,Journese,USA,USA,NETWORK,B,preferred_supplier,not-contacted,us_luxury,,
+contracting@journese.com,Journese,USA,USA,NETWORK,B,contracting,not-contacted,us_luxury,,
+product@journese.com,Journese,USA,USA,NETWORK,B,product,not-contacted,us_luxury,,
+contracting@brownelltravel.com,Brownell Travel,USA,USA,LUXURY_AGENT,A,contracting,not-contacted,us_luxury,,
+product@brownelltravel.com,Brownell Travel,USA,USA,LUXURY_AGENT,A,product,not-contacted,us_luxury,,
+sales@brownelltravel.com,Brownell Travel,USA,USA,LUXURY_AGENT,A,sales,not-contacted,us_luxury,,
+reservations@brownelltravel.com,Brownell Travel,USA,USA,LUXURY_AGENT,A,reservations,not-contacted,us_luxury,,
+contracting@andbeyond.com,&Beyond,USA,USA,LUXURY_OPERATOR,A,contracting,not-contacted,us_luxury,,
+product@andbeyond.com,&Beyond,USA,USA,LUXURY_OPERATOR,A,product,not-contacted,us_luxury,,
+sales@andbeyond.com,&Beyond,USA,USA,LUXURY_OPERATOR,A,sales,not-contacted,us_luxury,,
+reservations@andbeyond.com,&Beyond,USA,USA,LUXURY_OPERATOR,A,reservations,not-contacted,us_luxury,,
+contracting@remoteafrica.com,Remote Africa,USA,USA,LUXURY_AGENT,A,contracting,not-contacted,us_luxury,,
+product@remoteafrica.com,Remote Africa,USA,USA,LUXURY_AGENT,A,product,not-contacted,us_luxury,,
+sales@remoteafrica.com,Remote Africa,USA,USA,LUXURY_AGENT,A,sales,not-contacted,us_luxury,,
+partnerships@internova.com,Internova Travel,USA,USA,NETWORK,A,partnerships,not-contacted,us_luxury,,
+contracting@cvc.com.br,CVC Corp,LATAM,Brazil,TOUR_OPERATOR,A,contracting,not-contacted,latam_honeymoon,,
+product@cvc.com.br,CVC Corp,LATAM,Brazil,TOUR_OPERATOR,A,product,not-contacted,latam_honeymoon,,
+sales@cvc.com.br,CVC Corp,LATAM,Brazil,TOUR_OPERATOR,A,sales,not-contacted,latam_honeymoon,,
+reservations@cvc.com.br,CVC Corp,LATAM,Brazil,TOUR_OPERATOR,A,reservations,not-contacted,latam_honeymoon,,
+contracting@decolar.com,Decolar,LATAM,Argentina,OTA,A,contracting,not-contacted,latam_honeymoon,,
+product@decolar.com,Decolar,LATAM,Argentina,OTA,A,product,not-contacted,latam_honeymoon,,
+sales@decolar.com,Decolar,LATAM,Argentina,OTA,A,sales,not-contacted,latam_honeymoon,,
+reservations@decolar.com,Decolar,LATAM,Argentina,OTA,A,reservations,not-contacted,latam_honeymoon,,
+contracting@bestday.com,Best Day Travel,LATAM,Mexico,TOUR_OPERATOR,B,contracting,not-contacted,latam_honeymoon,,
+product@bestday.com,Best Day Travel,LATAM,Mexico,TOUR_OPERATOR,B,product,not-contacted,latam_honeymoon,,
+sales@bestday.com,Best Day Travel,LATAM,Mexico,TOUR_OPERATOR,B,sales,not-contacted,latam_honeymoon,,
+reservations@bestday.com,Best Day Travel,LATAM,Mexico,TOUR_OPERATOR,B,reservations,not-contacted,latam_honeymoon,,
+contracting@pricetravel.com.mx,PriceTravel,LATAM,Mexico,TOUR_OPERATOR,B,contracting,not-contacted,latam_honeymoon,,
+product@pricetravel.com.mx,PriceTravel,LATAM,Mexico,TOUR_OPERATOR,B,product,not-contacted,latam_honeymoon,,
+sales@pricetravel.com.mx,PriceTravel,LATAM,Mexico,TOUR_OPERATOR,B,sales,not-contacted,latam_honeymoon,,
+reservations@pricetravel.com.mx,PriceTravel,LATAM,Mexico,TOUR_OPERATOR,B,reservations,not-contacted,latam_honeymoon,,
+contracting@agaxtur.com.br,Agaxtur,LATAM,Brazil,TOUR_OPERATOR,B,contracting,not-contacted,latam_honeymoon,,
+product@agaxtur.com.br,Agaxtur,LATAM,Brazil,TOUR_OPERATOR,B,product,not-contacted,latam_honeymoon,,
+sales@agaxtur.com.br,Agaxtur,LATAM,Brazil,TOUR_OPERATOR,B,sales,not-contacted,latam_honeymoon,,
+reservations@agaxtur.com.br,Agaxtur,LATAM,Brazil,TOUR_OPERATOR,B,reservations,not-contacted,latam_honeymoon,,
+contracting@queensberry.com.br,Queensberry,LATAM,Brazil,LUXURY_AGENT,A,contracting,not-contacted,latam_honeymoon,,
+product@queensberry.com.br,Queensberry,LATAM,Brazil,LUXURY_AGENT,A,product,not-contacted,latam_honeymoon,,
+sales@queensberry.com.br,Queensberry,LATAM,Brazil,LUXURY_AGENT,A,sales,not-contacted,latam_honeymoon,,
+reservations@queensberry.com.br,Queensberry,LATAM,Brazil,LUXURY_AGENT,A,reservations,not-contacted,latam_honeymoon,,
+contracting@despegar.com,Despegar,LATAM,Argentina,OTA,A,contracting,not-contacted,latam_honeymoon,,
+product@despegar.com,Despegar,LATAM,Argentina,OTA,A,product,not-contacted,latam_honeymoon,,
+sales@despegar.com,Despegar,LATAM,Argentina,OTA,A,sales,not-contacted,latam_honeymoon,,
+contracting@viajanet.com.br,ViajaNet,LATAM,Brazil,OTA,B,contracting,not-contacted,latam_honeymoon,,
+product@viajanet.com.br,ViajaNet,LATAM,Brazil,OTA,B,product,not-contacted,latam_honeymoon,,
+sales@viajanet.com.br,ViajaNet,LATAM,Brazil,OTA,B,sales,not-contacted,latam_honeymoon,,
+contracting@chanbrothers.com,Chan Brothers Travel,Asia,Singapore,TOUR_OPERATOR,A,contracting,not-contacted,asia_fast,,
+product@chanbrothers.com,Chan Brothers Travel,Asia,Singapore,TOUR_OPERATOR,A,product,not-contacted,asia_fast,,
+sales@chanbrothers.com,Chan Brothers Travel,Asia,Singapore,TOUR_OPERATOR,A,sales,not-contacted,asia_fast,,
+reservations@chanbrothers.com,Chan Brothers Travel,Asia,Singapore,TOUR_OPERATOR,A,reservations,not-contacted,asia_fast,,
+contracting@wts.travel,WTS Travel,Asia,Singapore,TOUR_OPERATOR,A,contracting,not-contacted,asia_fast,,
+product@wts.travel,WTS Travel,Asia,Singapore,TOUR_OPERATOR,A,product,not-contacted,asia_fast,,
+sales@wts.travel,WTS Travel,Asia,Singapore,TOUR_OPERATOR,A,sales,not-contacted,asia_fast,,
+reservations@wts.travel,WTS Travel,Asia,Singapore,TOUR_OPERATOR,A,reservations,not-contacted,asia_fast,,
+contracting@diethelmtravel.com,Diethelm Travel,Asia,Thailand,TOUR_OPERATOR,A,contracting,not-contacted,asia_fast,,
+product@diethelmtravel.com,Diethelm Travel,Asia,Thailand,TOUR_OPERATOR,A,product,not-contacted,asia_fast,,
+sales@diethelmtravel.com,Diethelm Travel,Asia,Thailand,TOUR_OPERATOR,A,sales,not-contacted,asia_fast,,
+reservations@diethelmtravel.com,Diethelm Travel,Asia,Thailand,TOUR_OPERATOR,A,reservations,not-contacted,asia_fast,,
+contracting@asiaworldenterprise.com,Asia World Enterprise,Asia,Vietnam,TOUR_OPERATOR,B,contracting,not-contacted,asia_fast,,
+product@asiaworldenterprise.com,Asia World Enterprise,Asia,Vietnam,TOUR_OPERATOR,B,product,not-contacted,asia_fast,,
+sales@asiaworldenterprise.com,Asia World Enterprise,Asia,Vietnam,TOUR_OPERATOR,B,sales,not-contacted,asia_fast,,
+reservations@asiaworldenterprise.com,Asia World Enterprise,Asia,Vietnam,TOUR_OPERATOR,B,reservations,not-contacted,asia_fast,,
+contracting@goldentourworld.com,Golden Tourworld Travel,Asia,Malaysia,TOUR_OPERATOR,B,contracting,not-contacted,asia_fast,,
+product@goldentourworld.com,Golden Tourworld Travel,Asia,Malaysia,TOUR_OPERATOR,B,product,not-contacted,asia_fast,,
+sales@goldentourworld.com,Golden Tourworld Travel,Asia,Malaysia,TOUR_OPERATOR,B,sales,not-contacted,asia_fast,,
+reservations@goldentourworld.com,Golden Tourworld Travel,Asia,Malaysia,TOUR_OPERATOR,B,reservations,not-contacted,asia_fast,,
+contracting@panoramatours.co.th,Panorama Destination,Asia,Thailand,TOUR_OPERATOR,A,contracting,not-contacted,asia_fast,,
+product@panoramatours.co.th,Panorama Destination,Asia,Thailand,TOUR_OPERATOR,A,product,not-contacted,asia_fast,,
+sales@panoramatours.co.th,Panorama Destination,Asia,Thailand,TOUR_OPERATOR,A,sales,not-contacted,asia_fast,,
+reservations@panoramatours.co.th,Panorama Destination,Asia,Thailand,TOUR_OPERATOR,A,reservations,not-contacted,asia_fast,,
+contracting@holidayindochina.com,Holiday Indochina,Asia,Vietnam,TOUR_OPERATOR,B,contracting,not-contacted,asia_fast,,
+product@holidayindochina.com,Holiday Indochina,Asia,Vietnam,TOUR_OPERATOR,B,product,not-contacted,asia_fast,,
+sales@holidayindochina.com,Holiday Indochina,Asia,Vietnam,TOUR_OPERATOR,B,sales,not-contacted,asia_fast,,
+contracting@uniontravel.com,Union Travel,Asia,Malaysia,TOUR_OPERATOR,B,contracting,not-contacted,asia_fast,,
+product@uniontravel.com,Union Travel,Asia,Malaysia,TOUR_OPERATOR,B,product,not-contacted,asia_fast,,
+sales@uniontravel.com,Union Travel,Asia,Malaysia,TOUR_OPERATOR,B,sales,not-contacted,asia_fast,,
+contracting@dertouristik.com,DER Touristik,Europe,Germany,TOUR_OPERATOR,A,contracting,not-contacted,eu_luxury,,
+maldives@dertouristik.com,DER Touristik,Europe,Germany,TOUR_OPERATOR,A,product,not-contacted,eu_luxury,,
+airtours.contracting@tui.com,TUI Airtours,Europe,Germany/UK,TOUR_OPERATOR,A,contracting,not-contacted,eu_luxury,,
+airtours.product@tui.com,TUI Airtours,Europe,Germany/UK,TOUR_OPERATOR,A,product,not-contacted,eu_luxury,,
+contracting@kuoni.com,Kuoni Travel,Europe,Switzerland/UK,LUXURY_OPERATOR,A,contracting,not-contacted,eu_luxury,,
+product@kuoni.com,Kuoni Travel,Europe,Switzerland/UK,LUXURY_OPERATOR,A,product,not-contacted,eu_luxury,,
+contracting@hotelplan.com,Hotelplan,Europe,Switzerland,TOUR_OPERATOR,A,contracting,not-contacted,eu_luxury,,
+product@hotelplan.com,Hotelplan,Europe,Switzerland,TOUR_OPERATOR,A,product,not-contacted,eu_luxury,,
+trade@elegantresorts.co.uk,Elegant Resorts,Europe,UK,LUXURY_AGENT,A,trade,not-contacted,eu_luxury,,
+product@elegantresorts.co.uk,Elegant Resorts,Europe,UK,LUXURY_AGENT,A,product,not-contacted,eu_luxury,,
+trade@scottdunn.com,Scott Dunn,Europe,UK,LUXURY_AGENT,A,trade,not-contacted,eu_luxury,,
+product@scottdunn.com,Scott Dunn,Europe,UK,LUXURY_AGENT,A,product,not-contacted,eu_luxury,,
+agents@audleytravel.com,Audley Travel,Europe,UK,LUXURY_AGENT,A,agents,not-contacted,eu_luxury,,
+product@audleytravel.com,Audley Travel,Europe,UK,LUXURY_AGENT,A,product,not-contacted,eu_luxury,,
+reservations@carrier.co.uk,Carrier,Europe,UK,LUXURY_AGENT,B,reservations,not-contacted,eu_luxury,,
+product@carrier.co.uk,Carrier,Europe,UK,LUXURY_AGENT,B,product,not-contacted,eu_luxury,,
+contracting@trailfinders.com,Trailfinders,Europe,UK,LUXURY_AGENT,A,contracting,not-contacted,eu_luxury,,
+product@trailfinders.com,Trailfinders,Europe,UK,LUXURY_AGENT,A,product,not-contacted,eu_luxury,,
+pro@voyageursdumonde.fr,Voyageurs du Monde,Europe,France,LUXURY_AGENT,A,pro,not-contacted,eu_luxury,,
+produit@voyageursdumonde.fr,Voyageurs du Monde,Europe,France,LUXURY_AGENT,A,product,not-contacted,eu_luxury,,
+b2b@comptoir.fr,Comptoir des Voyages,Europe,France,SPECIALIST_AGENT,B,b2b,not-contacted,eu_luxury,,
+produit@comptoir.fr,Comptoir des Voyages,Europe,France,SPECIALIST_AGENT,B,product,not-contacted,eu_luxury,,
+contracting@turisanda.it,Turisanda,Europe,Italy,TOUR_OPERATOR,B,contracting,not-contacted,eu_luxury,,
+prodotto@turisanda.it,Turisanda,Europe,Italy,TOUR_OPERATOR,B,product,not-contacted,eu_luxury,,
+sales@alidays.it,Alidays,Europe,Italy,TOUR_OPERATOR,B,sales,not-contacted,eu_luxury,,
+prodotto@alidays.it,Alidays,Europe,Italy,TOUR_OPERATOR,B,product,not-contacted,eu_luxury,,
+contracting@designreisen.de,Design Reisen,Europe,Germany,LUXURY_AGENT,A,contracting,not-contacted,eu_luxury,,
+product@designreisen.de,Design Reisen,Europe,Germany,LUXURY_AGENT,A,product,not-contacted,eu_luxury,,
+contracting@ewtc.de,EWTC,Europe,Germany,LUXURY_AGENT,B,contracting,not-contacted,eu_luxury,,
+product@ewtc.de,EWTC,Europe,Germany,LUXURY_AGENT,B,product,not-contacted,eu_luxury,,
+salesinquiries@amadeus.com,Amadeus,EMEA,Global,GDS,A,sales,not-contacted,gds_global,,
+sabreach@sabre.com,Sabre,Americas,USA,GDS,A,sales,not-contacted,gds_global,,
+sales@travelport.com,Travelport,Global,UK,GDS,A,sales,not-contacted,gds_global,,
+sales@honeymoondreams.co.uk,Honeymoon Dreams,EU,UK,HONEYMOON_SPECIALIST,A,sales,eu_honeymoon,unverified
+contracts@romanticgetaways.com,Romantic Getaways,EU,UK,HONEYMOON_SPECIALIST,A,contracts,eu_honeymoon,unverified
+product@justmarriedtravel.com,Just Married Travel,EU,UK,HONEYMOON_SPECIALIST,A,product,eu_honeymoon,unverified
+luxury@scottdunn.com,Scott Dunn,EU,UK,LUXURY_ROMANCE,A,luxury,eu_honeymoon_luxury,unverified
+honeymoon@elegantresorts.co.uk,Elegant Resorts,EU,UK,LUXURY_ROMANCE,A,honeymoon_specialist,eu_honeymoon_luxury,unverified
+romance@audleytravel.com,Audley Travel,EU,UK,LUXURY_ROMANCE,A,romance,eu_honeymoon_luxury,unverified
+weddings@carrier.co.uk,Carrier,EU,UK,WEDDING_TRAVEL,A,weddings,eu_honeymoon_wedding,unverified
+couples@kuoni.co.uk,Kuoni,EU,UK,HONEYMOON_SPECIALIST,A,couples,eu_honeymoon,unverified
+private@blacktomato.com,Black Tomato,EU,UK,LUXURY_ROMANCE,A,private_client,eu_honeymoon_luxury,unverified
+experiences@originaltravel.co.uk,Original Travel,EU,UK,LUXURY_ROMANCE,A,experiences,eu_honeymoon_luxury,unverified
+romance@wildfrontierstravel.com,Wild Frontiers,EU,UK,LUXURY_ROMANCE,A,romance,eu_honeymoon_luxury,unverified
+honeymoon@steppestravel.com,Steppes Travel,EU,UK,HONEYMOON_SPECIALIST,A,honeymoon,eu_honeymoon,unverified
+couples@remote.co.uk,Remote,EU,UK,LUXURY_ROMANCE,A,couples,eu_honeymoon_luxury,unverified
+luxury@abercrombiekent.co.uk,Abercrombie & Kent,EU,UK,LUXURY_ROMANCE,A,luxury,eu_honeymoon_luxury,unverified
+romance@coxandkings.co.uk,Cox & Kings,EU,UK,LUXURY_ROMANCE,B,romance,eu_honeymoon_luxury,unverified
+private@keranddowney.com,Ker & Downey,EU,UK,LUXURY_ROMANCE,A,private,eu_honeymoon_luxury,unverified
+couples@andbeyond.com,&Beyond,EU,UK,LUXURY_ROMANCE,A,couples,eu_honeymoon_luxury,unverified
+honeymoon@micato.com,Micato Safaris,EU,UK,HONEYMOON_SPECIALIST,B,honeymoon,eu_honeymoon,unverified
+romance@naturalhighs.com,Natural Highs,EU,UK,LUXURY_ROMANCE,A,romance,eu_honeymoon_luxury,unverified
+luxury@adventurecompany.co.uk,The Adventure Company,EU,UK,LUXURY_ROMANCE,B,luxury,eu_honeymoon_luxury,unverified
+couples@wilderness.travel,Wilderness Travel,EU,UK,LUXURY_ROMANCE,A,couples,eu_honeymoon_luxury,unverified
+honeymoon@mountaintravel.com,Mountain Travel,EU,UK,HONEYMOON_SPECIALIST,A,honeymoon,eu_honeymoon,unverified
+romance@greentraveller.co.uk,Green Traveller,EU,UK,LUXURY_ROMANCE,B,romance,eu_honeymoon_luxury,unverified
+private@responsibletravel.com,Responsible Travel,EU,UK,LUXURY_ROMANCE,A,private,eu_honeymoon_luxury,unverified
+couples@intrepid.com,Intrepid Travel,EU,UK,LUXURY_ROMANCE,A,couples,eu_honeymoon_luxury,unverified
+honeymoon@gadventures.com,G Adventures,EU,UK,HONEYMOON_SPECIALIST,B,honeymoon,eu_honeymoon,unverified
+romance@realjourneys.co.nz,Real Journeys,EU,NZ,LUXURY_ROMANCE,B,romance,eu_honeymoon_luxury,unverified
+luxury@worldexpeditions.com,World Expeditions,EU,AU,LUXURY_ROMANCE,B,luxury,eu_honeymoon_luxury,unverified
+couples@exodus.co.uk,Exodus Travels,EU,UK,LUXURY_ROMANCE,A,couples,eu_honeymoon_luxury,unverified
+honeymoon@dragoman.com,Dragoman,EU,UK,HONEYMOON_SPECIALIST,B,honeymoon,eu_honeymoon,unverified
+romance@overland.co.uk,Overland,EU,UK,LUXURY_ROMANCE,B,romance,eu_honeymoon_luxury,unverified
+private@trailfinders.com,Trailfinders,EU,UK,LUXURY_ROMANCE,B,private,eu_honeymoon_luxury,unverified
+couples@flightcentre.co.uk,Flight Centre,EU,UK,HONEYMOON_SPECIALIST,B,couples,eu_honeymoon,unverified
+honeymoon@haysworldtravel.com,Hays World Travel,EU,UK,HONEYMOON_SPECIALIST,A,honeymoon,eu_honeymoon,unverified
+romance@travelcounsellors.com,Travel Counsellors,EU,UK,LUXURY_ROMANCE,A,romance,eu_honeymoon_luxury,unverified
+luxury@bon-voyage.co.uk,Bon Voyage,EU,UK,LUXURY_ROMANCE,A,luxury,eu_honeymoon_luxury,unverified
+couples@journeylatinamerica.co.uk,Journey Latin America,EU,UK,LUXURY_ROMANCE,A,couples,eu_honeymoon_luxury,unverified
+honeymoon@expertglobaltravel.com,Expert Global Travel,EU,UK,HONEYMOON_SPECIALIST,A,honeymoon,eu_honeymoon,unverified
+romance@thetravelclub.co.uk,The Travel Club,EU,UK,LUXURY_ROMANCE,B,romance,eu_honeymoon_luxury,unverified
+private@theplatinumtraveller.co.uk,The Platinum Traveller,EU,UK,LUXURY_ROMANCE,A,private,eu_honeymoon_luxury,unverified
+couples@theholidayplace.co.uk,The Holiday Place,EU,UK,HONEYMOON_SPECIALIST,B,couples,eu_honeymoon,unverified
+honeymoon@travel2.com,Travel2,EU,UK,HONEYMOON_SPECIALIST,A,honeymoon,eu_honeymoon,unverified
+romance@travelassociates.com,Travel Associates,EU,AU,LUXURY_ROMANCE,A,romance,eu_honeymoon_luxury,unverified
+luxury@travelwithpurpose.com,Travel With Purpose,EU,UK,LUXURY_ROMANCE,B,luxury,eu_honeymoon_luxury,unverified
+couples@journeybeyondtravel.com,Journey Beyond Travel,EU,UK,LUXURY_ROMANCE,A,couples,eu_honeymoon_luxury,unverified
+honeymoon@travelmarvel.com,Travel Marvel,EU,AU,HONEYMOON_SPECIALIST,B,honeymoon,eu_honeymoon,unverified
+romance@travelcorp.com,Travel Corporation,EU,UK,LUXURY_ROMANCE,A,romance,eu_honeymoon_luxury,unverified
+private@travelsphere.co.uk,Travel Sphere,EU,UK,LUXURY_ROMANCE,B,private,eu_honeymoon_luxury,unverified
+couples@travelnetwork.co.uk,Travel Network,EU,UK,HONEYMOON_SPECIALIST,B,couples,eu_honeymoon,unverified
+honeymoon@travelone.co.uk,Travel One,EU,UK,HONEYMOON_SPECIALIST,A,honeymoon,eu_honeymoon,unverified
+romance@travelpride.com,Travel Pride,EU,NL,LUXURY_ROMANCE,B,romance,eu_honeymoon_luxury,unverified
+luxury@travelunique.de,Travel Unique,EU,Germany,LUXURY_ROMANCE,A,luxury,eu_honeymoon_luxury,unverified
+couples@traumziele.de,Traumziele,EU,Germany,HONEYMOON_SPECIALIST,A,couples,eu_honeymoon,unverified
+honeymoon@romantik.de,Romantik Hotels Travel,EU,Germany,HONEYMOON_SPECIALIST,A,honeymoon,eu_honeymoon,unverified
+romance@ferien-mit-herz.de,Ferien mit Herz,EU,Germany,LUXURY_ROMANCE,B,romance,eu_honeymoon_luxury,unverified
+private@luxusreisen.de,Luxusreisen,EU,Germany,LUXURY_ROMANCE,A,private,eu_honeymoon_luxury,unverified
+couples@flitterwochen.de,Flitterwochen Spezialist,EU,Germany,HONEYMOON_SPECIALIST,A,couples,eu_honeymoon,unverified
+honeymoon@romantische-reisen.de,Romantische Reisen,EU,Germany,HONEYMOON_SPECIALIST,A,honeymoon,eu_honeymoon,unverified
+romance@verliebt-in-reisen.de,Verliebt in Reisen,EU,Germany,LUXURY_ROMANCE,B,romance,eu_honeymoon_luxury,unverified
+luxury@elite-reisen.de,Elite Reisen,EU,Germany,LUXURY_ROMANCE,A,luxury,eu_honeymoon_luxury,unverified
+couples@paar-reisen.de,Paar Reisen,EU,Germany,HONEYMOON_SPECIALIST,B,couples,eu_honeymoon,unverified
+honeymoon@zweisam-reisen.de,Zweisam Reisen,EU,Germany,HONEYMOON_SPECIALIST,A,honeymoon,eu_honeymoon,unverified
+romance@amour-reisen.fr,Amour Voyages,EU,France,LUXURY_ROMANCE,A,romance,eu_honeymoon_luxury,unverified
+luxury@luxe-voyages.fr,Luxe Voyages,EU,France,LUXURY_ROMANCE,A,luxury,eu_honeymoon_luxury,unverified
+couples@lune-de-miel.fr,Lune de Miel Spécialiste,EU,France,HONEYMOON_SPECIALIST,A,couples,eu_honeymoon,unverified
+honeymoon@romance-voyages.fr,Romance Voyages,EU,France,HONEYMOON_SPECIALIST,A,honeymoon,eu_honeymoon,unverified
+romance@voyages-en-duo.fr,Voyages en Duo,EU,France,LUXURY_ROMANCE,B,romance,eu_honeymoon_luxury,unverified
+private@privilege-voyages.fr,Privilege Voyages,EU,France,LUXURY_ROMANCE,A,private,eu_honeymoon_luxury,unverified
+couples@couple-et-voyages.fr,Couple & Voyages,EU,France,HONEYMOON_SPECIALIST,B,couples,eu_honeymoon,unverified
+honeymoon@amoureux-du-monde.fr,Amoureux du Monde,EU,France,HONEYMOON_SPECIALIST,A,honeymoon,eu_honeymoon,unverified
+romance@viaggi-romantici.it,Viaggi Romantici,EU,Italy,LUXURY_ROMANCE,A,romance,eu_honeymoon_luxury,unverified
+luxury@luna-di-miele.it,Luna di Miele Luxury,EU,Italy,LUXURY_ROMANCE,A,luxury,eu_honeymoon_luxury,unverified
+couples@viaggi-di-coppia.it,Viaggi di Coppia,EU,Italy,HONEYMOON_SPECIALIST,A,couples,eu_honeymoon,unverified
+honeymoon@amore-e-viaggi.it,Amore e Viaggi,EU,Italy,HONEYMOON_SPECIALIST,A,honeymoon,eu_honeymoon,unverified
+romance@viaggiare-insieme.it,Viaggiare Insieme,EU,Italy,LUXURY_ROMANCE,B,romance,eu_honeymoon_luxury,unverified
+private@viaggi-esclusivi.it,Viaggi Esclusivi,EU,Italy,LUXURY_ROMANCE,A,private,eu_honeymoon_luxury,unverified
+couples@due-cuori-viaggi.it,Due Cuori Viaggi,EU,Italy,HONEYMOON_SPECIALIST,B,couples,eu_honeymoon,unverified
+honeymoon@romanticismo-viaggi.it,Romanticismo Viaggi,EU,Italy,HONEYMOON_SPECIALIST,A,honeymoon,eu_honeymoon,unverified
+romance@viajes-romanticos.es,Viajes Románticos,EU,Spain,LUXURY_ROMANCE,A,romance,eu_honeymoon_luxury,unverified
+luxury@luna-de-miel.es,Luna de Miel Luxury,EU,Spain,LUXURY_ROMANCE,A,luxury,eu_honeymoon_luxury,unverified
+couples@viajes-en-pareja.es,Viajes en Pareja,EU,Spain,HONEYMOON_SPECIALIST,A,couples,eu_honeymoon,unverified
+honeymoon@amor-y-viajes.es,Amor y Viajes,EU,Spain,HONEYMOON_SPECIALIST,A,honeymoon,eu_honeymoon,unverified
+romance@viajar-juntos.es,Viajar Juntos,EU,Spain,LUXURY_ROMANCE,B,romance,eu_honeymoon_luxury,unverified
+private@viajes-exclusivos.es,Viajes Esclusivos,EU,Spain,LUXURY_ROMANCE,A,private,eu_honeymoon_luxury,unverified
+couples@dos-corazones-viajes.es,Dos Corazones Viajes,EU,Spain,HONEYMOON_SPECIALIST,B,couples,eu_honeymoon,unverified
+honeymoon@romance-viajes.es,Romance Viajes,EU,Spain,HONEYMOON_SPECIALIST,A,honeymoon,eu_honeymoon,unverified
+romance@huwelijksreizen.nl,Huwelijksreizen Specialist,EU,Netherlands,HONEYMOON_SPECIALIST,A,romance,eu_honeymoon,unverified
+luxury@luxe-huwelijksreis.nl,Luxe Huwelijksreis,EU,Netherlands,LUXURY_ROMANCE,A,luxury,eu_honeymoon_luxury,unverified
+couples@samen-op-reis.nl,Samen Op Reis,EU,Netherlands,HONEYMOON_SPECIALIST,A,couples,eu_honeymoon,unverified
+honeymoon@romantische-reizen.nl,Romantische Reizen NL,EU,Netherlands,HONEYMOON_SPECIALIST,A,honeymoon,eu_honeymoon,unverified
+romance@twee-harten-reizen.nl,Twee Harten Reizen,EU,Netherlands,LUXURY_ROMANCE,B,romance,eu_honeymoon_luxury,unverified
+private@exclusieve-reizen.nl,Exclusieve Reizen,EU,Netherlands,LUXURY_ROMANCE,A,private,eu_honeymoon_luxury,unverified
+couples@verliefd-op-reizen.nl,Verliefd Op Reizen,EU,Netherlands,HONEYMOON_SPECIALIST,B,couples,eu_honeymoon,unverified
+honeymoon@huwelijksreis-specialist.nl,Huwelijksreis Specialist,EU,Netherlands,HONEYMOON_SPECIALIST,A,honeymoon,eu_honeymoon,unverified
+romance@brudpar-resor.se,Brudpar Resor,EU,Sweden,HONEYMOON_SPECIALIST,A,romance,eu_honeymoon,unverified
+luxury@lyx-brudpar.se,Lyx Brudpar,EU,Sweden,LUXURY_ROMANCE,A,luxury,eu_honeymoon_luxury,unverified
+couples@par-resor.se,Par Resor,EU,Sweden,HONEYMOON_SPECIALIST,A,couples,eu_honeymoon,unverified
+honeymoon@romantiska-resor.se,Romantiska Resor,EU,Sweden,HONEYMOON_SPECIALIST,A,honeymoon,eu_honeymoon,unverified
+romance@två-hjärtan-resor.se,Två Hjärtan Resor,EU,Sweden,LUXURY_ROMANCE,B,romance,eu_honeymoon_luxury,unverified
+private@exklusiva-resor.se,Exklusiva Resor,EU,Sweden,LUXURY_ROMANCE,A,private,eu_honeymoon_luxury,unverified
