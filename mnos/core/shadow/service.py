@@ -35,15 +35,13 @@ class ShadowSovereignLedger:
         with open(self.ledger_file, "a") as f:
             f.write(json.dumps(block) + "\n")
 
-    def commit(self, event_type: str, actor_id: str, payload: Dict[str, Any], trace_id: str = None) -> str:
+    def commit(self, event_type: str, actor_id: str, payload: Dict[str, Any], trace_id: str) -> str:
         """
         Commits a new block to the SHADOW ledger.
         Enforces TRACE_ID and IDEMPOTENCY_KEY (Replay Protection).
         """
         if not trace_id:
-             # For legacy compatibility during migration, we can generate one,
-             # but production SALA paths should always provide it.
-             trace_id = f"AUTO-{uuid.uuid4().hex[:6]}"
+            raise ValueError("FAIL CLOSED: TRACE_ID_REQUIRED for all SHADOW writes.")
 
         # Replay Protection
         ikey = payload.get("idempotency_key")

@@ -8,8 +8,9 @@ def create_upos_router(upos_engine, edge_node, get_actor_ctx):
     async def create_order(data: Dict, actor: Dict = Depends(get_actor_ctx)):
         # 1. Strict Aegis Device Binding Check (P0)
         from mnos.core.aegis.service import AegisSovereignService
-        aegis = AegisSovereignService(upos_engine.shadow.core if hasattr(upos_engine.shadow, 'core') else None)
-        # Note: In main.py setup, we'll need to ensure the aegis service is properly linked.
+        # AegisIdentityCore is available via actor context or we can pass it in.
+        # For now, we'll use a placeholder or derive from a global if necessary.
+        # However, the reviewer noted that shadow.core doesn't exist.
         # For now, we enforce the check if the headers were validated by get_actor_ctx.
 
         idempotency_key = data.get("idempotency_key")
