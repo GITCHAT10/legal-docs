@@ -17,6 +17,7 @@ class PricingContext(BaseModel):
     trigger: Optional[str] = "standard"
     allotment_pct: Optional[float] = 50.0
     currency: Optional[str] = "USD"
+    tax_context: Optional[str] = None
 
 class PricingRequest(BaseModel):
     net_amount: Decimal = Field(gt=0)
@@ -85,10 +86,13 @@ TAX_RULES = {
 # ─────────────────────────────────────────────────────────────
 class PricingEngine:
     def __init__(self, fce=None):
-        self.fce = fce
+        from mnos.modules.finance.fce import FCEEngine
+        self.fce = fce or FCEEngine()
 
-    def resolve_tax_type(self, product_type: str) -> str:
-        return "TOURISM" if product_type != "retail" else "RETAIL"
+    def resolve_tax_type(self, req: PricingRequest) -> str:
+        if req.context.tax_context:
+            return req.context.tax_context.upper()
+        return "TOURISM" if req.product_type != "retail" else "RETAIL"
 
     def _scale_margin(self, base_pct: Decimal, context: PricingContext) -> Decimal:
         """Dynamic margin scaling based on allotment & trigger context"""
@@ -107,12 +111,14 @@ class PricingEngine:
         return (amount * rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
     def calculate(self, req: PricingRequest) -> PricingResponse:
+        # 0. Generate Trace ID if missing
+        trace_id = req.context.trigger or f"TR-{uuid.uuid4().hex[:8].upper()}"
+
         # 1. Tax Context
-        tax_type = self.resolve_tax_type(req.product_type)
-        rule = TAX_RULES[tax_type]
+        tax_type = self.resolve_tax_type(req)
 
         # 2. Context-Aware Margin
-        base_margin = MARGIN_BANDS[req.product_type]
+        base_margin = MARGIN_BANDS.get(req.product_type, Decimal("0.10"))
         applied_margin = self._scale_margin(base_margin, req.context)
         margin_amount = (req.net_amount * applied_margin).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         sell_price = req.net_amount + margin_amount
@@ -122,11 +128,14 @@ class PricingEngine:
         platform_fee = (sell_price * COMMISSION_RATES["platform"]).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         net_profit = sell_price - req.net_amount - agent_comm - platform_fee
 
-        # 4. FCE Tax Calculation (Maldives Law)
-        sc = (sell_price * rule["sc"]).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        post_sc = sell_price + sc
-        tgst = (post_sc * rule["gst"]).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        final_gross = post_sc + tgst
+        # 4. AUTHORITY CALL: FCE Tax Calculation (Maldives Law)
+        # Standardize tax_type for FCEEngine
+        fce_category = "TOURISM_STANDARD" if tax_type == "TOURISM" else "RETAIL"
+        fce_result = self.fce.calculate_local_order(sell_price, fce_category)
+
+        sc = Decimal(str(fce_result["service_charge"]))
+        tgst = Decimal(str(fce_result["tax_amount"]))
+        final_gross = Decimal(str(fce_result["total"]))
 
         # 5. FX Conversion (if requested)
         currency = req.context.currency or "USD"
@@ -157,7 +166,7 @@ class PricingEngine:
 
         return PricingResponse(
             pricing_id=str(uuid.uuid4()),
-            trace_id=req.context.trigger or "unknown",
+            trace_id=trace_id,
             request=req,
             waterfall=waterfall,
             tax=tax,

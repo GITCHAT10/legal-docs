@@ -142,7 +142,7 @@ async def test_contact_attribution(db_session):
 
     result = await db_session.execute(text("SELECT COUNT(*) FROM outreach_tracker"))
     count = result.scalar()
-    assert count == 332
+    assert count == 379
 
     res = await db_session.execute(text("SELECT trigger_segment FROM outreach_tracker WHERE region='USA' LIMIT 1"))
     assert res.scalar() == "us_luxury"

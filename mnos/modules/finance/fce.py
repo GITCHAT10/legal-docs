@@ -29,25 +29,28 @@ class FCEEngine:
         # Quantize to 2 decimal places for currency
         base_price = base_price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
-        # 1. 10% Service Charge
-        # Mandatory in Maldives tourism sector
-        service_charge = (base_price * Decimal("0.10")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        subtotal = base_price + service_charge
-
-        # 2. TGST (17%) or GST (8%)
-        # Policy: 17% for tourism-linked (TOURISM, TRANSPORT, FNB), 8% for general retail
+        # 1. Resolve Rates
         if category in [TaxType.TOURISM_STANDARD, TaxType.TRANSPORT, TaxType.FNB, "TOURISM", "RESORT_SUPPLY"]:
             tax_rate = Decimal("0.17")
+            sc_rate = Decimal("0.10")
         elif category == TaxType.RETAIL:
             tax_rate = Decimal("0.08")
+            sc_rate = Decimal("0.00")
         elif category == TaxType.EXEMPT:
             tax_rate = Decimal("0.00")
+            sc_rate = Decimal("0.00")
         else:
-            tax_rate = Decimal("0.08") # Default to retail GST if unknown
+            tax_rate = Decimal("0.08")
+            sc_rate = Decimal("0.00")
 
+        # 2. Service Charge
+        service_charge = (base_price * sc_rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        subtotal = base_price + service_charge
+
+        # 3. TGST / GST
         tax_amt = (subtotal * tax_rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
-        # 3. Green Tax (USD converted to MVR)
+        # 4. Green Tax (USD converted to MVR)
         mvr_rate = self.locked_rates.get("USD", Decimal("15.42"))
         green_tax_mvr = (green_tax_usd * mvr_rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
