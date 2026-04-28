@@ -5,12 +5,29 @@ from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
 from pydantic import BaseModel, Field, field_validator
 from typing import Dict, Optional, Any
 from datetime import datetime, timezone
+from enum import Enum
 
 logger = structlog.get_logger()
 
 # ─────────────────────────────────────────────────────────────
 # 1. STRICT I/O MODELS
 # ─────────────────────────────────────────────────────────────
+class ProductType(str, Enum):
+    ACCOMMODATION = "ACCOMMODATION"
+    TRANSFER_SEA = "TRANSFER_SEA"
+    TRANSFER_AIR = "TRANSFER_AIR"
+    ACTIVITY = "ACTIVITY"
+    FNB = "FNB"
+    RETAIL = "RETAIL"
+    SERVICE = "SERVICE"
+    PACKAGE = "PACKAGE"
+    FEE = "FEE"
+
+class Channel(str, Enum):
+    DIRECT = "DIRECT"
+    OTA = "OTA"
+    SOVEREIGN = "SOVEREIGN"
+
 class PricingContext(BaseModel, extra="allow"):
     contract_id: Optional[str] = None
     segment: Optional[str] = "default"

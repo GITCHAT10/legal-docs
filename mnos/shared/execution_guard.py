@@ -48,7 +48,7 @@ class ExecutionGuard:
 
         # 3. Set Sovereign Context (Authorized)
         token = str(uuid.uuid4())
-        _sovereign_context.set({"token": token, "actor": actor_context})
+        ctx_token = _sovereign_context.set({"token": token, "actor": actor_context})
 
         try:
             # BEGIN ATOMIC TX (Simulated via context and SHADOW intent)
@@ -91,7 +91,7 @@ class ExecutionGuard:
             raise RuntimeError(f"SOVEREIGN EXECUTION FAILED: {str(e)}")
         finally:
             # Clear context
-            _sovereign_context.set(None)
+            _sovereign_context.reset(ctx_token)
 
     @staticmethod
     def is_authorized() -> bool:
