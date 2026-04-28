@@ -64,6 +64,11 @@ from mnos.api.education import create_education_router
 from mnos.api.futures import create_futures_router
 from mnos.api.national_talent import create_national_talent_router
 
+# Growth Engine Extensions
+from mnos.modules.exmail.service import EXMAILAutomationService
+from mnos.modules.education.funnel import UHAQualificationFunnel
+from mnos.modules.education.urgency import UrgencyPressureEngine
+
 # Bubble OS Super App Layer
 from mnos.modules.bubble.chat.engine import ChatIntentEngine, ChatToTransactionEngine
 from mnos.modules.bubble.sdk.core.bridge import BubbleSDK
@@ -134,6 +139,11 @@ vvip_engine = VVIPKeyEngine(imoxon)
 reinvestment_engine = RevenueReinvestmentEngine(imoxon)
 laundry_engine = MaldivesLaundryEngine(imoxon, mars_unified)
 heatmap_engine = GlobalDemandHeatmap(imoxon, island_gm, mira_bridge, reinvestment_engine)
+
+# Growth Engine
+exmail = EXMAILAutomationService(imoxon)
+funnel = UHAQualificationFunnel(imoxon)
+urgency = UrgencyPressureEngine()
 
 imoxon.mira_bridge = mira_bridge
 imoxon.vvip_engine = vvip_engine
@@ -293,6 +303,19 @@ async def approve_product(pid: str, actor: dict = Depends(get_actor_ctx)):
 @app.post("/bubble/chat/message")
 async def chat_message(message: str, actor: dict = Depends(get_actor_ctx)):
     return chat_os.process_message(actor, message)
+
+# --- Growth Endpoints ---
+@app.post("/exmail/trigger")
+async def trigger_exmail(rid: str, event: str, seg: str):
+    return exmail.trigger_sequence(rid, event, seg)
+
+@app.post("/uha/funnel/capture")
+async def funnel_capture(email: str, src: str = "meta"):
+    return funnel.capture_lead(email, src)
+
+@app.get("/uha/urgency")
+async def get_urgency(ctx: str):
+    return urgency.get_urgency_payload(ctx)
 
 # --- Routers ---
 app.include_router(create_identity_router(identity_core, policy_engine, identity_gateway), prefix="/imoxon")
