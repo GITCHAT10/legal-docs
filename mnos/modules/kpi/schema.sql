@@ -43,6 +43,15 @@ CREATE TABLE IF NOT EXISTS outreach_tracker (
     notes TEXT
 );
 
+CREATE TABLE IF NOT EXISTS fx_conversions (
+    conversion_id VARCHAR(50) PRIMARY KEY,
+    usd_amount DECIMAL(12,2) NOT NULL,
+    mvr_amount DECIMAL(12,2) NOT NULL,
+    rate DECIMAL(6,4) NOT NULL,
+    bank_ref VARCHAR(100),
+    converted_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Index for fast attribution joins
 CREATE INDEX IF NOT EXISTS idx_events_campaign_ts ON email_events(campaign_id, event_ts);
 CREATE INDEX IF NOT EXISTS idx_bookings_trace ON bookings(trace_id);

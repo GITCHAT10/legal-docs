@@ -142,7 +142,7 @@ async def test_contact_attribution(db_session):
 
     result = await db_session.execute(text("SELECT COUNT(*) FROM outreach_tracker"))
     count = result.scalar()
-    assert count == 379
+    assert count == 505
 
     res = await db_session.execute(text("SELECT trigger_segment FROM outreach_tracker WHERE region='USA' LIMIT 1"))
     assert res.scalar() == "us_luxury"
@@ -242,6 +242,29 @@ async def test_multi_channel_signal_engine():
 
     assert throttle.check_throttle(acc, "whatsapp") is False
 
+@pytest.mark.asyncio
+async def test_honeymoon_revenue_forecasting():
+    from mnos.modules.exmail.monitoring.forecaster import HoneymoonRevenueForecaster
+    forecaster = HoneymoonRevenueForecaster()
+    # List size 100, segment luxury
+    # open 0.54 * click 0.28 * conv 0.18 = 0.027216 -> 2.72 bookings
+    # mean AOV 195,000 -> 2.72 * 195,000 = 530,712 MVR
+    res = forecaster.project_revenue(100, "eu_honeymoon_luxury")
+    assert res["expected_bookings"] == 2.72
+    assert res["projected_revenue_mean"] > 400000
+
+@pytest.mark.asyncio
+async def test_canary_selection_reproducibility():
+    from mnos.modules.exmail.core.canary import CanarySelector
+    selector = CanarySelector(seed="TEST_SEED")
+    agents = [{"email": f"agent{i}@test.com"} for i in range(100)]
+
+    selection1 = selector.select_agents(agents, 0.10)
+    selection2 = selector.select_agents(agents, 0.10)
+
+    assert len(selection1) == 10
+    assert selection1 == selection2
+
 def test_retail_tax_logic():
     engine = PricingEngine()
     req = PricingRequest(
@@ -254,3 +277,50 @@ def test_retail_tax_logic():
     assert resp.tax.service_charge == Decimal("0.00")
     assert resp.tax.tgst == Decimal("8.80")
     assert resp.final_gross == Decimal("118.80")
+
+@pytest.mark.asyncio
+async def test_dual_currency_and_maldivian_rule():
+    from mnos.modules.imoxon.pricing.engine import PricingEngine, PricingRequest, PricingContext
+    engine = PricingEngine()
+
+    # 1. Foreign User (USD Display)
+    req_foreign = PricingRequest(
+        net_amount=Decimal("1000.00"),
+        product_type="accommodation",
+        context=PricingContext(currency="USD")
+    )
+    resp_foreign = engine.calculate(req_foreign, user_nationality="Foreign")
+    assert resp_foreign.currency == "USD"
+    # Base 1000 + 18% margin = 1180
+    # SC 10% = 118, Subtotal = 1298
+    # TGST 17% of 1298 = 220.66
+    # Total USD = 1518.66
+    assert resp_foreign.final_gross == Decimal("1518.66")
+    assert resp_foreign.tax.tgst == Decimal("220.66")
+
+    # 2. Maldivian User (Force MVR)
+    req_local = PricingRequest(
+        net_amount=Decimal("1000.00"),
+        product_type="accommodation",
+        context=PricingContext(currency="USD") # Input still USD
+    )
+    resp_local = engine.calculate(req_local, user_nationality="Maldivian")
+    assert resp_local.currency == "MVR"
+    # Rate = 15.42 * 1.01 = 15.57 (quantized to 0.01)
+    # 1518.66 * 15.57 = 23645.5362 -> 23645.54 (quantized to 0.01)
+    assert resp_local.final_gross == Decimal("23645.54")
+
+@pytest.mark.asyncio
+async def test_fx_compliance_buffer():
+    from mnos.modules.finance.fx_compliance import FXComplianceEngine
+    fx = FXComplianceEngine()
+
+    # MMA 15.42. 1% buffer = 15.5742 -> 15.57 (quantized to 0.01)
+    rate = fx.get_compliant_fx_rate(Decimal("15.42"))
+    assert rate == Decimal("15.57")
+
+    # Test bounds
+    # Lower bound (MMA * 0.98) = 15.1116 -> 15.12
+    # Upper bound (MMA * 1.02) = 15.7284 -> 15.72
+    assert rate >= Decimal("15.42") * Decimal("0.98")
+    assert rate <= Decimal("15.42") * Decimal("1.02")

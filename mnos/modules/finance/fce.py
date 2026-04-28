@@ -16,21 +16,30 @@ class FCEEngine:
         self.ledger = []
         self.locked_rates = {"USD": Decimal("15.42")} # MVR
 
-    def calculate_local_order(self, base_price: Decimal, category: str = "TOURISM_STANDARD", green_tax_usd: Decimal = Decimal("0")) -> dict:
+    def calculate_local_order(self,
+                             base_price: Decimal,
+                             category: str = "TOURISM_STANDARD",
+                             green_tax_usd: Decimal = Decimal("0"),
+                             locked_fx_rate: Decimal = Decimal("15.42"),
+                             input_currency: str = "USD") -> dict:
         """
         MANDATORY MALDIVES BILLING RULE (MIRA COMPLIANT):
-        1. base_price
-        2. -> service_charge (10%)
+        Supports dual-currency extraction for TGST in USD (Tourism).
+        1. base_price (in input_currency, usually USD)
+        2. -> service_charge (10% if Tourism)
         3. -> subtotal = base + SC
         4. -> TGST/GST (on subtotal)
         5. -> + green tax (if applicable)
-        6. -> = final_price
+        6. -> = total (in input_currency)
+        7. -> converted to MVR for ledger
         """
-        # Quantize to 2 decimal places for currency
+        # Quantize to 2 decimal places
         base_price = base_price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
         # 1. Resolve Rates
-        if category in [TaxType.TOURISM_STANDARD, TaxType.TRANSPORT, TaxType.FNB, "TOURISM", "RESORT_SUPPLY"]:
+        is_tourism = category in [TaxType.TOURISM_STANDARD, TaxType.TRANSPORT, TaxType.FNB, "TOURISM", "RESORT_SUPPLY"]
+
+        if is_tourism:
             tax_rate = Decimal("0.17")
             sc_rate = Decimal("0.10")
         elif category == TaxType.RETAIL:
@@ -50,27 +59,31 @@ class FCEEngine:
         # 3. TGST / GST
         tax_amt = (subtotal * tax_rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
-        # 4. Green Tax (USD converted to MVR)
-        mvr_rate = self.locked_rates.get("USD", Decimal("15.42"))
-        green_tax_mvr = (green_tax_usd * mvr_rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        # 4. Green Tax (Honeymoon/Resort specific)
+        green_tax = green_tax_usd.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
-        total = subtotal + tax_amt + green_tax_mvr
+        total_input = subtotal + tax_amt + green_tax
 
-        # ENSURE BILLING LOCK
-        # Verify TGST is calculated on (Base + SC)
-        expected_tax = (subtotal * tax_rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        if tax_amt != expected_tax:
-            raise ValueError("FAIL CLOSED: Maldives Tax Calculation Integrity Violation")
+        # 5. DUAL CURRENCY EXTRACTION (MIRA REQUIREMENT)
+        # Tourism TGST must be reported/extracted in USD
+        tgst_usd = tax_amt if input_currency == "USD" and is_tourism else Decimal("0")
+
+        # 6. MVR LEDGER CALCULATION
+        mvr_total = (total_input * locked_fx_rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
         return {
             "transaction_id": uuid.uuid4().hex[:8],
-            "base": float(base_price),
+            "base_usd": float(base_price) if input_currency == "USD" else 0,
+            "base_mvr": float(base_price * locked_fx_rate) if input_currency == "USD" else float(base_price),
             "service_charge": float(service_charge),
             "subtotal": float(subtotal),
             "tax_rate": float(tax_rate),
             "tax_amount": float(tax_amt),
-            "green_tax": float(green_tax_mvr),
-            "total": float(total),
+            "tgst_usd_extracted": float(tgst_usd),
+            "green_tax": float(green_tax),
+            "total_input_currency": float(total_input),
+            "total_mvr": float(mvr_total),
+            "fx_rate_locked": float(locked_fx_rate),
             "currency": "MVR"
         }
 

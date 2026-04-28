@@ -11,13 +11,14 @@ logger = structlog.get_logger()
 # ─────────────────────────────────────────────────────────────
 # 1. STRICT I/O MODELS
 # ─────────────────────────────────────────────────────────────
-class PricingContext(BaseModel):
+class PricingContext(BaseModel, extra="allow"):
     contract_id: Optional[str] = None
     segment: Optional[str] = "default"
     trigger: Optional[str] = "standard"
     allotment_pct: Optional[float] = 50.0
     currency: Optional[str] = "USD"
     tax_context: Optional[str] = None
+    agent_id: Optional[str] = None
 
 class PricingRequest(BaseModel):
     net_amount: Decimal = Field(gt=0)
@@ -85,9 +86,11 @@ TAX_RULES = {
 # 3. CORE ENGINE
 # ─────────────────────────────────────────────────────────────
 class PricingEngine:
-    def __init__(self, fce=None):
+    def __init__(self, fce=None, fx_compliance=None):
         from mnos.modules.finance.fce import FCEEngine
+        from mnos.modules.finance.fx_compliance import FXComplianceEngine
         self.fce = fce or FCEEngine()
+        self.fx_compliance = fx_compliance or FXComplianceEngine()
 
     def resolve_tax_type(self, req: PricingRequest) -> str:
         if req.context.tax_context:
@@ -110,40 +113,55 @@ class PricingEngine:
         rate = FX_RATES.get(target, Decimal("1.00"))
         return (amount * rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
-    def calculate(self, req: PricingRequest) -> PricingResponse:
+    def calculate(self, req: PricingRequest, user_nationality: str = "Foreign") -> PricingResponse:
         # 0. Generate Trace ID if missing
         trace_id = req.context.trigger or f"TR-{uuid.uuid4().hex[:8].upper()}"
 
-        # 1. Tax Context
+        # 1. FX COMPLIANCE: Get legal rate
+        locked_fx_rate = self.fx_compliance.get_compliant_fx_rate()
+
+        # 2. MALDIVIAN USER RULE: Force MVR if local
+        display_currency = req.context.currency or "USD"
+        if user_nationality == "Maldivian":
+            display_currency = "MVR"
+
+        # 3. Tax Context
         tax_type = self.resolve_tax_type(req)
 
-        # 2. Context-Aware Margin
+        # 4. Context-Aware Margin
         base_margin = MARGIN_BANDS.get(req.product_type, Decimal("0.10"))
         applied_margin = self._scale_margin(base_margin, req.context)
         margin_amount = (req.net_amount * applied_margin).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         sell_price = req.net_amount + margin_amount
 
-        # 3. Commission Waterfall
+        # 5. Commission Waterfall
         agent_comm = (sell_price * COMMISSION_RATES["agent"]).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         platform_fee = (sell_price * COMMISSION_RATES["platform"]).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         net_profit = sell_price - req.net_amount - agent_comm - platform_fee
 
-        # 4. AUTHORITY CALL: FCE Tax Calculation (Maldives Law)
-        # Standardize tax_type for FCEEngine
+        # 6. AUTHORITY CALL: Dual-Currency FCE Calculation
         fce_category = "TOURISM_STANDARD" if tax_type == "TOURISM" else "RETAIL"
-        fce_result = self.fce.calculate_local_order(sell_price, fce_category)
+        fce_result = self.fce.calculate_local_order(
+            base_price=sell_price,
+            category=fce_category,
+            locked_fx_rate=locked_fx_rate,
+            input_currency="USD"
+        )
+
+        final_gross_input = Decimal(str(fce_result["total_input_currency"]))
+        final_gross_mvr = Decimal(str(fce_result["total_mvr"]))
 
         sc = Decimal(str(fce_result["service_charge"]))
         tgst = Decimal(str(fce_result["tax_amount"]))
-        final_gross = Decimal(str(fce_result["total"]))
 
-        # 5. FX Conversion (if requested)
-        currency = req.context.currency or "USD"
-        final_gross_fx = self._convert_currency(final_gross, currency)
-        # Apply same conversion to breakdown for audit consistency
-        # (In prod, convert each line item individually to preserve rounding parity)
+        # 7. Final FX Conversion for display
+        if display_currency == "MVR":
+            final_gross_display = final_gross_mvr
+        else:
+            # Already in USD (input currency)
+            final_gross_display = final_gross_input
 
-        # 6. Build Objects
+        # 8. Build Objects
         waterfall = MarginWaterfall(
             net_cost=req.net_amount,
             margin_applied=margin_amount,
@@ -160,8 +178,8 @@ class PricingEngine:
             tax_type=tax_type
         )
 
-        # 7. Compliance Hash (Immutable Audit Trail)
-        trace_data = f"{req.net_amount}|{applied_margin}|{agent_comm}|{platform_fee}|{sc}|{tgst}|{final_gross}"
+        # 9. Compliance Hash (Immutable Audit Trail)
+        trace_data = f"{req.net_amount}|{applied_margin}|{agent_comm}|{platform_fee}|{sc}|{tgst}|{final_gross_input}"
         compliance_hash = hashlib.sha256(trace_data.encode()).hexdigest()[:16]
 
         return PricingResponse(
@@ -170,8 +188,8 @@ class PricingEngine:
             request=req,
             waterfall=waterfall,
             tax=tax,
-            final_gross=final_gross_fx,
-            currency=currency,
+            final_gross=final_gross_display,
+            currency=display_currency,
             timestamp=datetime.now(timezone.utc),
             compliance_hash=compliance_hash
         )

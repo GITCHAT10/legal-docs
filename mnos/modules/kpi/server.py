@@ -37,6 +37,13 @@ class CampaignMetric(BaseModel):
     roas: float
     avg_margin_pct: float
 
+class FXComplianceKPI(BaseModel):
+    total_usd_revenue: float
+    required_conversion_usd: float
+    converted_so_far_usd: float
+    remaining_usd: float
+    compliance_pct: float
+
 class AttributionChain(BaseModel):
     trace_id: str
     campaign_id: str
@@ -112,6 +119,31 @@ async def get_campaign_metrics(
         clicked=r[4] or 0, converted=r[5] or 0, ctr=float(r[8]),
         cvr=float(r[9]), roas=float(r[10]), avg_margin_pct=float(r[7])
     ) for r in rows]
+
+@app.get("/kpi/fx-compliance", response_model=FXComplianceKPI)
+async def get_fx_compliance(db: AsyncSession = Depends(get_db)):
+    # 1. Get total USD revenue from bookings
+    # (Note: In this schema, net_amount is MVR, we need USD base)
+    # For simulation, we assume base_usd is stored in a structured way or we aggregate
+    usd_q = text("SELECT SUM(gross_amount) FROM bookings WHERE status = 'confirmed'")
+    usd_res = await db.execute(usd_q)
+    total_usd = float(usd_res.scalar() or 0)
+
+    # 2. Get converted amount from fx_conversions
+    conv_q = text("SELECT SUM(usd_amount) FROM fx_conversions")
+    conv_res = await db.execute(conv_q)
+    converted = float(conv_res.scalar() or 0)
+
+    required = total_usd * 0.20
+    remaining = max(0, required - converted)
+
+    return FXComplianceKPI(
+        total_usd_revenue=total_usd,
+        required_conversion_usd=required,
+        converted_so_far_usd=converted,
+        remaining_usd=remaining,
+        compliance_pct=(converted / required * 100) if required > 0 else 100.0
+    )
 
 @app.get("/kpi/attribution/{trace_id}", response_model=Optional[AttributionChain])
 async def get_attribution(trace_id: str, db: AsyncSession = Depends(get_db)):
