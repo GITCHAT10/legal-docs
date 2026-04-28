@@ -216,11 +216,16 @@ class PricingEngine:
         """
         Legacy compatibility method for calculate_quote.
         """
+        # P2: STRICT VALIDATION
+        if not net_amount or net_amount <= 0:
+            raise ValueError("FAIL CLOSED: Invalid amount: must be > 0")
+
         # Map to new PricingRequest
         context = PricingContext(
             currency=currency,
             trigger=trace_id,
-            allotment_pct=50.0 + (float(allotment_override_pct * 100) if allotment_override_pct else 0)
+            allotment_pct=50.0 + (float(allotment_override_pct * 100) if allotment_override_pct else 0),
+            tax_context=tax_type # P1: Fix tax context
         )
 
         # Map product_type string to allowed values
