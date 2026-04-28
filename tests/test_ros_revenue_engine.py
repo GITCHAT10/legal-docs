@@ -7,7 +7,7 @@ from mnos.modules.imoxon.policies.engine import IdentityPolicyEngine
 from mnos.modules.finance.fce import FCEEngine
 from mnos.shared.execution_guard import ExecutionGuard
 from mnos.modules.imoxon.core.engine import ImoxonCore
-from mnos.modules.imoxon.pricing.engine import PricingEngine
+from mnos.modules.imoxon.pricing.engine import PricingEngine, ProductType
 from mnos.modules.exmail.revenue_engine import EmailRevenueEngine, MarketSegment, TriggerType
 
 class TestROSRevenueEngine(unittest.TestCase):
@@ -24,7 +24,7 @@ class TestROSRevenueEngine(unittest.TestCase):
         self.engine = EmailRevenueEngine(self.imoxon, self.pricing)
 
     def test_ai_subject_generation_gcc(self):
-        ctx = {"email": "vip@saudi.sa", "geo": "SA"}
+        ctx = {"email": "vip@saudi.sa", "geo": "SA", "trace_id": "T-GCC"}
         email = self.engine.process_trigger(TriggerType.PRICE_DROP, ctx)
 
         self.assertEqual(email["segment"], MarketSegment.GCC)
@@ -39,38 +39,59 @@ class TestROSRevenueEngine(unittest.TestCase):
         self.assertIn("立即完成预订", res["initial_email"]["subject"])
 
     def test_agent_tier_a_pricing_override(self):
-        # Tier A gets 5% cost reduction override
-        ctx = {"email": "top_agent@ru.com", "geo": "RU", "agent_tier": "A", "preferred_price": "1000.00"}
+        ctx = {
+            "email": "top_agent@ru.com",
+            "geo": "RU",
+            "agent_tier": "A",
+            "preferred_price": "1000.00",
+            "product_type": "PACKAGE"
+        }
         email = self.engine.process_trigger(TriggerType.LOW_INVENTORY, ctx)
 
-        # Base MVR for 1000 USD is 15420
-        # Tier A Override: -5% -> 14649
-        # Package Margin: 18% on 14649 -> 2636.82
-        # Gross: 17285.82
-        # SC: 10% of 17285.82 = 1728.58
-        # Subtotal: 17285.82 + 1728.58 = 19014.40
-        # Tax (8%): 1521.15
-        # Total: 19014.40 + 1521.15 = 20535.55
+        # Verify Price Trace presence
+        self.assertIn("pricing_trace", email)
+        self.assertEqual(email["offer"]["trace_id"], email["trace_id"])
 
-        # Verify Segment-aware logic:
-        # LOW_INVENTORY for Russia uses standard logic
-        self.assertEqual(email["segment"], MarketSegment.RUSSIA)
-        # We check that the final price reflects the override (is lower than base tier B)
-        self.assertTrue(email["offer"]["final_price"] < 23000) # Quick bound check
+        # Base 1000 USD -> 15420 MVR.
+        # SOVEREIGN Channel (-5%) -> 14649.00
+        # Tier A Override (-5%) -> 13916.55
+        self.assertEqual(email["offer"]["cost_price"], 13916.55)
+        self.assertEqual(email["segment"], MarketSegment.RUSSIA_CIS)
 
-    def test_shadow_logging_presence(self):
-        ctx = {"email": "audit@test.com", "geo": "UK", "trace_id": "T-AUDIT"}
+    def test_product_to_tax_mapping_retail(self):
+        ctx = {
+            "email": "shopper@eu.com",
+            "geo": "UK",
+            "product_type": "RETAIL",
+            "preferred_price": "100.00"
+        }
+        email = self.engine.process_trigger(TriggerType.PRICE_DROP, ctx)
 
-        # Need context for SHADOW commit
+        # Retail calculation:
+        # 100 USD -> 1542 MVR.
+        # SOVEREIGN Channel (-5%) -> 1464.90
+        # Margin (Default 10%) -> 146.49 -> 1611.39 Gross
+        # SC (10%) -> 161.14 -> 1772.53 Subtotal
+        # Tax (8%) -> 141.80
+        self.assertEqual(email["offer"]["tgst"], 141.8)
+
+    def test_invalid_amount_rejection(self):
+        ctx = {"email": "hacker@test.com", "preferred_price": "-100.00"}
+        with self.assertRaises(ValueError) as cm:
+            self.engine.process_trigger(TriggerType.PRICE_DROP, ctx)
+        self.assertIn("Invalid pricing input", str(cm.exception))
+
+    def test_shadow_logging_with_trace(self):
+        ctx = {"email": "audit@test.com", "geo": "UK", "trace_id": "T-TRACE-ROS"}
+
         with self.guard.sovereign_context():
              self.engine.process_trigger(TriggerType.BOOKING_CREATED, ctx)
 
-        # Check if event exists in SHADOW
         found = False
         for block in self.shadow.chain:
             if "exmail.revenue_offer.sent" in block["event_type"]:
-                if block["payload"].get("result", {}).get("trace_id") == "T-AUDIT" or \
-                   block["payload"].get("trace_id") == "T-AUDIT":
+                if block["payload"].get("trace_id") == "T-TRACE-ROS" or \
+                   (block["payload"].get("result") and block["payload"]["result"].get("trace_id") == "T-TRACE-ROS"):
                     found = True
                     break
         self.assertTrue(found)

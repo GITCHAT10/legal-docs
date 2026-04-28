@@ -279,8 +279,11 @@ def ros_event_listener(event_type, payload):
         "inventory.low",
         "booking.abandoned",
         "booking.created",
-        "pre.checkin",
-        "post.checkout",
+        "payment.received",
+        "pre.arrival.7d",
+        "activity.gap.detected",
+        "spa.idle.slot",
+        "post.checkout.1d",
         "flight.landed"
     ]
     if event_type in ros_events:
