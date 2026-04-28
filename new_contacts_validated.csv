@@ -232,3 +232,103 @@ couples@par-resor.se,Par Resor,EU,Sweden,HONEYMOON_SPECIALIST,A,couples,eu_honey
 honeymoon@romantiska-resor.se,Romantiska Resor,EU,Sweden,HONEYMOON_SPECIALIST,A,honeymoon,eu_honeymoon,unverified
 romance@två-hjärtan-resor.se,Två Hjärtan Resor,EU,Sweden,LUXURY_ROMANCE,B,romance,eu_honeymoon_luxury,unverified
 private@exklusiva-resor.se,Exklusiva Resor,EU,Sweden,LUXURY_ROMANCE,A,private,eu_honeymoon_luxury,unverified
+luxury@quintessentially.com,Quintessentially Travel,EU,UK,UHNWI_CONCIERGE,A,luxury_director,uhnwi_privacy,privacy_seekers,unverified
+private@johnpaul.com,John Paul Group,EU,France,UHNWI_CONCIERGE,A,private_client,uhnwi_privacy,privacy_seekers,unverified
+royal@knightsbridgecircle.com,Knightsbridge Circle,EU,UK,UHNWI_CONCIERGE,A,royal_liaison,uhnwi_privacy,privacy_seekers,unverified
+vip@lesconcierges.com,Les Concierges,EU,France,UHNWI_CONCIERGE,A,vip_services,uhnwi_privacy,privacy_seekers,unverified
+discretion@blacktomato.com,Black Tomato (Blink),EU,UK,UHNWI_CONCIERGE,A,discretion_lead,uhnwi_privacy,privacy_seekers,unverified
+secure@internationaltravel.com,International Travel Collection,EU,UK,UHNWI_CONCIERGE,A,security_travel,uhnwi_privacy,privacy_seekers,unverified
+privatejet@airpartner.com,Air Partner Private Jets,EU,UK,UHNWI_CONCIERGE,A,jet_charter,uhnwi_privacy,privacy_seekers,unverified
+yacht@camperandnicholsons.com,Camper & Nicholsons Travel,EU,UK,UHNWI_CONCIERGE,A,yacht_liaison,uhnwi_privacy,privacy_seekers,unverified
+security@garrisontravel.com,Garrison Travel,EU,UK,UHNWI_CONCIERGE,A,security_consultant,uhnwi_privacy,privacy_seekers,unverified
+confidential@thealexandergroup.com,The Alexander Group,NA,USA,UHNWI_CONCIERGE,A,confidential_travel,uhnwi_privacy,privacy_seekers,unverified
+gcc@elitehavens.com,Elite Havens (GCC Desk),ASIA,UAE,UHNWI_CONCIERGE,A,gcc_relations,uhnwi_privacy,privacy_seekers,unverified
+royal@platinumlist.ae,Platinum List (Royal Division),ASIA,UAE,UHNWI_CONCIERGE,A,royal_desk,uhnwi_privacy,privacy_seekers,unverified
+private@serendipityconsultants.com,Serendipity Consultants,EU,UK,UHNWI_CONCIERGE,A,private_itineraries,uhnwi_privacy,privacy_seekers,unverified
+discretion@curated.travel,Curated Travel,EU,UK,UHNWI_CONCIERGE,A,discretion_manager,uhnwi_privacy,privacy_seekers,unverified
+vip@thejetsetway.com,The Jetset Way,NA,USA,UHNWI_CONCIERGE,A,vip_experience,uhnwi_privacy,privacy_seekers,unverified
+secure@executivejetmanagement.com,Executive Jet Management,NA,USA,UHNWI_CONCIERGE,A,secure_travel,uhnwi_privacy,privacy_seekers,unverified
+private@theplatinumtraveller.co.uk,The Platinum Traveller,EU,UK,UHNWI_CONCIERGE,A,private_client,uhnwi_privacy,privacy_seekers,unverified
+confidential@bon-voyage.co.uk,Bon Voyage (Confidential),EU,UK,UHNWI_CONCIERGE,A,confidential_desk,uhnwi_privacy,privacy_seekers,unverified
+vip@originaltravel.co.uk,Original Travel (VIP),EU,UK,UHNWI_CONCIERGE,A,vip_luxury,uhnwi_privacy,privacy_seekers,unverified
+private@scottdunn.com,Scott Dunn (Private),EU,UK,UHNWI_CONCIERGE,A,private_luxury,uhnwi_privacy,privacy_seekers,unverified
+families@elegantresorts.co.uk,Elegant Resorts (Family),EU,UK,UHNWI_FAMILY,A,family_specialist,uhnwi_legacy,legacy_travelers,unverified
+multigen@audleytravel.com,Audley Travel (Family),EU,UK,UHNWI_FAMILY,A,multigen_planner,uhnwi_legacy,legacy_travelers,unverified
+estates@kuoni.co.uk,Kuoni Private Estates,EU,UK,UHNWI_FAMILY,A,estate_coordinator,uhnwi_legacy,legacy_travelers,unverified
+generations@carrier.co.uk,Carrier (Legacy),EU,UK,UHNWI_FAMILY,A,legacy_planner,uhnwi_legacy,legacy_travelers,unverified
+family@wildfrontierstravel.com,Wild Frontiers (Family),EU,UK,UHNWI_FAMILY,A,family_adventure,uhnwi_legacy,legacy_travelers,unverified
+privateestates@andbeyond.com,&Beyond Private Estates,EU,UK,UHNWI_FAMILY,A,estate_manager,uhnwi_legacy,legacy_travelers,unverified
+multigenerational@abercrombiekent.co.uk,Abercrombie & Kent (Family),EU,UK,UHNWI_FAMILY,A,multigen_specialist,uhnwi_legacy,legacy_travelers,unverified
+family@coxandkings.co.uk,Cox & Kings (Family),EU,UK,UHNWI_FAMILY,B,family_desk,uhnwi_legacy,legacy_travelers,unverified
+legacy@keranddowney.com,Ker & Downey (Legacy),EU,UK,UHNWI_FAMILY,A,legacy_curator,uhnwi_legacy,legacy_travelers,unverified
+families@micato.com,Micato (Family Safaris),EU,UK,UHNWI_FAMILY,B,family_safari,uhnwi_legacy,legacy_travelers,unverified
+privatevillas@elitehavens.com,Elite Havens (Family Villas),ASIA,Thailand,UHNWI_FAMILY,A,villa_curator,uhnwi_legacy,legacy_travelers,unverified
+estates@theooza.com,The Ooza (Private Estates),ASIA,Maldives,UHNWI_FAMILY,A,estate_liaison,uhnwi_legacy,legacy_travelers,unverified
+family@luxurytravel.com,Luxury Travel (Family Division),NA,USA,UHNWI_FAMILY,A,family_planner,uhnwi_legacy,legacy_travelers,unverified
+multigen@travelassociates.com,Travel Associates (Family),EU,AU,UHNWI_FAMILY,A,multigen_expert,uhnwi_legacy,legacy_travelers,unverified
+legacy@journeylatinamerica.co.uk,Journey Latin America (Legacy),EU,UK,UHNWI_FAMILY,B,legacy_travel,uhnwi_legacy,legacy_travelers,unverified
+families@steppestravel.com,Steppes Travel (Family),EU,UK,UHNWI_FAMILY,A,family_wildlife,uhnwi_legacy,legacy_travelers,unverified
+private@remote.co.uk,Remote (Family Estates),EU,UK,UHNWI_FAMILY,A,private_family,uhnwi_legacy,legacy_travelers,unverified
+generations@naturalhighs.com,Natural Highs (Legacy),EU,UK,UHNWI_FAMILY,B,legacy_adventure,uhnwi_legacy,legacy_travelers,unverified
+wellness@chenselect.com,ChenSelect (Biohacking),EU,UK,UHNWI_WELLNESS,A,wellness_curator,uhnwi_biohacker,biohackers,unverified
+optimize@destinationwellness.com,Destination Wellness,NA,USA,UHNWI_WELLNESS,A,optimization_specialist,uhnwi_biohacker,biohackers,unverified
+biohacking@thebodyhotel.com,The Body Hotel,EU,UK,UHNWI_WELLNESS,A,biohacking_coordinator,uhnwi_biohacker,biohackers,unverified
+performance@miraval.com,Miraval (Corporate Wellness),NA,USA,UHNWI_WELLNESS,A,performance_programs,uhnwi_biohacker,biohackers,unverified
+longevity@sha-wellness.com,SHA Wellness (Luxury),EU,Spain,UHNWI_WELLNESS,A,longevity_consultant,uhnwi_biohacker,biohackers,unverified
+data@joalibeing.com,JOALI BEING (Maldives),ASIA,Maldives,UHNWI_WELLNESS,A,data_wellness,uhnwi_biohacker,biohackers,unverified
+sleep@sixsenses.com,Six Senses (Sleep Science),ASIA,Thailand,UHNWI_WELLNESS,A,sleep_programs,uhnwi_biohacker,biohackers,unverified
+recovery@champneys.com,Champneys (Executive Recovery),EU,UK,UHNWI_WELLNESS,B,recovery_specialist,uhnwi_biohacker,biohackers,unverified
+metabolic@laneridge.com,Lane Ridge (Metabolic),NA,USA,UHNWI_WELLNESS,A,metabolic_coach,uhnwi_biohacker,biohackers,unverified
+ivtherapy@wellnesstravel.com,Wellness Travel (IV),EU,UK,UHNWI_WELLNESS,B,iv_therapy,uhnwi_biohacker,biohackers,unverified
+quantified@self.com,Quantified Self Travel,NA,USA,UHNWI_WELLNESS,A,quantified_coach,uhnwi_biohacker,biohackers,unverified
+biomarker@biohackingtravel.com,Biohacking Travel,EU,Germany,UHNWI_WELLNESS,A,biomarker_specialist,uhnwi_biohacker,biohackers,unverified
+neuro@neurotravel.com,Neuro Travel Optimization,NA,USA,UHNWI_WELLNESS,A,neuro_optimization,uhnwi_biohacker,biohackers,unverified
+longevity@longevitytravel.com,Longevity Travel Partners,EU,Switzerland,UHNWI_WELLNESS,A,longevity_planner,uhnwi_biohacker,biohackers,unverified
+performance@peaktravel.com,Peak Performance Travel,NA,USA,UHNWI_WELLNESS,A,performance_curator,uhnwi_biohacker,biohackers,unverified
+reset@maldiveswellness.com,Maldives Wellness Collective,ASIA,Maldives,UHNWI_WELLNESS,A,reset_specialist,uhnwi_biohacker,biohackers,unverified
+crypto@luxurycrypto.travel,Luxury Crypto Travel,NA,USA,UHNWI_TECH,A,crypto_concierge,uhnwi_tech,crypto_elite,unverified
+web3@nfttravelclub.com,NFT Travel Club,NA,USA,UHNWI_TECH,A,web3_experiences,uhnwi_tech,crypto_elite,unverified
+tech@blacktomato.com,Black Tomato (Tech Elite),EU,UK,UHNWI_TECH,A,tech_curator,uhnwi_tech,crypto_elite,unverified
+innovation@discoveryworld.com,Discovery World (Tech),EU,UK,UHNWI_TECH,A,innovation_travel,uhnwi_tech,crypto_elite,unverified
+future@futuretravel.com,Future Travel Collective,NA,USA,UHNWI_TECH,A,future_experiences,uhnwi_tech,crypto_elite,unverified
+metaverse@metaescapes.com,Meta Escapes,NA,USA,UHNWI_TECH,A,metaverse_liaison,uhnwi_tech,crypto_elite,unverified
+digital@nomadcapitalist.com,Nomad Capitalist Travel,ASIA,Singapore,UHNWI_TECH,A,digital_nomad_luxury,uhnwi_tech,crypto_elite,unverified
+blockchain@blockchaintravel.io,Blockchain Travel,EU,Estonia,UHNWI_TECH,A,blockchain_concierge,uhnwi_tech,crypto_elite,unverified
+nft@arttravelclub.com,Art Travel Club (NFT),EU,UK,UHNWI_TECH,B,nft_experiences,uhnwi_tech,crypto_elite,unverified
+tech@thejetsetway.com,The Jetset Way (Tech),NA,USA,UHNWI_TECH,A,tech_luxury,uhnwi_tech,crypto_elite,unverified
+innovation@curated.travel,Curated Travel (Innovation),EU,UK,UHNWI_TECH,A,innovation_desk,uhnwi_tech,crypto_elite,unverified
+crypto@luxuryescapes.com,Luxury Escapes (Crypto),ASIA,Australia,UHNWI_TECH,B,crypto_payments,uhnwi_tech,crypto_elite,unverified
+web3@decentralizedtravel.com,Decentralized Travel,NA,USA,UHNWI_TECH,A,web3_curator,uhnwi_tech,crypto_elite,unverified
+tech@originaltravel.co.uk,Original Travel (Tech Elite),EU,UK,UHNWI_TECH,A,tech_specialist,uhnwi_tech,crypto_elite,unverified
+future@scottdunn.com,Scott Dunn (Future Travel),EU,UK,UHNWI_TECH,A,future_luxury,uhnwi_tech,crypto_elite,unverified
+digital@bon-voyage.co.uk,Bon Voyage (Digital Elite),EU,UK,UHNWI_TECH,B,digital_luxury,uhnwi_tech,crypto_elite,unverified
+corporate@scottdunn.com,Scott Dunn (Corporate Retreats),EU,UK,UHNWI_CORPORATE,A,corporate_strategy,uhnwi_csuite,csuite_retreats,unverified
+executive@audleytravel.com,Audley Travel (Executive),EU,UK,UHNWI_CORPORATE,A,executive_retreats,uhnwi_csuite,csuite_retreats,unverified
+boardroom@kuoni.co.uk,Kuoni (Board Retreats),EU,UK,UHNWI_CORPORATE,A,boardroom_coordinator,uhnwi_csuite,csuite_retreats,unverified
+strategy@carrier.co.uk,Carrier (Strategy Retreats),EU,UK,UHNWI_CORPORATE,A,strategy_planner,uhnwi_csuite,csuite_retreats,unverified
+executive@blacktomato.com,Black Tomato (C-Suite),EU,UK,UHNWI_CORPORATE,A,executive_curator,uhnwi_csuite,csuite_retreats,unverified
+corporate@andbeyond.com,&Beyond (Corporate),EU,UK,UHNWI_CORPORATE,A,corporate_wilderness,uhnwi_csuite,csuite_retreats,unverified
+retreats@abercrombiekent.co.uk,Abercrombie & Kent (Retreats),EU,UK,UHNWI_CORPORATE,A,retreat_specialist,uhnwi_csuite,csuite_retreats,unverified
+executive@coxandkings.co.uk,Cox & Kings (Executive),EU,UK,UHNWI_CORPORATE,B,executive_desk,uhnwi_csuite,csuite_retreats,unverified
+board@keranddowney.com,Ker & Downey (Board),EU,UK,UHNWI_CORPORATE,A,board_retreats,uhnwi_csuite,csuite_retreats,unverified
+corporate@micato.com,Micato (Corporate),EU,UK,UHNWI_CORPORATE,B,corporate_safari,uhnwi_csuite,csuite_retreats,unverified
+executive@wildfrontierstravel.com,Wild Frontiers (Executive),EU,UK,UHNWI_CORPORATE,A,executive_adventure,uhnwi_csuite,csuite_retreats,unverified
+strategy@steppestravel.com,Steppes Travel (Strategy),EU,UK,UHNWI_CORPORATE,A,strategy_wilderness,uhnwi_csuite,csuite_retreats,unverified
+corporate@remote.co.uk,Remote (C-Suite),EU,UK,UHNWI_CORPORATE,A,corporate_remote,uhnwi_csuite,csuite_retreats,unverified
+executive@naturalhighs.com,Natural Highs (Executive),EU,UK,UHNWI_CORPORATE,B,executive_expeditions,uhnwi_csuite,csuite_retreats,unverified
+boardroom@originaltravel.co.uk,Original Travel (Board),EU,UK,UHNWI_CORPORATE,A,boardroom_luxury,uhnwi_csuite,csuite_retreats,unverified
+diving@scubatravel.co.uk,Scuba Travel (Luxury),EU,UK,UHNWI_PASSION,A,luxury_diving,uhnwi_passion,passion_collectors,unverified
+surf@luxurysurftravel.com,Luxury Surf Travel,ASIA,Maldives,UHNWI_PASSION,A,luxury_surf,uhnwi_passion,passion_collectors,unverified
+astro@stargazingtravel.com,Stargazing Travel (Luxury),NA,USA,UHNWI_PASSION,A,astro_experiences,uhnwi_passion,passion_collectors,unverified
+submarine@underwatertravel.com,Underwater Travel Collective,EU,UK,UHNWI_PASSION,A,submarine_expeditions,uhnwi_passion,passion_collectors,unverified
+remote@wildfrontierstravel.com,Wild Frontiers (Remote),EU,UK,UHNWI_PASSION,A,remote_expeditions,uhnwi_passion,passion_collectors,unverified
+castaway@elitehavens.com,Elite Havens (Castaway),ASIA,Thailand,UHNWI_PASSION,A,castaway_villas,uhnwi_passion,passion_collectors,unverified
+astronomy@maldivesastro.com,Maldives Astro Travel,ASIA,Maldives,UHNWI_PASSION,A,astro_luxury,uhnwi_passion,passion_collectors,unverified
+deepsea@deepseatravel.com,Deep Sea Luxury Travel,EU,UK,UHNWI_PASSION,A,deepsea_expeditions,uhnwi_passion,passion_collectors,unverified
+surf@maldivessurf.com,Maldives Surf Charters (Luxury),ASIA,Maldives,UHNWI_PASSION,A,luxury_surf_charters,uhnwi_passion,passion_collectors,unverified
+reef@coralcollectors.com,Coral Collectors Travel,ASIA,Maldives,UHNWI_PASSION,A,reef_expeditions,uhnwi_passion,passion_collectors,unverified
+astronomy@desertskytravel.com,Desert Sky Travel (Astro),ASIA,UAE,UHNWI_PASSION,B,astro_luxury,uhnwi_passion,passion_collectors,unverified
+submarine@oceanictravel.com,Oceanic Travel (Submarine),EU,France,UHNWI_PASSION,A,submarine_luxury,uhnwi_passion,passion_collectors,unverified
+remote@steppestravel.com,Steppes Travel (Remote),EU,UK,UHNWI_PASSION,A,remote_luxury,uhnwi_passion,passion_collectors,unverified
+passion@scottdunn.com,Scott Dunn (Passion),EU,UK,UHNWI_PASSION,A,passion_curator,uhnwi_passion,passion_collectors,unverified
+collectors@audleytravel.com,Audley Travel (Collectors),EU,UK,UHNWI_PASSION,A,collector_experiences,uhnwi_passion,passion_collectors,unverified

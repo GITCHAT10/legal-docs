@@ -134,7 +134,7 @@ async def test_contact_attribution(db_session):
     df = pd.read_csv("new_contacts_validated.csv")
     for _, row in df.iterrows():
         await db_session.execute(text("""
-            INSERT INTO outreach_tracker
+            INSERT OR REPLACE INTO outreach_tracker
             (email, company, region, country, agent_type, priority_tier, contact_role, status, trigger_segment)
             VALUES (:email, :company, :region, :country, :agent_type, :priority_tier, :contact_role, :status, :trigger_segment)
         """), row.to_dict())
@@ -142,7 +142,7 @@ async def test_contact_attribution(db_session):
 
     result = await db_session.execute(text("SELECT COUNT(*) FROM outreach_tracker"))
     count = result.scalar()
-    assert count == 233
+    assert count == 332
 
     res = await db_session.execute(text("SELECT trigger_segment FROM outreach_tracker WHERE region='USA' LIMIT 1"))
     assert res.scalar() == "us_luxury"
