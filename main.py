@@ -252,15 +252,27 @@ async def chat_message(message: str, actor: dict = Depends(get_actor_ctx)):
 from mnos.core.fce.service import FCESovereignService
 from mnos.core.fce.wallet import FceWalletService
 from mnos.core.shadow.service import ShadowSovereignLedger
+from mnos.core.doc.engine import SigDocEngine
+from mnos.exec.comms.engine import CommsEngine
+from mnos.exec.orchestrator.service import OrchestratorService
 
 # Instantiate Sovereign versions for SALA Node
 fce_sovereign = FCESovereignService()
 shadow_sovereign = ShadowSovereignLedger()
 fce_wallet = FceWalletService(shadow_sovereign, events_core)
+sigdoc_engine = SigDocEngine(shadow_sovereign)
+comms_engine = CommsEngine(events_core)
+orchestrator_svc = OrchestratorService(events_core)
 
 upos_engine = UPOSEngine(fce_sovereign, shadow_sovereign, events_core)
 edge_node = EdgeNode(node_id=os.environ.get("NODE_ID", "SALA-GENERIC"))
 apollo_sync = ApolloSyncService(edge_node, shadow_sovereign)
+
+# Configure Orchestration Handlers
+orchestrator_svc.register_handler(
+    "upos.order.completed",
+    lambda p: comms_engine.send_notification(f"Order {p['order_id']} completed", "MANAGER", p.get("trace_id", "N/A"))
+)
 
 # --- Routers ---
 app.include_router(create_upos_router(upos_engine, edge_node, get_actor_ctx), prefix="/imoxon")

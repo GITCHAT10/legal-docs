@@ -1,16 +1,30 @@
+import json
+import os
+
 class OrcaDashboard:
-    def __init__(self, shadow):
+    def __init__(self, shadow, wallet):
         self.shadow = shadow
+        self.wallet = wallet
 
     def get_live_metrics(self):
         chain = self.shadow.chain
         total_revenue = 0
+        order_count = 0
         for block in chain:
-            if block["event_type"] == "upos.order.completed":
+            if block["event_type"] == "upos.order.created":
+                order_count += 1
                 total_revenue += block["payload"]["pricing"]["total"]
 
+        # P&L Simulation
+        payouts = sum(s["net_amount"] for s in self.wallet.settlements.values())
+        fees = sum(s["platform_fee"] for s in self.wallet.settlements.values())
+
         return {
-            "total_revenue": total_revenue,
-            "order_count": len([b for b in chain if b["event_type"] == "upos.order.completed"]),
-            "integrity": self.shadow.verify_integrity()
+            "node_status": "ACTIVE",
+            "total_revenue_mvr": total_revenue,
+            "order_count": order_count,
+            "total_payouts_mvr": payouts,
+            "platform_fees_mvr": fees,
+            "audit_integrity": self.shadow.verify_integrity(),
+            "sync_status": "STABLE"
         }
