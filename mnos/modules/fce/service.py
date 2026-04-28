@@ -1,230 +1,81 @@
-from typing import Dict, Optional, Any, List
 from sqlalchemy.orm import Session
-from mnos.modules.fce import models
-import uuid
-import hashlib
-from datetime import datetime, date, UTC
-from .tax_calculator import calculate_sovereign_tax
-from mnos.modules.shadow import service as shadow_service
+from uuid import uuid4
+from . import models, schemas
+from mnos.core.audit.shadow import commit_shadow_evidence
+from datetime import datetime, UTC
 from fastapi import HTTPException
-from decimal import Decimal
 
-# Mock settings
-DUAL_QR_THRESHOLD_MVR = 50000.0
-USD_TO_MVR_RATE = 15.42
-
-def _generate_mira_receipt(folio_id: int, total_amount: float, timestamp: datetime) -> str:
-    date_str = timestamp.strftime("%Y%m%d")
-    folio_hash = hashlib.sha256(str(folio_id).encode()).hexdigest()[:8].upper()
-    region_code = "MV"
-    return f"MIRA-{date_str}-{folio_hash}-{region_code}"
-
-def finalize_invoice(
-    db: Session,
-    folio_id: int,
-    actor: str,
-    qr_authorization_id: Optional[int] = None,
-    force_override: bool = False,
-    tenant_id: str = "default"
-) -> models.Invoice:
-    """
-    Finalize folio invoice with sovereign compliance.
-    """
+def finalize_invoice(db: Session, folio_id: int, actor: str) -> dict:
     folio = db.query(models.Folio).filter(models.Folio.id == folio_id).first()
     if not folio:
-        raise HTTPException(status_code=404, detail="Folio not found")
+        raise ValueError(f"Folio {folio_id} not found")
+    if folio.status != models.FolioStatus.OPEN:
+        raise ValueError(f"Folio {folio_id} is already {folio.status}")
 
-    if folio.status == models.FolioStatus.FINALIZED:
-        raise HTTPException(status_code=400, detail="Folio already finalized")
+    # Calculate totals
+    base = folio.base_amount or 0.0
+    service_charge = round(base * 0.10, 2)
+    tgst = round((base + service_charge) * 0.08, 2)
+    total = round(base + service_charge + tgst, 2)
 
-    # 1. Calculate sovereign taxes (MIRA-compliant)
-    subtotal = Decimal(str(folio.subtotal_amount))
-
-    # Use fixed tax logic
-    taxes = calculate_sovereign_tax(
-        subtotal=subtotal,
-        guest_type="TOURIST" if folio.is_tourist else "LOCAL"
-    )
-
-    total_with_taxes = float(taxes["total"])
-
-    # 2. Dual-QR validation (if amount > threshold)
-    if total_with_taxes > DUAL_QR_THRESHOLD_MVR and not force_override:
-        if not qr_authorization_id:
-            raise HTTPException(status_code=403, detail="Dual-QR authorization required for high-value invoice")
-
-        qr_auth = db.query(models.QRAuthorizationRequest).filter(
-            models.QRAuthorizationRequest.id == qr_authorization_id,
-            models.QRAuthorizationRequest.status == "AUTHORIZED",
-            models.QRAuthorizationRequest.folio_id == folio_id
-        ).first()
-
-        if not qr_auth:
-            raise HTTPException(status_code=403, detail="Invalid or unauthorized Dual-QR")
-
-    # 3. Update folio
-    folio.status = models.FolioStatus.FINALIZED
-    folio.finalized_by = actor
-    folio.finalized_at = datetime.now(UTC)
-    folio.mira_gst_amount = float(taxes["tax"])
-    folio.total_amount = total_with_taxes
-    folio.qr_authorization_id = str(qr_authorization_id) if qr_authorization_id else None
-
-    folio.mira_receipt_number = _generate_mira_receipt(folio_id, total_with_taxes, folio.finalized_at)
-
-    # 4. Create Invoice
+    trace_id = str(uuid4())
     invoice = models.Invoice(
-        tenant_id=tenant_id,
-        folio_id=folio_id,
-        invoice_number=f"INV-{uuid.uuid4().hex[:8].upper()}",
-        total_amount=total_with_taxes
+        folio_id=folio.id,
+        trace_id=trace_id,
+        tenant_id=folio.tenant_id,
+        invoice_number=f"INV-{uuid4().hex[:8].upper()}",
+        total_amount=total
     )
     db.add(invoice)
-    db.flush()
 
-    # 5. COMMIT BEFORE SHADOW LOG
+    # SHADOW audit commit
+    commit_shadow_evidence(
+        db=db,
+        trace_id=trace_id,
+        event="invoice_finalized",
+        payload={"folio_id": folio.id, "total": total, "actor": actor}
+    )
+
+    folio.status = models.FolioStatus.FINALIZED
     db.commit()
     db.refresh(invoice)
 
-    # 6. Generate SHADOW Audit entry
-    shadow_service.commit_evidence(db, invoice.trace_id, {
-        "actor": actor,
-        "action": "INVOICE_FINALIZED",
-        "entity_type": "INVOICE",
-        "entity_id": invoice.id,
-        "payload": {
-            "folio_id": str(folio_id),
-            "total": str(total_with_taxes),
-            "mira_receipt": folio.mira_receipt_number,
-            "dual_qr_used": bool(qr_authorization_id)
-        }
-    })
-    db.commit()
-
-    return invoice
+    return {
+        "id": invoice.id,
+        "trace_id": invoice.trace_id,
+        "total_amount": invoice.total_amount,
+        "status": "finalized"
+    }
 
 def open_folio(db: Session, reservation_id: str, trace_id: str, tenant_id: str = "default", actor: str = "SYSTEM") -> models.Folio:
-    try:
-        if not trace_id: raise ValueError("trace_id required")
-        existing = db.query(models.Folio).filter(models.Folio.trace_id == trace_id, models.Folio.tenant_id == tenant_id).first()
-        if existing: return existing
+    if not trace_id: raise ValueError("trace_id required")
+    folio = models.Folio(
+        tenant_id=tenant_id,
+        trace_id=trace_id,
+        external_reservation_id=reservation_id,
+        status=models.FolioStatus.OPEN,
+        created_by=actor
+    )
+    db.add(folio)
+    db.commit()
+    db.refresh(folio)
+    return folio
 
-        folio = models.Folio(
-            tenant_id=tenant_id,
-            trace_id=trace_id,
-            external_reservation_id=reservation_id,
-            status=models.FolioStatus.OPEN,
-            created_by=actor
-        )
-        db.add(folio)
-        db.flush()
+def post_charge(db: Session, folio_id: int, charge_data: dict, trace_id: str, tenant_id: str = "default", actor: str = "SYSTEM") -> models.FolioLine:
+    folio = db.query(models.Folio).filter(models.Folio.id == folio_id).first()
+    if not folio: raise ValueError(f"Folio {folio_id} not found")
 
-        # Shadow Evidence
-        shadow_service.commit_evidence(db, trace_id, {
-            "actor": actor,
-            "action": "OPEN_FOLIO",
-            "entity_type": "FOLIO",
-            "entity_id": folio.id,
-            "after_state": {"reservation_id": reservation_id, "status": folio.status}
-        })
-
-        db.commit()
-        db.refresh(folio)
-        return folio
-    except Exception:
-        db.rollback()
-        raise
-
-def post_charge(db: Session, folio_id: int, charge_data: Dict, trace_id: str, tenant_id: str = "default", actor: str = "SYSTEM") -> models.FolioLine:
-    try:
-        if not trace_id: raise ValueError("trace_id required")
-        existing = db.query(models.FolioLine).filter(models.FolioLine.trace_id == trace_id, models.FolioLine.tenant_id == tenant_id).first()
-        if existing: return existing
-
-        folio = db.query(models.Folio).filter(models.Folio.id == folio_id).first()
-        if not folio: raise ValueError(f"Folio {folio_id} not found")
-
-        # ENFORCEMENT: 10% Service Charge + 17% TGST (tourism flows)
-        subtotal = Decimal(str(charge_data["base_amount"]))
-        taxes = calculate_sovereign_tax(
-            subtotal=subtotal,
-            guest_type="TOURIST" if folio.is_tourist else "LOCAL"
-        )
-
-        line = models.FolioLine(
-            tenant_id=tenant_id,
-            trace_id=trace_id,
-            folio_id=folio_id,
-            type=charge_data["type"],
-            base_amount=float(subtotal),
-            service_charge=float(taxes.get("service_charge", 0.0)),
-            tgst=float(taxes["tax"]) if taxes.get("schema") == "TOURIST_10SC_17TGST" else 0.0,
-            green_tax=0.0, # Placeholder for explicit Green Tax
-            amount=float(taxes["total"]),
-            description=charge_data.get("description"),
-            created_by=actor
-        )
-        db.add(line)
-
-        before_state = {"total_amount": folio.total_amount}
-        folio.total_amount += line.amount
-        folio.subtotal_amount += (line.base_amount + line.service_charge)
-        db.add(folio)
-        db.flush()
-
-        shadow_service.commit_evidence(db, trace_id, {
-            "actor": actor,
-            "action": "POST_CHARGE",
-            "entity_type": "FOLIO_LINE",
-            "entity_id": line.id,
-            "before_state": before_state,
-            "after_state": {"amount": line.amount, "folio_total": folio.total_amount}
-        })
-
-        db.commit()
-        db.refresh(line)
-        return line
-    except Exception:
-        db.rollback()
-        raise
-
-def post_transaction(db: Session, folio_id: int, payment_data: Dict, trace_id: str, tenant_id: str = "default", actor: str = "SYSTEM") -> models.FolioTransaction:
-    try:
-        if not trace_id: raise ValueError("trace_id required")
-        existing = db.query(models.FolioTransaction).filter(models.FolioTransaction.trace_id == trace_id, models.FolioTransaction.tenant_id == tenant_id).first()
-        if existing: return existing
-
-        folio = db.query(models.Folio).filter(models.Folio.id == folio_id).first()
-        if not folio: raise ValueError(f"Folio {folio_id} not found")
-
-        transaction = models.FolioTransaction(
-            tenant_id=tenant_id,
-            trace_id=trace_id,
-            folio_id=folio_id,
-            amount=payment_data["amount"],
-            method=payment_data["method"],
-            status=models.TransactionStatus.POSTED,
-            created_by=actor
-        )
-        db.add(transaction)
-
-        before_state = {"paid_amount": folio.paid_amount}
-        folio.paid_amount += transaction.amount
-        db.add(folio)
-        db.flush()
-
-        shadow_service.commit_evidence(db, trace_id, {
-            "actor": actor,
-            "action": "POST_TRANSACTION",
-            "entity_type": "FOLIO_TRANSACTION",
-            "entity_id": transaction.id,
-            "before_state": before_state,
-            "after_state": {"amount": transaction.amount, "folio_paid": folio.paid_amount}
-        })
-
-        db.commit()
-        db.refresh(transaction)
-        return transaction
-    except Exception:
-        db.rollback()
-        raise
+    line = models.FolioLine(
+        tenant_id=tenant_id,
+        trace_id=trace_id,
+        folio_id=folio_id,
+        type=charge_data["type"],
+        base_amount=charge_data["base_amount"],
+        amount=charge_data["base_amount"], # Simplified
+        created_by=actor
+    )
+    db.add(line)
+    folio.base_amount += line.base_amount
+    db.commit()
+    db.refresh(line)
+    return line

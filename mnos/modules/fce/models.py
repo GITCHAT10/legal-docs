@@ -33,6 +33,7 @@ class Folio(Base, TraceableMixin):
     finalized_by = Column(String)
     finalized_at = Column(DateTime)
 
+    base_amount = Column(Float, default=0.0)
     subtotal_amount = Column(Float, default=0.0) # Base + Service Charge
     total_amount = Column(Float, default=0.0)    # Final authoritative amount
     paid_amount = Column(Float, default=0.0)

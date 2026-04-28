@@ -54,7 +54,7 @@ def create_reservation(db: Session, *, reservation_in: schemas.ReservationCreate
         db.refresh(db_reservation)
 
         # Standardized Event Dispatching
-        event_dispatcher.dispatch(CanonicalEvent.RESERVATION_CREATED, {
+        event_dispatcher.dispatch(CanonicalEvent.RESERVATION_CONFIRMED, {
             "reservation_id": db_reservation.id,
             "guest_id": db_reservation.guest_id
         }, ctx={"trace_id": db_reservation.trace_id, "aegis_id": actor})
