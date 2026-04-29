@@ -32,7 +32,7 @@ class ResortSupplyManager:
         self.core.execute_commerce_action(
             "supply.resort.onboarded",
             {"identity_id": "SYSTEM", "role": "admin", "device_id": "SYSTEM_VIRTUAL"},
-            lambda: self.resorts[resort_id],
+            lambda rid: self.resorts[rid],
             resort_id
         )
         logger.info("resort_onboarded", resort_id=resort_id, tier=resort_data.get("tier"))

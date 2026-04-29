@@ -44,7 +44,14 @@ class ShadowLedger:
         temp = copy.deepcopy(block)
         if "hash" in temp:
             temp.pop("hash")
-        block_string = json.dumps(temp, sort_keys=True).encode()
+
+        def _serializer(obj):
+            if isinstance(obj, Decimal):
+                return str(obj)
+            raise TypeError(f"Type {type(obj)} not serializable")
+
+        from decimal import Decimal
+        block_string = json.dumps(temp, sort_keys=True, default=_serializer).encode()
         return hashlib.sha256(block_string).hexdigest()
 
     def _sign_event(self, payload: dict) -> str:
