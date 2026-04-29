@@ -5,14 +5,18 @@ from fastapi import Request, HTTPException, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from contextlib import contextmanager
+import os
 
 # Context variable to track sovereign authorization
 _sovereign_context = contextvars.ContextVar("sovereign_context", default=None)
 
-# Paths that require elevated guard (financial, supply, audit)
-STRICT_GUARD_PATHS = ["/supply", "/finance", "/aegis/asset", "/commerce", "/imoxon"]
+# Paths that require elevated guard (financial, supply, audit, commerce mutations)
+STRICT_GUARD_PATHS = [
+    "/supply", "/finance", "/aegis/asset", "/commerce",
+    "/imoxon/orders", "/imoxon/products", "/imoxon/suppliers"
+]
 
-# Paths that support dual auth (user-facing: chat, email, portal)
+# Paths that support dual auth (user-facing: chat, email, portal, dashboards)
 DUAL_AUTH_PATHS = ["/bubble", "/exmail", "/iluvia/app", "/orca", "/pms"]
 
 class ExecutionGuard:
@@ -46,7 +50,9 @@ class ExecutionGuard:
             if not identity_id:
                 raise PermissionError(f"FAIL CLOSED: Missing Identity for {action_type}")
             # Device binding strictly required for sensitive mutations
-            if not device_id and any(action_type.startswith(p.strip('/')) for p in STRICT_GUARD_PATHS):
+            # Match against STRICT_GUARD_PATHS logic
+            is_strict = any(action_type.startswith(p.strip('/')) for p in STRICT_GUARD_PATHS)
+            if not device_id and is_strict:
                 raise PermissionError(f"FAIL CLOSED: Missing Device Binding for sensitive action {action_type}")
 
         # 2. Role / Permission Validation

@@ -42,12 +42,12 @@ def test_sovereign_sees_alpha():
     assert response.headers["X-Channel-Audit"] == "SOVEREIGN"
 
 def test_public_rate_limiting():
-    # Public limit is 30 rpm
+    # Public limit is now 100 rpm (updated in edge.py)
     headers = {"user-agent": "Mozilla/5.0", "X-Channel-Type": "PUBLIC"}
-    for _ in range(30):
+    for _ in range(100):
         client.get("/imoxon/inventory/rooms", headers=headers)
 
-    # 31st request should fail
+    # 101st request should fail
     response = client.get("/imoxon/inventory/rooms", headers=headers)
     assert response.status_code == 429
     assert "Rate limit exceeded" in response.json()["detail"]

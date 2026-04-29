@@ -1,9 +1,17 @@
 import pytest
 from fastapi.testclient import TestClient
-from main import app, shadow_core, identity_gateway, iluvia_orchestrator, guard, identity_core
+from main import app, shadow_core, identity_gateway, iluvia_orchestrator, guard, identity_core, gateway, shield_edge
 from mnos.shared.exceptions import ExecutionValidationError
+import os
 
 client = TestClient(app)
+
+@pytest.fixture(autouse=True)
+def reset_system_state():
+    """Reset rate limits and state between tests to prevent 429 interference."""
+    gateway.rate_limits = {}
+    shield_edge.rate_store = {}
+    yield
 
 @pytest.fixture
 def auth_headers():
@@ -34,11 +42,8 @@ def test_confirm_real_world_fails_for_unknown_order(auth_headers):
     assert "ORDER_NOT_FOUND" in response.json()["detail"]
 
     # 2. Verify NO SHADOW write for this order occurred (besides the general failed attempt log)
-    # The current guard logs 'failed' attempt with actor identity.
-    # But specifically, no 'execution.confirmed' exists.
     events = [b["event_type"] for b in shadow_core.chain]
     assert "execution.confirmed" not in events
-    # And specifically no 'shield.invalid_confirm_attempt' as we removed it per "no shadow write" rule.
 
 def test_confirm_real_world_success_path(auth_headers):
     """Integrity: Valid order -> success path -> SHADOW write"""

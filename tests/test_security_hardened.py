@@ -18,8 +18,9 @@ def setup_identity():
 
 def test_missing_headers_rejected():
     response = client.post("/imoxon/suppliers/connect", params={"name": "Test"})
-    assert response.status_code == 401
-    assert "AEGIS_REQUIRED" in response.json()["detail"]
+    # ExecutionGuardMiddleware rejects with 403 on STRICT paths if no identity/device
+    assert response.status_code == 403
+    assert "Strict endpoint requires" in response.json()["detail"]
 
 def test_fake_identity_rejected(setup_identity):
     identity_id, device_id = setup_identity

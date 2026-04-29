@@ -2,7 +2,7 @@ import httpx
 import asyncio
 import os
 import json
-from main import app, shadow_core
+from main import app, shadow_core, guard, identity_core
 from httpx import ASGITransport
 
 async def run_final_cto_audit():
@@ -11,21 +11,32 @@ async def run_final_cto_audit():
 
     os.environ["NEXGEN_SECRET"] = "cto-audit-2026"
     transport = ASGITransport(app=app)
-    results = []
+
+    SYSTEM_CTX = {"identity_id": "SYSTEM", "role": "admin", "realm": "SYSTEM"}
 
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         # 1. Setup Admin
-        res = await client.post("/aegis/identity/create", json={"full_name": "CTO Auditor", "profile_type": "admin"})
-        actor_id = res.json()["identity_id"]
-        await client.post("/aegis/identity/device/bind", params={"identity_id": actor_id}, json={"fingerprint": "audit-hw-01"})
-        headers = {"X-AEGIS-IDENTITY": actor_id, "X-AEGIS-DEVICE": "audit-hw-01", "X-MNOS-SIGNATURE": "sys-audit"}
+        print("[0] Initializing Admin Identity...")
+        with guard.sovereign_context(SYSTEM_CTX):
+            actor_id = identity_core.create_profile({"full_name": "CTO Auditor", "profile_type": "admin"})
+            device_id = identity_core.bind_device(actor_id, {"fingerprint": "audit-hw-01"})
+            identity_core.verify_identity(actor_id, "sys")
+
+        headers = {
+            "X-AEGIS-IDENTITY": actor_id,
+            "X-AEGIS-DEVICE": device_id,
+            "X-AEGIS-SIGNATURE": f"VALID_SIG_FOR_{actor_id}",
+            "X-ISLAND-ID": "GLOBAL"
+        }
 
         # 2. Workflow 1: Alibaba Import Flow
         print("[1] Alibaba Product Import Workflow...")
         raw_p = {"name": "Industrial RO Membrane", "price": 450.0}
         res = await client.post("/imoxon/products/import", params={"sid": "ALIBABA-01"}, json=raw_p, headers=headers)
+        if res.status_code != 200:
+             print(f"FAILED: {res.status_code} {res.text}")
+             return
         pid = res.json()["id"]
-        # Expected Landed Base: 450 * 1.15 * 1.10 = 569.25
         print(f"    Landed Base: {res.json()['landed_base']} MVR")
 
         # 3. Workflow 2: Admin Approval
@@ -35,14 +46,16 @@ async def run_final_cto_audit():
         # 4. Workflow 3: B2B Resort Procurement (SALA)
         print("[3] SALA Resort B2B Procurement Order...")
         b2b_data = {"amount": 2000, "items": [{"id": pid, "qty": 10}]}
-        res = await client.post("/imoxon/b2b/procurement-request", json=b2b_data, headers=headers)
-        pricing = res.json()["pricing"]
-        # MIRA Verification: 2000 + 200 (SC) = 2200. 2200 * 0.17 = 374. Total = 2574.
-        print(f"    FCE Final Total: {pricing['total']} MVR")
+        res = await client.post("/imoxon/orders/create", json=b2b_data, headers=headers)
+        if res.status_code != 200:
+            print(f"FAILED: {res.status_code} {res.text}")
+            return
+        data = res.json()
+        print(f"    Order ID: {data.get('id')}")
 
         # 5. Security Check: Block Mutation without Headers
         print("[4] Security: Rejection Check (No Headers)...")
-        res = await client.post("/imoxon/products/import", json={})
+        res = await client.post("/imoxon/products/import", params={"sid": "X"}, json={})
         print(f"    Result: {res.status_code} (Blocked)")
 
         # 6. Audit Check: Immutable Shadow Certificate
