@@ -131,7 +131,7 @@ class ExecutionGuardMiddleware(BaseHTTPMiddleware):
 
         # 1. Strict Path Enforcement (Identity + Device required)
         if require_strict:
-            if not identity_id or not device_id:
+            if not (identity_id and device_id):
                 # Use sovereign context for logging infrastructure failure
                 with self.guard.sovereign_context({"identity_id": "SYSTEM", "role": "admin", "realm": "SYSTEM"}):
                     self.guard.shadow.commit("shield.strict_auth_failed", "SYSTEM", {
@@ -139,14 +139,15 @@ class ExecutionGuardMiddleware(BaseHTTPMiddleware):
                     })
                 return self._violation("Strict endpoint requires X-AEGIS-IDENTITY + X-AEGIS-DEVICE", 403)
 
-        # 2. Dual Auth Paths (Session or Identity)
+        # 2. Dual Auth Paths (Identity+Device OR Session)
         if allow_dual:
-            if not session_id and not identity_id:
+            # ALLOW: (Identity AND Device) OR Session
+            if not ((identity_id and device_id) or session_id):
                 with self.guard.sovereign_context({"identity_id": "SYSTEM", "role": "admin", "realm": "SYSTEM"}):
                     self.guard.shadow.commit("shield.dual_auth_failed", "SYSTEM", {
                         "path": path, "reason": "NO_VALID_CREDENTIALS"
                     })
-                return self._violation("Authentication required: provide Identity headers or session token", 401)
+                return self._violation("Authentication required: provide Identity+Device headers or session token", 401)
 
         response = await call_next(request)
         return response

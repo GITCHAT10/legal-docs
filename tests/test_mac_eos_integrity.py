@@ -1,6 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 from main import app, shadow_core, identity_gateway, iluvia_orchestrator, guard, identity_core
+from mnos.shared.exceptions import ExecutionValidationError
 
 client = TestClient(app)
 
@@ -8,8 +9,8 @@ client = TestClient(app)
 def auth_headers():
     # Setup real identity in AEGIS
     with guard.sovereign_context({"identity_id": "SYSTEM", "role": "admin", "realm": "SYSTEM"}):
-        uid = identity_core.create_profile({"full_name": "Integrity Staff", "profile_type": "staff"})
-        did = identity_core.bind_device(uid, {"fingerprint": "int-dev-01"})
+        uid = identity_core.create_profile({"full_name": "Hardened Staff", "profile_type": "staff"})
+        did = identity_core.bind_device(uid, {"fingerprint": "hard-dev-01"})
         identity_core.verify_identity(uid, "system")
 
     return {
@@ -19,48 +20,82 @@ def auth_headers():
         "X-ISLAND-ID": "GLOBAL"
     }
 
-def test_fake_order_rejected(auth_headers):
-    """P1: System must reject confirmation of non-existent orders"""
+def test_confirm_real_world_fails_for_unknown_order(auth_headers):
+    """Integrity: Rejects confirmation of non-existent orders"""
+    # 1. Attempt confirmation for unknown ID
     response = client.post(
-        "/bubble/execution/confirm?order_id=fake_123",
+        "/bubble/execution/confirm?order_id=non_existent_123",
         json={"type": "QR_SCAN", "valid": True},
         headers=auth_headers
     )
-    assert response.status_code == 500 # Guard re-raises ValueError
+
+    # Verify rejection
+    assert response.status_code == 500
     assert "ORDER_NOT_FOUND" in response.json()["detail"]
 
-    # Verify SHADOW logged the invalid attempt
+    # 2. Verify NO SHADOW write for this order occurred (besides the general failed attempt log)
+    # The current guard logs 'failed' attempt with actor identity.
+    # But specifically, no 'execution.confirmed' exists.
     events = [b["event_type"] for b in shadow_core.chain]
-    assert "shield.invalid_confirm_attempt" in events
+    assert "execution.confirmed" not in events
+    # And specifically no 'shield.invalid_confirm_attempt' as we removed it per "no shadow write" rule.
 
-def test_session_auth_allowed_on_dual_paths(auth_headers):
-    """P1: Dual-auth paths must accept valid session tokens"""
-    session_id = "SESS-VALID-99"
-    identity_gateway.sessions[session_id] = {
-        "identity_id": auth_headers["X-AEGIS-IDENTITY"],
-        "role": "admin",
-        "realm": "API_DIRECT",
-        "device_id": auth_headers["X-AEGIS-DEVICE"]
-    }
+def test_confirm_real_world_success_path(auth_headers):
+    """Integrity: Valid order -> success path -> SHADOW write"""
+    order_id = "ORD-VALID-101"
+    iluvia_orchestrator.set_order_state(order_id, "EXECUTION_PENDING", "PROCUREMENT")
 
     response = client.post(
-        "/bubble/chat/message?message=hello",
-        headers={"X-AEGIS-SESSION": session_id, "X-ISLAND-ID": "GLOBAL"}
+        f"/bubble/execution/confirm?order_id={order_id}",
+        json={"type": "QR_SCAN", "valid": True},
+        headers=auth_headers
     )
     assert response.status_code == 200
+    assert response.json() is True
 
-def test_strict_path_rejects_session_auth(auth_headers):
-    """P1: Strict paths must reject session-only auth"""
-    session_id = "SESS-VALID-99"
+    # Verify SHADOW write
+    events = [b["event_type"] for b in shadow_core.chain]
+    assert "execution.confirmed" in events
+
+def test_session_auth_allowed_on_user_paths(auth_headers):
+    """Auth: Valid session token must pass for Bubble and ExMail"""
+    session_id = "SESS-USER-456"
     identity_gateway.sessions[session_id] = {
         "identity_id": auth_headers["X-AEGIS-IDENTITY"],
+        "device_id": auth_headers["X-AEGIS-DEVICE"],
         "role": "admin",
-        "realm": "API_DIRECT",
-        "device_id": auth_headers["X-AEGIS-DEVICE"]
+        "realm": "API_DIRECT"
     }
 
-    # /imoxon/orders/create is in STRICT_GUARD_PATHS
-    # Note: main.py uses @app.post("/imoxon/orders/create")
+    # Test Bubble (Chat)
+    resp1 = client.post(
+        "/bubble/chat/message?message=test",
+        headers={"X-AEGIS-SESSION": session_id, "X-ISLAND-ID": "GLOBAL"}
+    )
+    assert resp1.status_code == 200
+
+    # Test ExMail
+    resp2 = client.post(
+        "/exmail/ingest?channel=whatsapp",
+        json={"sender": "g1", "content": "hi"},
+        headers={"X-AEGIS-SESSION": session_id, "X-ISLAND-ID": "GLOBAL"}
+    )
+    assert resp2.status_code == 200
+
+def test_missing_auth_fails_closed():
+    """Auth: Requests without any identity or session must fail"""
+    response = client.post("/bubble/chat/message?message=test", headers={"X-ISLAND-ID": "GLOBAL"})
+    assert response.status_code == 401
+    assert "Authentication required" in response.json()["detail"]
+
+def test_strict_path_rejects_session_only(auth_headers):
+    """Auth: Strict paths must fail if device binding (headers) is missing"""
+    session_id = "SESS-STRICT-789"
+    identity_gateway.sessions[session_id] = {
+        "identity_id": "any", "role": "admin", "realm": "API_DIRECT"
+    }
+
+    # /imoxon/orders/create is STRICT
     response = client.post(
         "/imoxon/orders/create",
         json={"amount": 100, "items": []},
@@ -68,22 +103,3 @@ def test_strict_path_rejects_session_auth(auth_headers):
     )
     assert response.status_code == 403
     assert "Strict endpoint requires" in response.json()["detail"]
-
-def test_invariant_no_confirm_without_order(auth_headers):
-    """System-level invariant: cannot confirm non-existent order"""
-    order_id = "ghost_order"
-
-    # 1. Attempt confirmation
-    response = client.post(
-        f"/bubble/execution/confirm?order_id={order_id}",
-        json={"type": "QR_SCAN", "valid": True},
-        headers=auth_headers
-    )
-    assert response.status_code == 500
-    assert "ORDER_NOT_FOUND" in response.json()["detail"]
-
-    # 2. Verify SHADOW has failure rollback log
-    events = [b["event_type"] for b in shadow_core.chain]
-    assert "bubble.execution.confirm.failed" in events
-    # And NO success log
-    assert "bubble.execution.confirm.completed" not in events

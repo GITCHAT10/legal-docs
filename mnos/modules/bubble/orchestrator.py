@@ -1,5 +1,6 @@
 from typing import Dict, Any, List
 from datetime import datetime, UTC
+from mnos.shared.exceptions import ExecutionValidationError
 
 class OrderExecutionValidator:
     """
@@ -23,12 +24,9 @@ class OrderExecutionValidator:
         # 1. Fetch order from repository (NO synthetic fallback)
         order = self.orders.get(order_id)
         if not order:
-            # LOG ATTEMPT TO SHADOW BEFORE REJECTING
-            self.shadow.commit("shield.invalid_confirm_attempt", actor_id, {
-                "order_id": order_id,
-                "reason": "ORDER_NOT_FOUND"
-            })
-            raise ValueError(f"ORDER_NOT_FOUND: Order {order_id} does not exist in canonical ledger")
+            # PER USER INSTRUCTION: If order not found → raise ExecutionValidationError.
+            # AND ensure no SHADOW write occurs without a valid order (removing previous log).
+            raise ExecutionValidationError(f"ORDER_NOT_FOUND: Order {order_id} does not exist in canonical ledger")
 
         # 2. State machine validation
         if order["state"] not in ["EXECUTION_PENDING", "IN_PROGRESS"]:
