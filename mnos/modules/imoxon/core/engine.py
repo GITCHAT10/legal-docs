@@ -180,7 +180,8 @@ class ProcurementEngine:
             product_type=ProductType(data.get("product_type", ProductType.PACKAGE)),
             trace_id=trace_id,
             tax_type=TaxType(data.get("tax_type", TaxType.TOURISM_STANDARD)),
-            channel=Channel(data.get("channel", Channel.DIRECT))
+            channel=Channel(data.get("channel", Channel.DIRECT)),
+            aegis_ctx=actor_ctx
         )
 
         request = {
@@ -218,7 +219,8 @@ class ProcurementEngine:
             product_type=ProductType(data.get("product_type", ProductType.RETAIL)),
             trace_id=trace_id,
             tax_type=TaxType(data.get("tax_type", TaxType.RETAIL)),
-            channel=Channel(data.get("channel", Channel.DIRECT))
+            channel=Channel(data.get("channel", Channel.DIRECT)),
+            aegis_ctx=actor_ctx
         )
         order = {
             "id": f"ORD-{uuid.uuid4().hex[:6].upper()}",
