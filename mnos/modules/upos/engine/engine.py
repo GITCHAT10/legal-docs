@@ -90,7 +90,7 @@ class UPOSEngine:
             _execute_intent
         )
 
-    def execute_payment(self, actor_ctx: dict, intent_id: str, payment_method: str):
+    def execute_payment(self, actor_ctx: dict, intent_id: str, payment_method: str, csr_engine=None):
         """
         EXECUTE_PAYMENT → SPLIT_FUNDS → SHADOW_PRE_COMMIT → FCE_LEDGER_WRITE
         """
@@ -136,6 +136,12 @@ class UPOSEngine:
 
             self.events.publish("PAYMENT_CONFIRMED", {"id": transaction_id, "intent": intent_id})
             self.events.publish("REVENUE_CAPTURED", split)
+
+            # 3. TRIGGER_CSR_ENGINE (P0_CRITICAL)
+            if csr_engine:
+                 # Simplified profit calculation: 30% of base
+                 profit = float(base) * 0.30
+                 csr_engine.calculate_and_allocate(actor_ctx, {"profit": profit, "tx_id": transaction_id})
 
             return split
 

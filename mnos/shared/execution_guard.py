@@ -13,11 +13,11 @@ _sovereign_context = contextvars.ContextVar("sovereign_context", default=None)
 # Paths that require elevated guard (financial, supply, audit, commerce mutations)
 STRICT_GUARD_PATHS = [
     "/supply", "/finance", "/aegis/asset", "/commerce",
-    "/imoxon/orders", "/imoxon/products", "/imoxon/suppliers"
+    "/imoxon/orders", "/imoxon/products", "/imoxon/suppliers", "/upos"
 ]
 
 # Paths that support dual auth (user-facing: chat, email, portal, dashboards)
-DUAL_AUTH_PATHS = ["/bubble", "/exmail", "/iluvia/app", "/orca", "/pms"]
+DUAL_AUTH_PATHS = ["/bubble", "/exmail", "/iluvia/app", "/orca", "/pms", "/csr"]
 
 class ExecutionGuard:
     def __init__(self, identity_core, policy_engine, fce, shadow, events):

@@ -64,6 +64,7 @@ from mnos.api.laundry import create_laundry_router
 from mnos.api.orca import create_orca_router
 from mnos.api.imoxon.booking_gate import create_booking_gate_router
 from mnos.api.upos import create_upos_router
+from mnos.api.csr import create_csr_router
 from mnos.api.pms.reservations import create_pms_router
 from mnos.api.pms.folio import create_folio_router
 
@@ -81,6 +82,9 @@ from mnos.modules.exmail.escalation import EscalationEngine
 
 # UPOS Engine
 from mnos.modules.upos.engine.engine import UPOSEngine, UPOSWalletLedger
+
+# CSR Engine
+from mnos.modules.csr.engine.engine import CSREngine
 
 # SILENT SHIELD
 from mnos.modules.silent_shield.edge import SilentShieldEdge
@@ -176,6 +180,9 @@ privacy_engine = PrivacyAssuranceEngine(shadow_core)
 # UPOS Activation
 upos_ledger = UPOSWalletLedger(shadow_core, events_core)
 upos_engine = UPOSEngine(guard, fce_core, shadow_core, events_core, upos_ledger)
+
+# CSR Engine Activation
+csr_engine = CSREngine(guard, shadow_core, events_core)
 
 # Booking Gate & UT Bridge
 ut_bridge = UTBridge(guard, shadow_core, events_core)
@@ -383,7 +390,8 @@ app.include_router(create_b2b_portal_router(mars_unified, b2b_negotiator, get_ac
 app.include_router(create_heatmap_router(heatmap_engine, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_laundry_router(laundry_engine, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_booking_gate_router(booking_gate, get_actor_ctx), prefix="/imoxon")
-app.include_router(create_upos_router(upos_engine, upos_ledger, get_actor_ctx), prefix="/upos")
+app.include_router(create_upos_router(upos_engine, upos_ledger, get_actor_ctx, csr_engine=csr_engine), prefix="/upos")
+app.include_router(create_csr_router(csr_engine, get_actor_ctx), prefix="/csr")
 app.include_router(create_orca_router(hospitality, bpe, shadow_core, get_actor_ctx), prefix="/orca")
 app.include_router(create_pms_router(pms_booking, pms_availability, get_actor_ctx), prefix="/pms")
 app.include_router(create_folio_router(pms_folio, get_actor_ctx), prefix="/pms/folio")

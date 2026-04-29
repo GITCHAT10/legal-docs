@@ -38,7 +38,7 @@ def test_full_upos_payment_lifecycle(auth_headers):
 
     # 1. Create Order (Intent)
     order_payload = {"amount": 1000.0, "vendor_id": vendor_id}
-    resp1 = client.post("/upos/upos/order/create", json=order_payload, headers=auth_headers)
+    resp1 = client.post("/upos/order/create", json=order_payload, headers=auth_headers)
     if resp1.status_code != 200:
         print(f"DEBUG: Order create failed: {resp1.json()}")
     assert resp1.status_code == 200
@@ -47,7 +47,7 @@ def test_full_upos_payment_lifecycle(auth_headers):
 
     # 2. Execute Payment
     pay_payload = {"intent_id": intent_id, "payment_method": "QR_PAY"}
-    resp2 = client.post("/upos/upos/payment/execute", json=pay_payload, headers=auth_headers)
+    resp2 = client.post("/upos/payment/execute", json=pay_payload, headers=auth_headers)
     if resp2.status_code != 200:
         print(f"DEBUG: Payment execute failed: {resp2.json()}")
     assert resp2.status_code == 200
@@ -55,7 +55,7 @@ def test_full_upos_payment_lifecycle(auth_headers):
     assert resp2.json()["vendor_net"] == 1000.0
 
     # 3. Verify Wallet Balances
-    resp3 = client.get("/upos/upos/wallet/balance", headers=auth_headers)
+    resp3 = client.get("/upos/wallet/balance", headers=auth_headers)
     assert resp3.json()["balance"] == 3713.0
 
     # Vendor: 1000 (Net)
@@ -73,6 +73,6 @@ def test_full_upos_payment_lifecycle(auth_headers):
 def test_upos_rejects_negative_transaction(auth_headers):
     """Security: Fail-closed on invalid amounts."""
     order_payload = {"amount": -50.0, "vendor_id": "VEND-1"}
-    resp = client.post("/upos/upos/order/create", json=order_payload, headers=auth_headers)
+    resp = client.post("/upos/order/create", json=order_payload, headers=auth_headers)
     assert resp.status_code == 500
     assert "Transaction amount must be positive" in resp.json()["detail"]

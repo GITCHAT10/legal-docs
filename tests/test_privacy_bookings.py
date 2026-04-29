@@ -59,10 +59,10 @@ def test_reservation_with_privacy_premium(auth_headers):
     assert "SHIELDED VILLA PRIVACY ASSURANCE ADDENDUM" in res_data["metadata"]["privacy_legal_clause"]
 
     # 3. Verify SHADOW Audit
-    events = [b["event_type"] for b in shadow_core.chain]
-    assert "pms.reservation.create.completed" in events
+    events = [b for b in shadow_core.chain if b["event_type"] == "pms.reservation.create.completed"]
 
-    res_block = next(b for b in shadow_core.chain if b["event_type"] == "pms.reservation.create.completed")
+    # Filter for the specific reservation created in this test
+    res_block = next(b for b in events if b["payload"]["result"]["id"] == res_data["id"])
     assert res_block["payload"]["result"]["total_amount"] == 1200.0
     assert res_block["payload"]["result"]["privacy_premium_active"] is True
 
