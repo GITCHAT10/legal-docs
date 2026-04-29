@@ -8,13 +8,19 @@ class FCEEngine:
         self.ledger = []
         self.locked_rates = {"USD": Decimal("15.42")} # MVR
 
-    def calculate_local_order(self, base_price: Decimal, category: str = "RETAIL", green_tax_usd: Decimal = Decimal("0")) -> dict:
+    def calculate_local_order(self, base_price: Decimal, category: str = None, green_tax_usd: Decimal = Decimal("0")) -> dict:
         """
         MANDATORY MALDIVES BILLING RULE:
         Base Price + 10% Service Charge = subtotal
         TGST/GST applied on subtotal
         Green Tax (if applicable, only for accommodation)
         """
+        if base_price is None or base_price <= 0:
+             raise ValueError("ExecutionValidationError: Amount must be greater than zero")
+
+        if category is None:
+             raise ValueError("ExecutionValidationError: Tax context required (TOURISM or RETAIL)")
+
         # Quantize to 2 decimal places for currency
         base_price = base_price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
@@ -55,8 +61,8 @@ class FCEEngine:
         refund["type"] = "REVERSAL"
         return refund
 
-    def price_order(self, amount: float):
-        return self.calculate_local_order(Decimal(str(amount)))
+    def price_order(self, amount: float, category: str = "RETAIL"):
+        return self.calculate_local_order(Decimal(str(amount)), category=category)
 
     def calculate_milestone_release(self, milestone: str, data: dict):
         total = Decimal(str(data["total_amount"]))

@@ -1,0 +1,161 @@
+[
+  {
+    "index": 33,
+    "timestamp": "2026-04-29T17:10:36.206204+00:00",
+    "event_type": "upos.order.completed",
+    "actor_id": "fc6bdb00-def0-423a-97d6-1c208e5292a5",
+    "trace_id": "TR-OFF-eb4a04",
+    "payload": {
+      "merchant_id": "M1",
+      "items": [
+        {
+          "id": "ITEM2",
+          "qty": 1
+        }
+      ],
+      "amount": 200.0,
+      "idempotency_key": "IDEM-OFF-be4419",
+      "trace_id": "TR-OFF-eb4a04",
+      "pricing": {
+        "base": 200.0,
+        "service_charge": 20.0,
+        "subtotal": 220.0,
+        "tax_rate": 0.17,
+        "tax_amount": 37.4,
+        "total": 257.4,
+        "currency": "MVR",
+        "idempotency_key": "IDEM-OFF-be4419"
+      },
+      "sync_status": "CORE_VERIFIED",
+      "synced_at": 1777482636.2061982
+    },
+    "prev_hash": "516be40a9a54b7439c3b2d9e1380e68cd98e5a274355f1a52ad9c1c48ce86b75",
+    "hash": "0d1e62d0209d0a66de629c96f01dccbbd29207463fcb47738d404e8b3742e32a"
+  },
+  {
+    "index": 34,
+    "timestamp": "2026-04-29T17:12:56.027392+00:00",
+    "event_type": "upos.order.intent",
+    "actor_id": "74e10acf-2a74-4015-9e7f-b7e58e6919da",
+    "trace_id": "TR-ON-ea99d6",
+    "payload": {
+      "order_id": "UPOS-910ED6F5",
+      "merchant_id": "M1",
+      "items": [
+        {
+          "id": "ITEM1",
+          "qty": 1
+        }
+      ],
+      "amount": 100.0,
+      "status": "INTENT",
+      "timestamp": "2026-04-29T17:12:56.027354+00:00",
+      "idempotency_key": "IDEM-ON-f4231f",
+      "trace_id": "TR-ON-ea99d6"
+    },
+    "prev_hash": "0d1e62d0209d0a66de629c96f01dccbbd29207463fcb47738d404e8b3742e32a",
+    "hash": "a8ef948f83ee00441f4fbf80033e9cbd56cbd71599dfe360c884acc98d6c8378"
+  },
+  {
+    "index": 35,
+    "timestamp": "2026-04-29T17:12:56.027732+00:00",
+    "event_type": "upos.order.validated",
+    "actor_id": "74e10acf-2a74-4015-9e7f-b7e58e6919da",
+    "trace_id": "TR-ON-ea99d6",
+    "payload": {
+      "order_id": "UPOS-910ED6F5",
+      "merchant_id": "M1",
+      "items": [
+        {
+          "id": "ITEM1",
+          "qty": 1
+        }
+      ],
+      "amount": 100.0,
+      "status": "VALIDATED",
+      "timestamp": "2026-04-29T17:12:56.027354+00:00",
+      "idempotency_key": "IDEM-ON-f4231f",
+      "trace_id": "TR-ON-ea99d6",
+      "pricing": {
+        "base": 100.0,
+        "service_charge": 10.0,
+        "subtotal": 110.0,
+        "tax_rate": 0.17,
+        "tax_amount": 18.7,
+        "total": 128.7,
+        "currency": "MVR",
+        "idempotency_key": "IDEM-ON-f4231f"
+      }
+    },
+    "prev_hash": "a8ef948f83ee00441f4fbf80033e9cbd56cbd71599dfe360c884acc98d6c8378",
+    "hash": "0ccf1635c1cc7fced5c4bdf0737f92a7d5fea08fd2ebe296ab1ce3fa8a97e721"
+  },
+  {
+    "index": 36,
+    "timestamp": "2026-04-29T17:12:56.027979+00:00",
+    "event_type": "upos.order.completed",
+    "actor_id": "74e10acf-2a74-4015-9e7f-b7e58e6919da",
+    "trace_id": "TR-ON-ea99d6",
+    "payload": {
+      "order_id": "UPOS-910ED6F5",
+      "merchant_id": "M1",
+      "items": [
+        {
+          "id": "ITEM1",
+          "qty": 1
+        }
+      ],
+      "amount": 100.0,
+      "status": "COMPLETED",
+      "timestamp": "2026-04-29T17:12:56.027354+00:00",
+      "idempotency_key": "IDEM-ON-f4231f",
+      "trace_id": "TR-ON-ea99d6",
+      "pricing": {
+        "base": 100.0,
+        "service_charge": 10.0,
+        "subtotal": 110.0,
+        "tax_rate": 0.17,
+        "tax_amount": 18.7,
+        "total": 128.7,
+        "currency": "MVR",
+        "idempotency_key": "IDEM-ON-f4231f"
+      },
+      "final_verification": "BUBBLE_QR_HANDSHAKE_VERIFIED"
+    },
+    "prev_hash": "0ccf1635c1cc7fced5c4bdf0737f92a7d5fea08fd2ebe296ab1ce3fa8a97e721",
+    "hash": "bb1598ab10c1d15e6ad7d39336910d4e6d21bb8043f985542130f12260574faf"
+  },
+  {
+    "index": 37,
+    "timestamp": "2026-04-29T17:12:56.035775+00:00",
+    "event_type": "upos.order.completed",
+    "actor_id": "74e10acf-2a74-4015-9e7f-b7e58e6919da",
+    "trace_id": "TR-OFF-9f86ee",
+    "payload": {
+      "merchant_id": "M1",
+      "items": [
+        {
+          "id": "ITEM2",
+          "qty": 1
+        }
+      ],
+      "amount": 200.0,
+      "idempotency_key": "IDEM-OFF-320669",
+      "trace_id": "TR-OFF-9f86ee",
+      "pricing": {
+        "base": 200.0,
+        "service_charge": 20.0,
+        "subtotal": 220.0,
+        "tax_rate": 0.17,
+        "tax_amount": 37.4,
+        "total": 257.4,
+        "currency": "MVR",
+        "idempotency_key": "IDEM-OFF-320669"
+      },
+      "sync_status": "CORE_VERIFIED",
+      "synced_at": 1777482776.0357697
+    },
+    "prev_hash": "bb1598ab10c1d15e6ad7d39336910d4e6d21bb8043f985542130f12260574faf",
+    "hash": "b76bb256ed92f06fe68831d8d1dfda5ac77159e1c7d1eba478b51098cc5d6faf"
+  }
+]

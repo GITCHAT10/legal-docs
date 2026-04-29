@@ -24,11 +24,11 @@ class UPOSEngine:
         """
         # Financial Fail-Closed Validation
         if not merchant_id:
-             raise ValueError("FAIL_CLOSED: Missing merchant_id")
+             raise ValueError("ExecutionValidationError: Missing merchant_id")
         if not items:
-             raise ValueError("FAIL_CLOSED: Items list is empty")
-        if amount <= 0:
-             raise ValueError("FAIL_CLOSED: Amount must be greater than zero")
+             raise ValueError("ExecutionValidationError: Items list is empty")
+        if amount is None or amount <= 0:
+             raise ValueError("ExecutionValidationError: Amount must be greater than zero")
 
         if not trace_id:
             raise ValueError("TRACE_ID_REQUIRED: Cannot process order without trace context.")
@@ -43,21 +43,21 @@ class UPOSEngine:
         # Authorization context for all SHADOW commits within the engine
         auth_ctx = {"identity_id": actor_id, "device_id": "UPOS-ENGINE", "role": "user"}
 
-        # 1. upos.order.created
+        # 1. upos.order.intent (Replacing created with intent/completed lifecycle)
         order_id = f"UPOS-{uuid.uuid4().hex[:8].upper()}"
         initial_order = {
             "order_id": order_id,
             "merchant_id": merchant_id,
             "items": items,
             "amount": amount,
-            "status": "CREATED",
+            "status": "INTENT",
             "timestamp": datetime.now(UTC).isoformat(),
             "idempotency_key": idempotency_key,
             "trace_id": trace_id
         }
         with ExecutionGuard.authorized_context(auth_ctx):
-            self.shadow.commit("upos.order.created", actor_id, initial_order, trace_id=trace_id)
-        self.events.publish("upos.order.created", initial_order)
+            self.shadow.commit("upos.order.intent", actor_id, initial_order, trace_id=trace_id)
+        self.events.publish("upos.order.intent", initial_order)
 
         # 2. upos.order.validated (MIRA Tax Rule Enforcement)
         # Using TOURISM category for 17% TGST enforcement

@@ -11,11 +11,17 @@ class FCESovereignService:
         self.mira_mode = mira_mode
         self.generated_invoices = {} # idempotency_key -> invoice
 
-    def calculate_order(self, base_price: float, category: str = "RETAIL", idempotency_key: str = None) -> Dict[str, Any]:
+    def calculate_order(self, base_price: float, category: str = None, idempotency_key: str = None) -> Dict[str, Any]:
         """
         Calculates order with MIRA rules.
         Locks result to idempotency_key to prevent double invoice generation.
         """
+        if base_price is None or base_price <= 0:
+             raise ValueError("ExecutionValidationError: Amount must be greater than zero")
+
+        if category is None:
+             raise ValueError("ExecutionValidationError: Tax context required")
+
         if idempotency_key and idempotency_key in self.generated_invoices:
             return self.generated_invoices[idempotency_key]
 
