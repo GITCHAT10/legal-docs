@@ -6,7 +6,9 @@ echo "----------------------------------------"
 
 # 1. Load configuration
 if [ -f .env.sala ]; then
-    export $(cat .env.sala | xargs)
+    set -a
+    source .env.sala
+    set +a
 fi
 
 # 2. Boot Integrity Check

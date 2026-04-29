@@ -1,5 +1,6 @@
 import contextvars
 import uuid
+import contextlib
 from typing import Callable, Any, Dict, Optional
 from fastapi import Request
 from fastapi.responses import JSONResponse
@@ -99,6 +100,20 @@ class ExecutionGuard:
     def get_actor() -> Optional[Dict]:
         ctx = _sovereign_context.get()
         return ctx["actor"] if ctx else None
+
+    @staticmethod
+    @contextlib.contextmanager
+    def authorized_context(actor_context: Dict):
+        """
+        Context manager to provide a sovereign authorization context for a block of code.
+        Mandatory for direct UPOS/FCE/SHADOW mutations from the API or system.
+        """
+        token = str(uuid.uuid4())
+        _sovereign_context.set({"token": token, "actor": actor_context})
+        try:
+            yield
+        finally:
+            _sovereign_context.set(None)
 
 class ExecutionGuardMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, guard, events):

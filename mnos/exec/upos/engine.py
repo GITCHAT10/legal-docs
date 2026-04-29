@@ -51,7 +51,7 @@ class UPOSEngine:
         }
 
         # 2. Audit in SHADOW (Enforces Trace ID & Idempotency)
-        self.shadow.commit("upos.order.created", actor_id, order, trace_id=trace_id)
+        self.shadow.commit("upos.order.completed", actor_id, order, trace_id=trace_id)
 
         # 3. Publish Event (Using system context if needed)
         from mnos.shared.execution_guard import _sovereign_context

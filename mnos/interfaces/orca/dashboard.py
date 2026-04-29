@@ -11,9 +11,10 @@ class OrcaDashboard:
         total_revenue = 0
         order_count = 0
         for block in chain:
-            if block["event_type"] == "upos.order.created":
+            if block["event_type"] == "upos.order.completed":
                 order_count += 1
-                total_revenue += block["payload"]["pricing"]["total"]
+                # Standardized safe dictionary access to prevent KeyError
+                total_revenue += block.get("payload", {}).get("pricing", {}).get("total", 0)
 
         # P&L Simulation
         payouts = sum(s["net_amount"] for s in self.wallet.settlements.values())

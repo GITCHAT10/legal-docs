@@ -83,7 +83,7 @@ def run_final_delivery_test():
     print("[5] OFFLINE_MODE: Queuing Transaction...")
     edge.toggle_online(False)
     tx_offline = {
-        "event_type": "upos.order.created",
+        "event_type": "upos.order.completed",
         "actor_id": staff_id,
         "trace_id": "tr-offline-001",
         "payload": {"idempotency_key": "order-sala-002", "pricing": {"total": 50.0}, "merchant_id": "MERC-SALA"}
