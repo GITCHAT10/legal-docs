@@ -22,10 +22,14 @@ class B2BAutoNegotiationEngine:
         partner_type = rfq_data.get("partner_type") # TO or DMC
         pax_count = rfq_data.get("pax_count", 1)
 
+        # Rule 7: NO VALIDATION -> NO QUOTE
+        if not actor_ctx.get("verified"):
+             raise ValueError("ExecutionValidationError: Identity verification required for RFQ")
+
         # 1. Pull Inventory from TRAWEL
         packages = self.nexus.get_inventory_search(actor_ctx, {})
         if not packages:
-             raise ValueError("No inventory available for requested dates")
+             raise ValueError("ExecutionValidationError: No inventory available for requested dates")
 
         # Select best fit package
         pkg = packages[0]

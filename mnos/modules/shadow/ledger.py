@@ -20,6 +20,9 @@ class ShadowLedger:
         if not ExecutionGuard.is_authorized():
              raise PermissionError("FAIL CLOSED: Unauthorized direct write to SHADOW Ledger blocked.")
 
+        if not trace_id:
+             raise ValueError("FAIL CLOSED: trace_id is required for SHADOW.commit")
+
         prev_hash = self.chain[-1]["hash"] if self.chain else self.genesis_hash
 
         # Deepcopy payload to prevent retro-active changes breaking the hash

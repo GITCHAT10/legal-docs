@@ -11,6 +11,19 @@ class FCESovereignService:
         self.mira_mode = mira_mode
         self.generated_invoices = {} # idempotency_key -> invoice
 
+    def simulate_order(self, base_price: float, category: str = None) -> Dict[str, Any]:
+        """
+        Rule 6: Pre-commit enforcement simulation.
+        Checks tax context, total parity, and margins.
+        """
+        if category not in ["TOURISM", "RESORT_SUPPLY", "RETAIL"]:
+             raise ValueError("ExecutionValidationError: Invalid or missing tax context")
+
+        if base_price <= 0:
+             raise ValueError("ExecutionValidationError: Amount must be greater than zero")
+
+        return self.calculate_order(base_price, category=category)
+
     def calculate_order(self, base_price: float, category: str = None, idempotency_key: str = None) -> Dict[str, Any]:
         """
         Calculates order with MIRA rules.
