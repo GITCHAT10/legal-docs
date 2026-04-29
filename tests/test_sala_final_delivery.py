@@ -53,11 +53,12 @@ def run_final_delivery_test():
         items=[{"sku": "item-01", "price": 100.0, "qty": 1}],
         amount=100.0,
         idempotency_key="order-sala-001",
-        trace_id="tr-order-001"
+        trace_id="tr-order-001",
+        category="TOURISM"
     )
-    # 100 + 10 (SC) = 110. 110 * 1.08 = 118.8
+    # 100 + 10 (SC) = 110. 110 * 1.17 = 128.7
     print(f"    ✔ Order Created: {order['order_id']} (Total: {order['pricing']['total']} MVR)")
-    assert order['pricing']['total'] == 118.8
+    assert order['pricing']['total'] == 128.7
 
     # 3. SEND_TO_KDS / ORCHESTRATION / COMMS
     print("[3] SEND_TO_KDS: Checking Comms Notification...")
@@ -72,11 +73,11 @@ def run_final_delivery_test():
         "transaction_id": "BANK-TX-555",
         "invoice_id": order["order_id"],
         "economic_actor_id": "MERC-SALA",
-        "amount_mvr": 118.8,
+        "amount_mvr": 128.7,
         "status": "success"
     }
     wallet.process_payment_webhook(webhook_payload, trace_id="tr-pay-001")
-    assert wallet.accounts["MERC-SALA"]["balance"] == Decimal("118.8")
+    assert wallet.accounts["MERC-SALA"]["balance"] == Decimal("128.7")
     print("    ✔ Payment confirmed and Wallet credited.")
 
     # 5. OFFLINE_MODE
@@ -110,8 +111,8 @@ def run_final_delivery_test():
     print("[8] CHECK_ORCA: Verifying Dashboard Metrics...")
     metrics = orca.get_live_metrics()
     print(f"    ✔ Total Revenue: {metrics['total_revenue_mvr']} MVR")
-    # 118.8 (online) + 50.0 (offline sync) = 168.8
-    assert metrics["total_revenue_mvr"] == 168.8
+    # 128.7 (online) + 50.0 (offline sync) = 178.7
+    assert metrics["total_revenue_mvr"] == 178.7
     assert metrics["node_status"] == "ACTIVE"
 
     # 9. SIG.DOC SEALING (P0 Extra)

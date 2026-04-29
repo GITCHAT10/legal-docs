@@ -28,11 +28,14 @@ class MarketplaceEngine:
             "timestamp": datetime.now(UTC).isoformat()
         }
 
-        # 2. Shadow Audit
-        self.shadow.commit("marketplace.order.held", customer_id, order, trace_id=trace_id)
+        # 2. Shadow Audit - Wrapped in System context
+        from mnos.shared.execution_guard import ExecutionGuard
+        actor = {"identity_id": "SYSTEM", "device_id": "MARKETPLACE-ENGINE", "role": "admin"}
+        with ExecutionGuard.authorized_context(actor):
+            self.shadow.commit("marketplace.order.held", customer_id, order, trace_id=trace_id)
 
-        # 3. Broadcast to Merchant
-        self.events.publish("marketplace.order.received", order)
+            # 3. Broadcast to Merchant
+            self.events.publish("marketplace.order.received", order)
 
         return order
 

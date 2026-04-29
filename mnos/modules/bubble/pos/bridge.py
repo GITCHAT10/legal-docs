@@ -11,9 +11,15 @@ class BubbleBPEBridge:
         Flow: BUBBLE -> BPE -> MNOS
         """
         # 1. BUBBLE pricing decision/confirmation
-        # 2. BPE Invoice creation
+        # 2. BPE Invoice creation - Wrapped for ExecutionGuard authority
         merchant_id = order_data.get("vendor_id")
-        invoice = self.bpe.create_invoice(merchant_id, order_data)
+
+        invoice = self.bubble.guard.execute_sovereign_action(
+            "bpe.invoice.issued",
+            actor_ctx,
+            self.bpe.create_invoice,
+            merchant_id, order_data
+        )
 
         # 3. BPE Stock deduction
         for item in order_data.get("items", []):

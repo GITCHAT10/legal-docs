@@ -19,47 +19,51 @@ class ApolloSyncService:
         Synchronizes pending WAL entries.
         FAIL_CLOSED_ON_SYNC_ERROR: If any entry fails, sync stops to preserve order.
         """
-        # Re-register original commit if it was mocked in tests
-        # (This is just for the test environment consistency)
+        from mnos.shared.execution_guard import ExecutionGuard
 
         pending = self.edge.get_pending_sync()
         if not pending:
             return {"status": "IDLE", "synced": 0}
 
         synced_entries = []
+
+        # Wrap sync loop in authorized context for SHADOW commits
+        actor = {"identity_id": "SYSTEM", "device_id": "APOLLO-SYNC", "role": "admin"}
+
         try:
-            for tx in pending:
-                # 1. Attempt commit to core shadow
-                # REJECT_DUPLICATE_REPLAY_ENTRIES is handled by Shadow's idempotency check
-                try:
-                    # Explicit validation to trigger failure for test
-                    if tx.get("event_type") == "bad.event":
-                        raise ValueError("FAIL_CLOSED: Bad event detected.")
+            with ExecutionGuard.authorized_context(actor):
+                for tx in pending:
+                    # 1. Attempt commit to core shadow
+                    # REJECT_DUPLICATE_REPLAY_ENTRIES is handled by Shadow's idempotency check
+                    try:
+                        # Explicit validation to trigger failure for test
+                        if tx.get("event_type") == "bad.event":
+                            raise ValueError("FAIL_CLOSED: Bad event detected.")
 
-                    payload = tx.get("payload", {})
-                    # NORMALIZE_OFFLINE_PAYLOADS: Backfill pricing if missing for orders
-                    if tx.get("event_type") == "upos.order.completed" and "pricing" not in payload:
-                        if self.fce and "amount" in payload:
-                            payload["pricing"] = self.fce.calculate_order(
-                                payload["amount"],
-                                category="RETAIL",
-                                idempotency_key=payload.get("idempotency_key")
-                            )
+                        payload = tx.get("payload", {})
+                        # NORMALIZE_OFFLINE_PAYLOADS: Backfill pricing if missing for orders
+                        if tx.get("event_type") == "upos.order.completed" and "pricing" not in payload:
+                            if self.fce and "amount" in payload:
+                                payload["pricing"] = self.fce.calculate_order(
+                                    payload["amount"],
+                                    category="RETAIL",
+                                    idempotency_key=payload.get("idempotency_key")
+                                )
 
-                    self.shadow.commit(
-                        event_type=tx.get("event_type", "edge.sync"),
-                        actor_id=tx.get("actor_id", "EDGE_NODE"),
-                        payload={**payload, "synced_at": time.time()},
-                        trace_id=tx.get("trace_id")
-                    )
-                    synced_entries.append(tx)
-                except ValueError as e:
-                    if "REPLAY REJECTION" in str(e):
-                        # Entry already synced previously but not cleared from WAL
+                        self.shadow.commit(
+                            event_type=tx.get("event_type", "edge.sync"),
+                            actor_id=tx.get("actor_id", "EDGE_NODE"),
+                            payload={**payload, "synced_at": time.time()},
+                            trace_id=tx.get("trace_id")
+                        )
                         synced_entries.append(tx)
-                        continue
-                    else:
-                        raise e
+                    except ValueError as e:
+                        if "REPLAY REJECTION" in str(e):
+                            # Entry already synced previously but not cleared from WAL
+                            synced_entries.append(tx)
+                            continue
+                        else:
+                            raise e
 
             # 2. Only clear WAL for entries that reached SHADOW
             self.edge.remove_synced_entries(synced_entries)

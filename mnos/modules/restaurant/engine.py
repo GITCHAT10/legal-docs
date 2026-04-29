@@ -71,8 +71,13 @@ class MaldivesRestaurantEngine:
         items = data.get("items", [])
         base_total = sum(item.get("price", 0) for item in items)
 
-        # Integrate with BPE for inventory/billing
-        invoice = self.bpe.create_invoice(rest_id, {"amount": base_total, "order_id": f"R-{uuid.uuid4().hex[:4]}"})
+        # Integrate with BPE for inventory/billing - Wrapped for consistency
+        invoice = self.core.guard.execute_sovereign_action(
+            "bpe.invoice.issued",
+            actor_ctx,
+            self.bpe.create_invoice,
+            rest_id, {"amount": base_total, "order_id": f"R-{uuid.uuid4().hex[:4]}"}
+        )
 
         order = {
             "order_id": f"ORD-REST-{uuid.uuid4().hex[:6].upper()}",

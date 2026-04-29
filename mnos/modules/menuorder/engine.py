@@ -8,7 +8,8 @@ class MenuOrderEngine:
     MenuOrder Table Layer.
     Handles QR-sessioned table orders and kitchen zone routing.
     """
-    def __init__(self, upos, wallet, shadow, events, qr_key: str):
+    def __init__(self, guard, upos, wallet, shadow, events, qr_key: str):
+        self.guard = guard
         self.upos = upos
         self.wallet = wallet
         self.shadow = shadow
@@ -41,8 +42,11 @@ class MenuOrderEngine:
         # Calculate total
         amount = sum(i["price"] * i["qty"] for i in items)
 
-        # Call UPOS for order creation
-        order = self.upos.create_order(
+        # Call UPOS for order creation via ExecutionGuard
+        order = self.guard.execute_sovereign_action(
+            action_type="upos.order.completed",
+            actor_context={"identity_id": f"TABLE-{session['table']}", "device_id": "QR-SESSION", "role": "guest", "trace_id": trace_id},
+            func=self.upos.create_order,
             merchant_id=merchant_id,
             actor_id=f"TABLE-{session['table']}",
             items=items,

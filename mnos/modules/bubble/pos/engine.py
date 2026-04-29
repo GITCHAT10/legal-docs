@@ -16,6 +16,8 @@ class BubblePOSEngine:
         """
         Billing execution and invoice generation.
         """
+        from mnos.shared.execution_guard import ExecutionGuard
+
         # compliance via MNOS FCE
         pricing = self.mnos.fce.finalize_invoice(order_data.get("amount"), "RETAIL")
 
@@ -28,8 +30,14 @@ class BubblePOSEngine:
             "timestamp": datetime.now(UTC).isoformat()
         }
 
-        # Audit record
-        self.mnos.shadow.commit("bpe.invoice.issued", merchant_id, invoice)
+        # Audit record - Wrapped in System context if not authorized
+        actor = {"identity_id": "SYSTEM", "device_id": "BPE-ENGINE", "role": "admin"}
+        if not ExecutionGuard.is_authorized():
+            with ExecutionGuard.authorized_context(actor):
+                self.mnos.shadow.commit("bpe.invoice.issued", merchant_id, invoice, trace_id=f"TR-BPE-{invoice['invoice_id']}")
+        else:
+            self.mnos.shadow.commit("bpe.invoice.issued", merchant_id, invoice, trace_id=f"TR-BPE-{invoice['invoice_id']}")
+
         return invoice
 
     def update_inventory(self, merchant_id: str, item_id: str, quantity: float, action: str = "DEDUCT") -> dict:
@@ -66,21 +74,26 @@ class BubblePOSEngine:
         Adoption of Stocky POS / AI Restaurant offline sync.
         Synchronizes a batch of transactions recorded while the island node was offline.
         """
+        from mnos.shared.execution_guard import ExecutionGuard
         results = []
-        for tx in transactions:
-            # 1. Deduct Inventory
-            for item in tx.get("items", []):
-                self.update_inventory(merchant_id, item["id"], item["qty"], action="DEDUCT")
 
-            # 2. Record Financial Entry (Retroactive)
-            pricing = self.mnos.fce.finalize_invoice(tx.get("amount"), "RETAIL")
-            entry = {
-                "sync_id": f"OFFLINE-{uuid.uuid4().hex[:6]}",
-                "original_ts": tx.get("timestamp"),
-                "pricing": pricing,
-                "status": "SYNCED_TO_SHADOW"
-            }
-            self.mnos.shadow.commit("bpe.offline_sync", merchant_id, entry)
-            results.append(entry)
+        actor = {"identity_id": "SYSTEM", "device_id": "BPE-SYNC", "role": "admin"}
+
+        with ExecutionGuard.authorized_context(actor):
+            for tx in transactions:
+                # 1. Deduct Inventory
+                for item in tx.get("items", []):
+                    self.update_inventory(merchant_id, item["id"], item["qty"], action="DEDUCT")
+
+                # 2. Record Financial Entry (Retroactive)
+                pricing = self.mnos.fce.finalize_invoice(tx.get("amount"), "RETAIL")
+                entry = {
+                    "sync_id": f"OFFLINE-{uuid.uuid4().hex[:6]}",
+                    "original_ts": tx.get("timestamp"),
+                    "pricing": pricing,
+                    "status": "SYNCED_TO_SHADOW"
+                }
+                self.mnos.shadow.commit("bpe.offline_sync", merchant_id, entry, trace_id=entry["sync_id"])
+                results.append(entry)
 
         return {"merchant_id": merchant_id, "synced_count": len(results), "records": results}

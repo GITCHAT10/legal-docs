@@ -174,14 +174,14 @@ class ProcurementEngine:
 
     def create_order(self, actor_ctx: dict, order_data: dict):
         return self.core.execute_commerce_action(
-            "imoxon.order.create",
+            "imoxon.order.completed",
             actor_ctx,
             self._internal_order,
             order_data
         )
 
     def _internal_order(self, data):
-        pricing = self.core.fce.finalize_invoice(data.get("amount"), "RETAIL")
+        pricing = self.core.fce.finalize_invoice(data.get("amount"), "TOURISM")
         order = {
             "id": f"ORD-{uuid.uuid4().hex[:6].upper()}",
             "vendor_id": data.get("vendor_id"),

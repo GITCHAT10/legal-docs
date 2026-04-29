@@ -16,7 +16,7 @@ class UPOSEngine:
         self.processed_orders = set() # idempotency_keys
 
     def create_order(self, merchant_id: str, actor_id: str, items: List[Dict], amount: float,
-                     idempotency_key: str, trace_id: str) -> Dict:
+                     idempotency_key: str, trace_id: str, category: str = "TOURISM") -> Dict:
         """
         Creates an order with strict idempotency and tracing.
         Internal logic only. Execution via ExecutionGuard.
@@ -39,7 +39,8 @@ class UPOSEngine:
             raise ValueError(f"IDEMPOTENCY_VIOLATION: Order {idempotency_key} already processed.")
 
         # 1. Price calculation via FCE (Hardened with idempotency)
-        pricing = self.fce.calculate_order(amount, category="RETAIL", idempotency_key=idempotency_key)
+        # Using TOURISM category for 17% TGST enforcement
+        pricing = self.fce.calculate_order(amount, category=category, idempotency_key=idempotency_key)
 
         order = {
             "order_id": f"UPOS-{uuid.uuid4().hex[:8].upper()}",
