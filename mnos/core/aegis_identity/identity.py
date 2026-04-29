@@ -24,6 +24,8 @@ class AegisIdentityCore:
             "persistent_identity_hash": uuid.uuid4().hex, # Hardened identity hash
             "verification_status": "pending",
             "identity_status": "active",
+            "clearance_level": profile_data.get("clearance_level", 1),
+            "biometric_hash": profile_data.get("biometric_hash"),
             "created_at": datetime.now(UTC).isoformat()
         }
         self.profiles[identity_id] = profile

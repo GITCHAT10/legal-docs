@@ -58,6 +58,12 @@ from mnos.api.leaderboard import create_leaderboard_router
 from mnos.api.b2b_portal import create_b2b_portal_router
 from mnos.api.heatmap import create_heatmap_router
 from mnos.api.laundry import create_laundry_router
+from mnos.modules.air_grid.engine import AirGridEngine
+from mnos.api.air_grid.router import create_air_grid_router
+from mnos.modules.air_grid.ut_bridge import UTMVPBridge
+from mnos.api.air_grid.ops_router import create_ops_router
+from mnos.modules.exmail.service import ExMailService
+from mnos.modules.exmail.revenue_engine import EmailRevenueEngine
 
 # Bubble OS Super App Layer
 from mnos.modules.bubble.chat.engine import ChatIntentEngine, ChatToTransactionEngine
@@ -128,6 +134,10 @@ vvip_engine = VVIPKeyEngine(imoxon)
 reinvestment_engine = RevenueReinvestmentEngine(imoxon)
 laundry_engine = MaldivesLaundryEngine(imoxon, mars_unified)
 heatmap_engine = GlobalDemandHeatmap(imoxon, island_gm, mira_bridge, reinvestment_engine)
+ut_mvp_bridge = UTMVPBridge(imoxon)
+air_grid_engine = AirGridEngine(imoxon, ut_bridge=ut_mvp_bridge)
+exmail_service = ExMailService(imoxon)
+email_revenue_engine = EmailRevenueEngine(imoxon, imoxon.pricing)
 
 imoxon.mira_bridge = mira_bridge
 imoxon.vvip_engine = vvip_engine
@@ -163,37 +173,44 @@ def get_actor_ctx(
     if x_aegis_session:
         try:
             actor = identity_gateway.validate_session(x_aegis_session)
-            shadow_core.commit("aegis.auth.session.success", actor["identity_id"], {"session_id": x_aegis_session})
+            with guard.sovereign_context():
+                shadow_core.commit("aegis.auth.session.success", actor["identity_id"], {"session_id": x_aegis_session})
             return actor
         except PermissionError as e:
-            shadow_core.commit("aegis.auth.session.failure", "UNKNOWN", {"reason": str(e)})
+            with guard.sovereign_context():
+                shadow_core.commit("aegis.auth.session.failure", "UNKNOWN", {"reason": str(e)})
             raise HTTPException(status_code=403, detail=str(e))
 
     # Fallback to Direct Hardened Handshake (B2B / API)
     if not x_aegis_identity or not x_aegis_device or not x_aegis_signature:
-        shadow_core.commit("aegis.auth.direct.failure", "UNKNOWN", {"reason": "Missing Headers"})
+        with guard.sovereign_context():
+            shadow_core.commit("aegis.auth.direct.failure", "UNKNOWN", {"reason": "Missing Headers"})
         raise HTTPException(status_code=401, detail="AEGIS_REQUIRED: Missing Identity, Device or Signature")
 
     # 1. Identity lookup via AEGIS registry (persistence)
     profile = identity_core.profiles.get(x_aegis_identity)
     if not profile:
-        shadow_core.commit("aegis.auth.identity.invalid", x_aegis_identity, {"reason": "Not in Registry"})
+        with guard.sovereign_context():
+            shadow_core.commit("aegis.auth.identity.invalid", x_aegis_identity, {"reason": "Not in Registry"})
         raise HTTPException(status_code=401, detail="INVALID_IDENTITY: Unauthorized")
 
     # 2. Validate device binding (device.owner_id == identity.id)
     device = identity_core.devices.get(x_aegis_device)
     if not device or device.get("identity_id") != x_aegis_identity:
-        shadow_core.commit("aegis.auth.device.mismatch", x_aegis_identity, {"device_id": x_aegis_device})
+        with guard.sovereign_context():
+            shadow_core.commit("aegis.auth.device.mismatch", x_aegis_identity, {"device_id": x_aegis_device})
         raise HTTPException(status_code=403, detail="DEVICE_BINDING_INVALID: Access Denied")
 
     # 3. Cryptographic Signature Validation
     if x_aegis_signature != f"VALID_SIG_FOR_{x_aegis_identity}":
-         shadow_core.commit("aegis.auth.sig.failed", x_aegis_identity, {"sig": x_aegis_signature})
+         with guard.sovereign_context():
+             shadow_core.commit("aegis.auth.sig.failed", x_aegis_identity, {"sig": x_aegis_signature})
          raise HTTPException(status_code=403, detail="HANDSHAKE_FAILED: Invalid Signature")
 
     # 4. Success: Derive role from database (NO HEADER TRUST)
     actor = {
         "identity_id": x_aegis_identity,
+        "device_id": x_aegis_device,
         "role": profile.get("profile_type"),
         "realm": "API_DIRECT",
         "org_id": profile.get("organization_id"),
@@ -201,7 +218,8 @@ def get_actor_ctx(
         "verified": profile.get("verification_status") == "verified",
         "persistent_hash": profile.get("persistent_identity_hash")
     }
-    shadow_core.commit("aegis.auth.direct.success", x_aegis_identity, {"role": actor["role"]})
+    with guard.sovereign_context():
+        shadow_core.commit("aegis.auth.direct.success", x_aegis_identity, {"role": actor["role"]})
     return actor
 
 # --- Consolidated APIs ---
@@ -209,22 +227,24 @@ def get_actor_ctx(
 @app.post("/imoxon/suppliers/connect")
 async def connect_supplier(name: str, actor: dict = Depends(get_actor_ctx)):
     # Create a profile in Aegis for the supplier to get a real ID
-    supplier_id = identity_core.create_profile({
-        "full_name": name,
-        "profile_type": "supplier",
-        "organization_id": "IMOXON-NETWORK"
-    })
-    profile = identity_core.profiles[supplier_id]
-
-    return imoxon.execute_commerce_action(
-        "imoxon.supplier.connect",
-        actor,
-        lambda: {
+    def _logic():
+        supplier_id = identity_core.create_profile({
+            "full_name": name,
+            "profile_type": "supplier",
+            "organization_id": "IMOXON-NETWORK"
+        })
+        profile = identity_core.profiles[supplier_id]
+        return {
             "supplier_id": supplier_id,
             "name": name,
             "status": "CONNECTED",
             "persistent_hash": profile["persistent_identity_hash"]
         }
+
+    return imoxon.execute_commerce_action(
+        "imoxon.supplier.connect",
+        actor,
+        _logic
     )
 
 @app.post("/imoxon/orders/create")
@@ -258,11 +278,41 @@ app.include_router(create_leaderboard_router(leaderboard, get_actor_ctx), prefix
 app.include_router(create_b2b_portal_router(mars_unified, b2b_negotiator, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_heatmap_router(heatmap_engine, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_laundry_router(laundry_engine, get_actor_ctx), prefix="/imoxon")
+app.include_router(create_air_grid_router(air_grid_engine, get_actor_ctx), prefix="/imoxon")
+app.include_router(create_ops_router(ut_mvp_bridge, get_actor_ctx), prefix="/imoxon")
+
+# --- ROS Event Wiring ---
+def ros_event_listener(event_type, payload):
+    # Core ROS Revenue Triggers
+    ros_events = [
+        "price.drop",
+        "inventory.low",
+        "booking.abandoned",
+        "booking.created",
+        "payment.received",
+        "pre.arrival.7d",
+        "activity.gap.detected",
+        "spa.idle.slot",
+        "post.checkout.1d",
+        "flight.landed"
+    ]
+    if event_type in ros_events:
+        email_revenue_engine.handle_event(event_type, payload)
+
+events_core.subscribe("*", ros_event_listener)
 
 # Error handlers
 @app.exception_handler(PermissionError)
 async def permission_error_handler(request: Request, exc: PermissionError):
     return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+@app.exception_handler(RuntimeError)
+async def runtime_error_handler(request: Request, exc: RuntimeError):
+    return JSONResponse(status_code=500, content={"detail": str(exc)})
+
+@app.exception_handler(Exception)
+async def generic_error_handler(request: Request, exc: Exception):
+    return JSONResponse(status_code=500, content={"detail": f"INTERNAL_ERROR: {str(exc)}"})
 
 @app.get("/health")
 async def health():

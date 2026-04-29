@@ -1,5 +1,6 @@
 import contextvars
 import uuid
+from datetime import datetime, UTC
 from typing import Callable, Any, Dict, Optional
 from fastapi import Request
 from fastapi.responses import JSONResponse
@@ -15,6 +16,7 @@ class ExecutionGuard:
         self.fce = fce
         self.shadow = shadow
         self.events = events
+        self.pending_approvals = {} # action_id -> {first_actor, payload, status}
 
     def execute_sovereign_action(self, action_type: str, actor_context: Dict, func: Callable, *args, **kwargs) -> Any:
         """
@@ -36,12 +38,17 @@ class ExecutionGuard:
 
         # 2. Role / Permission Validation
         valid, msg = self.policy_engine.validate_action(action_type, actor_context)
+
+        # Dual Approval Intercept
+        if not valid and "DUAL_APPROVAL_REQUIRED" in msg:
+            return self._initiate_dual_approval(action_type, actor_context, *args, **kwargs)
+
         if not valid:
             raise PermissionError(f"FAIL CLOSED: Policy Violation - {msg}")
 
         # 3. Set Sovereign Context (Authorized)
         token = str(uuid.uuid4())
-        _sovereign_context.set({"token": token, "actor": actor_context})
+        ctx_token = _sovereign_context.set({"token": token, "actor": actor_context})
 
         try:
             # BEGIN ATOMIC TX (Simulated via context and SHADOW intent)
@@ -84,7 +91,7 @@ class ExecutionGuard:
             raise RuntimeError(f"SOVEREIGN EXECUTION FAILED: {str(e)}")
         finally:
             # Clear context
-            _sovereign_context.set(None)
+            _sovereign_context.reset(ctx_token)
 
     @staticmethod
     def is_authorized() -> bool:
@@ -94,6 +101,61 @@ class ExecutionGuard:
     def get_actor() -> Optional[Dict]:
         ctx = _sovereign_context.get()
         return ctx["actor"] if ctx else None
+
+    @staticmethod
+    def sovereign_context(actor: dict = None):
+        """Allows authorized system operations by setting the context manually."""
+        import contextlib
+        token = str(uuid.uuid4())
+        actor = actor or {"identity_id": "SYSTEM", "role": "admin", "device_id": "SYSTEM_VIRTUAL"}
+
+        @contextlib.contextmanager
+        def _context():
+            t = _sovereign_context.set({"token": token, "actor": actor})
+            try:
+                yield
+            finally:
+                _sovereign_context.reset(t)
+        return _context()
+
+    def _initiate_dual_approval(self, action_type: str, actor_context: Dict, *args, **kwargs):
+        action_id = f"DA-{uuid.uuid4().hex[:8].upper()}"
+        self.pending_approvals[action_id] = {
+            "type": action_type,
+            "first_actor": actor_context["identity_id"],
+            "payload": {"args": args, "kwargs": kwargs},
+            "status": "PENDING_SECOND_APPROVAL",
+            "timestamp": datetime.now(UTC).isoformat()
+        }
+        with self.sovereign_context(actor_context):
+            self.shadow.commit("dual_approval.initiated", actor_context["identity_id"], {
+                "action_id": action_id,
+                "action_type": action_type
+            })
+        return {"status": "AWAITING_DUAL_APPROVAL", "action_id": action_id}
+
+    def approve_second_signature(self, action_id: str, actor_context: Dict, func: Callable):
+        """Finalizes a dual-approval action with a second signature."""
+        pending = self.pending_approvals.get(action_id)
+        if not pending:
+            raise ValueError("Invalid or expired Action ID")
+
+        if pending["first_actor"] == actor_context["identity_id"]:
+            raise PermissionError("FAIL CLOSED: Dual approval requires a different actor for the second signature")
+
+        # Set second approval flag for policy engine
+        actor_context["is_second_approval"] = True
+
+        # Merge original payload back
+        args = pending["payload"]["args"]
+        kwargs = pending["payload"]["kwargs"]
+
+        result = self.execute_sovereign_action(pending["type"], actor_context, func, *args, **kwargs)
+
+        with self.sovereign_context(actor_context):
+            self.shadow.commit("dual_approval.completed", actor_context["identity_id"], {"action_id": action_id})
+        del self.pending_approvals[action_id]
+        return result
 
 class ExecutionGuardMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, guard, events):

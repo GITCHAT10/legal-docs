@@ -1,47 +1,94 @@
 from decimal import Decimal, ROUND_HALF_UP
 import uuid
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from datetime import datetime, UTC
+from enum import Enum
+
+class TaxType(str, Enum):
+    TOURISM_STANDARD = "TOURISM_STANDARD" # 17% TGST
+    TRANSPORT = "TRANSPORT"               # 17% TGST (often same as tourism)
+    FNB = "FNB"                           # 17% TGST
+    RETAIL = "RETAIL"                     # 8% GST
+    EXEMPT = "EXEMPT"                     # 0%
 
 class FCEEngine:
     def __init__(self):
         self.ledger = []
         self.locked_rates = {"USD": Decimal("15.42")} # MVR
 
-    def calculate_local_order(self, base_price: Decimal, category: str = "RETAIL", green_tax_usd: Decimal = Decimal("0")) -> dict:
+    def calculate_local_order(self,
+                             base_price: Any,
+                             category: str = "TOURISM_STANDARD",
+                             green_tax_usd: Any = Decimal("0"),
+                             locked_fx_rate: Any = Decimal("15.42"),
+                             input_currency: str = "USD") -> dict:
         """
-        MANDATORY MALDIVES BILLING RULE:
-        Base Price + 10% Service Charge = subtotal
-        TGST/GST applied on subtotal
-        Green Tax (if applicable, only for accommodation)
+        MANDATORY MALDIVES BILLING RULE (MIRA COMPLIANT):
+        Supports dual-currency extraction for TGST in USD (Tourism).
+        1. base_price (in input_currency, usually USD)
+        2. -> service_charge (10% if Tourism)
+        3. -> subtotal = base + SC
+        4. -> TGST/GST (on subtotal)
+        5. -> + green tax (if applicable)
+        6. -> = total (in input_currency)
+        7. -> converted to MVR for ledger
         """
-        # Quantize to 2 decimal places for currency
+        # Ensure Decimal
+        base_price = Decimal(str(base_price))
+        green_tax_usd = Decimal(str(green_tax_usd))
+        locked_fx_rate = Decimal(str(locked_fx_rate))
+
+        # Quantize to 2 decimal places
         base_price = base_price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
-        # 1. 10% Service Charge
-        service_charge = (base_price * Decimal("0.10")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        # 1. Resolve Rates
+        is_tourism = category in [TaxType.TOURISM_STANDARD, TaxType.TRANSPORT, TaxType.FNB, "TOURISM", "RESORT_SUPPLY"]
+
+        if is_tourism:
+            tax_rate = Decimal("0.17")
+            sc_rate = Decimal("0.10")
+        elif category == TaxType.RETAIL:
+            tax_rate = Decimal("0.08")
+            sc_rate = Decimal("0.00")
+        elif category == TaxType.EXEMPT:
+            tax_rate = Decimal("0.00")
+            sc_rate = Decimal("0.00")
+        else:
+            tax_rate = Decimal("0.08")
+            sc_rate = Decimal("0.00")
+
+        # 2. Service Charge
+        service_charge = (base_price * sc_rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         subtotal = base_price + service_charge
 
-        # 2. TGST (17%) or GST (8%)
-        # Policy: 17% for tourism-linked, 8% for general retail
-        tax_rate = Decimal("0.17") if category in ["TOURISM", "RESORT_SUPPLY"] else Decimal("0.08")
+        # 3. TGST / GST
         tax_amt = (subtotal * tax_rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
-        # 3. Green Tax (USD converted to MVR)
-        mvr_rate = self.locked_rates.get("USD", Decimal("15.42"))
-        green_tax_mvr = (green_tax_usd * mvr_rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        # 4. Green Tax (Honeymoon/Resort specific)
+        green_tax = green_tax_usd.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
-        total = subtotal + tax_amt + green_tax_mvr
+        total_input = subtotal + tax_amt + green_tax
+
+        # 5. DUAL CURRENCY EXTRACTION (MIRA REQUIREMENT)
+        # Tourism TGST must be reported/extracted in USD
+        tgst_usd = tax_amt if input_currency == "USD" and is_tourism else Decimal("0")
+
+        # 6. MVR LEDGER CALCULATION
+        mvr_total = (total_input * locked_fx_rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
         return {
             "transaction_id": uuid.uuid4().hex[:8],
-            "base": float(base_price),
+            "base_usd": float(base_price) if input_currency == "USD" else 0,
+            "base_mvr": float(base_price * locked_fx_rate) if input_currency == "USD" else float(base_price),
             "service_charge": float(service_charge),
             "subtotal": float(subtotal),
             "tax_rate": float(tax_rate),
             "tax_amount": float(tax_amt),
-            "green_tax": float(green_tax_mvr),
-            "total": float(total),
+            "tgst_usd_extracted": float(tgst_usd),
+            "green_tax": float(green_tax),
+            "total_input_currency": float(total_input),
+            "total_mvr": float(mvr_total),
+            "fx_rate_locked": float(locked_fx_rate),
             "currency": "MVR"
         }
 

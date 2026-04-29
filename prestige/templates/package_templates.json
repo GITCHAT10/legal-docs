@@ -1,0 +1,7 @@
+[
+  {"template_id": "MV-LUX-STAY", "name": "Maldives Luxury Stay", "product_type": "accommodation", "base_net": 1500.0, "description": "7 nights in a Luxury Water Villa with Half Board."},
+  {"template_id": "MV-DIVE-PKG", "name": "Maldives Dive Package", "product_type": "activity", "base_net": 800.0, "description": "5 days of guided diving with equipment included."},
+  {"template_id": "MV-FAMILY-VILLA", "name": "Family Villa Package", "product_type": "accommodation", "base_net": 2500.0, "description": "2 Bedroom Beach Villa for families of 4."},
+  {"template_id": "MV-XFER-BUNDLE", "name": "Transfer Bundle", "product_type": "transfer", "base_net": 350.0, "description": "Round-trip Seaplane transfers for 2 pax."},
+  {"template_id": "MV-VVIP-CIP", "name": "VVIP/CIP Package", "product_type": "accommodation", "base_net": 5000.0, "description": "Ultra-exclusive CIP arrival and private estate stay."}
+]

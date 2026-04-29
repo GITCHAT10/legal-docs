@@ -1,0 +1,95 @@
+# schema/product.graphql
+type Product @auth(role: [AGENT, UHNWI, CLOSER]) {
+  id: ID! @pdpa(encrypted: true)
+  code: String! @unique # e.g., "JET.BBJ.MLE-BOM", "RESORT.SONEVA.JANI"
+  category: ProductCategory!
+
+  # Cinematic presentation
+  media: ProductMedia!
+  editorial: EditorialContent!
+
+  # Dynamic pricing (signed, ProbML-driven)
+  pricing: PricingTier!
+  availability: AvailabilityWindow!
+
+  # Agent-specific intelligence
+  agent_context: AgentProductContext
+
+  # Booking integration
+  booking_flow: BookingConfiguration!
+
+  # Audit & compliance
+  audit: ProductAuditMetadata!
+}
+
+enum ProductCategory {
+  RESORT_VILLA
+  PRIVATE_JET
+  SEAPLANE_TRANSFER
+  YACHT_CHARTER
+  PRIVATE_ISLAND
+  DINING_EXPERIENCE
+  SPA_WELLNESS
+  SECURITY_DETAIL
+  HELICOPTER_TRANSFER
+  SUBMARINE_TOUR
+}
+
+type ProductMedia {
+  hero_video: String! # 4K MP4, CDN URL
+  gallery: [ImageAsset!]!
+  virtual_tour_url: String # Matterport/3D
+  amenities_icons: [IconAsset!]!
+}
+
+type ImageAsset {
+  url: String!
+  alt: String
+}
+
+type IconAsset {
+  name: String!
+  url: String!
+}
+
+type EditorialContent {
+  title: String!
+  tagline: String!
+  story: String!
+  privacy_note: String # "No public reviews • Discreet service"
+}
+
+type PricingTier {
+  base_mvr: Int!
+  dynamic_adjustment: Float
+  agent_flexibility: Float
+  jet_bundle_uplift: Int
+  valid_until: String!
+  signature: String!
+}
+
+type AvailabilityWindow {
+  is_available: Boolean!
+  next_available_date: String
+}
+
+type AgentProductContext {
+  conversion_probability: Float!
+  recommended: Boolean!
+  personalization_note: String
+  escalation_threshold: Float
+}
+
+type BookingConfiguration {
+  prefill_fields: [String!]!
+  required_biometric: Boolean!
+  bundle_options: [String!]!
+}
+
+type ProductAuditMetadata {
+  event_hash: String!
+  signed_at: String!
+  pdpa_compliant: Boolean!
+  data_residency: String!
+  upstream_events: [String!]!
+}

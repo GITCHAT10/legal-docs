@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prestige-ros-core
+  namespace: mnos-prestige
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: prestige-ros
+  template:
+    metadata:
+      labels:
+        app: prestige-ros
+    spec:
+      containers:
+      - name: ros-backend
+        image: mnos/prestige-ros:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: NEXGEN_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: mnos-secrets
+              key: nexgen-secret
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: mnos-secrets
+              key: database-url
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prestige-ros-svc
+  namespace: mnos-prestige
+spec:
+  selector:
+    app: prestige-ros
+  ports:
+  - port: 80
+    targetPort: 8000

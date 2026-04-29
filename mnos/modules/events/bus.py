@@ -13,12 +13,18 @@ class DistributedEventBus:
         self.partitions = defaultdict(list) # partition_key -> events[]
         self.offsets = defaultdict(int)     # consumer_id:partition -> offset
         self.storage_dir = "mnos/modules/events/storage"
+        self.subscribers = defaultdict(list)
         os.makedirs(self.storage_dir, exist_ok=True)
 
+    def subscribe(self, event_pattern: str, callback):
+        """Subscribe to events matching a pattern (e.g., '*' for all)."""
+        self.subscribers[event_pattern].append(callback)
+
     def publish(self, event_type: str, payload: dict, partition: str = "GLOBAL"):
+        # SECURITY: Enforcement of ExecutionGuard Authority
         from mnos.shared.execution_guard import ExecutionGuard
         if not ExecutionGuard.is_authorized():
-            raise PermissionError(f"FAIL CLOSED: Direct event publish blocked for {event_type}. Must use ExecutionGuard.")
+             raise PermissionError(f"FAIL CLOSED: Unauthorized direct publish of {event_type} blocked.")
 
         event_id = str(uuid.uuid4())
         event = {
@@ -35,6 +41,15 @@ class DistributedEventBus:
 
         # 2. Durable storage (Simulated append-only log)
         self._persist_event(event)
+
+        # 3. Notify synchronous subscribers
+        for pattern, callbacks in self.subscribers.items():
+            if pattern == "*" or pattern == event_type:
+                for cb in callbacks:
+                    try:
+                        cb(event_type, payload)
+                    except Exception as e:
+                        print(f"[ERROR] Subscriber failed for {event_type}: {e}")
 
         print(f"[STREAM] {event_type} published to {partition} (ID: {event_id[:8]})")
         return event_id

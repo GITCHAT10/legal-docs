@@ -2,6 +2,8 @@ import uuid
 from datetime import datetime, UTC
 from typing import Dict, List, Any, Optional
 
+from mnos.modules.imoxon.pricing.engine import PricingEngine
+
 class ImoxonCore:
     """
     Unified iMOXON Core: Governs B2B + B2C commerce flows.
@@ -12,6 +14,7 @@ class ImoxonCore:
         self.fce = fce
         self.shadow = shadow
         self.events = events
+        self.pricing = PricingEngine(fce)
 
     def execute_commerce_action(self, action_type: str, actor_ctx: Dict, logic_func: Any, *args, **kwargs):
         """Final approval gate and atomic execution."""
@@ -159,8 +162,27 @@ class ProcurementEngine:
         )
 
     def _internal_procure(self, data):
-        # FCE Validation of pricing
-        pricing = self.core.fce.finalize_invoice(data.get("amount"), "RESORT_SUPPLY")
+        # 1. Advanced Pricing Engine (Prestige DMC logic)
+        # Net -> Margin -> FX -> Waterfall -> FCE Validation
+        from decimal import Decimal
+        from mnos.modules.imoxon.pricing.engine import ProductType, Channel
+        from mnos.modules.finance.fce import TaxType
+
+        amount = data.get("amount")
+        if amount is None or float(amount) <= 0:
+            raise ValueError("FAIL CLOSED: Valid amount required for procurement")
+
+        trace_id = data.get("trace_id", str(uuid.uuid4()))
+
+        pricing = self.core.pricing.calculate_quote(
+            net_amount=Decimal(str(amount)),
+            currency=data.get("currency", "USD"),
+            product_type=ProductType(data.get("product_type", ProductType.PACKAGE)),
+            trace_id=trace_id,
+            tax_type=TaxType(data.get("tax_type", TaxType.TOURISM_STANDARD)),
+            channel=Channel(data.get("channel", Channel.DIRECT)),
+            aegis_ctx=actor_ctx
+        )
 
         request = {
             "id": f"PR-{uuid.uuid4().hex[:6].upper()}",
@@ -181,7 +203,25 @@ class ProcurementEngine:
         )
 
     def _internal_order(self, data):
-        pricing = self.core.fce.finalize_invoice(data.get("amount"), "RETAIL")
+        from decimal import Decimal
+        from mnos.modules.imoxon.pricing.engine import ProductType, Channel
+        from mnos.modules.finance.fce import TaxType
+
+        amount = data.get("amount")
+        if amount is None or float(amount) <= 0:
+            raise ValueError("FAIL CLOSED: Valid amount required for order")
+
+        trace_id = data.get("trace_id", str(uuid.uuid4()))
+
+        pricing = self.core.pricing.calculate_quote(
+            net_amount=Decimal(str(amount)),
+            currency=data.get("currency", "USD"),
+            product_type=ProductType(data.get("product_type", ProductType.RETAIL)),
+            trace_id=trace_id,
+            tax_type=TaxType(data.get("tax_type", TaxType.RETAIL)),
+            channel=Channel(data.get("channel", Channel.DIRECT)),
+            aegis_ctx=actor_ctx
+        )
         order = {
             "id": f"ORD-{uuid.uuid4().hex[:6].upper()}",
             "vendor_id": data.get("vendor_id"),
