@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-def create_specialized_router(tourism, faith, transport, housing, exchange, education, get_actor_ctx):
+def create_specialized_router(tourism, faith, transport, housing, exchange, get_actor_ctx):
     router = APIRouter(tags=["specialized"])
 
     @router.post("/tourism/book")
@@ -22,9 +22,5 @@ def create_specialized_router(tourism, faith, transport, housing, exchange, educ
     @router.post("/exchange/transfer")
     async def transfer_exchange(data: dict, actor: dict = Depends(get_actor_ctx)):
         return exchange.transfer_asset(actor, data)
-
-    @router.post("/education/enroll")
-    async def enroll_education(data: dict, actor: dict = Depends(get_actor_ctx)):
-        return education.enroll(actor, data)
 
     return router

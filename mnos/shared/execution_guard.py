@@ -40,8 +40,11 @@ class ExecutionGuard:
             raise PermissionError(f"FAIL CLOSED: Policy Violation - {msg}")
 
         # 3. Set Sovereign Context (Authorized)
-        token = str(uuid.uuid4())
-        _sovereign_context.set({"token": token, "actor": actor_context})
+        token = actor_context.get("token") or str(uuid.uuid4())
+        # Ensure we capture system_override and trace token
+        actor_with_trace = {**actor_context, "token": token}
+
+        ctx_token = _sovereign_context.set({"token": token, "actor": actor_with_trace})
 
         try:
             # BEGIN ATOMIC TX (Simulated via context and SHADOW intent)
@@ -84,7 +87,7 @@ class ExecutionGuard:
             raise RuntimeError(f"SOVEREIGN EXECUTION FAILED: {str(e)}")
         finally:
             # Clear context
-            _sovereign_context.set(None)
+            _sovereign_context.reset(ctx_token)
 
     @staticmethod
     def is_authorized() -> bool:
