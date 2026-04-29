@@ -14,7 +14,12 @@ class OrcaDashboard:
             if block["event_type"] == "upos.order.completed":
                 order_count += 1
                 # Standardized safe dictionary access to prevent KeyError
-                total_revenue += block.get("payload", {}).get("pricing", {}).get("total", 0)
+                pricing = block.get("payload", {}).get("pricing")
+                if pricing:
+                    total_revenue += pricing.get("total", 0)
+                else:
+                    # Log anomaly for SHADOW audit (Simulated via print or internal log)
+                    print(f"[ANOMALY] Missing pricing in SHADOW block {block['index']}")
 
         # P&L Simulation
         payouts = sum(s["net_amount"] for s in self.wallet.settlements.values())

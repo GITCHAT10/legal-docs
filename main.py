@@ -275,7 +275,7 @@ fce_gateway.register_adapter("paymvr", PayMVRAdapter())
 
 upos_engine = UPOSEngine(fce_sovereign, shadow_sovereign, events_core)
 edge_node = EdgeNode(node_id=os.environ.get("NODE_ID", "SALA-GENERIC"))
-apollo_sync = ApolloSyncService(edge_node, shadow_sovereign)
+apollo_sync = ApolloSyncService(edge_node, shadow_sovereign, fce_service=fce_sovereign)
 
 # Configure Orchestration Handlers
 orchestrator_svc.register_handler(

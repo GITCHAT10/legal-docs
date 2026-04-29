@@ -8,9 +8,10 @@ class ApolloSyncService:
     Synchronizes Edge WAL queue to the Core SHADOW ledger.
     Implements Reconnect-Replay and Sync-Failure Rollback logic.
     """
-    def __init__(self, edge_node, core_shadow):
+    def __init__(self, edge_node, core_shadow, fce_service=None):
         self.edge = edge_node
         self.shadow = core_shadow
+        self.fce = fce_service
         self.retry_limit = 3
 
     def sync_node(self) -> Dict[str, Any]:
@@ -35,10 +36,20 @@ class ApolloSyncService:
                     if tx.get("event_type") == "bad.event":
                         raise ValueError("FAIL_CLOSED: Bad event detected.")
 
+                    payload = tx.get("payload", {})
+                    # NORMALIZE_OFFLINE_PAYLOADS: Backfill pricing if missing for orders
+                    if tx.get("event_type") == "upos.order.completed" and "pricing" not in payload:
+                        if self.fce and "amount" in payload:
+                            payload["pricing"] = self.fce.calculate_order(
+                                payload["amount"],
+                                category="RETAIL",
+                                idempotency_key=payload.get("idempotency_key")
+                            )
+
                     self.shadow.commit(
                         event_type=tx.get("event_type", "edge.sync"),
                         actor_id=tx.get("actor_id", "EDGE_NODE"),
-                        payload={**tx.get("payload", {}), "synced_at": time.time()},
+                        payload={**payload, "synced_at": time.time()},
                         trace_id=tx.get("trace_id")
                     )
                     synced_entries.append(tx)

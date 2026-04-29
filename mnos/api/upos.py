@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from typing import Dict, List
 import uuid
 
-def create_upos_router(upos_engine, edge_node, get_actor_ctx):
+def create_upos_router(guard, upos_engine, edge_node, get_actor_ctx):
     router = APIRouter()
 
     @router.post("/upos/order")
@@ -30,7 +30,7 @@ def create_upos_router(upos_engine, edge_node, get_actor_ctx):
             return {"status": "OFFLINE_QUEUED", "detail": res}
 
         return guard.execute_sovereign_action(
-            action_type="upos.order.created",
+            action_type="upos.order.completed",
             actor_context={**actor, "trace_id": trace_id},
             func=upos_engine.create_order,
             merchant_id=data.get("merchant_id"),

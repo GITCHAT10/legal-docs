@@ -21,6 +21,14 @@ class UPOSEngine:
         Creates an order with strict idempotency and tracing.
         Internal logic only. Execution via ExecutionGuard.
         """
+        # Financial Fail-Closed Validation
+        if not merchant_id:
+             raise ValueError("FAIL_CLOSED: Missing merchant_id")
+        if not items:
+             raise ValueError("FAIL_CLOSED: Items list is empty")
+        if amount <= 0:
+             raise ValueError("FAIL_CLOSED: Amount must be greater than zero")
+
         if not trace_id:
             raise ValueError("TRACE_ID_REQUIRED: Cannot process order without trace context.")
 
