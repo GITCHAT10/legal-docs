@@ -128,7 +128,12 @@ class PricingEngine:
 
     def resolve_tax_type(self, product_type: str, context_override: str = None) -> str:
         if context_override:
-            return context_override.upper()
+            tax_c = context_override.upper()
+            if tax_c == "TOURISM_STANDARD":
+                tax_c = "TOURISM"
+            if tax_c not in ["TOURISM", "RETAIL", "LOCAL", "EXPORT", "EXEMPT"]:
+                 raise FailClosed("INVALID_TAX_CONTEXT")
+            return tax_c
 
         pt = product_type.lower()
         if pt in ["retail", "shop", "product"]:
@@ -198,7 +203,7 @@ class PricingEngine:
              # If we are in a simulation/test without AEGIS, we auto-assign SYSTEM for audit
              aegis_ctx = {"identity_id": "SYSTEM", "role": "admin", "device_id": "SYSTEM_VIRTUAL"}
 
-        # 0. STRICT VALIDATION (Reject: amount == None, amount <= 0)
+        # 0. FAIL-CLOSED AMOUNT VALIDATION (Reject: amount == None, amount <= 0)
         if req.net_amount is None:
             raise FailClosed("MISSING_AMOUNT")
         if req.net_amount <= 0:
@@ -206,6 +211,8 @@ class PricingEngine:
 
         # 1. Generate Trace ID (aegis_trace_id)
         trace_id = req.context.trigger or f"TR-{uuid.uuid4().hex[:8].upper()}"
+        if not trace_id:
+            raise FailClosed("FAIL CLOSED: Missing trace_id for SHADOW audit")
 
         # 2. FX COMPLIANCE: Lock conversion rate at quote time
         locked_fx_rate = self.fx_compliance.get_compliant_fx_rate()
@@ -364,6 +371,7 @@ class PricingEngine:
         return {
             "net": float(resp.waterfall.net_cost),
             "margin": float(resp.waterfall.margin_applied),
+            "gross": float(resp.waterfall.sell_price), # Aligned with patch 4
             "commission": float(resp.waterfall.agent_commission),
             "platform_fee": float(resp.waterfall.platform_fee),
             "gross_before_tax": float(resp.waterfall.sell_price),
@@ -372,5 +380,5 @@ class PricingEngine:
             "final_price": float(resp.final_gross),
             "currency": resp.currency,
             "trace_id": resp.trace_id,
-            "fx_rate": float(self.fx_compliance.get_compliant_fx_rate())
+            "fx_rate": float(resp.fx_rate)
         }
