@@ -50,8 +50,9 @@ class ExecutionGuard:
             if not identity_id:
                 raise PermissionError(f"FAIL CLOSED: Missing Identity for {action_type}")
             # Device binding strictly required for sensitive mutations
-            # Match against STRICT_GUARD_PATHS logic
-            is_strict = any(action_type.startswith(p.strip('/')) for p in STRICT_GUARD_PATHS)
+            # Guard by action name patterns for commerce/finance/procurement
+            sensitive_actions = ["imoxon", "procurement", "fce", "supply"]
+            is_strict = any(s in action_type.lower() for s in sensitive_actions)
             if not device_id and is_strict:
                 raise PermissionError(f"FAIL CLOSED: Missing Device Binding for sensitive action {action_type}")
 
@@ -64,9 +65,13 @@ class ExecutionGuard:
         # 3. Set Sovereign Context (Authorized)
         with self.sovereign_context(actor_context):
             try:
+                # Resolve trace_id for linking Prestige → MAC_EOS
+                trace_id = actor_context.get("trace_id") or str(uuid.uuid4().hex[:8])
+
                 # BEGIN ATOMIC TX
                 serializable_input = [a for a in args if isinstance(a, (str, int, float, dict, list, bool))]
                 intent_payload = {
+                    "trace_id": trace_id,
                     "action": action_type,
                     "actor_aegis_id": identity_id,
                     "actor_device_id": device_id,
@@ -81,6 +86,7 @@ class ExecutionGuard:
 
                 # 4. COMMIT TO SHADOW
                 commit_payload = {
+                    "trace_id": trace_id,
                     "action": action_type,
                     "actor_aegis_id": identity_id,
                     "actor_device_id": device_id,
@@ -92,14 +98,23 @@ class ExecutionGuard:
                 return result
 
             except Exception as e:
+                # Resolve trace_id for rollback log
+                trace_id = actor_context.get("trace_id") or "UNKNOWN"
+
                 # ROLLBACK LOGIC
                 fail_payload = {
+                    "trace_id": trace_id,
                     "action": action_type,
                     "actor_aegis_id": identity_id,
                     "error": str(e),
                     "status": "FAILED_ROLLBACK"
                 }
                 self.shadow.commit(f"{action_type}.failed", identity_id or "UNKNOWN", fail_payload)
+
+                # If it's a validation error, re-raise it directly to trigger 400
+                from mnos.shared.exceptions import ExecutionValidationError
+                if isinstance(e, ExecutionValidationError):
+                    raise e
                 raise RuntimeError(f"SOVEREIGN EXECUTION FAILED: {str(e)}")
 
     @staticmethod

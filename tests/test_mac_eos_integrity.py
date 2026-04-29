@@ -38,7 +38,8 @@ def test_confirm_real_world_fails_for_unknown_order(auth_headers):
     )
 
     # Verify rejection
-    assert response.status_code == 500
+    # Re-raised as 400 now via exception handler
+    assert response.status_code == 400
     assert "ORDER_NOT_FOUND" in response.json()["detail"]
 
     # 2. Verify NO SHADOW write for this order occurred (besides the general failed attempt log)
