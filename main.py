@@ -424,4 +424,9 @@ async def report_privacy_incident(villa_id: str, incident_type: str, details: di
 
 @app.get("/health")
 async def health():
-    return {"status": "online", "integrity": shadow_core.verify_integrity(), "version": "CONSOLIDATED-RC1"}
+    return {
+        "status": "online",
+        "integrity": shadow_core.verify_integrity(),
+        "version": "MAC_EOS_v1_PRODUCTION",
+        "sovereign_status": "LOCKED"
+    }
