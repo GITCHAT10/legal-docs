@@ -6,6 +6,7 @@ from pydantic import BaseModel
 class CreateReservationRequest(BaseModel):
     guest_id: str
     room_type_id: str
+    villa_id: Optional[str] = None
     rate_plan_id: str
     check_in: date
     check_out: date

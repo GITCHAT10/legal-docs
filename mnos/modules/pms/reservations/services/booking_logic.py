@@ -7,11 +7,12 @@ class BookingLogic:
     """
     PMS Booking Logic: Orchestrates reservation state machine and SHADOW audits.
     """
-    def __init__(self, availability_engine, guard, shadow, events):
+    def __init__(self, availability_engine, guard, shadow, events, privacy_engine=None):
         self.availability_engine = availability_engine
         self.guard = guard
         self.shadow = shadow
         self.events = events
+        self.privacy_engine = privacy_engine
         self.reservations: Dict[str, Reservation] = {}
         self.idempotency_store: Dict[str, str] = {} # key -> res_id
 
@@ -27,6 +28,19 @@ class BookingLogic:
 
         def _execute_booking():
             # 1. State Transition: DRAFT -> PENDING
+            # 1. Privacy Premium Enforcement
+            base_amount = booking_data["total_amount"]
+            privacy_multiplier = 1.0
+            privacy_active = False
+            villa_id = booking_data.get("villa_id")
+
+            if self.privacy_engine and villa_id:
+                privacy_multiplier = self.privacy_engine.get_pricing_tier(villa_id)
+                if privacy_multiplier > 1.0:
+                    privacy_active = True
+
+            total_with_premium = base_amount * privacy_multiplier
+
             reservation = Reservation(
                 trace_id=str(uuid.uuid4()),
                 idempotency_key=idempotency_key,
@@ -35,9 +49,17 @@ class BookingLogic:
                 rate_plan_id=booking_data["rate_plan_id"],
                 check_in=booking_data["check_in"],
                 check_out=booking_data["check_out"],
-                total_amount=booking_data["total_amount"],
+                base_amount=base_amount,
+                total_amount=total_with_premium,
+                privacy_multiplier=privacy_multiplier,
+                privacy_premium_active=privacy_active,
                 status="PENDING"
             )
+
+            # Contractual Privacy Clauses
+            if self.privacy_engine and villa_id:
+                reservation.metadata["privacy_legal_clause"] = self.privacy_engine.get_assurance_legal_clause(villa_id)
+                reservation.metadata["villa_id"] = villa_id
 
             # 2. Inventory Lock (Optimistic)
             locked = self.availability_engine.lock_inventory(

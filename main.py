@@ -169,7 +169,7 @@ privacy_engine = PrivacyAssuranceEngine(shadow_core)
 from mnos.modules.pms.reservations.services.availability_engine import AvailabilityEngine
 from mnos.modules.pms.reservations.services.booking_logic import BookingLogic
 pms_availability = AvailabilityEngine(shadow_core)
-pms_booking = BookingLogic(pms_availability, guard, shadow_core, events_core)
+pms_booking = BookingLogic(pms_availability, guard, shadow_core, events_core, privacy_engine=privacy_engine)
 
 # PMS Folio & Billing Engine
 from mnos.modules.pms.folio.services.billing_engine import BillingEngine

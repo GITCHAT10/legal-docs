@@ -15,6 +15,9 @@ class Reservation(BaseModel):
     check_out: date
     status: str = "DRAFT" # DRAFT, PENDING, CONFIRMED, CHECKED_IN, CHECKED_OUT, CANCELLED
     total_amount: float
+    base_amount: Optional[float] = None
+    privacy_multiplier: float = 1.0
+    privacy_premium_active: bool = False
     currency: str = "USD"
     metadata: Dict[str, Any] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
