@@ -49,8 +49,10 @@ class ShadowSovereignLedger:
 
         # Replay Protection
         ikey = payload.get("idempotency_key")
-        if ikey and ikey in self.idempotency_keys:
-            raise ValueError(f"REPLAY REJECTION: Duplicate idempotency_key {ikey} detected.")
+        # For multi-stage events like upos.order.*, we include the stage in the replay check
+        ikey_stage = f"{ikey}:{event_type}" if ikey else None
+        if ikey_stage and ikey_stage in self.idempotency_keys:
+            raise ValueError(f"REPLAY REJECTION: Duplicate idempotency_key {ikey_stage} detected.")
 
         prev_hash = self.chain[-1]["hash"] if self.chain else self.genesis_hash
 
@@ -66,8 +68,8 @@ class ShadowSovereignLedger:
 
         block["hash"] = self._calculate_hash(block)
         self.chain.append(block)
-        if ikey:
-            self.idempotency_keys.add(ikey)
+        if ikey_stage:
+            self.idempotency_keys.add(ikey_stage)
         self._persist_block(block)
         return block["hash"]
 

@@ -11,15 +11,20 @@ class OrcaDashboard:
         total_revenue = 0
         order_count = 0
         for block in chain:
-            if block["event_type"] == "upos.order.completed":
+            if block.get("event_type") == "upos.order.completed":
                 order_count += 1
-                # Standardized safe dictionary access to prevent KeyError
-                pricing = block.get("payload", {}).get("pricing")
-                if pricing:
+                # Standardized safe dictionary access to prevent KeyError (Offline-First resilience)
+                payload = block.get("payload", {})
+                pricing = payload.get("pricing")
+
+                if pricing and isinstance(pricing, dict):
                     total_revenue += pricing.get("total", 0)
+                elif "amount" in payload:
+                    # Fallback for events that have amount but weren't enriched yet (should not happen in completed)
+                    total_revenue += payload.get("amount", 0)
                 else:
                     # Log anomaly for SHADOW audit (Simulated via print or internal log)
-                    print(f"[ANOMALY] Missing pricing in SHADOW block {block['index']}")
+                    print(f"[ANOMALY] Missing pricing in SHADOW block {block.get('index')}")
 
         # P&L Simulation
         payouts = sum(s["net_amount"] for s in self.wallet.settlements.values())

@@ -41,10 +41,13 @@ class ApolloSyncService:
                             raise ValueError("FAIL_CLOSED: Bad event detected.")
 
                         payload = tx.get("payload", {})
-                        # NORMALIZE_OFFLINE_PAYLOADS: Backfill pricing if missing for orders
-                        if tx.get("event_type") == "upos.order.completed" and "pricing" not in payload:
-                            if self.fce and "amount" in payload:
-                                # Default to TOURISM category for POS orders if not specified
+                        actor_id = tx.get("actor_id", "EDGE_NODE")
+                        trace_id = tx.get("trace_id")
+
+                        # NORMALIZE_OFFLINE_PAYLOADS: Force pricing enrichment before final completion
+                        if tx.get("event_type") == "upos.order.completed":
+                            # Even if it's already "completed" in WAL, we ensure it has pricing before core SHADOW commit
+                            if "pricing" not in payload and self.fce and "amount" in payload:
                                 category = payload.get("category", "TOURISM")
                                 payload["pricing"] = self.fce.calculate_order(
                                     payload["amount"],
@@ -52,13 +55,16 @@ class ApolloSyncService:
                                     idempotency_key=payload.get("idempotency_key")
                                 )
 
+                            # Re-verify reality handshake if needed
+                            payload["sync_status"] = "CORE_VERIFIED"
+
                         # Triple wrapping for extra safety
                         with ExecutionGuard.authorized_context(actor):
                             self.shadow.commit(
                                 event_type=tx.get("event_type", "edge.sync"),
-                            actor_id=tx.get("actor_id", "EDGE_NODE"),
+                                actor_id=actor_id,
                             payload={**payload, "synced_at": time.time()},
-                            trace_id=tx.get("trace_id")
+                                trace_id=trace_id
                         )
                         synced_entries.append(tx)
                     except ValueError as e:

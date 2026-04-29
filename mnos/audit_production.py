@@ -29,11 +29,10 @@ def audit_upos():
     if os.path.exists(engine_path):
         with open(engine_path, "r") as f:
             content = f.read()
-            # upos.order.completed should be the only final state event
-            if "upos.order.created" in content:
-                # We allow it in variable names or as internal transient states, but not as the SHADOW event
-                if 'self.shadow.commit("upos.order.created"' in content:
-                    issues.append(f"CRITICAL: {engine_path} still using legacy 'upos.order.created' event for commit")
+            # upos.order.completed should be the final state event.
+            # We now allow upos.order.created and validated as part of the lifecycle.
+            if "upos.order.completed" not in content:
+                issues.append(f"CRITICAL: {engine_path} missing final 'upos.order.completed' event")
 
     # 2b. Check for direct engine calls or missing guards in other modules
     print("[CHECK 2b] Direct Engine Calls & Guard Coverage...")

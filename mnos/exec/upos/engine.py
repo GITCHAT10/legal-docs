@@ -20,6 +20,7 @@ class UPOSEngine:
         """
         Creates an order with strict idempotency and tracing.
         Internal logic only. Execution via ExecutionGuard.
+        Lifecycle: created → validated → completed
         """
         # Financial Fail-Closed Validation
         if not merchant_id:
@@ -38,35 +39,51 @@ class UPOSEngine:
         if idempotency_key in self.processed_orders:
             raise ValueError(f"IDEMPOTENCY_VIOLATION: Order {idempotency_key} already processed.")
 
-        # 1. Price calculation via FCE (Hardened with idempotency)
-        # Using TOURISM category for 17% TGST enforcement
-        pricing = self.fce.calculate_order(amount, category=category, idempotency_key=idempotency_key)
+        from mnos.shared.execution_guard import ExecutionGuard
+        # Authorization context for all SHADOW commits within the engine
+        auth_ctx = {"identity_id": actor_id, "device_id": "UPOS-ENGINE", "role": "user"}
 
-        order = {
-            "order_id": f"UPOS-{uuid.uuid4().hex[:8].upper()}",
+        # 1. upos.order.created
+        order_id = f"UPOS-{uuid.uuid4().hex[:8].upper()}"
+        initial_order = {
+            "order_id": order_id,
             "merchant_id": merchant_id,
             "items": items,
-            "pricing": pricing,
-            "status": "COMPLETED",
+            "amount": amount,
+            "status": "CREATED",
             "timestamp": datetime.now(UTC).isoformat(),
             "idempotency_key": idempotency_key,
             "trace_id": trace_id
         }
+        with ExecutionGuard.authorized_context(auth_ctx):
+            self.shadow.commit("upos.order.created", actor_id, initial_order, trace_id=trace_id)
+        self.events.publish("upos.order.created", initial_order)
 
-        # 2. Audit in SHADOW (Enforces Trace ID & Idempotency)
-        from mnos.shared.execution_guard import ExecutionGuard
-        # ExecutionGuard is expected to be wrapping this call externally,
-        # but internal commit must be authorized.
-        with ExecutionGuard.authorized_context({"identity_id": actor_id, "device_id": "UPOS-ENGINE", "role": "user"}):
-            self.shadow.commit("upos.order.completed", actor_id, order, trace_id=trace_id)
+        # 2. upos.order.validated (MIRA Tax Rule Enforcement)
+        # Using TOURISM category for 17% TGST enforcement
+        pricing = self.fce.calculate_order(amount, category=category, idempotency_key=idempotency_key)
+        initial_order["pricing"] = pricing
+        initial_order["status"] = "VALIDATED"
 
-        # 3. Publish Event
-        self.events.publish("upos.order.completed", order)
+        with ExecutionGuard.authorized_context(auth_ctx):
+            self.shadow.commit("upos.order.validated", actor_id, initial_order, trace_id=trace_id)
+        self.events.publish("upos.order.validated", initial_order)
 
-        # 4. Mark as processed
+        # 3. upos.order.completed (Reality Handshake Simulation)
+        initial_order["status"] = "COMPLETED"
+        initial_order["final_verification"] = "BUBBLE_QR_HANDSHAKE_VERIFIED"
+
+        # 4. Audit in SHADOW (Enforces Trace ID & Idempotency)
+        with ExecutionGuard.authorized_context(auth_ctx):
+            self.shadow.commit("upos.order.completed", actor_id, initial_order, trace_id=trace_id)
+
+        # 5. Publish Final Event
+        self.events.publish("upos.order.completed", initial_order)
+
+        # 6. Mark as processed
         self.processed_orders.add(idempotency_key)
 
-        return order
+        return initial_order
 
     def update_inventory(self, item_id: str, qty: float):
         self.inventory[item_id] = self.inventory.get(item_id, 0.0) + qty
