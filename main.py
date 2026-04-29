@@ -63,6 +63,7 @@ from mnos.api.heatmap import create_heatmap_router
 from mnos.api.laundry import create_laundry_router
 from mnos.api.orca import create_orca_router
 from mnos.api.imoxon.booking_gate import create_booking_gate_router
+from mnos.api.upos import create_upos_router
 from mnos.api.pms.reservations import create_pms_router
 from mnos.api.pms.folio import create_folio_router
 
@@ -77,6 +78,9 @@ from mnos.modules.bubble.orchestrator import OrderExecutionValidator
 # ExMail Communication OS
 from mnos.modules.exmail.service import ExMailEngine
 from mnos.modules.exmail.escalation import EscalationEngine
+
+# UPOS Engine
+from mnos.modules.upos.engine.engine import UPOSEngine, UPOSWalletLedger
 
 # SILENT SHIELD
 from mnos.modules.silent_shield.edge import SilentShieldEdge
@@ -169,6 +173,10 @@ escalation_engine = EscalationEngine(shadow_core, events_core)
 shield_edge = SilentShieldEdge(shadow_core, events_core)
 privacy_engine = PrivacyAssuranceEngine(shadow_core)
 
+# UPOS Activation
+upos_ledger = UPOSWalletLedger(shadow_core, events_core)
+upos_engine = UPOSEngine(guard, fce_core, shadow_core, events_core, upos_ledger)
+
 # Booking Gate & UT Bridge
 ut_bridge = UTBridge(guard, shadow_core, events_core)
 from mnos.modules.pms.reservations.services.availability_engine import AvailabilityEngine
@@ -179,7 +187,8 @@ pms_booking = BookingLogic(pms_availability, guard, shadow_core, events_core, pr
 booking_gate = BookingGateEngine(
     guard, shadow_core, events_core,
     pms_booking, pms_availability, ut_bridge,
-    iluvia_orchestrator
+     iluvia_orchestrator,
+     upos_engine=upos_engine
 )
 
 
@@ -374,6 +383,7 @@ app.include_router(create_b2b_portal_router(mars_unified, b2b_negotiator, get_ac
 app.include_router(create_heatmap_router(heatmap_engine, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_laundry_router(laundry_engine, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_booking_gate_router(booking_gate, get_actor_ctx), prefix="/imoxon")
+app.include_router(create_upos_router(upos_engine, upos_ledger, get_actor_ctx), prefix="/upos")
 app.include_router(create_orca_router(hospitality, bpe, shadow_core, get_actor_ctx), prefix="/orca")
 app.include_router(create_pms_router(pms_booking, pms_availability, get_actor_ctx), prefix="/pms")
 app.include_router(create_folio_router(pms_folio, get_actor_ctx), prefix="/pms/folio")

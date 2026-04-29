@@ -8,7 +8,7 @@ class BookingGateEngine:
     MAC_EOS_SOVEREIGN_BOOKING_GATE
     Governs the P0 fail-closed booking lifecycle between Prestige and iMOXON Execution Core.
     """
-    def __init__(self, guard, shadow, events, pms_booking, pms_availability, ut_bridge, bubble_orchestrator):
+    def __init__(self, guard, shadow, events, pms_booking, pms_availability, ut_bridge, bubble_orchestrator, upos_engine=None):
         self.guard = guard
         self.shadow = shadow
         self.events = events
@@ -16,6 +16,7 @@ class BookingGateEngine:
         self.pms_availability = pms_availability
         self.ut_bridge = ut_bridge
         self.bubble_orchestrator = bubble_orchestrator
+        self.upos_engine = upos_engine
         self.booking_states = {} # booking_id -> status_data
 
     def ingest_booking_intent(self, actor_ctx: dict, prestige_data: dict):
