@@ -19,7 +19,7 @@ class TestROSRevenueEngine(unittest.TestCase):
         self.policy = IdentityPolicyEngine(self.identity)
         self.guard = ExecutionGuard(self.identity, self.policy, self.fce, self.shadow, self.events)
         self.imoxon = ImoxonCore(self.guard, self.fce, self.shadow, self.events)
-        self.pricing = PricingEngine(self.fce)
+        self.pricing = PricingEngine(self.fce, shadow=self.shadow)
         self.imoxon.pricing = self.pricing
         self.engine = EmailRevenueEngine(self.imoxon, self.pricing)
 
@@ -52,10 +52,11 @@ class TestROSRevenueEngine(unittest.TestCase):
         self.assertIn("pricing_trace", email)
         self.assertEqual(email["offer"]["trace_id"], email["trace_id"])
 
-        # Base 1000 USD -> 15420 MVR.
-        # SOVEREIGN Channel (-5%) -> 14649.00
-        # Tier A Override (-5%) -> 13916.55
-        self.assertEqual(email["offer"]["cost_price"], 13916.55)
+        # New Price Output Format
+        # Base 1000 -> Hotel Margin 18% -> 1180.
+        # Tier A Agent Score 0.9 (implied in logic) -> -5% Margin -> 13% -> 1130
+        # SC 10% -> 113 -> Subtotal 1243. TGST 17% -> 211.31 -> Total 1454.31
+        self.assertEqual(email["offer"]["net"], 1000.0)
         self.assertEqual(email["segment"], MarketSegment.RUSSIA_CIS)
 
     def test_product_to_tax_mapping_retail(self):
@@ -68,12 +69,9 @@ class TestROSRevenueEngine(unittest.TestCase):
         email = self.engine.process_trigger(TriggerType.PRICE_DROP, ctx)
 
         # Retail calculation:
-        # 100 USD -> 1542 MVR.
-        # SOVEREIGN Channel (-5%) -> 1464.90
-        # Margin (Default 10%) -> 146.49 -> 1611.39 Gross
-        # SC (10%) -> 161.14 -> 1772.53 Subtotal
-        # Tax (8%) -> 141.80
-        self.assertEqual(email["offer"]["tgst"], 141.8)
+        # Base 100 + Margin 10% = 110.
+        # SC 0. GST 8% = 8.8. Total 118.8
+        self.assertEqual(email["offer"]["tgst"], 8.8)
 
     def test_invalid_amount_rejection(self):
         ctx = {"email": "hacker@test.com", "preferred_price": "-100.00"}

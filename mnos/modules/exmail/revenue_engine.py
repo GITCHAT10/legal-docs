@@ -188,6 +188,7 @@ class EmailRevenueEngine:
             allotment_override = Decimal("0.05")
 
         # 3. AUTHORITY CALL: Pricing Engine is the Source of Truth
+        # Pass agent metrics for AI-driven dynamic pricing
         return self.pricing.calculate_quote(
             net_amount=base_net,
             currency=user_ctx.get("currency", "USD"),
@@ -196,12 +197,14 @@ class EmailRevenueEngine:
             tax_type=tax_type,
             channel=channel,
             agent_type=agent_type,
-            allotment_override_pct=allotment_override
+            allotment_override_pct=allotment_override,
+            aegis_ctx={"identity_id": "SYSTEM", "role": "admin", "device_id": "SYSTEM_VIRTUAL"}
         )
 
     def _send_revenue_email(self, subject: str, deal: dict, user_ctx: dict, segment: MarketSegment, trigger: TriggerType):
         email_id = f"REV-{uuid.uuid4().hex[:8].upper()}"
-        trace_id = deal["breakdown"]["trace_id"]
+        # Compatibility with new PricingResponse dict format
+        trace_id = deal.get("trace_id")
 
         email_payload = {
             "email_id": email_id,
@@ -209,8 +212,8 @@ class EmailRevenueEngine:
             "subject": subject,
             "segment": segment.value,
             "trigger": trigger.value,
-            "offer": deal["breakdown"], # Full breakdown (net, margin, commission, tax)
-            "pricing_trace": deal["price_trace"], # ROS Compliance
+            "offer": deal, # Full breakdown (net, margin, commission, tax)
+            "pricing_trace": {"trace_id": trace_id}, # ROS Compliance
             "trace_id": trace_id,
             "status": "SENT",
             "timestamp": datetime.now(UTC).isoformat()

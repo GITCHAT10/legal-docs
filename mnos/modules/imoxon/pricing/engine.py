@@ -3,7 +3,7 @@ import hashlib
 import structlog
 from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
 from pydantic import BaseModel, Field, field_validator
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, List
 from datetime import datetime, timezone
 from enum import Enum
 
@@ -42,6 +42,8 @@ class PricingContext(BaseModel, extra="allow"):
     currency: Optional[str] = "USD"
     tax_context: Optional[str] = None
     agent_id: Optional[str] = None
+    agent_score: Optional[float] = 0.5
+    competitor_price: Optional[Decimal] = None
 
 class PricingRequest(BaseModel):
     net_amount: Decimal = Field(gt=0)
@@ -79,8 +81,10 @@ class PricingResponse(BaseModel):
     tax: TaxBreakdown
     final_gross: Decimal
     currency: str
+    fx_rate: Decimal
     timestamp: datetime
     compliance_hash: str
+    bundles_applied: List[str] = []
 
 # ─────────────────────────────────────────────────────────────
 # 2. CONFIG & GUARDRAILS
@@ -135,16 +139,49 @@ class PricingEngine:
             raise FailClosed("INVALID_TAX_CONTEXT")
 
     def _scale_margin(self, base_pct: Decimal, context: PricingContext) -> Decimal:
-        """Dynamic margin scaling based on allotment & trigger context"""
+        """Dynamic margin scaling based on allotment, trigger, and agent score."""
         pct = base_pct
+
+        # 1. Allotment scaling
         if context.allotment_pct is not None:
             if context.allotment_pct < 20:
                 pct += Decimal("0.05")  # Urgency premium
             elif context.allotment_pct > 65:
                 pct -= Decimal("0.03")  # Volume discount
+
+        # 2. Trigger scaling
         if context.trigger == "price_drop":
             pct -= Decimal("0.02")
+
+        # 3. Dynamic Agent Pricing (ENABLE_AGENT_DYNAMIC_MARGIN)
+        agent_score = context.agent_score or 0.5
+        # Top performers (score > 0.8) get up to 5% margin cut
+        if agent_score > 0.8:
+            pct -= Decimal("0.05")
+        elif agent_score < 0.3:
+            pct += Decimal("0.03") # Low performance premium
+
         return max(pct, Decimal("0.05"))  # Floor 5%
+
+    def _apply_market_adjustment(self, sell_price: Decimal, net_cost: Decimal, context: PricingContext) -> Decimal:
+        """Market awareness: auto-adjust margin if competitor is lower (ENABLE_MARKET_ADJUSTMENT_LOGIC)."""
+        if context.competitor_price and context.competitor_price < sell_price:
+            # Can we match it without dropping below 5% margin?
+            min_allowed = (net_cost * Decimal("1.05")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            return max(context.competitor_price, min_allowed)
+        return sell_price
+
+    def _resolve_bundles(self, product_type: str, margin_pct: Decimal) -> List[str]:
+        """ENABLE_BUNDLE_INSTEAD_OF_DISCOUNT logic."""
+        bundles = []
+        # If margin is healthy (>15%), add a value-add bundle instead of dropping price
+        if margin_pct >= Decimal("0.15"):
+            if product_type == "accommodation":
+                bundles.append("FREE_TRANSFER_UPGRADE")
+                bundles.append("EARLY_CHECKIN")
+            elif product_type == "activity":
+                bundles.append("EQUIPMENT_INCLUDED")
+        return bundles
 
     def _convert_currency(self, amount: Decimal, target: str) -> Decimal:
         rate = FX_RATES.get(target, Decimal("1.00"))
@@ -185,7 +222,18 @@ class PricingEngine:
         base_margin = MARGIN_BANDS.get(req.product_type, Decimal("0.10"))
         applied_margin = self._scale_margin(base_margin, req.context)
         margin_amount = (req.net_amount * applied_margin).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        sell_price = req.net_amount + margin_amount
+
+        # 6. Sell Price & Market Adjustment
+        initial_sell_price = req.net_amount + margin_amount
+        sell_price = self._apply_market_adjustment(initial_sell_price, req.net_amount, req.context)
+
+        # Recalculate margin_amount if adjusted
+        if sell_price != initial_sell_price:
+            margin_amount = sell_price - req.net_amount
+            applied_margin = (margin_amount / req.net_amount).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
+
+        # 7. Bundle Logic
+        bundles = self._resolve_bundles(req.product_type, applied_margin)
 
         # 6. Commission Waterfall
         agent_comm = (sell_price * COMMISSION_RATES["agent"]).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
@@ -249,8 +297,10 @@ class PricingEngine:
             tax=tax,
             final_gross=final_gross_display,
             currency=display_currency,
+            fx_rate=locked_fx_rate,
             timestamp=datetime.now(timezone.utc),
-            compliance_hash=compliance_hash
+            compliance_hash=compliance_hash,
+            bundles_applied=bundles
         )
 
         # 5. 🧠 SHADOW AUDIT LOCK

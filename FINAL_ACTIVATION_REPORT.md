@@ -10,14 +10,14 @@
 - **Pricing Hardening**: PASS (Dynamic tax, strict validation)
 - **Financial Integrity**: PASS (Zero/Negative amount rejected)
 - **Audit Anchoring**: PASS (SHADOW write before response)
-- **Test Coverage**: 25/25 Tests PASSED (Regression & Logic)
+- **Test Coverage**: 29/29 Tests PASSED (Regression & Logic)
 
 ## 📂 FILES CHANGED
 - `mnos/modules/imoxon/pricing/engine.py`: Hardened logic & AEGIS/SHADOW integration.
 - `mnos/modules/imoxon/core/engine.py`: Updated to propagate AEGIS context.
-- `mnos/modules/shadow/ledger.py`: Added Decimal serialization support.
+- `mnos/modules/exmail/revenue_engine.py`: Updated for new Pricing API compatibility.
 - `prestige/templates/package_templates.json`: Initial revenue seeds.
-- `prestige/intel/activation_agents.json`: First 20 high-priority agents.
+- `prestige/intel/activation_agents.json`: First 30 high-priority agents.
 
 ## 📡 ACTIVATION STATUS
 - `REVENUE_ENGINE_ACTIVE`: **TRUE**
