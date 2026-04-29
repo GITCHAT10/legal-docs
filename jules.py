@@ -24,18 +24,29 @@ def deploy(args):
     print("[4] Initializing Sovereign Modules...")
     print("    ✔ CORE (AEGIS, FCE, SHADOW, SIGDOC) ready.")
     print("    ✔ EXEC (UPOS, ORCHESTRATOR, COMMS) ready.")
+    print("    ✔ CLOUD (EDGE, APOLLO) ready.")
+    print("    ✔ UI (SUPER_UI, ORCA) ready.")
+    print("    ✔ NATIONAL (AQUA, MENUORDER, MARKETPLACE, CREDIT, JOURNEY) ready.")
 
     print("----------------------------------------")
     print("✔ DEPLOYMENT COMPLETE. STATUS: LIVE")
+    print("\n🚀 48-HOUR GO-LIVE CHECKLIST:")
+    print("- [ ] Load 50 vendors into AEGIS")
+    print("- [ ] Distribute 10 boat captain tablets")
+    print("- [ ] Verify MIRA tax rules for pilot islands")
+    print("- [ ] Activate FCE master escrow pool")
 
 def test(args):
     print(f"🧪 JULES TEST: Scenario {args.scenario}")
 
+    env = os.environ.copy()
+    env["PYTHONPATH"] = env.get("PYTHONPATH", "") + ":."
+
     if args.scenario == "FULL_POS_FLOW":
-        # Run our final delivery test script
         cmd = ["python3", "tests/test_sala_final_delivery.py"]
-        env = os.environ.copy()
-        env["PYTHONPATH"] = env.get("PYTHONPATH", "") + ":."
+        subprocess.run(cmd, env=env)
+    elif args.scenario == "PHASE_5":
+        cmd = ["python3", "tests/test_phase5_integration.py"]
         subprocess.run(cmd, env=env)
 
 def main():

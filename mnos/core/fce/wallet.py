@@ -122,6 +122,55 @@ class FceWalletService:
 
         return {"processed": False, "status": payload.get("status")}
 
+    def record_verified_payment(self, event: Dict[str, Any], trace_id: str) -> Dict[str, Any]:
+        """
+        Processes a Universal Verified Payment Event.
+        Credits vendor wallet and records 1% fee.
+        """
+        tx_id = f"{event['provider']}-{event['transaction_id']}"
+        actor_id = event["merchant_id"]
+        amount = Decimal(str(event["amount_mvr"]))
+
+        if tx_id in self.webhook_log:
+            return {"processed": True, "duplicate": True}
+
+        account = self.get_or_create_account(actor_id)
+
+        # 1. Platform Fee Calculation (1%)
+        fee = (amount * Decimal("0.01")).quantize(Decimal("0.01"), ROUND_HALF_UP)
+        net_credit = amount - fee
+
+        # 2. Update Balance
+        new_balance = account["balance"] + net_credit
+        account["balance"] = new_balance
+        account["updated_at"] = datetime.now(UTC).isoformat()
+        self._persist_accounts()
+
+        # 3. Ledger Entries
+        # Credit Entry (Full amount received)
+        credit_entry = {
+            "id": str(uuid.uuid4()),
+            "transaction_id": tx_id,
+            "account_id": account["id"],
+            "entry_type": "credit",
+            "amount": float(amount),
+            "balance_after": float(new_balance), # Simplified
+            "event_type": "qr_payment_verified",
+            "metadata": {"provider": event["provider"], "fee": float(fee)},
+            "created_at": datetime.now(UTC).isoformat()
+        }
+        self.ledger.append(credit_entry)
+        self._persist_ledger_entry(credit_entry)
+
+        # 4. Shadow Audit
+        self.shadow.commit("fce.payment_confirmed", actor_id, credit_entry, trace_id=trace_id)
+
+        # 5. Notify UPOS
+        self.events.publish("upos.order.paid", {"invoice_id": event["invoice_id"], "amount": float(amount)})
+
+        self.webhook_log[tx_id] = "PROCESSED"
+        return {"processed": True, "duplicate": False, "net_credit": float(net_credit)}
+
     def request_withdrawal(self, actor_id: str, amount_mvr: float, bank_hash: str, trace_id: str) -> Dict[str, Any]:
         """
         Requests a bank settlement with 1% platform fee.

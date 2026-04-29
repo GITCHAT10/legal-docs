@@ -29,14 +29,16 @@ def create_upos_router(upos_engine, edge_node, get_actor_ctx):
                 })
             return {"status": "OFFLINE_QUEUED", "detail": res}
 
-        with ExecutionGuard.authorized_context(actor):
-            return upos_engine.create_order(
-                merchant_id=data.get("merchant_id"),
-                actor_id=actor["identity_id"],
-                items=data.get("items"),
-                amount=data.get("amount"),
-                idempotency_key=idempotency_key,
-                trace_id=trace_id
-            )
+        return guard.execute_sovereign_action(
+            action_type="upos.order.created",
+            actor_context={**actor, "trace_id": trace_id},
+            func=upos_engine.create_order,
+            merchant_id=data.get("merchant_id"),
+            actor_id=actor["identity_id"],
+            items=data.get("items"),
+            amount=data.get("amount"),
+            idempotency_key=idempotency_key,
+            trace_id=trace_id
+        )
 
     return router

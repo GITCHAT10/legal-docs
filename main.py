@@ -63,6 +63,7 @@ from mnos.api.heatmap import create_heatmap_router
 from mnos.api.laundry import create_laundry_router
 from mnos.api.upos import create_upos_router
 from mnos.api.fce_v1 import create_fce_v1_router
+from mnos.api.fce_gateway import create_fce_gateway_router
 
 # Bubble OS Super App Layer
 from mnos.modules.bubble.chat.engine import ChatIntentEngine, ChatToTransactionEngine
@@ -251,6 +252,8 @@ async def chat_message(message: str, actor: dict = Depends(get_actor_ctx)):
 # SALA Node Extensions
 from mnos.core.fce.service import FCESovereignService
 from mnos.core.fce.wallet import FceWalletService
+from mnos.core.fce.gateway.engine import UniversalBankGateway
+from mnos.core.fce.gateway.adapters.main_banks import BMLAdapter, MCBAdapter, PayMVRAdapter
 from mnos.core.shadow.service import ShadowSovereignLedger
 from mnos.core.doc.engine import SigDocEngine
 from mnos.exec.comms.engine import CommsEngine
@@ -265,6 +268,10 @@ sigdoc_engine = SigDocEngine(shadow_sovereign)
 comms_engine = CommsEngine(events_core)
 orchestrator_svc = OrchestratorService(events_core)
 orca_dashboard = OrcaDashboard(shadow_sovereign, fce_wallet)
+fce_gateway = UniversalBankGateway(fce_wallet)
+fce_gateway.register_adapter("bml", BMLAdapter())
+fce_gateway.register_adapter("mcb", MCBAdapter())
+fce_gateway.register_adapter("paymvr", PayMVRAdapter())
 
 upos_engine = UPOSEngine(fce_sovereign, shadow_sovereign, events_core)
 edge_node = EdgeNode(node_id=os.environ.get("NODE_ID", "SALA-GENERIC"))
@@ -277,8 +284,9 @@ orchestrator_svc.register_handler(
 )
 
 # --- Routers ---
-app.include_router(create_upos_router(upos_engine, edge_node, get_actor_ctx), prefix="/imoxon")
+app.include_router(create_upos_router(guard, upos_engine, edge_node, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_fce_v1_router(fce_wallet, get_actor_ctx), prefix="/imoxon/fce/v1")
+app.include_router(create_fce_gateway_router(fce_gateway, get_actor_ctx), prefix="/imoxon/fce/gateway")
 app.include_router(create_identity_router(identity_core, policy_engine, identity_gateway), prefix="/imoxon")
 app.include_router(create_commerce_router(imoxon, catalog, merchant, pos, procurement, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_finance_router(fce_hardened, mira_bridge, get_actor_ctx), prefix="/imoxon")

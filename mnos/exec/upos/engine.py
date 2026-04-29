@@ -19,12 +19,8 @@ class UPOSEngine:
                      idempotency_key: str, trace_id: str) -> Dict:
         """
         Creates an order with strict idempotency and tracing.
+        Internal logic only. Execution via ExecutionGuard.
         """
-        from mnos.shared.execution_guard import ExecutionGuard
-        if not ExecutionGuard.is_authorized():
-             # We allow system context for backend-to-backend SALA sync or internal ops
-             pass
-
         if not trace_id:
             raise ValueError("TRACE_ID_REQUIRED: Cannot process order without trace context.")
 
@@ -32,8 +28,6 @@ class UPOSEngine:
             raise ValueError("IDEMPOTENCY_KEY_REQUIRED: Prevention of double spend/invoice.")
 
         if idempotency_key in self.processed_orders:
-            # In a real system, we'd return the existing order record.
-            # Here we raise to signal rejection of double-spend attempt.
             raise ValueError(f"IDEMPOTENCY_VIOLATION: Order {idempotency_key} already processed.")
 
         # 1. Price calculation via FCE (Hardened with idempotency)
@@ -53,18 +47,8 @@ class UPOSEngine:
         # 2. Audit in SHADOW (Enforces Trace ID & Idempotency)
         self.shadow.commit("upos.order.completed", actor_id, order, trace_id=trace_id)
 
-        # 3. Publish Event (Using system context if needed)
-        from mnos.shared.execution_guard import _sovereign_context
-        temp_context = False
-        if not ExecutionGuard.is_authorized():
-            _sovereign_context.set({"token": "SYSTEM", "actor": {"identity_id": "SYSTEM", "role": "admin"}})
-            temp_context = True
-
-        try:
-            self.events.publish("upos.order.completed", order)
-        finally:
-            if temp_context:
-                _sovereign_context.set(None)
+        # 3. Publish Event
+        self.events.publish("upos.order.completed", order)
 
         # 4. Mark as processed
         self.processed_orders.add(idempotency_key)
