@@ -76,6 +76,7 @@ from mnos.modules.exmail.escalation import EscalationEngine
 
 # SILENT SHIELD
 from mnos.modules.silent_shield.edge import SilentShieldEdge
+from mnos.modules.silent_shield.privacy_engine import PrivacyAssuranceEngine
 from mnos.shared.visibility.tier_gate import TierGate, get_channel
 
 app = FastAPI(title="iMOXON N-DEOS: Consolidated Architecture Final")
@@ -162,6 +163,7 @@ escalation_engine = EscalationEngine(shadow_core, events_core)
 
 # SILENT SHIELD
 shield_edge = SilentShieldEdge(shadow_core, events_core)
+privacy_engine = PrivacyAssuranceEngine(shadow_core)
 
 # PMS Reservation Engine
 from mnos.modules.pms.reservations.services.availability_engine import AvailabilityEngine
@@ -376,29 +378,46 @@ async def runtime_error_handler(request: Request, exc: RuntimeError):
 
 @app.get("/imoxon/inventory/rooms")
 async def get_rooms(channel: str = Depends(get_channel)):
-    """Sample route with SILENT SHIELD Tier Gating."""
-    # Mock inventory
+    """Sample route with SILENT SHIELD Tier Gating & Privacy Premium."""
+    # Mock inventory linked to Privacy Engine
     rooms = [
-        {"id": "R1", "name": "Standard Room", "tier": "BASE", "bundle_eligible": False},
-        {"id": "R2", "name": "Deluxe Suite", "tier": "ENHANCED", "bundle_eligible": True},
-        {"id": "R3", "name": "VVIP ALPHA Villa", "tier": "ALPHA", "bundle_eligible": True}
+        {"id": "R1", "name": "Standard Room", "tier": "BASE", "bundle_eligible": False, "price": 500, "villa_id": "ST-201"},
+        {"id": "R2", "name": "Deluxe Suite", "tier": "ENHANCED", "bundle_eligible": True, "price": 1200, "villa_id": "SV-101"},
+        {"id": "R3", "name": "VVIP ALPHA Villa", "tier": "ALPHA", "bundle_eligible": True, "price": 5000, "villa_id": "SV-102"}
     ]
 
     visible_rooms = []
     for r in rooms:
         # Check eligibility for bundle if suite/villa
         gate_res = TierGate.apply_gate(channel, r["tier"], bundle_requested=r["bundle_eligible"])
-        if gate_res["status"] == "AUTHORIZED":
-            visible_rooms.append(r)
-        elif gate_res["status"] == "ROOM_ONLY":
-            # Strip bundle features if only ROOM_ONLY authorized
+
+        if gate_res["status"] in ["AUTHORIZED", "ROOM_ONLY"]:
             r_clean = r.copy()
-            r_clean["bundle_eligible"] = False
-            r_clean["note"] = gate_res["message"]
+
+            # Apply Privacy Premium Pricing
+            multiplier = privacy_engine.get_pricing_tier(r["villa_id"])
+            r_clean["base_price"] = r["price"]
+            r_clean["total_price"] = r["price"] * multiplier
+            r_clean["privacy_multiplier"] = multiplier
+            r_clean["legal_clause"] = privacy_engine.get_assurance_legal_clause(r["villa_id"])
+
+            if gate_res["status"] == "ROOM_ONLY":
+                r_clean["bundle_eligible"] = False
+                r_clean["note"] = gate_res["message"]
+
             visible_rooms.append(r_clean)
-        # LIMITED_INVENTORY results in room being hidden or replaced by BASE
 
     return visible_rooms
+
+@app.post("/bubble/privacy/report-incident")
+async def report_privacy_incident(villa_id: str, incident_type: str, details: dict, actor: dict = Depends(get_actor_ctx)):
+    """SALA Privacy Assurance: Report and log incident to SHADOW."""
+    return guard.execute_sovereign_action(
+        "privacy.assurance.report",
+        actor,
+        privacy_engine.log_privacy_incident,
+        villa_id, incident_type, details
+    )
 
 @app.get("/health")
 async def health():
