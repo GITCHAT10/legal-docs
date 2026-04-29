@@ -166,35 +166,45 @@ def get_actor_ctx(
     LOGS all attempts to SHADOW ledger.
     """
     # Prefer Session-based Auth from Gateway
+    from mnos.shared.execution_guard import ExecutionGuard
+    import uuid
+    system_actor = {"identity_id": "SYSTEM", "device_id": "AUTH-GATEWAY", "role": "admin"}
+
     if x_aegis_session:
         try:
             actor = identity_gateway.validate_session(x_aegis_session)
-            shadow_core.commit("aegis.auth.session.success", actor["identity_id"], {"session_id": x_aegis_session})
+            with ExecutionGuard.authorized_context(system_actor):
+                shadow_core.commit("aegis.auth.session.success", actor["identity_id"], {"session_id": x_aegis_session}, trace_id=f"TR-AUTH-SES-{x_aegis_session}")
             return actor
         except PermissionError as e:
-            shadow_core.commit("aegis.auth.session.failure", "UNKNOWN", {"reason": str(e)})
+            with ExecutionGuard.authorized_context(system_actor):
+                shadow_core.commit("aegis.auth.session.failure", "UNKNOWN", {"reason": str(e)}, trace_id=f"TR-AUTH-FAIL-{uuid.uuid4().hex[:6]}")
             raise HTTPException(status_code=403, detail=str(e))
 
     # Fallback to Direct Hardened Handshake (B2B / API)
     if not x_aegis_identity or not x_aegis_device or not x_aegis_signature:
-        shadow_core.commit("aegis.auth.direct.failure", "UNKNOWN", {"reason": "Missing Headers"})
+        with ExecutionGuard.authorized_context(system_actor):
+            shadow_core.commit("aegis.auth.direct.failure", "UNKNOWN", {"reason": "Missing Headers"}, trace_id=f"TR-AUTH-MISSING-{uuid.uuid4().hex[:6]}")
         raise HTTPException(status_code=401, detail="AEGIS_REQUIRED: Missing Identity, Device or Signature")
 
     # 1. Identity lookup via AEGIS registry (persistence)
     profile = identity_core.profiles.get(x_aegis_identity)
     if not profile:
-        shadow_core.commit("aegis.auth.identity.invalid", x_aegis_identity, {"reason": "Not in Registry"})
+        with ExecutionGuard.authorized_context(system_actor):
+            shadow_core.commit("aegis.auth.identity.invalid", x_aegis_identity, {"reason": "Not in Registry"}, trace_id=f"TR-AUTH-INV-{x_aegis_identity}")
         raise HTTPException(status_code=401, detail="INVALID_IDENTITY: Unauthorized")
 
     # 2. Validate device binding (device.owner_id == identity.id)
     device = identity_core.devices.get(x_aegis_device)
     if not device or device.get("identity_id") != x_aegis_identity:
-        shadow_core.commit("aegis.auth.device.mismatch", x_aegis_identity, {"device_id": x_aegis_device})
+        with ExecutionGuard.authorized_context(system_actor):
+            shadow_core.commit("aegis.auth.device.mismatch", x_aegis_identity, {"device_id": x_aegis_device}, trace_id=f"TR-AUTH-DEV-MIS-{x_aegis_identity}")
         raise HTTPException(status_code=403, detail="DEVICE_BINDING_INVALID: Access Denied")
 
     # 3. Cryptographic Signature Validation
     if x_aegis_signature != f"VALID_SIG_FOR_{x_aegis_identity}":
-         shadow_core.commit("aegis.auth.sig.failed", x_aegis_identity, {"sig": x_aegis_signature})
+         with ExecutionGuard.authorized_context(system_actor):
+             shadow_core.commit("aegis.auth.sig.failed", x_aegis_identity, {"sig": x_aegis_signature}, trace_id=f"TR-AUTH-SIG-FAIL-{x_aegis_identity}")
          raise HTTPException(status_code=403, detail="HANDSHAKE_FAILED: Invalid Signature")
 
     # 4. Success: Derive role from database (NO HEADER TRUST)
@@ -208,13 +218,15 @@ def get_actor_ctx(
         "verified": profile.get("verification_status") == "verified",
         "persistent_hash": profile.get("persistent_identity_hash")
     }
-    shadow_core.commit("aegis.auth.direct.success", x_aegis_identity, {"role": actor["role"]})
+    with ExecutionGuard.authorized_context(system_actor):
+        shadow_core.commit("aegis.auth.direct.success", x_aegis_identity, {"role": actor["role"]}, trace_id=f"TR-AUTH-SUCCESS-{x_aegis_identity}")
     return actor
 
 # --- Consolidated APIs ---
 
 @app.post("/imoxon/suppliers/connect")
-async def connect_supplier(name: str, actor: dict = Depends(get_actor_ctx)):
+async def connect_supplier(data: dict, actor: dict = Depends(get_actor_ctx)):
+    name = data.get("name")
     # Create a profile in Aegis for the supplier to get a real ID
     supplier_id = identity_core.create_profile({
         "full_name": name,
@@ -227,6 +239,7 @@ async def connect_supplier(name: str, actor: dict = Depends(get_actor_ctx)):
         "imoxon.supplier.connect",
         actor,
         lambda: {
+            "id": supplier_id,
             "supplier_id": supplier_id,
             "name": name,
             "status": "CONNECTED",
@@ -239,12 +252,23 @@ async def imoxon_create_order(data: dict, actor: dict = Depends(get_actor_ctx)):
     return procurement.create_purchase_request(actor, data.get("items"), data.get("amount"))
 
 @app.post("/imoxon/products/import")
-async def import_product(sid: str, raw: dict, actor: dict = Depends(get_actor_ctx)):
-    return catalog.import_supplier_product(actor, sid, raw)
+async def import_product(sid: str, raw: List[dict], actor: dict = Depends(get_actor_ctx)):
+    results = []
+    for item in raw:
+        results.append(catalog.import_supplier_product(actor, sid, item))
+    return {"products": results}
 
 @app.post("/imoxon/products/approve")
 async def approve_product(pid: str, actor: dict = Depends(get_actor_ctx)):
     return catalog.approve_product(actor, pid)
+
+@app.get("/imoxon/catalog")
+async def get_catalog(actor: dict = Depends(get_actor_ctx)):
+    return list(catalog.products.keys())
+
+@app.post("/imoxon/pricing/landed-cost")
+async def get_landed_cost(base: float, cat: str, actor: dict = Depends(get_actor_ctx)):
+    return fce_core.calculate_local_order(Decimal(str(base)), cat)
 
 @app.post("/bubble/chat/message")
 async def chat_message(message: str, actor: dict = Depends(get_actor_ctx)):

@@ -33,10 +33,12 @@ class CreditRiskEngine:
         # Ledger Update via FCE Wallet
         # 1. Deduct from customer (Negative balance)
         # 2. Credit vendor (Immediate payout from platform reserve)
-
-        self.shadow.commit("credit.granted", customer_id, {
-            "vendor_id": vendor_id,
-            "amount": amount_mvr
-        }, trace_id=trace_id)
+        from mnos.shared.execution_guard import ExecutionGuard
+        actor = {"identity_id": "SYSTEM", "device_id": "CREDIT-ENGINE", "role": "admin"}
+        with ExecutionGuard.authorized_context(actor):
+            self.shadow.commit("credit.granted", customer_id, {
+                "vendor_id": vendor_id,
+                "amount": amount_mvr
+            }, trace_id=trace_id)
 
         return {"status": "CREDIT_GRANTED"}

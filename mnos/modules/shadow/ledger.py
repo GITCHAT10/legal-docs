@@ -14,7 +14,7 @@ class ShadowLedger:
         self.chain = []
         self.genesis_hash = "0" * 64
 
-    def commit(self, event_type: str, actor_id: str, payload: dict) -> str:
+    def commit(self, event_type: str, actor_id: str, payload: dict, trace_id: str = None) -> str:
         # SECURITY: Enforcement of ExecutionGuard Authority
         from mnos.shared.execution_guard import ExecutionGuard
         if not ExecutionGuard.is_authorized():
@@ -30,6 +30,7 @@ class ShadowLedger:
             "timestamp": datetime.now(UTC).isoformat(),
             "event_type": event_type,
             "actor_id": actor_id,
+            "trace_id": trace_id or f"TR-SHADOW-{uuid.uuid4().hex[:6]}",
             "payload": safe_payload,
             "prev_hash": prev_hash,
             "signature": self._sign_event(safe_payload)

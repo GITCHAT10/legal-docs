@@ -107,13 +107,16 @@ class FceWalletService:
             self.ledger.append(entry)
             self._persist_ledger_entry(entry)
 
-            # 4. Shadow Audit
-            self.shadow.commit("fce.payment_confirmed", actor_id, {
-                "transaction_id": tx_id,
-                "invoice_id": invoice_id,
-                "amount": float(amount),
-                "account_id": account["id"]
-            }, trace_id=trace_id)
+            # 4. Shadow Audit - Wrapped in System Context
+            from mnos.shared.execution_guard import ExecutionGuard
+            actor = {"identity_id": "SYSTEM", "device_id": "FCE-WALLET", "role": "admin"}
+            with ExecutionGuard.authorized_context(actor):
+                self.shadow.commit("fce.payment_confirmed", actor_id, {
+                    "transaction_id": tx_id,
+                    "invoice_id": invoice_id,
+                    "amount": float(amount),
+                    "account_id": account["id"]
+                }, trace_id=trace_id)
 
             # 5. Log Webhook
             self.webhook_log[tx_id] = "PROCESSED"
@@ -162,8 +165,11 @@ class FceWalletService:
         self.ledger.append(credit_entry)
         self._persist_ledger_entry(credit_entry)
 
-        # 4. Shadow Audit
-        self.shadow.commit("fce.payment_confirmed", actor_id, credit_entry, trace_id=trace_id)
+        # 4. Shadow Audit - Wrapped in System Context
+        from mnos.shared.execution_guard import ExecutionGuard
+        actor = {"identity_id": "SYSTEM", "device_id": "FCE-WALLET", "role": "admin"}
+        with ExecutionGuard.authorized_context(actor):
+            self.shadow.commit("fce.payment_confirmed", actor_id, credit_entry, trace_id=trace_id)
 
         # 5. Notify UPOS
         self.events.publish("upos.order.paid", {"invoice_id": event["invoice_id"], "amount": float(amount)})
@@ -219,7 +225,10 @@ class FceWalletService:
         }
         self.settlements[settlement_id] = settlement
 
-        # Shadow Audit
-        self.shadow.commit("fce.settlement_requested", actor_id, settlement, trace_id=trace_id)
+        # Shadow Audit - Wrapped in System Context
+        from mnos.shared.execution_guard import ExecutionGuard
+        actor = {"identity_id": "SYSTEM", "device_id": "FCE-WALLET", "role": "admin"}
+        with ExecutionGuard.authorized_context(actor):
+            self.shadow.commit("fce.settlement_requested", actor_id, settlement, trace_id=trace_id)
 
         return settlement

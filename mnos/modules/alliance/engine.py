@@ -50,9 +50,11 @@ class AllianceIntegrationLayer:
         self.nexus.core.identity_core.profiles[profile_id]["alliance_tier"] = trawel_tier
 
         # Record in SHADOW
-        self.nexus.core.shadow.commit("alliance.status.linked", profile_id, {
-            "alliance": alliance, "tier": tier, "mapped_to": trawel_tier
-        })
+        from mnos.shared.execution_guard import ExecutionGuard
+        with ExecutionGuard.authorized_context(actor_ctx):
+            self.nexus.core.shadow.commit("alliance.status.linked", profile_id, {
+                "alliance": alliance, "tier": tier, "mapped_to": trawel_tier
+            }, trace_id=f"TR-ALLIANCE-LINK-{profile_id}-{datetime.now(UTC).timestamp()}")
 
         return {"identity_id": profile_id, "trawel_tier": trawel_tier, "entitlements": self.get_entitlements(trawel_tier)}
 

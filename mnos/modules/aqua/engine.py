@@ -33,7 +33,10 @@ class AquaDispatchEngine:
         }
 
         # 3. Shadow Audit
-        self.shadow.commit("aqua.trip.assigned", "SYSTEM", trip, trace_id=trace_id)
+        from mnos.shared.execution_guard import ExecutionGuard
+        actor = {"identity_id": "SYSTEM", "device_id": "AQUA-DISPATCH", "role": "admin"}
+        with ExecutionGuard.authorized_context(actor):
+            self.shadow.commit("aqua.trip.assigned", "SYSTEM", trip, trace_id=trace_id)
 
         # 4. Notify Events
         self.events.publish("aqua.trip.confirmed", trip)

@@ -69,7 +69,10 @@ class MiraBridgeEngine:
              )
 
         # 4. SHADOW Audit
-        self.core.shadow.commit("mira.invoice.recorded", order_id, invoice)
+        from mnos.shared.execution_guard import ExecutionGuard
+        actor = {"identity_id": "SYSTEM", "device_id": "MIRA-BRIDGE", "role": "admin"}
+        with ExecutionGuard.authorized_context(actor):
+            self.core.shadow.commit("mira.invoice.recorded", order_id, invoice, trace_id=invoice["invoice_no"])
 
     def verify_reconciliation(self, vendor_id: str, date: str) -> bool:
         """
@@ -84,7 +87,10 @@ class MiraBridgeEngine:
         mismatch_detected = False
 
         if mismatch_detected:
-             self.core.shadow.commit("mira.reconciliation.failure", vendor_id, {"date": date})
+             from mnos.shared.execution_guard import ExecutionGuard
+             actor = {"identity_id": "SYSTEM", "device_id": "MIRA-BRIDGE", "role": "admin"}
+             with ExecutionGuard.authorized_context(actor):
+                 self.core.shadow.commit("mira.reconciliation.failure", vendor_id, {"date": date}, trace_id=f"RECON-FAIL-{vendor_id}-{date}")
              return False
 
         return True

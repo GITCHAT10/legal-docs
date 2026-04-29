@@ -93,7 +93,9 @@ class BubblePOSEngine:
                     "pricing": pricing,
                     "status": "SYNCED_TO_SHADOW"
                 }
-                self.mnos.shadow.commit("bpe.offline_sync", merchant_id, entry, trace_id=entry["sync_id"])
+                # Double wrapping to ensure shadow commit is authorized in this context
+                with ExecutionGuard.authorized_context(actor):
+                    self.mnos.shadow.commit("bpe.offline_sync", merchant_id, entry, trace_id=entry["sync_id"])
                 results.append(entry)
 
         return {"merchant_id": merchant_id, "synced_count": len(results), "records": results}

@@ -54,7 +54,11 @@ class UPOSEngine:
         }
 
         # 2. Audit in SHADOW (Enforces Trace ID & Idempotency)
-        self.shadow.commit("upos.order.completed", actor_id, order, trace_id=trace_id)
+        from mnos.shared.execution_guard import ExecutionGuard
+        # ExecutionGuard is expected to be wrapping this call externally,
+        # but internal commit must be authorized.
+        with ExecutionGuard.authorized_context({"identity_id": actor_id, "device_id": "UPOS-ENGINE", "role": "user"}):
+            self.shadow.commit("upos.order.completed", actor_id, order, trace_id=trace_id)
 
         # 3. Publish Event
         self.events.publish("upos.order.completed", order)

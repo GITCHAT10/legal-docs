@@ -29,8 +29,11 @@ class AegisIdentityCore:
         self.profiles[identity_id] = profile
 
         tid = trace_id or f"TR-ID-{uuid.uuid4().hex[:6]}"
-        self.shadow.commit("identity.created", identity_id, profile, trace_id=tid)
-        self.events.publish("IDENTITY_CREATED", profile)
+        from mnos.shared.execution_guard import ExecutionGuard
+        actor = {"identity_id": "SYSTEM", "device_id": "AEGIS-BOOT", "role": "admin"}
+        with ExecutionGuard.authorized_context(actor):
+            self.shadow.commit("identity.created", identity_id, profile, trace_id=tid)
+            self.events.publish("IDENTITY_CREATED", profile)
         return identity_id
 
     def bind_device(self, identity_id: str, device_data: dict, trace_id: str = None) -> str:
@@ -45,7 +48,9 @@ class AegisIdentityCore:
         self.devices[device_id] = device
 
         tid = trace_id or f"TR-DEV-{uuid.uuid4().hex[:6]}"
-        self.shadow.commit("identity.device.bound", identity_id, device, trace_id=tid)
+        from mnos.shared.execution_guard import ExecutionGuard
+        with ExecutionGuard.authorized_context({"identity_id": "SYSTEM", "device_id": "AEGIS-BOOT", "role": "admin"}):
+            self.shadow.commit("identity.device.bound", identity_id, device, trace_id=tid)
         return device_id
 
     def assign_role(self, identity_id: str, role_name: str, scope: dict, trace_id: str = None) -> str:
@@ -59,7 +64,9 @@ class AegisIdentityCore:
         }
         self.roles[binding_id] = role_binding
         tid = trace_id or f"TR-ROLE-{uuid.uuid4().hex[:6]}"
-        self.shadow.commit("identity.role.assigned", identity_id, role_binding, trace_id=tid)
+        from mnos.shared.execution_guard import ExecutionGuard
+        with ExecutionGuard.authorized_context({"identity_id": "SYSTEM", "device_id": "AEGIS-BOOT", "role": "admin"}):
+            self.shadow.commit("identity.role.assigned", identity_id, role_binding, trace_id=tid)
         return binding_id
 
     def record_consent(self, identity_id: str, consent_type: str, trace_id: str = None) -> str:
@@ -73,7 +80,9 @@ class AegisIdentityCore:
         }
         self.consents[consent_id] = consent
         tid = trace_id or f"TR-CONSENT-{uuid.uuid4().hex[:6]}"
-        self.shadow.commit("identity.consent.recorded", identity_id, consent, trace_id=tid)
+        from mnos.shared.execution_guard import ExecutionGuard
+        with ExecutionGuard.authorized_context({"identity_id": "SYSTEM", "device_id": "AEGIS-BOOT", "role": "admin"}):
+            self.shadow.commit("identity.consent.recorded", identity_id, consent, trace_id=tid)
         return consent_id
 
     def verify_identity(self, identity_id: str, verifier_id: str, method: str = "document", trace_id: str = None):
@@ -88,7 +97,9 @@ class AegisIdentityCore:
             }
             self.verifications[identity_id] = verification
             tid = trace_id or f"TR-VERIFY-{uuid.uuid4().hex[:6]}"
-            self.shadow.commit("identity.verified", identity_id, verification, trace_id=tid)
+            from mnos.shared.execution_guard import ExecutionGuard
+            with ExecutionGuard.authorized_context({"identity_id": "SYSTEM", "device_id": "AEGIS-BOOT", "role": "admin"}):
+                self.shadow.commit("identity.verified", identity_id, verification, trace_id=tid)
             return True
         return False
 
@@ -103,5 +114,7 @@ class AegisIdentityCore:
         }
         self.bindings[binding_id] = binding
         tid = trace_id or f"TR-ASSET-{uuid.uuid4().hex[:6]}"
-        self.shadow.commit("identity.asset.bound", identity_id, binding, trace_id=tid)
+        from mnos.shared.execution_guard import ExecutionGuard
+        with ExecutionGuard.authorized_context({"identity_id": "SYSTEM", "device_id": "AEGIS-BOOT", "role": "admin"}):
+            self.shadow.commit("identity.asset.bound", identity_id, binding, trace_id=tid)
         return binding_id

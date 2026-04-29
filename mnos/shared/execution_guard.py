@@ -59,7 +59,8 @@ class ExecutionGuard:
                 "input": serializable_input or kwargs,
                 "status": "INTENT"
             }
-            self.shadow.commit(f"{action_type}.intent", identity_id, intent_payload, trace_id=trace_id)
+            with self.authorized_context(actor_context):
+                self.shadow.commit(f"{action_type}.intent", identity_id, intent_payload, trace_id=trace_id)
 
             # EXECUTE BUSINESS LOGIC
             result = func(*args, **kwargs)
@@ -72,7 +73,8 @@ class ExecutionGuard:
                 "result": result,
                 "status": "COMMITTED"
             }
-            self.shadow.commit(f"{action_type}.completed", identity_id, commit_payload, trace_id=trace_id)
+            with self.authorized_context(actor_context):
+                self.shadow.commit(f"{action_type}.completed", identity_id, commit_payload, trace_id=trace_id)
 
             return result
 
@@ -86,7 +88,8 @@ class ExecutionGuard:
             }
             # Still need trace_id for rollback audit
             rollback_tid = actor_context.get("trace_id") or f"TR-ERR-{uuid.uuid4().hex[:6]}"
-            self.shadow.commit(f"{action_type}.failed", identity_id or "UNKNOWN", fail_payload, trace_id=rollback_tid)
+            with self.authorized_context(actor_context):
+                self.shadow.commit(f"{action_type}.failed", identity_id or "UNKNOWN", fail_payload, trace_id=rollback_tid)
             raise RuntimeError(f"SOVEREIGN EXECUTION FAILED: {str(e)}")
         finally:
             # Clear context
@@ -109,11 +112,12 @@ class ExecutionGuard:
         Mandatory for direct UPOS/FCE/SHADOW mutations from the API or system.
         """
         token = str(uuid.uuid4())
+        old_context = _sovereign_context.get()
         _sovereign_context.set({"token": token, "actor": actor_context})
         try:
             yield
         finally:
-            _sovereign_context.set(None)
+            _sovereign_context.set(old_context)
 
 class ExecutionGuardMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, guard, events):

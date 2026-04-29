@@ -32,7 +32,10 @@ class JourneyOrchestrator:
             "timeline": []
         }
 
-        self.shadow.commit("journey.started", customer_id, {"journey_id": journey_id, "deposit": deposit_mvr}, trace_id=trace_id)
+        from mnos.shared.execution_guard import ExecutionGuard
+        actor = {"identity_id": "SYSTEM", "device_id": "JOURNEY-ORCHESTRATOR", "role": "admin"}
+        with ExecutionGuard.authorized_context(actor):
+            self.shadow.commit("journey.started", customer_id, {"journey_id": journey_id, "deposit": deposit_mvr}, trace_id=trace_id)
         return journey_id
 
     def handle_event(self, event_type: str, payload: Dict[str, Any]):

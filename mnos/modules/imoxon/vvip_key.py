@@ -44,7 +44,9 @@ class VVIPKeyEngine:
         self.minted_keys[key_id] = key_data
 
         # Record in SHADOW
-        self.core.shadow.commit("vvip.key.minted", recipient_id, key_data)
+        from mnos.shared.execution_guard import ExecutionGuard
+        with ExecutionGuard.authorized_context(actor_ctx):
+            self.core.shadow.commit("vvip.key.minted", recipient_id, key_data, trace_id=f"TR-VVIP-MINT-{key_id}")
         return key_data
 
     def verify_access(self, actor_ctx: dict, key_id: str) -> bool:
@@ -54,7 +56,9 @@ class VVIPKeyEngine:
 
         # 1. AEGIS Binding Check (Non-transferable)
         if key["owner_id"] != actor_ctx["identity_id"]:
-             self.core.shadow.commit("vvip.access.denied", actor_ctx["identity_id"], {"reason": "Owner Mismatch", "key": key_id})
+             from mnos.shared.execution_guard import ExecutionGuard
+             with ExecutionGuard.authorized_context(actor_ctx):
+                 self.core.shadow.commit("vvip.access.denied", actor_ctx["identity_id"], {"reason": "Owner Mismatch", "key": key_id}, trace_id=f"TR-VVIP-DENY-{key_id}-{datetime.now(UTC).timestamp()}")
              return False
 
         # 2. Time-Lock Check
@@ -68,7 +72,9 @@ class VVIPKeyEngine:
              return False
 
         # 4. Success: Record Access in SHADOW
-        self.core.shadow.commit("vvip.access.granted", actor_ctx["identity_id"], {"key_id": key_id, "asset": key["asset_id"]})
+        from mnos.shared.execution_guard import ExecutionGuard
+        with ExecutionGuard.authorized_context(actor_ctx):
+            self.core.shadow.commit("vvip.access.granted", actor_ctx["identity_id"], {"key_id": key_id, "asset": key["asset_id"]}, trace_id=f"TR-VVIP-GRANT-{key_id}-{datetime.now(UTC).timestamp()}")
         return True
 
     def revoke_key(self, actor_ctx: dict, key_id: str):
@@ -77,6 +83,8 @@ class VVIPKeyEngine:
 
         if key_id in self.minted_keys:
              self.minted_keys[key_id]["status"] = "REVOKED"
-             self.core.shadow.commit("vvip.key.revoked", key_id, {"by": actor_ctx["identity_id"]})
+             from mnos.shared.execution_guard import ExecutionGuard
+             with ExecutionGuard.authorized_context(actor_ctx):
+                 self.core.shadow.commit("vvip.key.revoked", key_id, {"by": actor_ctx["identity_id"]}, trace_id=f"TR-VVIP-REVOKE-{key_id}")
              return True
         return False

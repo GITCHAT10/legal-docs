@@ -44,14 +44,18 @@ class ApolloSyncService:
                         # NORMALIZE_OFFLINE_PAYLOADS: Backfill pricing if missing for orders
                         if tx.get("event_type") == "upos.order.completed" and "pricing" not in payload:
                             if self.fce and "amount" in payload:
+                                # Default to TOURISM category for POS orders if not specified
+                                category = payload.get("category", "TOURISM")
                                 payload["pricing"] = self.fce.calculate_order(
                                     payload["amount"],
-                                    category="RETAIL",
+                                    category=category,
                                     idempotency_key=payload.get("idempotency_key")
                                 )
 
-                        self.shadow.commit(
-                            event_type=tx.get("event_type", "edge.sync"),
+                        # Triple wrapping for extra safety
+                        with ExecutionGuard.authorized_context(actor):
+                            self.shadow.commit(
+                                event_type=tx.get("event_type", "edge.sync"),
                             actor_id=tx.get("actor_id", "EDGE_NODE"),
                             payload={**payload, "synced_at": time.time()},
                             trace_id=tx.get("trace_id")

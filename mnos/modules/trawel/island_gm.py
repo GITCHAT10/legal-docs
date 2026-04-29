@@ -85,7 +85,10 @@ class IslandGMSystem:
         if island_name in self.island_stats:
             self.island_stats[island_name]["revenue"] += amount
             # Audit in SHADOW
-            self.core.shadow.commit("island.revenue.sync", island_name, {"amount": amount})
+            from mnos.shared.execution_guard import ExecutionGuard
+            actor = {"identity_id": "SYSTEM", "device_id": "ISLAND-GM-SYNC", "role": "admin"}
+            with ExecutionGuard.authorized_context(actor):
+                self.core.shadow.commit("island.revenue.sync", island_name, {"amount": amount}, trace_id=f"TR-GM-SYNC-{island_name}-{datetime.now(UTC).timestamp()}")
 
             # Trigger Scoring update
             gm_id = self.island_registry.get(island_name)

@@ -50,7 +50,10 @@ class RevenueReinvestmentEngine:
         self.allocation_history.append(allocation_event)
 
         # SHADOW ENFORCEMENT: CALCULATED -> APPROVED -> LOCKED -> LOGGED
-        self.core.shadow.commit("finance.reinvestment.allocated", island, allocation_event)
+        from mnos.shared.execution_guard import ExecutionGuard
+        actor = {"identity_id": "SYSTEM", "device_id": "REINVESTMENT-ENGINE", "role": "admin"}
+        with ExecutionGuard.authorized_context(actor):
+            self.core.shadow.commit("finance.reinvestment.allocated", island, allocation_event, trace_id=allocation_event["id"])
 
         return allocation_event
 

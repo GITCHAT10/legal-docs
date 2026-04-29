@@ -105,6 +105,7 @@ class FCEHardenedEngine:
         return self.engine.calculate_local_order(base_price, "RESORT_SUPPLY")
 
     def create_escrow(self, actor_id: str, amount: float, ref_id: str):
+        from mnos.shared.execution_guard import ExecutionGuard
         escrow_id = f"ESC-{uuid.uuid4().hex[:8].upper()}"
         self.escrows[escrow_id] = {
             "amount": amount,
@@ -112,10 +113,13 @@ class FCEHardenedEngine:
             "status": "LOCKED",
             "released_amount": 0.0
         }
-        self.shadow.commit("fce.escrow_locked", actor_id, {"escrow_id": escrow_id, "amount": amount})
+        actor = {"identity_id": "SYSTEM", "device_id": "FCE-HARDENED", "role": "admin"}
+        with ExecutionGuard.authorized_context(actor):
+            self.shadow.commit("fce.escrow_locked", actor_id, {"escrow_id": escrow_id, "amount": amount}, trace_id=f"TR-ESC-{escrow_id}")
         return escrow_id
 
     def release_milestone(self, actor_id: str, escrow_id: str, milestone_pct: int):
+        from mnos.shared.execution_guard import ExecutionGuard
         milestone_map = {10: "AWARD", 40: "PORT", 20: "QC", 30: "ACCEPTANCE"}
         milestone_name = milestone_map.get(milestone_pct)
 
@@ -123,9 +127,11 @@ class FCEHardenedEngine:
         release_res = self.engine.calculate_milestone_release(milestone_name, {"total_amount": escrow["amount"]})
 
         escrow["released_amount"] += release_res["release_amount"]
-        self.shadow.commit("fce.milestone_released", actor_id, {
-            "escrow_id": escrow_id,
-            "percentage": milestone_pct,
-            "amount": release_res["release_amount"]
-        })
+        actor = {"identity_id": "SYSTEM", "device_id": "FCE-HARDENED", "role": "admin"}
+        with ExecutionGuard.authorized_context(actor):
+            self.shadow.commit("fce.milestone_released", actor_id, {
+                "escrow_id": escrow_id,
+                "percentage": milestone_pct,
+                "amount": release_res["release_amount"]
+            }, trace_id=f"TR-REL-{escrow_id}-{milestone_pct}")
         return release_res["release_amount"]

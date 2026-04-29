@@ -52,7 +52,9 @@ class AegisIdentityGateway:
         self.sessions[session_id] = actor_ctx
 
         # Record session in SHADOW
-        self.shadow.commit("aegis.session.started", profile_id, {"session_id": session_id, "realm": realm})
+        from mnos.shared.execution_guard import ExecutionGuard
+        with ExecutionGuard.authorized_context({"identity_id": "SYSTEM", "device_id": "AEGIS-GATEWAY", "role": "admin"}):
+            self.shadow.commit("aegis.session.started", profile_id, {"session_id": session_id, "realm": realm}, trace_id=f"TR-SES-{session_id}")
 
         # Determine Redirect (Simulated)
         redirect_map = {

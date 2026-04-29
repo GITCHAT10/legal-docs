@@ -40,8 +40,11 @@ class SigDocEngine:
 
     def _commit_to_shadow(self, doc_type, actor_id, content, doc_hash, trace_id):
         # Anchor to SHADOW
-        self.shadow.commit(
-            event_type=f"sigdoc.sealed.{doc_type}",
+        from mnos.shared.execution_guard import ExecutionGuard
+        actor = {"identity_id": actor_id, "device_id": "SIGDOC-ENGINE", "role": "admin"}
+        with ExecutionGuard.authorized_context(actor):
+            self.shadow.commit(
+                event_type=f"sigdoc.sealed.{doc_type}",
             actor_id=actor_id,
             payload={
                 "doc_hash": doc_hash,

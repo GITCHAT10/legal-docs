@@ -11,6 +11,7 @@ class AllocationEngine:
         self.batches = {} # batch_id -> {total, allocated, remaining}
 
     def process_intake(self, actor_id: str, sku: str, total_qty: int):
+        from mnos.shared.execution_guard import ExecutionGuard
         batch_id = f"BAT-{uuid.uuid4().hex[:6].upper()}"
         self.batches[batch_id] = {
             "sku": sku,
@@ -19,7 +20,9 @@ class AllocationEngine:
             "remaining": total_qty,
             "allocations": []
         }
-        self.shadow.commit("allocation.intake", actor_id, {"batch_id": batch_id, "sku": sku, "qty": total_qty})
+        actor = {"identity_id": actor_id, "device_id": "IMOXON-INTAKE", "role": "admin"}
+        with ExecutionGuard.authorized_context(actor):
+            self.shadow.commit("allocation.intake", actor_id, {"batch_id": batch_id, "sku": sku, "qty": total_qty}, trace_id=f"TR-ALLOC-INTAKE-{batch_id}")
         return batch_id
 
     def allocate(self, actor_id: str, batch_id: str, requests: List[Dict]):
@@ -50,5 +53,8 @@ class AllocationEngine:
             }
             batch["allocations"].append(alloc_record)
 
-        self.shadow.commit("allocation.locked", actor_id, {"batch_id": batch_id, "allocations": batch["allocations"]})
+        from mnos.shared.execution_guard import ExecutionGuard
+        actor = {"identity_id": actor_id, "device_id": "IMOXON-ALLOC", "role": "admin"}
+        with ExecutionGuard.authorized_context(actor):
+            self.shadow.commit("allocation.locked", actor_id, {"batch_id": batch_id, "allocations": batch["allocations"]}, trace_id=f"TR-ALLOC-LOCK-{batch_id}")
         return batch["allocations"]
