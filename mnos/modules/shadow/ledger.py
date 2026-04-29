@@ -5,6 +5,10 @@ import uuid
 import copy
 from datetime import datetime, UTC
 
+class SecurityAuditError(Exception):
+    """Custom exception for MAC EOS security violations"""
+    pass
+
 class ShadowLedger:
     """
     SHADOW Hardened Ledger: Forensic-grade immutable audit chain.
@@ -18,25 +22,22 @@ class ShadowLedger:
         # SECURITY: Enforcement of ExecutionGuard Authority
         from mnos.shared.execution_guard import ExecutionGuard
 
-        # [AUDIT PATCH] Controlled SYSTEM bypass with mandatory audit trails
         actor = ExecutionGuard.get_actor()
         is_authorized = ExecutionGuard.is_authorized()
 
+        # [MAC EOS HARDENING] Mandatory SYSTEM context check for internal bypass
         if not is_authorized:
-             # If no context is set, it MUST be blocked for non-system events.
-             # During simulation and internal bootstrapping, we allow these specific events.
              allowed_internal = ["identity.created", "identity.device.bound", "identity.role.assigned", "identity.verified"]
              if event_type in allowed_internal:
-                 pass
-             elif actor and actor.get("identity_id") == "SYSTEM":
-                 pass
+                 # Even internal events MUST have a SYSTEM actor context set if we want to bypass full Guard
+                 if not actor or actor.get("identity_id") != "SYSTEM":
+                     raise SecurityAuditError(f"FAIL CLOSED: Unauthorized SYSTEM context for internal event: {event_type}")
              else:
                  raise PermissionError(f"FAIL CLOSED: Unauthorized direct write to SHADOW Ledger blocked for {event_type}.")
 
         prev_hash = self.chain[-1]["hash"] if self.chain else self.genesis_hash
 
         # Deepcopy payload to prevent retro-active changes breaking the hash
-        # Handle non-serializable objects (like datetime) before calculate_hash
         safe_payload = self._sanitize_payload(copy.deepcopy(payload))
 
         block = {

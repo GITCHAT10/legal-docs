@@ -61,9 +61,18 @@ class AirMovieContentManager:
         versions = self.content_library.get(module_id)
         if not versions:
             return None
-        # Sort by version string (simplified)
-        latest_v = sorted(versions.keys())[-1]
-        return versions[latest_v]
+
+        # [MAC EOS HARDENING] Prefer ACTIVE version, otherwise use semantic sort
+        active_version = next((v for v in versions.values() if v["status"] == "ACTIVE"), None)
+        if active_version:
+            return active_version
+
+        # Semantic sort fallback (numerical comparison)
+        def _semver_key(v):
+            return tuple(int(part) for part in v.split("."))
+
+        latest_v_str = sorted(versions.keys(), key=_semver_key)[-1]
+        return versions[latest_v_str]
 
     def get_playback_manifest(self, module_id: str, lang: str = "en"):
         """

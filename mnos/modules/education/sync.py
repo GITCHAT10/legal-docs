@@ -20,11 +20,24 @@ class AcademySyncEngine:
         """
         from mnos.shared.execution_guard import _sovereign_context
         results = []
+
+        # [MAC EOS HARDENING] Reject if edge_node_id is missing
+        if not edge_node_id:
+             return [{"status": "FAILED", "reason": "INVALID_EDGE_NODE_ID"}]
+
         for event in events:
             event_id = event.get("id")
 
+            # [MAC EOS HARDENING] Check for mandatory fields
+            if not event_id:
+                results.append({"status": "FAILED", "reason": "INVALID_EDGE_EVENT", "detail": "Missing event ID"})
+                continue
+
+            # [MAC EOS HARDENING] Namespace deduplication key
+            dedup_key = f"{edge_node_id}:{event_id}"
+
             # 1. Idempotency Check
-            if event_id in self.processed_event_ids:
+            if dedup_key in self.processed_event_ids:
                 results.append({"event_id": event_id, "status": "SKIPPED", "reason": "ALREADY_PROCESSED"})
                 continue
 
@@ -64,17 +77,15 @@ class AcademySyncEngine:
                             "edge_node": edge_node_id,
                             "original_timestamp": event.get("timestamp"),
                             "payload": event_data,
-                            "sync_v": "1.1"
+                            "sync_v": "1.2"
                         }
                     )
 
                     # 4. Conflict Resolution & State Application
-                    # If assessment already exists with higher score, keep higher
                     if action_type == "education.assessment.submit":
-                         # In real system, we'd check current enrollment state
                          self.edu.submit_assessment(sync_actor, event_data)
 
-                    self.processed_event_ids.add(event_id)
+                    self.processed_event_ids.add(dedup_key)
                     results.append({"event_id": event_id, "status": "SYNCED"})
                 finally:
                     _sovereign_context.reset(token)
