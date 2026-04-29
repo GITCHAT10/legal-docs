@@ -31,11 +31,23 @@ class PrivacyAssuranceEngine:
         multiplier = self.PREMIUM_LOGIC.get(condition, 1.0)
 
         villa = self.villas.get(villa_id)
+        is_shielded = False
         if villa and villa["type"] == "SHIELDED":
             # Apply cumulative or specific premium
             multiplier *= self.PREMIUM_LOGIC["SHIELDED_VILLA"]
+            is_shielded = True
 
-        return round(multiplier, 2)
+        final_multiplier = round(multiplier, 2)
+
+        # Log pricing decision to SHADOW for audit validity
+        self.shadow.commit("privacy.pricing.decision", "SYSTEM", {
+            "villa_id": villa_id,
+            "condition": condition,
+            "multiplier": final_multiplier,
+            "is_shielded": is_shielded
+        })
+
+        return final_multiplier
 
     def log_privacy_incident(self, villa_id: str, incident_type: str, details: Dict):
         """
@@ -66,13 +78,29 @@ class PrivacyAssuranceEngine:
 
         if villa and villa["type"] == "SHIELDED":
             return (
-                "Shielded Villa Privacy Assurance Addendum: "
-                "Guests receive access to enhanced privacy assurance services including prioritized monitoring, "
-                "rapid internal notification protocols, and enhanced service response measures."
+                "🛡️ SHIELDED VILLA PRIVACY ASSURANCE ADDENDUM\n"
+                "Guests booking designated Shielded Villas receive access to enhanced privacy assurance "
+                "services supported by the Resort’s Airspace Awareness system. "
+                "These services include: prioritized monitoring of general airspace activity within designated resort zones; "
+                "rapid internal notification protocols for resort staff; optional incident reporting upon guest request; "
+                "and enhanced service response measures to maintain guest comfort and privacy.\n"
+                "CRITICAL COMPLIANCE: NO interception | NO jamming | NO tracking individuals | NO absolute guarantees."
             )
 
         return (
-            "Airspace Awareness & Privacy Assurance Clause: "
-            "The Resort operates a passive monitoring system to enhance guest privacy and maintain an "
-            "auditable record of relevant events for compliance and quality assurance."
+            "📜 AIRSPACE AWARENESS & PRIVACY ASSURANCE CLAUSE\n"
+            "The Resort operates an Airspace Awareness & Privacy Assurance System as part of its MAC EOS operational platform. "
+            "This system utilizes lawful, passive monitoring methods to enhance guest privacy. "
+            "The Resort does not engage in interception, tracking, or enforcement actions against external devices or aircraft. "
+            "This feature is provided as a privacy-supporting enhancement and does not constitute a security guarantee."
+        )
+
+    def get_marketing_blurb(self):
+        """Returns the luxury marketing version of the privacy guarantee."""
+        return (
+            "💎 At SALA, privacy is not assumed — it is actively managed. "
+            "Our Airspace Awareness & Privacy Assurance system continuously monitors the surrounding environment "
+            "to support your comfort and discretion. For guests seeking the highest level of seclusion, "
+            "our Shielded Villas include enhanced privacy protocols, ensuring your experience remains "
+            "uninterrupted, refined, and protected. Because true luxury is peace of mind."
         )

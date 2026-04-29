@@ -56,7 +56,7 @@ def test_reservation_with_privacy_premium(auth_headers):
     assert res_data["privacy_premium_active"] is True
 
     # 2. Verify Legal Clause
-    assert "Shielded Villa Privacy Assurance Addendum" in res_data["metadata"]["privacy_legal_clause"]
+    assert "SHIELDED VILLA PRIVACY ASSURANCE ADDENDUM" in res_data["metadata"]["privacy_legal_clause"]
 
     # 3. Verify SHADOW Audit
     events = [b["event_type"] for b in shadow_core.chain]
@@ -86,4 +86,4 @@ def test_standard_reservation_no_premium(auth_headers):
     assert res_data["total_amount"] == 500.0
     assert res_data["privacy_multiplier"] == 1.0
     assert res_data["privacy_premium_active"] is False
-    assert "Airspace Awareness & Privacy Assurance Clause" in res_data["metadata"]["privacy_legal_clause"]
+    assert "AIRSPACE AWARENESS & PRIVACY ASSURANCE CLAUSE" in res_data["metadata"]["privacy_legal_clause"]

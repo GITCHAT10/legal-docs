@@ -193,9 +193,8 @@ async def gateway_middleware(request: Request, call_next):
          return JSONResponse(status_code=429, content={"detail": edge_res["message"]})
 
     # 2. Inject Classified Channel for downstream
-    # request.scope["channel_type"] = edge_res["channel"]
-    # FastAPI Middleware doesn't easily modify request.headers in-flight for Depends,
-    # so we use a custom state or similar. For simplicity, we assume edge sets it.
+    # We explicitly inject the header for the simulation so get_channel() dependency works.
+    request.scope["headers"].append((b"x-channel-type", edge_res["channel"].encode()))
 
     if request.url.path.startswith("/imoxon") or request.url.path.startswith("/bubble"):
         await gateway.enforce_policy(request)
@@ -379,35 +378,39 @@ async def runtime_error_handler(request: Request, exc: RuntimeError):
 @app.get("/imoxon/inventory/rooms")
 async def get_rooms(channel: str = Depends(get_channel)):
     """Sample route with SILENT SHIELD Tier Gating & Privacy Premium."""
-    # Mock inventory linked to Privacy Engine
-    rooms = [
-        {"id": "R1", "name": "Standard Room", "tier": "BASE", "bundle_eligible": False, "price": 500, "villa_id": "ST-201"},
-        {"id": "R2", "name": "Deluxe Suite", "tier": "ENHANCED", "bundle_eligible": True, "price": 1200, "villa_id": "SV-101"},
-        {"id": "R3", "name": "VVIP ALPHA Villa", "tier": "ALPHA", "bundle_eligible": True, "price": 5000, "villa_id": "SV-102"}
-    ]
+    # Sovereign context required for pricing logic audit in SHADOW
+    SYSTEM_CTX = {"identity_id": "SYSTEM", "role": "admin", "realm": "SYSTEM"}
 
-    visible_rooms = []
-    for r in rooms:
-        # Check eligibility for bundle if suite/villa
-        gate_res = TierGate.apply_gate(channel, r["tier"], bundle_requested=r["bundle_eligible"])
+    with guard.sovereign_context(SYSTEM_CTX):
+        # Mock inventory linked to Privacy Engine
+        rooms = [
+            {"id": "R1", "name": "Standard Room", "tier": "BASE", "bundle_eligible": False, "price": 500, "villa_id": "ST-201"},
+            {"id": "R2", "name": "Deluxe Suite", "tier": "ENHANCED", "bundle_eligible": True, "price": 1200, "villa_id": "SV-101"},
+            {"id": "R3", "name": "VVIP ALPHA Villa", "tier": "ALPHA", "bundle_eligible": True, "price": 5000, "villa_id": "SV-102"}
+        ]
 
-        if gate_res["status"] in ["AUTHORIZED", "ROOM_ONLY"]:
-            r_clean = r.copy()
+        visible_rooms = []
+        for r in rooms:
+            # Check eligibility for bundle if suite/villa
+            gate_res = TierGate.apply_gate(channel, r["tier"], bundle_requested=r["bundle_eligible"])
 
-            # Apply Privacy Premium Pricing
-            multiplier = privacy_engine.get_pricing_tier(r["villa_id"])
-            r_clean["base_price"] = r["price"]
-            r_clean["total_price"] = r["price"] * multiplier
-            r_clean["privacy_multiplier"] = multiplier
-            r_clean["legal_clause"] = privacy_engine.get_assurance_legal_clause(r["villa_id"])
+            if gate_res["status"] in ["AUTHORIZED", "ROOM_ONLY"]:
+                r_clean = r.copy()
 
-            if gate_res["status"] == "ROOM_ONLY":
-                r_clean["bundle_eligible"] = False
-                r_clean["note"] = gate_res["message"]
+                # Apply Privacy Premium Pricing
+                multiplier = privacy_engine.get_pricing_tier(r["villa_id"])
+                r_clean["base_price"] = r["price"]
+                r_clean["total_price"] = r["price"] * multiplier
+                r_clean["privacy_multiplier"] = multiplier
+                r_clean["legal_clause"] = privacy_engine.get_assurance_legal_clause(r["villa_id"])
 
-            visible_rooms.append(r_clean)
+                if gate_res["status"] == "ROOM_ONLY":
+                    r_clean["bundle_eligible"] = False
+                    r_clean["note"] = gate_res["message"]
 
-    return visible_rooms
+                visible_rooms.append(r_clean)
+
+        return visible_rooms
 
 @app.post("/bubble/privacy/report-incident")
 async def report_privacy_incident(villa_id: str, incident_type: str, details: dict, actor: dict = Depends(get_actor_ctx)):
