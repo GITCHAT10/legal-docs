@@ -28,6 +28,12 @@ class Channel(str, Enum):
     OTA = "OTA"
     SOVEREIGN = "SOVEREIGN"
 
+class TaxContext(str, Enum):
+    TOURISM = "TOURISM"
+    RETAIL = "RETAIL"
+    LOCAL = "LOCAL"
+    EXPORT = "EXPORT"
+
 class PricingContext(BaseModel, extra="allow"):
     contract_id: Optional[str] = None
     segment: Optional[str] = "default"
