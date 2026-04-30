@@ -27,8 +27,11 @@ class OrcaDashboard:
                     print(f"[ANOMALY] Missing pricing in SHADOW block {block.get('index')}")
 
         # P&L Simulation
-        payouts = sum(s["net_amount"] for s in self.wallet.settlements.values())
-        fees = sum(s["platform_fee"] for s in self.wallet.settlements.values())
+        payouts = 0
+        fees = 0
+        if self.wallet and hasattr(self.wallet, "settlements"):
+            payouts = sum(s.get("net_amount", 0) for s in self.wallet.settlements.values())
+            fees = sum(s.get("platform_fee", 0) for s in self.wallet.settlements.values())
 
         return {
             "node_status": "ACTIVE",

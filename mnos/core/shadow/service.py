@@ -41,6 +41,7 @@ class ShadowSovereignLedger:
         Enforces TRACE_ID and IDEMPOTENCY_KEY (Replay Protection).
         """
         from mnos.shared.execution_guard import ExecutionGuard
+        # event publish is allowed if ExecutionGuard is active
         if not ExecutionGuard.is_authorized():
              raise PermissionError("FAIL CLOSED: Unauthorized direct write to SHADOW Ledger blocked.")
 

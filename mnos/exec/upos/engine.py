@@ -21,6 +21,10 @@ class UPOSEngine:
         Creates an order with strict idempotency and tracing.
         Lifecycle: requested → validated → approved → executed → completed
         """
+        from mnos.shared.execution_guard import ExecutionGuard
+        if not ExecutionGuard.is_authorized():
+            raise PermissionError("FAIL CLOSED: Unauthorized direct call to upos_engine.create_order blocked.")
+
         if not merchant_id:
              raise ValueError("ExecutionValidationError: Missing merchant_id")
         if not items:
@@ -53,6 +57,13 @@ class UPOSEngine:
         }
 
         with ExecutionGuard.authorized_context(auth_ctx):
+            # Common payload attributes for all stages
+            order.update({
+                "actor_id": actor_id,
+                "device_id": auth_ctx["device_id"],
+                "currency": "MVR"
+            })
+
             # 1. requested
             self.shadow.commit("upos.order.requested", actor_id, order, trace_id=trace_id)
             self.events.publish("upos.order.requested", order)
@@ -77,6 +88,7 @@ class UPOSEngine:
             # 5. completed
             order["status"] = "COMPLETED"
             order["final_verification"] = "BUBBLE_QR_HANDSHAKE_VERIFIED"
+            # Ensure every required attribute is present for the final commit
             self.shadow.commit("upos.order.completed", actor_id, order, trace_id=trace_id)
             self.events.publish("upos.order.completed", order)
 
