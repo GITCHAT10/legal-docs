@@ -194,32 +194,38 @@ def get_actor_ctx(
     if x_aegis_session:
         try:
             actor = identity_gateway.validate_session(x_aegis_session)
-            shadow_core.commit("aegis.auth.session.success", actor["identity_id"], {"session_id": x_aegis_session})
+            with ExecutionGuard.authorized_context(actor):
+                shadow_core.commit("aegis.auth.session.success", actor["identity_id"], {"session_id": x_aegis_session})
             return actor
         except PermissionError as e:
-            shadow_core.commit("aegis.auth.session.failure", "UNKNOWN", {"reason": str(e)})
+            with ExecutionGuard.authorized_context({"identity_id": "SYSTEM", "role": "admin"}):
+                shadow_core.commit("aegis.auth.session.failure", "UNKNOWN", {"reason": str(e)})
             raise HTTPException(status_code=403, detail=str(e))
 
     # Fallback to Direct Hardened Handshake (B2B / API)
     if not x_aegis_identity or not x_aegis_device or not x_aegis_signature:
-        shadow_core.commit("aegis.auth.direct.failure", "UNKNOWN", {"reason": "Missing Headers"})
+        with ExecutionGuard.authorized_context({"identity_id": "SYSTEM", "role": "admin"}):
+            shadow_core.commit("aegis.auth.direct.failure", "UNKNOWN", {"reason": "Missing Headers"})
         raise HTTPException(status_code=401, detail="AEGIS_REQUIRED: Missing Identity, Device or Signature")
 
     # 1. Identity lookup via AEGIS registry (persistence)
     profile = identity_core.profiles.get(x_aegis_identity)
     if not profile:
-        shadow_core.commit("aegis.auth.identity.invalid", x_aegis_identity, {"reason": "Not in Registry"})
+        with ExecutionGuard.authorized_context({"identity_id": "SYSTEM", "role": "admin"}):
+            shadow_core.commit("aegis.auth.identity.invalid", x_aegis_identity, {"reason": "Not in Registry"})
         raise HTTPException(status_code=401, detail="INVALID_IDENTITY: Unauthorized")
 
     # 2. Validate device binding (device.owner_id == identity.id)
     device = identity_core.devices.get(x_aegis_device)
     if not device or device.get("identity_id") != x_aegis_identity:
-        shadow_core.commit("aegis.auth.device.mismatch", x_aegis_identity, {"device_id": x_aegis_device})
+        with ExecutionGuard.authorized_context({"identity_id": x_aegis_identity, "role": "unknown"}):
+            shadow_core.commit("aegis.auth.device.mismatch", x_aegis_identity, {"device_id": x_aegis_device})
         raise HTTPException(status_code=403, detail="DEVICE_BINDING_INVALID: Access Denied")
 
     # 3. Cryptographic Signature Validation
     if x_aegis_signature != f"VALID_SIG_FOR_{x_aegis_identity}":
-         shadow_core.commit("aegis.auth.sig.failed", x_aegis_identity, {"sig": x_aegis_signature})
+         with ExecutionGuard.authorized_context({"identity_id": x_aegis_identity, "role": "unknown"}):
+             shadow_core.commit("aegis.auth.sig.failed", x_aegis_identity, {"sig": x_aegis_signature})
          raise HTTPException(status_code=403, detail="HANDSHAKE_FAILED: Invalid Signature")
 
     # 4. Success: Derive role from database (NO HEADER TRUST)
@@ -232,7 +238,8 @@ def get_actor_ctx(
         "verified": profile.get("verification_status") == "verified",
         "persistent_hash": profile.get("persistent_identity_hash")
     }
-    shadow_core.commit("aegis.auth.direct.success", x_aegis_identity, {"role": actor["role"]})
+    with ExecutionGuard.authorized_context(actor):
+        shadow_core.commit("aegis.auth.direct.success", x_aegis_identity, {"role": actor["role"]})
     return actor
 
 # --- Consolidated APIs ---

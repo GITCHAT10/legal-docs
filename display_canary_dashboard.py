@@ -67,7 +67,7 @@ class CanaryMonitor:
 
     def display(self):
         print("\n" + "="*60)
-        print("🏛️ iMOXON CANARY DASHBOARD (SALA)")
+        print("🏛️ SALA-UPOS CANARY DASHBOARD (SALA)")
         print("="*60)
 
         print(f"📊 PANELS:")

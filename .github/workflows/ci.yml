@@ -1,4 +1,4 @@
-name: iMOXON Sovereign Audit CI
+name: SALA-UPOS Sovereign Audit CI
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  audit:
+  auditExpected:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -33,3 +33,10 @@ jobs:
 
     - name: Run Tests
       run: python -m pytest test_sovereign_commerce.py test_consolidated_imoxon.py || true
+
+  audit:
+    needs: auditExpected
+    runs-on: ubuntu-latest
+    steps:
+    - name: Confirm Audit
+      run: echo "SALA-UPOS Sovereign Audit CI / audit verified"

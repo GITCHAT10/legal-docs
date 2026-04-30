@@ -6,7 +6,7 @@ from main import app, shadow_core, events_core
 from httpx import ASGITransport
 
 async def run_promotion_and_checks():
-    print("🏛️ iMOXON CANARY PROMOTION: SALA")
+    print("🏛️ SALA-UPOS CANARY PROMOTION: SALA")
     print("-" * 60)
 
     os.environ["NEXGEN_SECRET"] = "ndeos-promotion-2026"

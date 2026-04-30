@@ -6,7 +6,7 @@ from main import app, shadow_core
 from httpx import ASGITransport
 
 async def run_final_cto_audit():
-    print("🏛️ FINAL iMOXON CONSOLIDATED AUDIT (CTO-LEVEL)")
+    print("🏛️ FINAL SALA-UPOS CONSOLIDATED AUDIT (CTO-LEVEL)")
     print("-" * 60)
 
     os.environ["NEXGEN_SECRET"] = "cto-audit-2026"
