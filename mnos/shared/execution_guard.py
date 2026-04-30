@@ -1,6 +1,7 @@
 import contextvars
 import uuid
-from typing import Callable, Any, Dict, Optional
+from typing import Callable, Any, Dict, Optional, Generator
+from contextlib import contextmanager
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -94,6 +95,27 @@ class ExecutionGuard:
     def get_actor() -> Optional[Dict]:
         ctx = _sovereign_context.get()
         return ctx["actor"] if ctx else None
+
+    @staticmethod
+    @contextmanager
+    def authorized_context(actor: Dict) -> Generator[None, None, None]:
+        """
+        RE-ENTRANT SOVEREIGN CONTEXT:
+        Saves previous context and restores it after block completion.
+        Allows nested authorized operations.
+        """
+        token = _sovereign_context.set({"token": str(uuid.uuid4()), "actor": actor})
+        try:
+            yield
+        finally:
+            _sovereign_context.reset(token)
+
+    @staticmethod
+    @contextmanager
+    def sovereign_context(actor: Dict) -> Generator[None, None, None]:
+        """Alias for authorized_context to match blueprint wording."""
+        with ExecutionGuard.authorized_context(actor):
+            yield
 
 class ExecutionGuardMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, guard, events):

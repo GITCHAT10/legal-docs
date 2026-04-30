@@ -59,6 +59,20 @@ from mnos.api.b2b_portal import create_b2b_portal_router
 from mnos.api.heatmap import create_heatmap_router
 from mnos.api.laundry import create_laundry_router
 
+# PRESTIGE Staging Core
+from mnos.modules.prestige.core import AgentRegistry, TripService
+from mnos.modules.prestige.hotel_sourcing import HotelSourcingEngine
+from mnos.modules.prestige.agents.planner import PlannerAgent
+from mnos.modules.prestige.agents.pricing_agent import PricingAgent
+from mnos.modules.prestige.agents.compliance import ComplianceAgent
+from mnos.modules.prestige.agents.guest_app import GuestAppAgent
+from mnos.modules.prestige.agents.shadow_memory import ShadowMemoryAgent
+from mnos.modules.prestige.agents.human_escalation import HumanEscalationAgent
+from mnos.modules.prestige.agents.hotel_agent import HotelAgent
+from mnos.modules.prestige.outreach.engine import OutreachEngine
+from mnos.modules.prestige.workflows.luxury_package import LuxuryPackageWorkflow
+from mnos.api.prestige import create_prestige_router
+
 # Bubble OS Super App Layer
 from mnos.modules.bubble.chat.engine import ChatIntentEngine, ChatToTransactionEngine
 from mnos.modules.bubble.sdk.core.bridge import BubbleSDK
@@ -137,6 +151,23 @@ imoxon.reinvestment = reinvestment_engine
 intent_engine = ChatIntentEngine(imoxon)
 chat_os = ChatToTransactionEngine(imoxon, intent_engine)
 sdk = BubbleSDK(imoxon)
+
+# --- PRESTIGE Staging Build ---
+prestige_registry = AgentRegistry()
+prestige_trip_service = TripService(imoxon)
+prestige_sourcing = HotelSourcingEngine()
+
+# Register Agents
+prestige_registry.register_agent("planner_01", PlannerAgent("planner_01", imoxon), "planner")
+prestige_registry.register_agent("pricing_01", PricingAgent("pricing_01", imoxon), "pricing_agent")
+prestige_registry.register_agent("compliance_01", ComplianceAgent("compliance_01", imoxon), "compliance")
+prestige_registry.register_agent("guest_app_01", GuestAppAgent("guest_app_01", imoxon), "guest_app")
+prestige_registry.register_agent("shadow_mem_01", ShadowMemoryAgent("shadow_mem_01", imoxon), "shadow_memory")
+prestige_registry.register_agent("esc_01", HumanEscalationAgent("esc_01", imoxon), "human_escalation")
+prestige_registry.register_agent("hotel_01", HotelAgent("hotel_01", imoxon, prestige_sourcing), "hotel_agent")
+
+prestige_outreach = OutreachEngine(imoxon)
+prestige_luxury_wf = LuxuryPackageWorkflow(prestige_trip_service, prestige_registry)
 
 # L1 & L2 Security
 @app.middleware("http")
@@ -258,6 +289,12 @@ app.include_router(create_leaderboard_router(leaderboard, get_actor_ctx), prefix
 app.include_router(create_b2b_portal_router(mars_unified, b2b_negotiator, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_heatmap_router(heatmap_engine, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_laundry_router(laundry_engine, get_actor_ctx), prefix="/imoxon")
+
+# PRESTIGE Staging Router
+app.include_router(
+    create_prestige_router(prestige_trip_service, prestige_registry, prestige_outreach, prestige_luxury_wf, get_actor_ctx),
+    prefix="/prestige/staging"
+)
 
 # Error handlers
 @app.exception_handler(PermissionError)

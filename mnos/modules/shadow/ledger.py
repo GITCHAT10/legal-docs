@@ -1,9 +1,16 @@
 import hashlib
 import json
 import time
+from decimal import Decimal
 import uuid
 import copy
 from datetime import datetime, UTC
+
+class ShadowEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return str(obj)
+        return super().default(obj)
 
 class ShadowLedger:
     """
@@ -44,7 +51,7 @@ class ShadowLedger:
         temp = copy.deepcopy(block)
         if "hash" in temp:
             temp.pop("hash")
-        block_string = json.dumps(temp, sort_keys=True).encode()
+        block_string = json.dumps(temp, sort_keys=True, cls=ShadowEncoder).encode()
         return hashlib.sha256(block_string).hexdigest()
 
     def _sign_event(self, payload: dict) -> str:
