@@ -236,7 +236,8 @@ def get_actor_ctx(
         "org_id": profile.get("organization_id"),
         "island": profile.get("assigned_island"),
         "verified": profile.get("verification_status") == "verified",
-        "persistent_hash": profile.get("persistent_identity_hash")
+        "persistent_hash": profile.get("persistent_identity_hash"),
+        "device_id": x_aegis_device
     }
     with ExecutionGuard.authorized_context(actor):
         shadow_core.commit("aegis.auth.direct.success", x_aegis_identity, {"role": actor["role"]})
@@ -307,6 +308,10 @@ app.include_router(
 @app.exception_handler(PermissionError)
 async def permission_error_handler(request: Request, exc: PermissionError):
     return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+@app.exception_handler(RuntimeError)
+async def runtime_error_handler(request: Request, exc: RuntimeError):
+    return JSONResponse(status_code=500, content={"detail": str(exc)})
 
 @app.get("/health")
 async def health():

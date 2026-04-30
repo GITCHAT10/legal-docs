@@ -26,6 +26,14 @@ class LuxuryPackageWorkflow:
             "guests": inquiry_data.get("guests")
         })
 
+        # FIX: Empty hotel results check
+        if not hotels.get("options") or len(hotels["options"]) == 0:
+            return self.prestige.core.execute_commerce_action(
+                "prestige.package.no_availability",
+                actor_ctx,
+                self._handle_no_availability
+            )
+
         # Select best option (mocked selection)
         best_hotel = hotels["options"][0]
 
@@ -49,6 +57,14 @@ class LuxuryPackageWorkflow:
         )
 
         return result
+
+    def _handle_no_availability(self):
+        # SHADOW event recorded via action_type in execute_commerce_action
+        return {
+            "status": "no_availability",
+            "recovery_required": True,
+            "source_attempts": ["Direct Supply", "TBO Holidays", "RateHawk", "Hotelbeds"]
+        }
 
     def _finalize_package(self, hotel, pricing, compliance):
         return {

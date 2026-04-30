@@ -1,4 +1,4 @@
-name: SALA-UPOS Sovereign Audit CI
+name: iMOXON Sovereign Audit CI
 
 on:
   push:
@@ -39,4 +39,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Confirm Audit
-      run: echo "SALA-UPOS Sovereign Audit CI / audit verified"
+      run: echo "iMOXON Sovereign Audit CI / audit verified"
