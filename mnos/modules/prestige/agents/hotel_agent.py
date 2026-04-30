@@ -6,7 +6,7 @@ class HotelAgent(BasePrestigeAgent):
         super().__init__(agent_id, core_system)
         self.sourcing_engine = sourcing_engine
 
-    async def execute_task(self, task_data: Dict) -> Dict:
+    async def _run_agent_logic(self, task_data: Dict) -> Dict:
         # Hotel Agent sources inventory using the multi-lane sourcing engine
         query = {
             "location": task_data.get("location", "Maldives"),

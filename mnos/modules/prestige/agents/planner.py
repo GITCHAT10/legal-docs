@@ -2,7 +2,7 @@ from mnos.modules.prestige.agents.base import BasePrestigeAgent
 from typing import Dict
 
 class PlannerAgent(BasePrestigeAgent):
-    async def execute_task(self, task_data: Dict) -> Dict:
+    async def _run_agent_logic(self, task_data: Dict) -> Dict:
         # Planner decomposes inquiry into sourcing tasks
         inquiry = task_data.get("inquiry", "")
         model = self.get_capability_model("planning")

@@ -2,7 +2,7 @@ from mnos.modules.prestige.agents.base import BasePrestigeAgent
 from typing import Dict
 
 class ComplianceAgent(BasePrestigeAgent):
-    async def execute_task(self, task_data: Dict) -> Dict:
+    async def _run_agent_logic(self, task_data: Dict) -> Dict:
         # Compliance checks against symbolic rules (tax, margin, seaplane)
         model = self.get_capability_model("reasoning")
 

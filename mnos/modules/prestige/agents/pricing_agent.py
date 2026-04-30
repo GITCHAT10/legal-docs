@@ -8,7 +8,7 @@ class PricingAgent(BasePrestigeAgent):
         super().__init__(agent_id, core_system)
         self.pricing_engine = PrestigePricingEngine()
 
-    async def execute_task(self, task_data: Dict) -> Dict:
+    async def _run_agent_logic(self, task_data: Dict) -> Dict:
         base_price = Decimal(str(task_data.get("base_price_usd", 0)))
         nights = task_data.get("nights", 1)
         adults = task_data.get("adults", 1)

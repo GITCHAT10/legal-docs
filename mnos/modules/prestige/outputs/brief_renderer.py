@@ -1,4 +1,4 @@
-from mnos.modules.prestige.brief.brief_models import PrestigeBrief
+from mnos.modules.prestige.outputs.brief_models import PrestigeBrief
 
 class BriefRenderer:
     def render_html(self, brief: PrestigeBrief) -> str:

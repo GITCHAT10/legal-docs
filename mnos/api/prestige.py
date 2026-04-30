@@ -22,6 +22,12 @@ def create_prestige_router(prestige_core, registry, outreach_engine, luxury_work
     async def luxury_package_inquiry(data: dict, actor: dict = Depends(get_actor_ctx)):
         return await luxury_workflow.execute_inquiry(actor, data)
 
+    @router.post("/agentic/booking-flow")
+    async def run_agentic_flow(data: dict, orchestrator=Depends(lambda: prestige_orchestrator), actor: dict = Depends(get_actor_ctx)):
+        # Inject orchestrator from main (mocking dep injection for router factory)
+        from main import prestige_orchestrator
+        return await prestige_orchestrator.run_booking_flow(data, actor)
+
     @router.get("/config")
     async def get_config(actor: dict = Depends(get_actor_ctx)):
         from mnos.modules.prestige.config import PRESTIGE_CONFIG

@@ -69,6 +69,15 @@ from mnos.modules.prestige.agents.guest_app import GuestAppAgent
 from mnos.modules.prestige.agents.shadow_memory import ShadowMemoryAgent
 from mnos.modules.prestige.agents.human_escalation import HumanEscalationAgent
 from mnos.modules.prestige.agents.hotel_agent import HotelAgent
+from mnos.modules.prestige.agents.transfer_agent import TransferAgent
+from mnos.modules.prestige.agents.private_jet_agent import PrivateJetAgent
+from mnos.modules.prestige.agents.flight_agent import FlightAgent
+from mnos.modules.prestige.agents.risk_agent import RiskAgent
+from mnos.modules.prestige.agents.brief_agent import BriefAgent
+from mnos.modules.prestige.agents.command_center_agent import CommandCenterAgent
+from mnos.modules.prestige.agents.recovery_agent import RecoveryAgent
+from mnos.modules.prestige.agents.channel_manager_agent import ChannelManagerAgent
+from mnos.modules.prestige.agents.orchestrator import AgentOrchestrator
 from mnos.modules.prestige.outreach.engine import OutreachEngine
 from mnos.modules.prestige.workflows.luxury_package import LuxuryPackageWorkflow
 from mnos.api.prestige import create_prestige_router
@@ -165,7 +174,16 @@ prestige_registry.register_agent("guest_app_01", GuestAppAgent("guest_app_01", i
 prestige_registry.register_agent("shadow_mem_01", ShadowMemoryAgent("shadow_mem_01", imoxon), "shadow_memory")
 prestige_registry.register_agent("esc_01", HumanEscalationAgent("esc_01", imoxon), "human_escalation")
 prestige_registry.register_agent("hotel_01", HotelAgent("hotel_01", imoxon, prestige_sourcing), "hotel_agent")
+prestige_registry.register_agent("transfer_01", TransferAgent("transfer_01", imoxon), "transfer_agent")
+prestige_registry.register_agent("jet_01", PrivateJetAgent("jet_01", imoxon), "private_jet_agent")
+prestige_registry.register_agent("flight_01", FlightAgent("flight_01", imoxon), "flight_agent")
+prestige_registry.register_agent("risk_01", RiskAgent("risk_01", imoxon), "risk_agent")
+prestige_registry.register_agent("brief_01", BriefAgent("brief_01", imoxon), "brief_agent")
+prestige_registry.register_agent("cc_01", CommandCenterAgent("cc_01", imoxon), "command_center_agent")
+prestige_registry.register_agent("recovery_01", RecoveryAgent("recovery_01", imoxon), "recovery_agent")
+prestige_registry.register_agent("ch_01", ChannelManagerAgent("ch_01", imoxon), "channel_manager")
 
+prestige_orchestrator = AgentOrchestrator(imoxon, prestige_registry)
 prestige_outreach = OutreachEngine(imoxon)
 prestige_luxury_wf = LuxuryPackageWorkflow(prestige_trip_service, prestige_registry)
 
@@ -301,6 +319,15 @@ app.include_router(create_laundry_router(laundry_engine, get_actor_ctx), prefix=
 # PRESTIGE Staging Router
 app.include_router(
     create_prestige_router(prestige_trip_service, prestige_registry, prestige_outreach, prestige_luxury_wf, get_actor_ctx),
+    prefix="/prestige/staging"
+)
+
+# PRESTIGE UHNW Router
+from mnos.api.uhnw_intake import create_uhnw_router
+from mnos.modules.prestige.workflows.intake_validation import IntakeValidation
+uhnw_validator = IntakeValidation()
+app.include_router(
+    create_uhnw_router(imoxon, uhnw_validator, get_actor_ctx),
     prefix="/prestige/staging"
 )
 
