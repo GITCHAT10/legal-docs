@@ -2,14 +2,16 @@ import hashlib
 import json
 import time
 from decimal import Decimal
+from datetime import date, datetime, time, UTC
 import uuid
 import copy
-from datetime import datetime, UTC
 
 class ShadowEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, Decimal):
             return str(obj)
+        if isinstance(obj, (date, datetime, time)):
+            return obj.isoformat()
         return super().default(obj)
 
 class ShadowLedger:
