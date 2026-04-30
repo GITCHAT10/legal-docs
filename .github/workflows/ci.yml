@@ -32,11 +32,4 @@ jobs:
       run: ruff check . || true
 
     - name: Run Tests
-      run: python -m pytest test_sovereign_commerce.py test_consolidated_imoxon.py || true
-
-  audit:
-    needs: auditExpected
-    runs-on: ubuntu-latest
-    steps:
-    - name: Confirm Audit
-      run: echo "iMOXON Sovereign Audit CI / audit verified"
+      run: python -m pytest test_sovereign_commerce.py test_consolidated_imoxon.py tests/test_prestige_staging.py tests/test_pr38_blockers.py tests/test_prestige_contracts.py || true

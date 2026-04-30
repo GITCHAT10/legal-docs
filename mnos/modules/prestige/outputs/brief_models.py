@@ -18,3 +18,4 @@ class PrestigeBrief(BaseModel):
     payment_status: str
     emergency_contacts: List[Dict[str, str]]
     shadow_proof_status: str
+    legal_tax_breakdown: Optional[Dict[str, Any]] = None
