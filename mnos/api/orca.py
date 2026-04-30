@@ -24,8 +24,10 @@ def create_orca_router(hospitality, bpe, shadow_core, get_actor_ctx):
                     revenue_mvr += result["pricing"].get("total", 0.0)
 
             # Also check for bpe offline sync pricing
-            if "pricing" in payload and "offline_sync" in block.get("event_type", ""):
-                 revenue_mvr += payload["pricing"].get("total", 0.0)
+            if "offline_sync" in block.get("event_type", ""):
+                 pricing = payload.get("pricing")
+                 if pricing and isinstance(pricing, dict):
+                    revenue_mvr += pricing.get("total", 0.0)
 
         # 3. Pending Sync Items
         sync_items = [b for b in shadow_core.chain if "offline_sync" in b.get("event_type", "")]

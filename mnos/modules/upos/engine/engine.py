@@ -98,6 +98,10 @@ class UPOSEngine:
         if not intent:
             raise ValueError(f"INTENT_NOT_FOUND: {intent_id}")
 
+        # IDEMPOTENCY_CHECK: Return existing settlement if already SUCCEEDED
+        if intent.get("status") == "SUCCEEDED" and intent.get("settlement"):
+            return intent["settlement"]
+
         def _execute_settlement():
             # 1. ENFORCE_SPLIT_LOGIC
             # Platform Fee (4%), NGO (2%), Vendor (Net)
@@ -133,6 +137,7 @@ class UPOSEngine:
 
             intent["status"] = "SUCCEEDED"
             intent["transaction_id"] = transaction_id
+            intent["settlement"] = split
 
             self.events.publish("PAYMENT_CONFIRMED", {"id": transaction_id, "intent": intent_id})
             self.events.publish("REVENUE_CAPTURED", split)
