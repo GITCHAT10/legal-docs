@@ -83,3 +83,7 @@ class ShadowLedger:
             "root_hash": self.chain[-1]["hash"] if self.chain else None,
             "evidence": self.chain
         }
+
+    def reset_state(self):
+        """DANGER: Only for test isolation. Clears the audit ledger."""
+        self.chain = []

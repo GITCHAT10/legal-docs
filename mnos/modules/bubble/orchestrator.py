@@ -44,7 +44,7 @@ class OrderExecutionValidator:
                 "order_id": order_id,
                 "signal_type": signal["type"]
             })
-            raise ValueError(f"REALITY MISMATCH: digital order type {order['type']} != physical signal {signal['type']}")
+            raise ExecutionValidationError(f"REALITY MISMATCH: digital order type {order['type']} != physical signal {signal['type']}")
 
         # 4. State transition + SHADOW commit (atomic via Guard)
         order["state"] = "COMPLETED"

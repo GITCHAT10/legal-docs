@@ -81,7 +81,7 @@ def test_iluvia_execution_mismatch(auth_headers):
     signal = {"type": "GPS_GEOFENCE", "valid": True}
 
     response = client.post(f"/bubble/execution/confirm?order_id={order_id}", json=signal, headers=auth_headers)
-    assert response.status_code == 500
+    assert response.status_code == 400
     assert "REALITY MISMATCH" in response.json()["detail"]
 
     # Verify failure rollback log in SHADOW
@@ -93,7 +93,7 @@ def test_iluvia_fake_order_rejection(auth_headers):
     signal = {"type": "QR_SCAN", "valid": True}
 
     response = client.post(f"/bubble/execution/confirm?order_id={order_id}", json=signal, headers=auth_headers)
-    assert response.status_code == 500
+    assert response.status_code == 400
     assert "ORDER_NOT_FOUND" in response.json()["detail"]
 
 def test_exmail_session_auth_path(auth_headers):

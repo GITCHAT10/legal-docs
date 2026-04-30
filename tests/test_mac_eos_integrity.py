@@ -11,6 +11,7 @@ def reset_system_state():
     """Reset rate limits and state between tests to prevent 429 interference."""
     gateway.rate_limits = {}
     shield_edge.rate_store = {}
+    shadow_core.reset_state()
     yield
 
 @pytest.fixture
