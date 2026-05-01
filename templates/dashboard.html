@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>UPOS Cloud | Resort Enterprise Dashboard</title>
+    <link rel="stylesheet" href="/static/css/upos_style.css">
+    <style>
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            padding: 2rem;
+        }
+        .metric-card {
+            background: white;
+            border-left: 5px solid var(--upos-cyan);
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .metric-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--upos-navy);
+        }
+        .sidebar {
+            width: 250px;
+            background: var(--upos-navy);
+            color: white;
+            height: 100vh;
+            position: fixed;
+            padding: 1rem;
+        }
+        .main-content {
+            margin-left: 270px;
+            padding: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>UPOS Cloud</h2>
+        <p>Resort-First OS</p>
+        <hr>
+        <ul style="list-style: none; padding: 0;">
+            <li>Procurement Requests</li>
+            <li>Vendor Quotes</li>
+            <li>Finance / Budget</li>
+            <li>Logistics / Manifests</li>
+            <li>WiFi / IT</li>
+            <li>Settings</li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <h1>Enterprise Command Dashboard</h1>
+        <div class="dashboard-grid">
+            <div class="metric-card">
+                <div class="metric-label">Live Revenue</div>
+                <div class="metric-value">MVR 1,250,000</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">GOP</div>
+                <div class="metric-value">MVR 800,000</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Active Manifests</div>
+                <div class="metric-value" id="manifest-count">--</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Escrow Balance</div>
+                <div class="metric-value">MVR 450,000</div>
+            </div>
+        </div>
+
+        <div style="padding: 2rem;">
+            <h3>SHADOW Proof Timeline</h3>
+            <div class="card">
+                <p><strong>[12:45]</strong> resort_procurement.request.created - PR-82A1B (F&B)</p>
+                <p><strong>[11:30]</strong> corridor.manifest.created - MAN-9912 (Male -> Ari Atoll)</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

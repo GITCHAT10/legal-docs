@@ -104,3 +104,23 @@ def test_apollo_sync(setup_identity):
     response = client.post("/upos/apollo/sync", json=events, params={"tenant_id": "T1"}, headers=headers)
     assert response.status_code == 200
     assert response.json()["synced_count"] == 1
+
+def test_enterprise_procurement_agreement_gate(setup_identity):
+    from main import u_enterprise_procurement
+    admin_id = setup_identity["admin"]
+    admin_dev = setup_identity["admin_dev"]
+    admin_ctx = {"identity_id": admin_id, "device_id": admin_dev, "role": "admin"}
+
+    # 1. Register buyer and supplier
+    buyer = u_enterprise_procurement.register_buyer(admin_ctx, {"legal_name": "STO"})
+    supplier = u_enterprise_procurement.register_supplier(admin_ctx, {"factory_name": "Global Factory"})
+
+    # 2. Try to create request without agreement
+    with pytest.raises(RuntimeError) as excinfo:
+        u_enterprise_procurement.create_bulk_request(admin_ctx, {"buyer_id": buyer["id"], "agreement_id": "NONE"})
+    assert "HARD GATE: No procurement from expired/suspended framework agreement." in str(excinfo.value)
+
+    # 3. Create agreement and then request
+    agreement = u_enterprise_procurement.create_framework_agreement(admin_ctx, {"buyer_id": buyer["id"], "supplier_id": supplier["id"]})
+    request = u_enterprise_procurement.create_bulk_request(admin_ctx, {"buyer_id": buyer["id"], "agreement_id": agreement["id"], "items": []})
+    assert request["status"] == "SUBMITTED"

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>UPOS Cloud | Procurement</title>
+    <link rel="stylesheet" href="/static/css/upos_style.css">
+    <style>
+        .container { padding: 2rem; max-width: 1000px; margin: 0 auto; }
+        .request-item { border: 1px solid var(--upos-silver); padding: 1rem; margin-bottom: 1rem; border-radius: 8px; }
+        .status-badge { background: var(--upos-amber); color: white; padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Resort Procurement Portal</h1>
+        <div style="display: flex; gap: 1rem; margin-bottom: 2rem;">
+            <button class="btn-primary">New Purchase Request</button>
+            <button class="btn-primary" style="background: var(--upos-navy);">Browse Catalogue</button>
+        </div>
+
+        <h3>Active Requests</h3>
+        <div class="request-item">
+            <div style="display: flex; justify-content: space-between;">
+                <strong>PR-82A1B - Fresh Produce (F&B)</strong>
+                <span class="status-badge">AWAITING_VENDOR_QUOTE</span>
+            </div>
+            <p>Requested: 2026-05-10 | Destination: Resort Jetty 1</p>
+            <p>Items: 12 SKUs | Estimated: MVR 15,400</p>
+        </div>
+
+        <div class="request-item">
+            <div style="display: flex; justify-content: space-between;">
+                <strong>PR-9922C - Guest Amenities (Housekeeping)</strong>
+                <span class="status-badge" style="background: var(--upos-green);">APPROVED</span>
+            </div>
+            <p>Requested: 2026-05-12 | Destination: Main Store</p>
+            <p>Vendor Accepted: Maldives Amenities Ltd</p>
+        </div>
+    </div>
+</body>
+</html>

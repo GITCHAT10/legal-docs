@@ -30,7 +30,9 @@ from mnos.modules.logistics.engine import ULogisticsEngine
 from mnos.modules.domestic_cargo.engine import UDomesticCargoEngine
 from mnos.modules.corridors.engine import USmartCorridorsEngine
 from mnos.modules.resort_procurement.engine import UResortProcurementEngine
+from mnos.modules.enterprise_procurement.engine import UEnterpriseProcurementEngine
 from mnos.core.portal_router import UPortalRouter
+from mnos.modules.upos.catalogue import UCatalogueEngine
 
 # U-Series Verticals
 from mnos.modules.u_hotel.engine import UHotelEngine
@@ -76,7 +78,9 @@ u_clearance = UClearanceEngine(u_customs, u_port, shadow_core)
 u_storage = UStorageGlobalEngine(upos_core, shadow_core)
 u_corridors = USmartCorridorsEngine(upos_core, orca_validation)
 u_resort_procurement = UResortProcurementEngine(upos_core, fce_core, shadow_core, u_logistics)
+u_enterprise_procurement = UEnterpriseProcurementEngine(upos_core, fce_core, shadow_core, orca_validation)
 u_shopping = UShoppingEngine(upos_core, u_customs, u_port, u_logistics, u_domestic)
+u_catalogue = UCatalogueEngine(shadow_core)
 portal_router = UPortalRouter(identity_core, orca_validation)
 
 u_hotel = UHotelEngine(upos_core)
@@ -242,6 +246,20 @@ async def resort_procurement_request(data: dict, actor: dict = Depends(get_actor
 async def submit_quote(rid: str, data: dict, actor: dict = Depends(get_actor_ctx)):
     return u_resort_procurement.submit_vendor_quote(actor, rid, data)
 
+@app.get("/upos/resort/catalogue/browse")
+async def browse_resort_catalogue(tenant_id: str, category: Optional[str] = None, actor: dict = Depends(get_actor_ctx)):
+    return u_catalogue.browse_catalogue(actor, tenant_id, category)
+
+# --- U-Enterprise Procurement ---
+
+@app.post("/upos/enterprise/procurement/buyer/register")
+async def register_enterprise_buyer(data: dict, actor: dict = Depends(get_actor_ctx)):
+    return u_enterprise_procurement.register_buyer(actor, data)
+
+@app.post("/upos/enterprise/procurement/bulk-request")
+async def bulk_purchase_request(data: dict, actor: dict = Depends(get_actor_ctx)):
+    return u_enterprise_procurement.create_bulk_request(actor, data)
+
 # --- U-Enterprise / MAC EOS Governance ---
 
 @app.get("/upos/enterprise/dashboard")
@@ -250,6 +268,11 @@ async def enterprise_dashboard(actor: dict = Depends(get_actor_ctx)):
     U-Enterprise: Master Command Dashboard.
     Reports Live Revenue, Cost, GOP, and Logistics Risk.
     """
+    # Procurement Aggregates
+    resort_reqs = len(u_resort_procurement.requests)
+    enterprise_reqs = len(u_enterprise_procurement.requests)
+    total_quotes = len(u_resort_procurement.quotes)
+
     # Logistics Aggregate
     customs_pending = len([j for j in u_clearance.clearance_jobs.values() if not j["customs_released"]])
     port_pending = len([j for j in u_clearance.clearance_jobs.values() if not j["port_released"]])
@@ -261,7 +284,16 @@ async def enterprise_dashboard(actor: dict = Depends(get_actor_ctx)):
             "live_revenue_mvr": 1250000.0,
             "live_cost_mvr": 450000.0,
             "live_gop_mvr": 800000.0,
-            "active_vouchers": 1240,
+            "resort_procurement": {
+                "open_requests": resort_reqs,
+                "pending_quotes": total_quotes,
+                "disputed_orders": len([r for r in u_resort_procurement.requests.values() if r["status"] == "DISPUTED"])
+            },
+            "enterprise_procurement": {
+                "active_agreements": len(u_enterprise_procurement.agreements),
+                "bulk_requests_pending": len([r for r in u_enterprise_procurement.requests.values() if r["status"] == "SUBMITTED"]),
+                "budget_reserved_total": sum(1 for r in u_enterprise_procurement.requests.values() if r.get("budget_reserved"))
+            },
             "logistics_metrics": {
                 "paid_orders_awaiting_procurement": len([o for o in upos_core.orders.values() if o["status"] == "PAID"]),
                 "overseas_hub_received": len(u_storage.inventory),
@@ -300,11 +332,23 @@ async def login_portal(actor: dict = Depends(get_actor_ctx)):
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="index.html")
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="login.html")
+
+@app.get("/app/enterprise", response_class=HTMLResponse)
+async def enterprise_page(request: Request):
+    return templates.TemplateResponse(request=request, name="dashboard.html")
+
+@app.get("/app/procurement", response_class=HTMLResponse)
+async def procurement_page(request: Request):
+    return templates.TemplateResponse(request=request, name="procurement.html")
+
+@app.get("/app/logistics", response_class=HTMLResponse)
+async def logistics_page(request: Request):
+    return templates.TemplateResponse(request=request, name="logistics_app.html")
 
 @app.get("/health")
 async def health():
