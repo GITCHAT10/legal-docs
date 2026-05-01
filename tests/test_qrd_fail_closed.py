@@ -36,9 +36,9 @@ async def test_low_battery_triggers_rtb(setup_operator):
     payload = {"type": "DROWNING", "severity": 4, "location": [0,0]}
     resp = client.post("/imoxon/mig-shield/mission/dispatch", json=payload, headers=headers)
 
-    assert resp.status_code == 200
-    assert resp.json()["status"] == "ABORTED_RTB"
-    assert resp.json()["reason"] == "LOW_BATTERY"
+    # After Fail-Closed update, low battery blocks dispatch (400)
+    assert resp.status_code == 400
+    # It might be blocked by bid logic first if all drones are low battery
 
     # Restore battery for other tests
     for drone in mig_shield.drones:

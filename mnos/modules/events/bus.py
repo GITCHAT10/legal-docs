@@ -13,9 +13,17 @@ class DistributedEventBus:
 
     def publish(self, event_type: str, payload: dict, partition: str = "GLOBAL"):
         from mnos.shared.execution_guard import ExecutionGuard
+
+        ALLOWED_BOOTSTRAP_EVENTS = {
+            "IDENTITY_CREATED",
+            "SYSTEM_BOOTSTRAP"
+        }
+
         if not ExecutionGuard.is_authorized():
-             # RELAXATION for internal bootstrap/identity events
-             pass
+             if event_type not in ALLOWED_BOOTSTRAP_EVENTS:
+                 raise PermissionError(
+                     f"FAIL CLOSED: Direct event publish blocked for {event_type}. Must use ExecutionGuard."
+                 )
 
         event = {
             "type": event_type,

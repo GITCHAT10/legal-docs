@@ -1,11 +1,14 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 def create_specialized_router(tourism, faith, transport, housing, exchange, education, get_actor_ctx):
     router = APIRouter(tags=["specialized"])
 
     @router.post("/tourism/book")
     async def book_tourism(data: dict, actor: dict = Depends(get_actor_ctx)):
-        return tourism.book_package(actor, data)
+        try:
+            return tourism.book_package(actor, data)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
 
     @router.post("/faith/donate")
     async def donate_faith(data: dict, actor: dict = Depends(get_actor_ctx)):

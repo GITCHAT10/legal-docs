@@ -81,7 +81,7 @@ app = FastAPI(title="iMOXON N-DEOS: Consolidated Architecture Final")
 # SECURITY: Fail-closed if secret is missing in production environment.
 NEXGEN_SECRET = os.environ.get("NEXGEN_SECRET")
 if not NEXGEN_SECRET:
-    os.environ["NEXGEN_SECRET"] = "FALLBACK-DEV-SECRET-NOT-FOR-PROD"
+    raise RuntimeError("FAIL CLOSED: NEXGEN_SECRET is required for startup")
 
 fce_core = FCEEngine()
 shadow_core = ShadowLedger()
