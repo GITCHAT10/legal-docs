@@ -41,6 +41,8 @@ class ExecutionGuard:
 
         # 3. Set Sovereign Context (Authorized)
         token = str(uuid.uuid4())
+
+        # Ensure actor_context has what we need for get_actor()
         _sovereign_context.set({"token": token, "actor": actor_context})
 
         try:
