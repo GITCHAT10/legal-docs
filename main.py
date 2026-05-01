@@ -64,6 +64,7 @@ from mnos.api.laundry import create_laundry_router
 from mnos.api.orca import create_orca_router
 from mnos.api.imoxon.booking_gate import create_booking_gate_router
 from mnos.api.imoxon.supplier_rates import create_supplier_rate_router
+from mnos.api.imoxon.prestige_supplier import create_prestige_supplier_router
 from mnos.api.upos import create_upos_router
 from mnos.api.csr import create_csr_router
 from mnos.api.pms.reservations import create_pms_router
@@ -83,6 +84,7 @@ from mnos.modules.exmail.escalation import EscalationEngine
 
 # PH Rate Engine
 from mnos.modules.imoxon.supplier.rate_engine import PHRateEngine
+from mnos.modules.prestige.supplier_portal import PrestigeSupplierPortal, MarketRateEngine
 
 # UPOS Engine
 from mnos.modules.upos.engine.engine import UPOSEngine, UPOSWalletLedger
@@ -179,6 +181,8 @@ escalation_engine = EscalationEngine(shadow_core, events_core)
 
 # PH Rate Engine Activation
 ph_rate_engine = PHRateEngine(guard, shadow_core, events_core, fce_core)
+market_rate_engine = MarketRateEngine(shadow_core, fce_core)
+prestige_portal = PrestigeSupplierPortal(guard, shadow_core, events_core, fce_core, market_rate_engine)
 
 # SILENT SHIELD
 shield_edge = SilentShieldEdge(shadow_core, events_core)
@@ -398,6 +402,7 @@ app.include_router(create_heatmap_router(heatmap_engine, get_actor_ctx), prefix=
 app.include_router(create_laundry_router(laundry_engine, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_booking_gate_router(booking_gate, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_supplier_rate_router(ph_rate_engine, get_actor_ctx), prefix="/imoxon/supplier-portal")
+app.include_router(create_prestige_supplier_router(prestige_portal, get_actor_ctx), prefix="/prestige/supplier-portal")
 app.include_router(create_upos_router(upos_engine, upos_ledger, get_actor_ctx, csr_engine=csr_engine), prefix="/upos")
 app.include_router(create_csr_router(csr_engine, get_actor_ctx), prefix="/csr")
 app.include_router(create_orca_router(hospitality, bpe, shadow_core, get_actor_ctx), prefix="/orca")

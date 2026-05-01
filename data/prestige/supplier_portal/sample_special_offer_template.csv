@@ -1,0 +1,3 @@
+offer_type,product_id,stay_min,discount_percent,free_nights,honeymoon_benefit
+FREE_NIGHT,P-001,7,0.0,1,true
+EARLY_BIRD,P-001,3,0.15,0,false
