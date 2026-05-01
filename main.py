@@ -18,6 +18,16 @@ from mnos.modules.upos.core import UPOSCommerceCore
 from mnos.modules.apollo.sync import ApolloSyncEngine
 from mnos.modules.wifi.engine import UWiFiEngine
 
+# UPOS Global Commerce & Logistics
+from mnos.modules.shopping.engine import UShoppingEngine
+from mnos.modules.customs.engine import UCustomsEngine
+from mnos.modules.port.engine import UPortEngine
+from mnos.modules.clearance.engine import UClearanceEngine
+from mnos.modules.storage_global.engine import UStorageGlobalEngine
+from mnos.modules.logistics.engine import ULogisticsEngine
+from mnos.modules.domestic_cargo.engine import UDomesticCargoEngine
+from mnos.modules.corridors.engine import USmartCorridorsEngine
+
 # U-Series Verticals
 from mnos.modules.u_hotel.engine import UHotelEngine
 from mnos.modules.u_marine.engine import UMarineEngine
@@ -50,6 +60,17 @@ apollo_sync = ApolloSyncEngine(guard, shadow_core, events_core, fce_core)
 
 # U-Series Product Registry
 u_wifi = UWiFiEngine(upos_core)
+
+# Global Commerce & Logistics
+u_customs = UCustomsEngine(shadow_core)
+u_port = UPortEngine(shadow_core)
+u_logistics = ULogisticsEngine(shadow_core)
+u_domestic = UDomesticCargoEngine(shadow_core)
+u_clearance = UClearanceEngine(u_customs, u_port, shadow_core)
+u_storage = UStorageGlobalEngine(upos_core, shadow_core)
+u_corridors = USmartCorridorsEngine(upos_core, orca_validation)
+u_shopping = UShoppingEngine(upos_core, u_customs, u_port, u_logistics, u_domestic)
+
 u_hotel = UHotelEngine(upos_core)
 u_marine = UMarineEngine(upos_core)
 u_fb = UFBEngine(upos_core, None) # Mocks BPE
@@ -96,15 +117,108 @@ async def hotel_booking(data: dict, actor: dict = Depends(get_actor_ctx)):
 async def marine_transfer(data: dict, actor: dict = Depends(get_actor_ctx)):
     return u_marine.book_transfer(actor, data)
 
+# --- UPOS Global Commerce ---
+
+@app.get("/upos/global/shopping/search")
+async def shopping_search(q: str, actor: dict = Depends(get_actor_ctx)):
+    return guard.execute_sovereign_action(
+        "shopping.query.created",
+        actor,
+        u_shopping.search,
+        actor, q
+    )
+
+@app.post("/upos/global/orders/create")
+async def create_global_order(data: dict, actor: dict = Depends(get_actor_ctx)):
+    # Standard UPOS flow for global orders
+    return upos_core.create_order(actor, data, "GLOBAL_COMMERCE")
+
+@app.post("/upos/global/hub/receive")
+async def hub_receive(order_id: str, hub_id: str, data: dict, actor: dict = Depends(get_actor_ctx)):
+    return guard.execute_sovereign_action(
+        "storage_global.hub.received",
+        actor,
+        u_storage.receive_package,
+        actor, order_id, hub_id, data
+    )
+
+@app.post("/upos/global/clearance/approve-customs")
+async def approve_customs(job_id: str, actor: dict = Depends(get_actor_ctx)):
+    return guard.execute_sovereign_action(
+        "clearance.customs.released",
+        actor,
+        u_clearance.approve_customs_release,
+        actor, job_id
+    )
+
+@app.post("/upos/global/clearance/approve-port")
+async def approve_port(job_id: str, actor: dict = Depends(get_actor_ctx)):
+    return guard.execute_sovereign_action(
+        "clearance.port.released",
+        actor,
+        u_clearance.approve_port_release,
+        actor, job_id
+    )
+
+@app.post("/upos/global/clearance/validate-docs")
+async def validate_clearance_docs(job_id: str, actor: dict = Depends(get_actor_ctx)):
+    return guard.execute_sovereign_action(
+        "clearance.documents.validated",
+        actor,
+        u_clearance.validate_documents,
+        actor, job_id
+    )
+
+# --- U-Smart Corridors ---
+
+@app.post("/upos/corridors/operators/register")
+async def register_corridor_operator(data: dict, actor: dict = Depends(get_actor_ctx)):
+    return guard.execute_sovereign_action(
+        "corridor.operator.registered",
+        actor,
+        u_corridors.register_operator,
+        actor, data
+    )
+
+@app.post("/upos/corridors/manifests/create")
+async def create_corridor_manifest(data: dict, actor: dict = Depends(get_actor_ctx)):
+    return guard.execute_sovereign_action(
+        "corridor.manifest.created",
+        actor,
+        u_corridors.create_manifest,
+        actor, data
+    )
+
+@app.post("/upos/corridors/manifests/{mid}/load-cargo")
+async def corridor_load_cargo(mid: str, item: dict, actor: dict = Depends(get_actor_ctx)):
+    return guard.execute_sovereign_action(
+        "corridor.cargo.loaded",
+        actor,
+        u_corridors.load_cargo,
+        actor, mid, item
+    )
+
+@app.post("/upos/corridors/manifests/{mid}/depart")
+async def corridor_depart(mid: str, actor: dict = Depends(get_actor_ctx)):
+    return guard.execute_sovereign_action(
+        "corridor.departure.confirmed",
+        actor,
+        u_corridors.confirm_departure,
+        actor, mid
+    )
+
 # --- U-Enterprise / MAC EOS Governance ---
 
 @app.get("/upos/enterprise/dashboard")
 async def enterprise_dashboard(actor: dict = Depends(get_actor_ctx)):
     """
     U-Enterprise: Master Command Dashboard.
-    Reports Live Revenue, Cost, GOP, and Risk.
+    Reports Live Revenue, Cost, GOP, and Logistics Risk.
     """
-    # In a real system, these would be aggregated from FCE/SHADOW
+    # Logistics Aggregate
+    customs_pending = len([j for j in u_clearance.clearance_jobs.values() if not j["customs_released"]])
+    port_pending = len([j for j in u_clearance.clearance_jobs.values() if not j["port_released"]])
+
     return {
         "status": "OPERATIONAL",
         "governance": "MAC EOS / MNOS",
@@ -113,10 +227,18 @@ async def enterprise_dashboard(actor: dict = Depends(get_actor_ctx)):
             "live_cost_mvr": 450000.0,
             "live_gop_mvr": 800000.0,
             "active_vouchers": 1240,
+            "logistics_metrics": {
+                "paid_orders_awaiting_procurement": len([o for o in upos_core.orders.values() if o["status"] == "PAID"]),
+                "overseas_hub_received": len(u_storage.inventory),
+                "customs_pending": customs_pending,
+                "port_charges_pending": port_pending,
+                "active_corridors": len(u_corridors.manifests),
+                "atoll_delivery_queue": len([j for j in u_domestic.jobs.values() if j["status"] == "READY_AT_MALE_HUB"]),
+            },
             "u_wifi_routers_online": len(u_wifi.routers),
             "active_wifi_sessions": len(u_wifi.active_sessions)
         },
-        "risk_alerts": [],
+        "risk_alerts": ["Customs reserve exposure: Low"] if customs_pending < 5 else ["High customs backlog detected"],
         "integrity_hash": shadow_core.verify_integrity()
     }
 

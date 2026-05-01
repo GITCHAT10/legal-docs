@@ -44,10 +44,20 @@ class OrcaValidationEngine:
                 return False, "Supplier must be verified"
 
         # Logistics Binding
-        logistics_actions = ["shipment_intake", "warehouse_receipt", "dispatch_confirmation"]
+        logistics_actions = [
+            "shipment_intake", "warehouse_receipt", "dispatch_confirmation",
+            "storage_global.hub.received", "logistics.shipment.booked",
+            "domestic_cargo.quote.created", "domestic_cargo.departed"
+        ]
         if action_type in logistics_actions:
-            if not self._has_role(identity_id, "logistics_operator"):
-                return False, "Action requires logistics binding"
+            if not self._has_role(identity_id, "logistics_operator") and not self._has_role(identity_id, "admin"):
+                return False, "Action requires logistics or admin binding"
+
+        # Customs / Broker Binding
+        customs_actions = ["clearance.documents.validated", "clearance.customs.released", "clearance.port.released"]
+        if action_type in customs_actions:
+            if not self._has_role(identity_id, "customs_broker") and not self._has_role(identity_id, "admin"):
+                return False, "Action requires customs broker or admin binding"
 
         # Finance Binding
         finance_actions = ["manual_release_override", "refund_approval", "penalty_override", "apollo.sync.replay"]

@@ -51,6 +51,19 @@ class UPOSCommerceCore:
         # FCE Calculation
         pricing = self.fce.finalize_invoice(amount, category)
 
+        # Global Commerce Reserves
+        if category == "GLOBAL_COMMERCE":
+            reserves = data.get("reserves", {})
+            pricing["reserves"] = {
+                "supplier_payable": reserves.get("supplier", amount * 0.7),
+                "freight_reserve": reserves.get("freight", 50.0),
+                "customs_reserve": reserves.get("customs", 150.0),
+                "port_reserve": reserves.get("port", 100.0),
+                "clearance_reserve": 50.0,
+                "domestic_reserve": 30.0,
+                "platform_fee": amount * 0.05
+            }
+
         order = {
             "id": order_id,
             "tenant_id": data.get("tenant_id"),
