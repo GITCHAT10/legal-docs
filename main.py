@@ -332,6 +332,14 @@ app.include_router(create_laundry_router(laundry_engine, get_actor_ctx), prefix=
 async def permission_error_handler(request: Request, exc: PermissionError):
     return JSONResponse(status_code=403, content={"detail": str(exc)})
 
+@app.exception_handler(RuntimeError)
+async def runtime_error_handler(request: Request, exc: RuntimeError):
+    return JSONResponse(status_code=500, content={"detail": str(exc)})
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
+
 @app.get("/health")
 async def health():
     return {"status": "online", "integrity": shadow_core.verify_integrity(), "version": "CONSOLIDATED-RC1"}
