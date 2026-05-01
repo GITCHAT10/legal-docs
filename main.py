@@ -67,6 +67,15 @@ from mnos.core.eleone import EleoneEngine
 from mnos.api.orca import create_orca_router
 from mnos.api.mig_shield import create_mig_shield_router
 
+# UT AEROMARINE v2
+from mnos.modules.ut_aeromarine.mission_planner import MissionPlanner
+from mnos.modules.ut_aeromarine.compliance_gate import ComplianceGate
+from mnos.modules.ut_aeromarine.operator_authority import OperatorAuthority
+from mnos.modules.ut_aeromarine.device_registry import DeviceRegistry
+from mnos.modules.ut_aeromarine.shadow_logger import ShadowLogger
+from mnos.modules.ut_aeromarine.telemetry_watchdog import TelemetryWatchdog
+from mnos.modules.ut_aeromarine.command_hub_api import create_utam_router
+
 # Bubble OS Super App Layer
 from mnos.modules.bubble.chat.engine import ChatIntentEngine, ChatToTransactionEngine
 from mnos.modules.bubble.sdk.core.bridge import BubbleSDK
@@ -99,6 +108,18 @@ fce_hardened = FCEHardenedEngine(shadow_core)
 # MIG SHIELD & ORCA Engines
 orca = ORCAEngine(shadow_core)
 mig_shield = MIGShieldEngine(guard, shadow_core, orca, eleone)
+
+# UT AEROMARINE v2 Instances
+utam_registry = DeviceRegistry(shadow_core)
+utam_authority = OperatorAuthority(identity_core)
+utam_shadow = ShadowLogger(shadow_core, guard)
+utam_watchdog = TelemetryWatchdog(shadow_core)
+utam_planner = MissionPlanner(
+    ComplianceGate(utam_authority, utam_registry, shadow_core),
+    utam_shadow,
+    utam_watchdog,
+    events_core
+)
 
 # Core Instances
 imoxon = ImoxonCore(guard, fce_core, shadow_core, events_core)
@@ -303,6 +324,9 @@ app.include_router(create_laundry_router(laundry_engine, get_actor_ctx), prefix=
 # Integration of MIG SHIELD & ORCA
 app.include_router(create_orca_router(orca, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_mig_shield_router(mig_shield, get_actor_ctx), prefix="/imoxon")
+
+# UT AEROMARINE v2
+app.include_router(create_utam_router(utam_planner, get_actor_ctx), prefix="/imoxon")
 
 # BOOTSTRAP DEMO IDENTITY for Command Hub
 @app.on_event("startup")

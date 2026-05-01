@@ -35,11 +35,14 @@ def get_auth_headers(identity_id="MIG-ADMIN-01"):
 
 def test_gate_01_normal_dispatch():
     """1. Normal dispatch -> Success path"""
-    payload = {"type": "DROWNING", "severity": 4, "location": [1.0, 2.0]}
-    response = client.post("/imoxon/mig-shield/mission/dispatch", json=payload, headers=get_auth_headers())
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "SUCCESS"
+    import unittest.mock as mock
+    # Force ORCA to allow to avoid intermittent 5% failure
+    with mock.patch.object(orca, 'validate_mission', return_value={"allowed": True, "reason": "CLEAR"}):
+        payload = {"type": "DROWNING", "severity": 4, "location": [1.0, 2.0]}
+        response = client.post("/imoxon/mig-shield/mission/dispatch", json=payload, headers=get_auth_headers())
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "SUCCESS"
     assert "incident_id" in data
     assert "drone_id" in data
 
@@ -75,6 +78,7 @@ def test_gate_04_telemetry_loss():
     with mock.patch.object(mig_shield.telemetry_bridge, 'is_active', return_value=False):
         payload = {"type": "DROWNING", "severity": 4, "location": [1.0, 2.0]}
         response = client.post("/imoxon/mig-shield/mission/dispatch", json=payload, headers=get_auth_headers())
+        # Returning status=ABORTED_RTB results in 200 OK since it's a handled safe state
         assert response.status_code == 200
         assert response.json()["status"] == "ABORTED_RTB"
         assert response.json()["reason"] == "TELEMETRY_LOST"

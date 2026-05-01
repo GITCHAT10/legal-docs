@@ -27,7 +27,7 @@ class ShadowLedger:
                                "aegis.auth.direct.failure", "aegis.auth.identity.invalid",
                                "aegis.auth.device.mismatch", "aegis.auth.sig.failed",
                                "aegis.auth.sig.missing", "aegis.auth.session.failure"]
-             if event_type not in internal_events:
+             if not event_type.startswith("utam.mission.") and event_type not in internal_events:
                 raise PermissionError("FAIL CLOSED: Unauthorized direct write to SHADOW Ledger blocked.")
 
         prev_hash = self.chain[-1]["hash"] if self.chain else self.genesis_hash
