@@ -1,6 +1,8 @@
 import os
 from fastapi import FastAPI, HTTPException, Header, Depends, Query, Request, Body
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from typing import List, Optional, Dict
 from decimal import Decimal
 
@@ -27,6 +29,8 @@ from mnos.modules.storage_global.engine import UStorageGlobalEngine
 from mnos.modules.logistics.engine import ULogisticsEngine
 from mnos.modules.domestic_cargo.engine import UDomesticCargoEngine
 from mnos.modules.corridors.engine import USmartCorridorsEngine
+from mnos.modules.resort_procurement.engine import UResortProcurementEngine
+from mnos.core.portal_router import UPortalRouter
 
 # U-Series Verticals
 from mnos.modules.u_hotel.engine import UHotelEngine
@@ -39,6 +43,8 @@ from mnos.modules.finance.escrow import EscrowFCETCore
 from mnos.modules.imoxon.procurement.engine import ProcurementEngine
 
 app = FastAPI(title="UPOS Cloud: Universal Commerce Nervous System")
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
 
 # --- System Law ---
 NEXGEN_SECRET = os.environ.get("NEXGEN_SECRET", "FALLBACK-DEV-SECRET")
@@ -69,7 +75,9 @@ u_domestic = UDomesticCargoEngine(shadow_core)
 u_clearance = UClearanceEngine(u_customs, u_port, shadow_core)
 u_storage = UStorageGlobalEngine(upos_core, shadow_core)
 u_corridors = USmartCorridorsEngine(upos_core, orca_validation)
+u_resort_procurement = UResortProcurementEngine(upos_core, fce_core, shadow_core, u_logistics)
 u_shopping = UShoppingEngine(upos_core, u_customs, u_port, u_logistics, u_domestic)
+portal_router = UPortalRouter(identity_core, orca_validation)
 
 u_hotel = UHotelEngine(upos_core)
 u_marine = UMarineEngine(upos_core)
@@ -85,18 +93,35 @@ def get_actor_ctx(
     x_aegis_device: str = Header(None, alias="X-AEGIS-DEVICE"),
     x_aegis_signature: str = Header(None, alias="X-AEGIS-SIGNATURE")
 ):
+    """
+    AEGIS AUTH: Fail-closed identity context derivation.
+    Enforces that identity MUST exist for any trusted session.
+    """
     if x_aegis_session:
         return identity_gateway.validate_session(x_aegis_session)
 
     if not x_aegis_identity:
-        raise HTTPException(status_code=401, detail="AEGIS_REQUIRED")
+        raise HTTPException(status_code=401, detail="AEGIS_REQUIRED: Missing Identity")
 
+    # 1. Identity lookup via AEGIS registry (persistence)
     profile = identity_core.profiles.get(x_aegis_identity)
+    if not profile:
+        shadow_core.commit("aegis.auth.identity.invalid", x_aegis_identity, {"reason": "Not in Registry"})
+        raise HTTPException(status_code=401, detail="INVALID_IDENTITY: Unauthorized")
+
+    # 2. Validate device binding if header provided
+    if x_aegis_device:
+        device = identity_core.devices.get(x_aegis_device)
+        if not device or device.get("identity_id") != x_aegis_identity:
+            shadow_core.commit("aegis.auth.device.mismatch", x_aegis_identity, {"device_id": x_aegis_device})
+            raise HTTPException(status_code=403, detail="DEVICE_BINDING_INVALID: Access Denied")
+
+    # 3. Derive role and verified status from profile (NO SYNTHETIC GUEST FALLBACK)
     return {
         "identity_id": x_aegis_identity,
         "device_id": x_aegis_device,
-        "role": profile.get("profile_type") if profile else "guest",
-        "verified": profile.get("verification_status") == "verified" if profile else False
+        "role": profile.get("profile_type"),
+        "verified": profile.get("verification_status") == "verified"
     }
 
 # --- U-Series APIs ---
@@ -207,6 +232,16 @@ async def corridor_depart(mid: str, actor: dict = Depends(get_actor_ctx)):
         actor, mid
     )
 
+# --- U-Resort Procurement ---
+
+@app.post("/upos/resort/procurement/request")
+async def resort_procurement_request(data: dict, actor: dict = Depends(get_actor_ctx)):
+    return u_resort_procurement.create_request(actor, data)
+
+@app.post("/upos/resort/procurement/quote/{rid}")
+async def submit_quote(rid: str, data: dict, actor: dict = Depends(get_actor_ctx)):
+    return u_resort_procurement.submit_vendor_quote(actor, rid, data)
+
 # --- U-Enterprise / MAC EOS Governance ---
 
 @app.get("/upos/enterprise/dashboard")
@@ -255,6 +290,21 @@ async def apollo_sync_events(tenant_id: str, events: list = Body(...), actor: di
 @app.exception_handler(PermissionError)
 async def permission_error_handler(request: Request, exc: PermissionError):
     return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+@app.post("/upos/auth/login")
+async def login_portal(actor: dict = Depends(get_actor_ctx)):
+    """
+    UPOS Multi-Portal Login Entrypoint.
+    """
+    return portal_router.login(actor)
+
+@app.get("/", response_class=HTMLResponse)
+async def home(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
 
 @app.get("/health")
 async def health():

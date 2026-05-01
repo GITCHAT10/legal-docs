@@ -1,0 +1,68 @@
+:root {
+    --upos-navy: #001f3f;
+    --upos-cyan: #0074d9;
+    --upos-silver: #dddddd;
+    --upos-white: #ffffff;
+    --upos-green: #2ecc40;
+    --upos-amber: #ff851b;
+    --upos-red: #ff4136;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--upos-white);
+    color: var(--upos-navy);
+    margin: 0;
+    padding: 0;
+}
+
+.login-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background: linear-gradient(135deg, var(--upos-navy) 0%, var(--upos-cyan) 100%);
+    color: var(--upos-white);
+}
+
+.login-card {
+    background: var(--upos-white);
+    color: var(--upos-navy);
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+}
+
+.portal-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.portal-card {
+    background: var(--upos-silver);
+    padding: 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.portal-card:hover {
+    transform: scale(1.05);
+    background: var(--upos-cyan);
+    color: var(--upos-white);
+}
+
+.btn-primary {
+    background-color: var(--upos-cyan);
+    color: white;
+    border: none;
+    padding: 0.8rem 1.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+}

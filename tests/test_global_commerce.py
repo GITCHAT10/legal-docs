@@ -19,12 +19,15 @@ def setup_identity():
     admin_id = identity_core.create_profile({"full_name": "Admin User", "profile_type": "admin"})
     guest_id = identity_core.create_profile({"full_name": "Guest User", "profile_type": "guest"})
     identity_core.verify_identity(admin_id, "SYSTEM")
-    identity_core.bind_device(admin_id, {"fingerprint": "dev-01"})
-    identity_core.bind_device(guest_id, {"fingerprint": "dev-02"})
-    return {"admin": admin_id, "guest": guest_id}
+    admin_dev = identity_core.bind_device(admin_id, {"fingerprint": "dev-01"})
+    guest_dev = identity_core.bind_device(guest_id, {"fingerprint": "dev-02"})
+    return {
+        "admin": admin_id, "admin_dev": admin_dev,
+        "guest": guest_id, "guest_dev": guest_dev
+    }
 
 def test_shopping_search(setup_identity):
-    headers = {"X-AEGIS-IDENTITY": setup_identity["guest"], "X-AEGIS-DEVICE": "dev-02", "X-AEGIS-SIGNATURE": "VALID_SIG_FOR_" + setup_identity["guest"]}
+    headers = {"X-AEGIS-IDENTITY": setup_identity["guest"], "X-AEGIS-DEVICE": setup_identity["guest_dev"], "X-AEGIS-SIGNATURE": "VALID_SIG_FOR_" + setup_identity["guest"]}
     response = client.get("/upos/global/shopping/search?q=towels", headers=headers)
     assert response.status_code == 200
     results = response.json()
@@ -34,15 +37,16 @@ def test_shopping_search(setup_identity):
 
 def test_unpaid_order_blocked_at_hub(setup_identity):
     guest_id = setup_identity["guest"]
-    headers = {"X-AEGIS-IDENTITY": guest_id, "X-AEGIS-DEVICE": "dev-02", "X-AEGIS-SIGNATURE": "VALID_SIG_FOR_" + guest_id}
+    headers = {"X-AEGIS-IDENTITY": guest_id, "X-AEGIS-DEVICE": setup_identity["guest_dev"], "X-AEGIS-SIGNATURE": "VALID_SIG_FOR_" + guest_id}
 
     # 1. Create order but don't pay
     payload = {"amount": 1000, "tenant_id": "T1", "items": [{"id": "P1", "qty": 1}]}
     resp = client.post("/upos/global/orders/create", json=payload, headers=headers)
+    assert resp.status_code == 200, resp.text
     order_id = resp.json()["id"]
 
     # 2. Try to receive at hub as admin
-    admin_headers = {"X-AEGIS-IDENTITY": setup_identity["admin"], "X-AEGIS-DEVICE": "dev-01", "X-AEGIS-SIGNATURE": "VALID_SIG_FOR_" + setup_identity["admin"]}
+    admin_headers = {"X-AEGIS-IDENTITY": setup_identity["admin"], "X-AEGIS-DEVICE": setup_identity["admin_dev"], "X-AEGIS-SIGNATURE": "VALID_SIG_FOR_" + setup_identity["admin"]}
     receive_payload = {"quantity": 1, "photo_url": "http://img.url"}
 
     # This should fail based on doctrine
@@ -52,31 +56,30 @@ def test_unpaid_order_blocked_at_hub(setup_identity):
 
 def test_paid_order_allowed_at_hub(setup_identity):
     guest_id = setup_identity["guest"]
-    headers = {"X-AEGIS-IDENTITY": guest_id, "X-AEGIS-DEVICE": "dev-02", "X-AEGIS-SIGNATURE": "VALID_SIG_FOR_" + guest_id}
+    headers = {"X-AEGIS-IDENTITY": guest_id, "X-AEGIS-DEVICE": setup_identity["guest_dev"], "X-AEGIS-SIGNATURE": "VALID_SIG_FOR_" + guest_id}
 
     # 1. Create order
     payload = {"amount": 1000, "tenant_id": "T1", "items": [{"id": "P1", "qty": 1}]}
     resp = client.post("/upos/global/orders/create", json=payload, headers=headers)
+    assert resp.status_code == 200, resp.text
     order_id = resp.json()["id"]
 
     # 2. Pay order
-    client.post(f"/upos/u-fb/order/{order_id}/pay", json={"method": "CASH"}, headers=headers) # Using FB pay endpoint as proxy for payment for now, or upos_core directly
-
     pay_ctx = {
         "identity_id": guest_id,
-        "device_id": "dev-02",
+        "device_id": setup_identity["guest_dev"],
         "role": "guest"
     }
     upos_core.process_payment(pay_ctx, order_id, "WALLET")
 
     # 3. Receive at hub
-    admin_headers = {"X-AEGIS-IDENTITY": setup_identity["admin"], "X-AEGIS-DEVICE": "dev-01", "X-AEGIS-SIGNATURE": "VALID_SIG_FOR_" + setup_identity["admin"]}
+    admin_headers = {"X-AEGIS-IDENTITY": setup_identity["admin"], "X-AEGIS-DEVICE": setup_identity["admin_dev"], "X-AEGIS-SIGNATURE": "VALID_SIG_FOR_" + setup_identity["admin"]}
     receive_payload = {"quantity": 1, "photo_url": "http://img.url"}
     pkg = u_storage.receive_package(admin_headers, order_id, "CHINA_HUB", receive_payload)
     assert pkg["status"] == "RECEIVED_AT_HUB"
 
 def test_port_release_gate(setup_identity):
-    admin_headers = {"X-AEGIS-IDENTITY": setup_identity["admin"], "X-AEGIS-DEVICE": "dev-01", "X-AEGIS-SIGNATURE": "VALID_SIG_FOR_" + setup_identity["admin"]}
+    admin_headers = {"X-AEGIS-IDENTITY": setup_identity["admin"], "X-AEGIS-DEVICE": setup_identity["admin_dev"], "X-AEGIS-SIGNATURE": "VALID_SIG_FOR_" + setup_identity["admin"]}
 
     # Initiate clearance
     job = u_clearance.initiate_clearance(admin_headers, "SHIP-001")
@@ -110,8 +113,8 @@ def test_smart_corridor_gates(setup_identity):
     from main import u_corridors, upos_core
     admin_id = setup_identity["admin"]
     guest_id = setup_identity["guest"]
-    admin_headers = {"identity_id": admin_id, "device_id": "dev-01", "role": "admin"}
-    guest_headers = {"identity_id": guest_id, "device_id": "dev-02", "role": "guest"}
+    admin_headers = {"identity_id": admin_id, "device_id": setup_identity["admin_dev"], "role": "admin"}
+    guest_headers = {"identity_id": guest_id, "device_id": setup_identity["guest_dev"], "role": "guest"}
 
     # 1. Register operator & vessel & captain
     op = u_corridors.register_operator(admin_headers, {"name": "Maldives Fast Freight"})
@@ -128,7 +131,8 @@ def test_smart_corridor_gates(setup_identity):
 
     # 3. Try to load unpaid cargo
     payload = {"amount": 500, "tenant_id": "T1", "items": [{"id": "P1", "qty": 1}]}
-    resp = client.post("/upos/global/orders/create", json=payload, headers={"X-AEGIS-IDENTITY": guest_id, "X-AEGIS-DEVICE": "dev-02", "X-AEGIS-SIGNATURE": "VALID_SIG_FOR_" + guest_id})
+    resp = client.post("/upos/global/orders/create", json=payload, headers={"X-AEGIS-IDENTITY": guest_id, "X-AEGIS-DEVICE": setup_identity["guest_dev"], "X-AEGIS-SIGNATURE": "VALID_SIG_FOR_" + guest_id})
+    assert resp.status_code == 200, resp.text
     order_id = resp.json()["id"]
 
     with pytest.raises(PermissionError) as excinfo:

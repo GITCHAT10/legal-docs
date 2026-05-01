@@ -22,7 +22,8 @@ class ShadowLedger:
         system_events = [
             "identity.created", "system.bootstrap", "aegis.auth.direct.failure",
             "aegis.auth.direct.success", "identity.verified", "identity.device.bound",
-            "identity.role.assigned"
+            "identity.role.assigned", "aegis.auth.identity.invalid", "aegis.auth.device.mismatch",
+            "IDENTITY_CREATED", "apollo.sync.failure"
         ]
 
         if not ExecutionGuard.is_authorized() and event_type not in system_events:

@@ -34,8 +34,10 @@ class ApolloSyncEngine:
     def _internal_replay(self, tenant_id: str, events: list):
         results = []
         for event in events:
+            if not isinstance(event, dict):
+                 continue
             action_type = event.get("action_type")
-            actor_ctx = event.get("actor_ctx")
+            actor_ctx = event.get("actor_ctx") or {}
             data = event.get("data")
 
             # Idempotency check: stable hash of event to prevent double replay
@@ -44,6 +46,14 @@ class ApolloSyncEngine:
                 continue
 
             try:
+                # Fail-closed check for malformed actor_ctx
+                if not isinstance(actor_ctx, dict):
+                     raise ValueError("MALFORMED_EVENT: actor_ctx must be a dictionary")
+
+                actor_id = actor_ctx.get("identity_id")
+                if not actor_id:
+                     raise ValueError("MALFORMED_EVENT: Missing identity_id in actor_ctx")
+
                 # Re-validate and execute via Guard
                 # In a real system, we'd have a mapping of action_types to functions
                 # Here we simulate the successful replay
@@ -56,13 +66,15 @@ class ApolloSyncEngine:
                     "status": "REPLAYED_SUCCESS"
                 }
 
-                self.shadow.commit("apollo.sync.replay", actor_ctx.get("identity_id"), replay_payload)
+                self.shadow.commit("apollo.sync.replay", actor_id, replay_payload)
                 self.sync_logs[event_hash] = replay_payload
                 results.append(replay_payload)
 
             except Exception as e:
-                fail_payload = {"error": str(e), "event": event}
-                self.shadow.commit("apollo.sync.failure", actor_ctx.get("identity_id"), fail_payload)
+                # SAFE FALLBACK: Record failure to SHADOW without crashing
+                fail_actor = actor_ctx.get("identity_id", "UNKNOWN_ACTOR") if isinstance(actor_ctx, dict) else "UNKNOWN_ACTOR"
+                fail_payload = {"error": str(e), "event": event, "status": "SYNC_FAILED"}
+                self.shadow.commit("apollo.sync.failure", fail_actor, fail_payload)
 
         return {"tenant_id": tenant_id, "synced_count": len(results)}
 
