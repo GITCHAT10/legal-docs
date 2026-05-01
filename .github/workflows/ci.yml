@@ -1,4 +1,4 @@
-name: iMOXON Sovereign Audit CI
+name: SALA-UPOS Sovereign Audit CI
 
 on:
   push:
@@ -36,7 +36,7 @@ jobs:
     - name: Run Tests
       run: |
         export PYTHONPATH=$PYTHONPATH:.
-        python -m pytest test_sovereign_commerce.py test_consolidated_imoxon.py tests/test_prestige_staging.py tests/test_pr38_blockers.py tests/test_prestige_contracts.py tests/test_prestige_completion.py tests/test_prestige_final_verify.py || true
+        python -m pytest test_sovereign_commerce.py test_consolidated_imoxon.py tests/test_prestige_staging.py tests/test_pr38_blockers.py tests/test_prestige_contracts.py tests/test_prestige_completion.py tests/test_prestige_final_verify.py tests/prestige/channel/test_channel_manager.py
 
   audit:
     name: audit
