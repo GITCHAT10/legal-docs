@@ -40,9 +40,8 @@ class ExecutionGuard:
         if not valid:
             raise PermissionError(f"FAIL CLOSED: Policy Violation - {msg}")
 
-        # 3. Set Sovereign Context (Authorized)
-        token = str(uuid.uuid4())
-        _sovereign_context.set({"token": token, "actor": actor_context})
+        # 3. Set Sovereign Context (Authorized) - Token based for re-entrancy
+        token = _sovereign_context.set({"token": str(uuid.uuid4()), "actor": actor_context})
 
         try:
             # BEGIN ATOMIC TX (Simulated via context and SHADOW intent)
@@ -84,8 +83,8 @@ class ExecutionGuard:
             self.shadow.commit(f"{action_type}.failed", identity_id or "UNKNOWN", fail_payload)
             raise RuntimeError(f"SOVEREIGN EXECUTION FAILED: {str(e)}")
         finally:
-            # Clear context
-            _sovereign_context.set(None)
+            # Restore previous context (re-entrancy support)
+            _sovereign_context.reset(token)
 
     @staticmethod
     def is_authorized() -> bool:

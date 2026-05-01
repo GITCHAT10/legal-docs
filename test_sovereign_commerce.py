@@ -21,10 +21,11 @@ async def headers(client):
     actor_id = res.json()["identity_id"]
     # Verify the admin so they can perform restricted actions
     await client.post("/imoxon/aegis/identity/verify", params={"identity_id": actor_id, "verifier_id": "SYSTEM"})
-    await client.post("/imoxon/aegis/identity/device/bind", params={"identity_id": actor_id}, json={"fingerprint": "test-dev"})
+    res = await client.post("/imoxon/aegis/identity/device/bind", params={"identity_id": actor_id}, json={"fingerprint": "test-dev"})
+    device_id = res.json()["device_id"]
     return {
         "X-AEGIS-IDENTITY": actor_id,
-        "X-AEGIS-DEVICE": "test-dev",
+        "X-AEGIS-DEVICE": device_id,
         "X-AEGIS-SIGNATURE": f"VALID_SIG_FOR_{actor_id}"
     }
 

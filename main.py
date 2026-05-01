@@ -266,12 +266,13 @@ def get_actor_ctx(
 @app.post("/imoxon/suppliers/connect")
 async def connect_supplier(name: str, actor: dict = Depends(get_actor_ctx)):
     # Create a profile in Aegis for the supplier to get a real ID
-    supplier_id = identity_core.create_profile({
-        "full_name": name,
-        "profile_type": "supplier",
-        "organization_id": "IMOXON-NETWORK"
-    })
-    profile = identity_core.profiles[supplier_id]
+    with ExecutionGuard.authorized_context(actor):
+        supplier_id = identity_core.create_profile({
+            "full_name": name,
+            "profile_type": "supplier",
+            "organization_id": "IMOXON-NETWORK"
+        })
+        profile = identity_core.profiles[supplier_id]
 
     return imoxon.execute_commerce_action(
         "imoxon.supplier.connect",
