@@ -22,10 +22,14 @@ class B2BAutoNegotiationEngine:
         partner_type = rfq_data.get("partner_type") # TO or DMC
         pax_count = rfq_data.get("pax_count", 1)
 
+        # Rule 7: NO VALIDATION -> NO QUOTE
+        if not actor_ctx.get("verified"):
+             raise ValueError("ExecutionValidationError: Identity verification required for RFQ")
+
         # 1. Pull Inventory from TRAWEL
         packages = self.nexus.get_inventory_search(actor_ctx, {})
         if not packages:
-             raise ValueError("No inventory available for requested dates")
+             raise ValueError("ExecutionValidationError: No inventory available for requested dates")
 
         # Select best fit package
         pkg = packages[0]
@@ -56,7 +60,9 @@ class B2BAutoNegotiationEngine:
 
             # 3. Floor Guard
             if base_floor < Decimal("40.0"): # Simulated floor
-                 self.core.shadow.commit("b2b.rfq.rejected", actor_ctx["identity_id"], {"reason": "Below Floor", "price": float(base_floor)})
+                 from mnos.shared.execution_guard import ExecutionGuard
+                 with ExecutionGuard.authorized_context(actor_ctx):
+                     self.core.shadow.commit("b2b.rfq.rejected", actor_ctx["identity_id"], {"reason": "Below Floor", "price": float(base_floor)}, trace_id=rfq_data.get("rfq_id", f"TR-RFQ-REJ-{uuid.uuid4().hex[:6]}"))
                  raise ValueError("FAIL CLOSED: Rate below hotel floor")
 
             pricing = self.core.fce.calculate_local_order(subtotal, "RETAIL")
@@ -76,7 +82,9 @@ class B2BAutoNegotiationEngine:
         })
 
         # 4. SHADOW Requirements
-        self.core.shadow.commit("b2b.quote.generated", actor_ctx["identity_id"], quote)
+        from mnos.shared.execution_guard import ExecutionGuard
+        with ExecutionGuard.authorized_context(actor_ctx):
+            self.core.shadow.commit("b2b.quote.generated", actor_ctx["identity_id"], quote, trace_id=f"TR-B2B-QUOTE-{quote['quote_id']}")
         self.quotes[quote["quote_id"]] = {"quote": quote, "pkg_id": pkg["id"], "partner_type": partner_type}
 
         return quote
@@ -99,5 +107,7 @@ class B2BAutoNegotiationEngine:
         # 6. Lock Inventory & Trigger Cycle
         order = self.nexus.process_full_cycle(actor_ctx, actor_ctx["identity_id"], quote_entry["pkg_id"])
 
-        self.core.shadow.commit("b2b.booking.confirm", actor_ctx["identity_id"], {"order_id": order["id"]})
+        from mnos.shared.execution_guard import ExecutionGuard
+        with ExecutionGuard.authorized_context(actor_ctx):
+            self.core.shadow.commit("b2b.booking.confirm", actor_ctx["identity_id"], {"order_id": order["id"]}, trace_id=f"TR-B2B-CONFIRM-{order['id']}")
         return {"status": "BOOKING_CONFIRMED", "order_id": order["id"]}

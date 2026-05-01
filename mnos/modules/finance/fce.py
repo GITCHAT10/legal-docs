@@ -8,13 +8,19 @@ class FCEEngine:
         self.ledger = []
         self.locked_rates = {"USD": Decimal("15.42")} # MVR
 
-    def calculate_local_order(self, base_price: Decimal, category: str = "RETAIL", green_tax_usd: Decimal = Decimal("0")) -> dict:
+    def calculate_local_order(self, base_price: Decimal, category: str = None, green_tax_usd: Decimal = Decimal("0")) -> dict:
         """
         MANDATORY MALDIVES BILLING RULE:
         Base Price + 10% Service Charge = subtotal
         TGST/GST applied on subtotal
         Green Tax (if applicable, only for accommodation)
         """
+        if base_price is None or base_price <= 0:
+             raise ValueError("ExecutionValidationError: Amount must be greater than zero")
+
+        if category is None:
+             raise ValueError("ExecutionValidationError: Tax context required (TOURISM or RETAIL)")
+
         # Quantize to 2 decimal places for currency
         base_price = base_price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
@@ -55,8 +61,8 @@ class FCEEngine:
         refund["type"] = "REVERSAL"
         return refund
 
-    def price_order(self, amount: float):
-        return self.calculate_local_order(Decimal(str(amount)))
+    def price_order(self, amount: float, category: str = "RETAIL"):
+        return self.calculate_local_order(Decimal(str(amount)), category=category)
 
     def calculate_milestone_release(self, milestone: str, data: dict):
         total = Decimal(str(data["total_amount"]))
@@ -105,6 +111,7 @@ class FCEHardenedEngine:
         return self.engine.calculate_local_order(base_price, "RESORT_SUPPLY")
 
     def create_escrow(self, actor_id: str, amount: float, ref_id: str):
+        from mnos.shared.execution_guard import ExecutionGuard
         escrow_id = f"ESC-{uuid.uuid4().hex[:8].upper()}"
         self.escrows[escrow_id] = {
             "amount": amount,
@@ -112,10 +119,13 @@ class FCEHardenedEngine:
             "status": "LOCKED",
             "released_amount": 0.0
         }
-        self.shadow.commit("fce.escrow_locked", actor_id, {"escrow_id": escrow_id, "amount": amount})
+        actor = {"identity_id": "SYSTEM", "device_id": "FCE-HARDENED", "role": "admin"}
+        with ExecutionGuard.authorized_context(actor):
+            self.shadow.commit("fce.escrow_locked", actor_id, {"escrow_id": escrow_id, "amount": amount}, trace_id=f"TR-ESC-{escrow_id}")
         return escrow_id
 
     def release_milestone(self, actor_id: str, escrow_id: str, milestone_pct: int):
+        from mnos.shared.execution_guard import ExecutionGuard
         milestone_map = {10: "AWARD", 40: "PORT", 20: "QC", 30: "ACCEPTANCE"}
         milestone_name = milestone_map.get(milestone_pct)
 
@@ -123,9 +133,11 @@ class FCEHardenedEngine:
         release_res = self.engine.calculate_milestone_release(milestone_name, {"total_amount": escrow["amount"]})
 
         escrow["released_amount"] += release_res["release_amount"]
-        self.shadow.commit("fce.milestone_released", actor_id, {
-            "escrow_id": escrow_id,
-            "percentage": milestone_pct,
-            "amount": release_res["release_amount"]
-        })
+        actor = {"identity_id": "SYSTEM", "device_id": "FCE-HARDENED", "role": "admin"}
+        with ExecutionGuard.authorized_context(actor):
+            self.shadow.commit("fce.milestone_released", actor_id, {
+                "escrow_id": escrow_id,
+                "percentage": milestone_pct,
+                "amount": release_res["release_amount"]
+            }, trace_id=f"TR-REL-{escrow_id}-{milestone_pct}")
         return release_res["release_amount"]

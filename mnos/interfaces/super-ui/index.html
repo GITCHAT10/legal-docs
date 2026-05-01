@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>UPOS SUPER UI</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        .cart { border: 1px solid #ccc; padding: 10px; margin-top: 10px; }
+        .btn { padding: 10px; background: #28a745; color: white; border: none; cursor: pointer; }
+        .status { font-weight: bold; color: blue; }
+    </style>
+</head>
+<body>
+    <h1>BUBBLE UPOS - SALA NODE</h1>
+    <div id="status-display">STATUS: <span class="status" id="online-status">ONLINE</span></div>
+
+    <div class="cart">
+        <h3>Current Cart</h3>
+        <ul id="cart-list"></ul>
+        <p>Total: Rf <span id="cart-total">0.00</span></p>
+        <button class="btn" onclick="addItem()">Add Item (Rf 100)</button>
+        <button class="btn" style="background:#007bff" onclick="checkout()">Checkout</button>
+    </div>
+
+    <script>
+        let cartTotal = 0;
+        function addItem() {
+            cartTotal += 100;
+            document.getElementById('cart-total').innerText = cartTotal.toFixed(2);
+            const li = document.createElement('li');
+            li.innerText = "General Item - Rf 100.00";
+            document.getElementById('cart-list').appendChild(li);
+        }
+        function checkout() {
+            alert("Order Submitted to MNOS Core. Total: Rf " + cartTotal.toFixed(2));
+            cartTotal = 0;
+            document.getElementById('cart-total').innerText = "0.00";
+            document.getElementById('cart-list').innerHTML = "";
+        }
+    </script>
+</body>
+</html>

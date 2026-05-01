@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  sala-api:
+    build: .
+    container_name: sala-node-api
+    ports:
+      - "8000:8000"
+    environment:
+      - NEXGEN_SECRET=${NEXGEN_SECRET}
+      - MODE=EDGE-FIRST
+      - MIRA_MODE=TRUE
+      - SERVICE_CHARGE=10
+      - TGST=17
+    volumes:
+      - ./mnos:/app/mnos
+    restart: always
+
+  sala-db:
+    image: postgres:15-alpine
+    container_name: sala-node-db
+    environment:
+      POSTGRES_DB: sala_node
+      POSTGRES_USER: mnos_admin
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+
+  sala-cache:
+    image: redis:7-alpine
+    container_name: sala-node-cache
+    ports:
+      - "6379:6379"

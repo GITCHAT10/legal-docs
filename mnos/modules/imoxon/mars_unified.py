@@ -91,7 +91,9 @@ class NexusSkyICloudBrain:
         self._calculate_settlement(order_id, package["base_price"], pricing, "SYSTEM_DEFAULT_VENDOR")
 
         # 5. SHADOW Ledger Commit (Truth Layer)
-        audit_res = self.core.shadow.commit("sky_i.loop_cycle.start", order_id, order)
+        from mnos.shared.execution_guard import ExecutionGuard
+        with ExecutionGuard.authorized_context(actor_ctx):
+            audit_res = self.core.shadow.commit("sky_i.loop_cycle.start", order_id, order, trace_id=f"TR-SKY-START-{order_id}")
         order["audit_id"] = audit_res
 
         self.core.events.publish("sky_i.full_cycle_initiated", order)
@@ -185,7 +187,10 @@ class NexusSkyICloudBrain:
 
             if order_id in self.settlements:
                 self.settlements[order_id]["status"] = "RELEASED"
-                self.core.shadow.commit("sky_i.payout.released", order_id, self.settlements[order_id])
+                from mnos.shared.execution_guard import ExecutionGuard
+                actor = {"identity_id": "SYSTEM", "device_id": "SKY-I-PAYOUT", "role": "admin"}
+                with ExecutionGuard.authorized_context(actor):
+                    self.core.shadow.commit("sky_i.payout.released", order_id, self.settlements[order_id], trace_id=f"TR-SKY-PAYOUT-{order_id}")
             return order
         return None
 
@@ -211,5 +216,7 @@ class NexusSkyICloudBrain:
             "status": "HELD",
             "expires_at": (datetime.now(UTC) + timedelta(hours=24)).isoformat()
         }
-        self.core.shadow.commit("b2b.booking.hold", actor_ctx["identity_id"], hold)
+        from mnos.shared.execution_guard import ExecutionGuard
+        with ExecutionGuard.authorized_context(actor_ctx):
+            self.core.shadow.commit("b2b.booking.hold", actor_ctx["identity_id"], hold, trace_id=f"TR-SKY-HOLD-{hold_id}")
         return hold

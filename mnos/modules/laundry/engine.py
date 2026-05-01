@@ -75,7 +75,9 @@ class MaldivesLaundryEngine:
         self.orders[order_id] = order
 
         # 3. Integrate with Cloud Brain for SHADOW and Settlement
-        self.nexus.core.shadow.commit("laundry.order.placed", order_id, order)
+        from mnos.shared.execution_guard import ExecutionGuard
+        with ExecutionGuard.authorized_context(actor_ctx):
+            self.nexus.core.shadow.commit("laundry.order.placed", order_id, order, trace_id=f"TR-LND-ORDER-{order_id}")
 
         # Simulated Payout Split (4% MARS, 2% NGO)
         self.nexus._calculate_settlement(order_id, float(base_total), pricing, store_id)

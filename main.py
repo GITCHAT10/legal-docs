@@ -27,6 +27,9 @@ from mnos.modules.imoxon.core.engine import (
     ImoxonCore, CatalogManager, ProcurementEngine as LegacyProcurementEngine,
     CampaignManager, MerchantManager, POSManager
 )
+from mnos.exec.upos.engine import UPOSEngine
+from mnos.cloud.edge.node import EdgeNode
+from mnos.cloud.apollo.sync import ApolloSyncService
 from mnos.modules.imoxon.procurement.engine import ProcurementEngine
 from mnos.modules.imoxon.resort.weekly_system import ResortWeeklyOrderSystem
 
@@ -58,6 +61,9 @@ from mnos.api.leaderboard import create_leaderboard_router
 from mnos.api.b2b_portal import create_b2b_portal_router
 from mnos.api.heatmap import create_heatmap_router
 from mnos.api.laundry import create_laundry_router
+from mnos.api.upos import create_upos_router
+from mnos.api.fce_v1 import create_fce_v1_router
+from mnos.api.fce_gateway import create_fce_gateway_router
 
 # Bubble OS Super App Layer
 from mnos.modules.bubble.chat.engine import ChatIntentEngine, ChatToTransactionEngine
@@ -160,40 +166,51 @@ def get_actor_ctx(
     LOGS all attempts to SHADOW ledger.
     """
     # Prefer Session-based Auth from Gateway
+    from mnos.shared.execution_guard import ExecutionGuard
+    import uuid
+    system_actor = {"identity_id": "SYSTEM", "device_id": "AUTH-GATEWAY", "role": "admin"}
+
     if x_aegis_session:
         try:
             actor = identity_gateway.validate_session(x_aegis_session)
-            shadow_core.commit("aegis.auth.session.success", actor["identity_id"], {"session_id": x_aegis_session})
+            with ExecutionGuard.authorized_context(system_actor):
+                shadow_core.commit("aegis.auth.session.success", actor["identity_id"], {"session_id": x_aegis_session}, trace_id=f"TR-AUTH-SES-{x_aegis_session}")
             return actor
         except PermissionError as e:
-            shadow_core.commit("aegis.auth.session.failure", "UNKNOWN", {"reason": str(e)})
+            with ExecutionGuard.authorized_context(system_actor):
+                shadow_core.commit("aegis.auth.session.failure", "UNKNOWN", {"reason": str(e)}, trace_id=f"TR-AUTH-FAIL-{uuid.uuid4().hex[:6]}")
             raise HTTPException(status_code=403, detail=str(e))
 
     # Fallback to Direct Hardened Handshake (B2B / API)
     if not x_aegis_identity or not x_aegis_device or not x_aegis_signature:
-        shadow_core.commit("aegis.auth.direct.failure", "UNKNOWN", {"reason": "Missing Headers"})
+        with ExecutionGuard.authorized_context(system_actor):
+            shadow_core.commit("aegis.auth.direct.failure", "UNKNOWN", {"reason": "Missing Headers"}, trace_id=f"TR-AUTH-MISSING-{uuid.uuid4().hex[:6]}")
         raise HTTPException(status_code=401, detail="AEGIS_REQUIRED: Missing Identity, Device or Signature")
 
     # 1. Identity lookup via AEGIS registry (persistence)
     profile = identity_core.profiles.get(x_aegis_identity)
     if not profile:
-        shadow_core.commit("aegis.auth.identity.invalid", x_aegis_identity, {"reason": "Not in Registry"})
+        with ExecutionGuard.authorized_context(system_actor):
+            shadow_core.commit("aegis.auth.identity.invalid", x_aegis_identity, {"reason": "Not in Registry"}, trace_id=f"TR-AUTH-INV-{x_aegis_identity}")
         raise HTTPException(status_code=401, detail="INVALID_IDENTITY: Unauthorized")
 
     # 2. Validate device binding (device.owner_id == identity.id)
     device = identity_core.devices.get(x_aegis_device)
     if not device or device.get("identity_id") != x_aegis_identity:
-        shadow_core.commit("aegis.auth.device.mismatch", x_aegis_identity, {"device_id": x_aegis_device})
+        with ExecutionGuard.authorized_context(system_actor):
+            shadow_core.commit("aegis.auth.device.mismatch", x_aegis_identity, {"device_id": x_aegis_device}, trace_id=f"TR-AUTH-DEV-MIS-{x_aegis_identity}")
         raise HTTPException(status_code=403, detail="DEVICE_BINDING_INVALID: Access Denied")
 
     # 3. Cryptographic Signature Validation
     if x_aegis_signature != f"VALID_SIG_FOR_{x_aegis_identity}":
-         shadow_core.commit("aegis.auth.sig.failed", x_aegis_identity, {"sig": x_aegis_signature})
+         with ExecutionGuard.authorized_context(system_actor):
+             shadow_core.commit("aegis.auth.sig.failed", x_aegis_identity, {"sig": x_aegis_signature}, trace_id=f"TR-AUTH-SIG-FAIL-{x_aegis_identity}")
          raise HTTPException(status_code=403, detail="HANDSHAKE_FAILED: Invalid Signature")
 
     # 4. Success: Derive role from database (NO HEADER TRUST)
     actor = {
         "identity_id": x_aegis_identity,
+        "device_id": x_aegis_device, # Essential for ExecutionGuard
         "role": profile.get("profile_type"),
         "realm": "API_DIRECT",
         "org_id": profile.get("organization_id"),
@@ -201,13 +218,15 @@ def get_actor_ctx(
         "verified": profile.get("verification_status") == "verified",
         "persistent_hash": profile.get("persistent_identity_hash")
     }
-    shadow_core.commit("aegis.auth.direct.success", x_aegis_identity, {"role": actor["role"]})
+    with ExecutionGuard.authorized_context(system_actor):
+        shadow_core.commit("aegis.auth.direct.success", x_aegis_identity, {"role": actor["role"]}, trace_id=f"TR-AUTH-SUCCESS-{x_aegis_identity}")
     return actor
 
 # --- Consolidated APIs ---
 
 @app.post("/imoxon/suppliers/connect")
-async def connect_supplier(name: str, actor: dict = Depends(get_actor_ctx)):
+async def connect_supplier(data: dict, actor: dict = Depends(get_actor_ctx)):
+    name = data.get("name")
     # Create a profile in Aegis for the supplier to get a real ID
     supplier_id = identity_core.create_profile({
         "full_name": name,
@@ -220,6 +239,7 @@ async def connect_supplier(name: str, actor: dict = Depends(get_actor_ctx)):
         "imoxon.supplier.connect",
         actor,
         lambda: {
+            "id": supplier_id,
             "supplier_id": supplier_id,
             "name": name,
             "status": "CONNECTED",
@@ -232,18 +252,66 @@ async def imoxon_create_order(data: dict, actor: dict = Depends(get_actor_ctx)):
     return procurement.create_purchase_request(actor, data.get("items"), data.get("amount"))
 
 @app.post("/imoxon/products/import")
-async def import_product(sid: str, raw: dict, actor: dict = Depends(get_actor_ctx)):
-    return catalog.import_supplier_product(actor, sid, raw)
+async def import_product(sid: str, raw: List[dict], actor: dict = Depends(get_actor_ctx)):
+    results = []
+    for item in raw:
+        results.append(catalog.import_supplier_product(actor, sid, item))
+    return {"products": results}
 
 @app.post("/imoxon/products/approve")
 async def approve_product(pid: str, actor: dict = Depends(get_actor_ctx)):
     return catalog.approve_product(actor, pid)
 
+@app.get("/imoxon/catalog")
+async def get_catalog(actor: dict = Depends(get_actor_ctx)):
+    return list(catalog.products.keys())
+
+@app.post("/imoxon/pricing/landed-cost")
+async def get_landed_cost(base: float, cat: str, actor: dict = Depends(get_actor_ctx)):
+    return fce_core.calculate_local_order(Decimal(str(base)), cat)
+
 @app.post("/bubble/chat/message")
 async def chat_message(message: str, actor: dict = Depends(get_actor_ctx)):
     return chat_os.process_message(actor, message)
 
+# SALA Node Extensions
+from mnos.core.fce.service import FCESovereignService
+from mnos.core.fce.wallet import FceWalletService
+from mnos.core.fce.gateway.engine import UniversalBankGateway
+from mnos.core.fce.gateway.adapters.main_banks import BMLAdapter, MCBAdapter, PayMVRAdapter
+from mnos.core.shadow.service import ShadowSovereignLedger
+from mnos.core.doc.engine import SigDocEngine
+from mnos.exec.comms.engine import CommsEngine
+from mnos.exec.orchestrator.service import OrchestratorService
+from mnos.interfaces.orca.dashboard import OrcaDashboard
+
+# Instantiate Sovereign versions for SALA Node
+fce_sovereign = FCESovereignService()
+shadow_sovereign = ShadowSovereignLedger()
+fce_wallet = FceWalletService(shadow_sovereign, events_core)
+sigdoc_engine = SigDocEngine(shadow_sovereign)
+comms_engine = CommsEngine(events_core)
+orchestrator_svc = OrchestratorService(events_core)
+orca_dashboard = OrcaDashboard(shadow_sovereign, fce_wallet)
+fce_gateway = UniversalBankGateway(fce_wallet)
+fce_gateway.register_adapter("bml", BMLAdapter())
+fce_gateway.register_adapter("mcb", MCBAdapter())
+fce_gateway.register_adapter("paymvr", PayMVRAdapter())
+
+upos_engine = UPOSEngine(fce_sovereign, shadow_sovereign, events_core)
+edge_node = EdgeNode(node_id=os.environ.get("NODE_ID", "SALA-GENERIC"))
+apollo_sync = ApolloSyncService(edge_node, shadow_sovereign, fce_service=fce_sovereign)
+
+# Configure Orchestration Handlers
+orchestrator_svc.register_handler(
+    "upos.order.completed",
+    lambda p: comms_engine.send_notification(f"Order {p['order_id']} completed", "MANAGER", p.get("trace_id", "N/A"))
+)
+
 # --- Routers ---
+app.include_router(create_upos_router(guard, upos_engine, edge_node, get_actor_ctx), prefix="/imoxon")
+app.include_router(create_fce_v1_router(fce_wallet, get_actor_ctx), prefix="/imoxon/fce/v1")
+app.include_router(create_fce_gateway_router(fce_gateway, get_actor_ctx), prefix="/imoxon/fce/gateway")
 app.include_router(create_identity_router(identity_core, policy_engine, identity_gateway), prefix="/imoxon")
 app.include_router(create_commerce_router(imoxon, catalog, merchant, pos, procurement, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_finance_router(fce_hardened, mira_bridge, get_actor_ctx), prefix="/imoxon")
@@ -263,6 +331,14 @@ app.include_router(create_laundry_router(laundry_engine, get_actor_ctx), prefix=
 @app.exception_handler(PermissionError)
 async def permission_error_handler(request: Request, exc: PermissionError):
     return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+@app.exception_handler(RuntimeError)
+async def runtime_error_handler(request: Request, exc: RuntimeError):
+    return JSONResponse(status_code=500, content={"detail": str(exc)})
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
 
 @app.get("/health")
 async def health():

@@ -90,12 +90,15 @@ class AtollCommanderScoringEngine:
         self._update_gm_score_component(dest_gm, "bridge", points, incremental=True)
 
         # 6. SHADOW Enforcement
-        self.core.shadow.commit("atoll.bridge.event", origin_gm, {
-            "origin": origin_island,
-            "destination": dest_island,
-            "points": float(points),
-            "ref": event.get("shadow_payment_ref")
-        })
+        from mnos.shared.execution_guard import ExecutionGuard
+        actor = {"identity_id": "SYSTEM", "device_id": "ATOLL-COMMANDER-SCORING", "role": "admin"}
+        with ExecutionGuard.authorized_context(actor):
+            self.core.shadow.commit("atoll.bridge.event", origin_gm, {
+                "origin": origin_island,
+                "destination": dest_island,
+                "points": float(points),
+                "ref": event.get("shadow_payment_ref")
+            }, trace_id=f"TR-BRIDGE-{origin_gm}-{dest_gm}-{datetime.now(UTC).timestamp()}")
 
         return {"status": "BRIDGE_SUCCESS", "points_awarded": float(points)}
 
@@ -115,7 +118,10 @@ class AtollCommanderScoringEngine:
     def _apply_penalty(self, gm_id, amount, reason):
         if gm_id in self.scores:
             self.scores[gm_id]["total"] -= amount
-            self.core.shadow.commit("atoll.commander.penalty", gm_id, {"amount": amount, "reason": reason})
+            from mnos.shared.execution_guard import ExecutionGuard
+            actor = {"identity_id": "SYSTEM", "device_id": "ATOLL-COMMANDER-SCORING", "role": "admin"}
+            with ExecutionGuard.authorized_context(actor):
+                self.core.shadow.commit("atoll.commander.penalty", gm_id, {"amount": amount, "reason": reason}, trace_id=f"TR-PENALTY-{gm_id}-{datetime.now(UTC).timestamp()}")
 
     def _check_vendor_ownership_conflict(self, gm_id, vendor_id):
         # Mock check: Does the GM own the target vendor?

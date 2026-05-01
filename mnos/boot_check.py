@@ -7,11 +7,15 @@ def boot_check():
     Enforces fail-closed doctrine.
     """
     required_dirs = [
-        "mnos/core",
-        "mnos/modules/aegis",
-        "mnos/modules/finance",
-        "mnos/modules/shadow",
-        "mnos/modules/events"
+        "mnos/core/aegis",
+        "mnos/core/fce",
+        "mnos/core/shadow",
+        "mnos/core/doc",
+        "mnos/exec/upos",
+        "mnos/exec/orchestrator",
+        "mnos/exec/comms",
+        "mnos/cloud/edge",
+        "mnos/cloud/apollo"
     ]
 
     for d in required_dirs:

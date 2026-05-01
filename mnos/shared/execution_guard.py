@@ -1,5 +1,6 @@
 import contextvars
 import uuid
+import contextlib
 from typing import Callable, Any, Dict, Optional
 from fastapi import Request
 from fastapi.responses import JSONResponse
@@ -44,6 +45,9 @@ class ExecutionGuard:
         _sovereign_context.set({"token": token, "actor": actor_context})
 
         try:
+            # TRACE_ID_REQUIRED: We derive trace_id from context or generate one
+            trace_id = actor_context.get("trace_id") or f"TR-GUARD-{uuid.uuid4().hex[:6]}"
+
             # BEGIN ATOMIC TX (Simulated via context and SHADOW intent)
             # Filter non-serializable args for intent log
             serializable_input = [a for a in args if isinstance(a, (str, int, float, dict, list, bool))]
@@ -55,7 +59,8 @@ class ExecutionGuard:
                 "input": serializable_input or kwargs,
                 "status": "INTENT"
             }
-            self.shadow.commit(f"{action_type}.intent", identity_id, intent_payload)
+            with self.authorized_context(actor_context):
+                self.shadow.commit(f"{action_type}.intent", identity_id, intent_payload, trace_id=trace_id)
 
             # EXECUTE BUSINESS LOGIC
             result = func(*args, **kwargs)
@@ -68,7 +73,8 @@ class ExecutionGuard:
                 "result": result,
                 "status": "COMMITTED"
             }
-            self.shadow.commit(f"{action_type}.completed", identity_id, commit_payload)
+            with self.authorized_context(actor_context):
+                self.shadow.commit(f"{action_type}.completed", identity_id, commit_payload, trace_id=trace_id)
 
             return result
 
@@ -80,7 +86,10 @@ class ExecutionGuard:
                 "error": str(e),
                 "status": "FAILED_ROLLBACK"
             }
-            self.shadow.commit(f"{action_type}.failed", identity_id or "UNKNOWN", fail_payload)
+            # Still need trace_id for rollback audit
+            rollback_tid = actor_context.get("trace_id") or f"TR-ERR-{uuid.uuid4().hex[:6]}"
+            with self.authorized_context(actor_context):
+                self.shadow.commit(f"{action_type}.failed", identity_id or "UNKNOWN", fail_payload, trace_id=rollback_tid)
             raise RuntimeError(f"SOVEREIGN EXECUTION FAILED: {str(e)}")
         finally:
             # Clear context
@@ -94,6 +103,21 @@ class ExecutionGuard:
     def get_actor() -> Optional[Dict]:
         ctx = _sovereign_context.get()
         return ctx["actor"] if ctx else None
+
+    @staticmethod
+    @contextlib.contextmanager
+    def authorized_context(actor_context: Dict):
+        """
+        Context manager to provide a sovereign authorization context for a block of code.
+        Mandatory for direct UPOS/FCE/SHADOW mutations from the API or system.
+        """
+        token = str(uuid.uuid4())
+        old_context = _sovereign_context.get()
+        _sovereign_context.set({"token": token, "actor": actor_context})
+        try:
+            yield
+        finally:
+            _sovereign_context.set(old_context)
 
 class ExecutionGuardMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, guard, events):
