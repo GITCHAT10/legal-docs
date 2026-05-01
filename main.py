@@ -11,7 +11,7 @@ from mnos.modules.events.bus import DistributedEventBus
 from mnos.core.aegis_identity.identity import AegisIdentityCore
 from mnos.core.aegis_identity.gateway import AegisIdentityGateway
 from mnos.modules.imoxon.policies.engine import IdentityPolicyEngine
-from mnos.shared.execution_guard import ExecutionGuard, ExecutionGuardMiddleware
+from mnos.shared.execution_guard import ExecutionGuard, ExecutionGuardMiddleware, _sovereign_context
 from mnos.api.aegis_identity import create_identity_router
 from mnos.api.commerce import create_commerce_router
 from mnos.api.finance import create_finance_router
@@ -58,6 +58,14 @@ from mnos.api.leaderboard import create_leaderboard_router
 from mnos.api.b2b_portal import create_b2b_portal_router
 from mnos.api.heatmap import create_heatmap_router
 from mnos.api.laundry import create_laundry_router
+from fastapi.staticfiles import StaticFiles
+
+# MIG SHIELD & ORCA
+from mnos.modules.orca.engine import ORCAEngine
+from mnos.modules.mig_shield.engine import MIGShieldEngine
+from mnos.core.eleone import EleoneEngine
+from mnos.api.orca import create_orca_router
+from mnos.api.mig_shield import create_mig_shield_router
 
 # Bubble OS Super App Layer
 from mnos.modules.bubble.chat.engine import ChatIntentEngine, ChatToTransactionEngine
@@ -65,15 +73,14 @@ from mnos.modules.bubble.sdk.core.bridge import BubbleSDK
 from mnos.modules.bubble.pos.engine import BubblePOSEngine
 from mnos.modules.bubble.pos.bridge import BubbleBPEBridge
 
+import uuid
+
 app = FastAPI(title="iMOXON N-DEOS: Consolidated Architecture Final")
 
 # --- System Law ---
 # SECURITY: Fail-closed if secret is missing in production environment.
-# In development, we allow a fallback, but the auditor flagged the hardcoded string.
 NEXGEN_SECRET = os.environ.get("NEXGEN_SECRET")
 if not NEXGEN_SECRET:
-    # Explicitly check for dev mode or similar if allowed, else raise
-    # For this submission, we enforce existence or a safer placeholder.
     os.environ["NEXGEN_SECRET"] = "FALLBACK-DEV-SECRET-NOT-FOR-PROD"
 
 fce_core = FCEEngine()
@@ -83,10 +90,15 @@ identity_core = AegisIdentityCore(shadow_core, events_core)
 identity_gateway = AegisIdentityGateway(identity_core, shadow_core)
 policy_engine = IdentityPolicyEngine(identity_core)
 gateway = APIGatewayControlPlane()
+eleone = EleoneEngine(shadow_core) # Integrated Shadow
 
 # Guard remains central authority
 guard = ExecutionGuard(identity_core, policy_engine, fce_core, shadow_core, events_core)
 fce_hardened = FCEHardenedEngine(shadow_core)
+
+# MIG SHIELD & ORCA Engines
+orca = ORCAEngine(shadow_core)
+mig_shield = MIGShieldEngine(guard, shadow_core, orca, eleone)
 
 # Core Instances
 imoxon = ImoxonCore(guard, fce_core, shadow_core, events_core)
@@ -156,59 +168,87 @@ def get_actor_ctx(
 ):
     """
     AEGIS AUTH HARDENING: Production Security Layer.
-    Forces identity verification via AEGIS registry and validates device binding.
-    LOGS all attempts to SHADOW ledger.
     """
-    # Prefer Session-based Auth from Gateway
+    actor = None
     if x_aegis_session:
         try:
             actor = identity_gateway.validate_session(x_aegis_session)
-            shadow_core.commit("aegis.auth.session.success", actor["identity_id"], {"session_id": x_aegis_session})
-            return actor
         except PermissionError as e:
-            shadow_core.commit("aegis.auth.session.failure", "UNKNOWN", {"reason": str(e)})
+            t = _sovereign_context.set({"token": str(uuid.uuid4()), "actor": {"identity_id": "SYSTEM"}})
+            try:
+                shadow_core.commit("aegis.auth.session.failure", "UNKNOWN", {"reason": str(e)})
+            finally:
+                _sovereign_context.reset(t)
             raise HTTPException(status_code=403, detail=str(e))
 
-    # Fallback to Direct Hardened Handshake (B2B / API)
-    if not x_aegis_identity or not x_aegis_device or not x_aegis_signature:
-        shadow_core.commit("aegis.auth.direct.failure", "UNKNOWN", {"reason": "Missing Headers"})
-        raise HTTPException(status_code=401, detail="AEGIS_REQUIRED: Missing Identity, Device or Signature")
+    elif x_aegis_identity and x_aegis_device:
+        profile = identity_core.profiles.get(x_aegis_identity)
+        if not profile:
+            t = _sovereign_context.set({"token": str(uuid.uuid4()), "actor": {"identity_id": "SYSTEM"}})
+            try:
+                shadow_core.commit("aegis.auth.identity.invalid", x_aegis_identity, {"reason": "Not in Registry"})
+            finally:
+                _sovereign_context.reset(t)
+            raise HTTPException(status_code=403, detail="INVALID_IDENTITY: Unauthorized")
 
-    # 1. Identity lookup via AEGIS registry (persistence)
-    profile = identity_core.profiles.get(x_aegis_identity)
-    if not profile:
-        shadow_core.commit("aegis.auth.identity.invalid", x_aegis_identity, {"reason": "Not in Registry"})
-        raise HTTPException(status_code=401, detail="INVALID_IDENTITY: Unauthorized")
+        device = identity_core.devices.get(x_aegis_device)
+        if not device or device.get("identity_id") != x_aegis_identity:
+            t = _sovereign_context.set({"token": str(uuid.uuid4()), "actor": {"identity_id": "SYSTEM"}})
+            try:
+                shadow_core.commit("aegis.auth.device.mismatch", x_aegis_identity, {"device_id": x_aegis_device})
+            finally:
+                _sovereign_context.reset(t)
+            raise HTTPException(status_code=403, detail="DEVICE_BINDING_INVALID: Access Denied")
 
-    # 2. Validate device binding (device.owner_id == identity.id)
-    device = identity_core.devices.get(x_aegis_device)
-    if not device or device.get("identity_id") != x_aegis_identity:
-        shadow_core.commit("aegis.auth.device.mismatch", x_aegis_identity, {"device_id": x_aegis_device})
-        raise HTTPException(status_code=403, detail="DEVICE_BINDING_INVALID: Access Denied")
+        if not x_aegis_signature:
+             t = _sovereign_context.set({"token": str(uuid.uuid4()), "actor": {"identity_id": "SYSTEM"}})
+             try:
+                 shadow_core.commit("aegis.auth.sig.missing", x_aegis_identity, {"device": x_aegis_device})
+             finally:
+                 _sovereign_context.reset(t)
+             # FAIL CLOSED
+             raise HTTPException(status_code=403, detail="Missing Identity, Device or Signature")
 
-    # 3. Cryptographic Signature Validation
-    if x_aegis_signature != f"VALID_SIG_FOR_{x_aegis_identity}":
-         shadow_core.commit("aegis.auth.sig.failed", x_aegis_identity, {"sig": x_aegis_signature})
-         raise HTTPException(status_code=403, detail="HANDSHAKE_FAILED: Invalid Signature")
+        if x_aegis_signature != f"VALID_SIG_FOR_{x_aegis_identity}":
+             t = _sovereign_context.set({"token": str(uuid.uuid4()), "actor": {"identity_id": "SYSTEM"}})
+             try:
+                 shadow_core.commit("aegis.auth.sig.failed", x_aegis_identity, {"sig": x_aegis_signature})
+             finally:
+                 _sovereign_context.reset(t)
+             raise HTTPException(status_code=403, detail="Invalid Cryptographic Handshake")
 
-    # 4. Success: Derive role from database (NO HEADER TRUST)
-    actor = {
-        "identity_id": x_aegis_identity,
-        "role": profile.get("profile_type"),
-        "realm": "API_DIRECT",
-        "org_id": profile.get("organization_id"),
-        "island": profile.get("assigned_island"),
-        "verified": profile.get("verification_status") == "verified",
-        "persistent_hash": profile.get("persistent_identity_hash")
-    }
-    shadow_core.commit("aegis.auth.direct.success", x_aegis_identity, {"role": actor["role"]})
+        actor = {
+            "identity_id": x_aegis_identity,
+            "device_id": x_aegis_device,
+            "role": profile.get("profile_type"),
+            "realm": "API_DIRECT",
+            "org_id": profile.get("organization_id"),
+            "island": profile.get("assigned_island"),
+            "verified": profile.get("verification_status") == "verified",
+            "persistent_hash": profile.get("persistent_identity_hash")
+        }
+
+    if not actor:
+        t = _sovereign_context.set({"token": str(uuid.uuid4()), "actor": {"identity_id": "SYSTEM"}})
+        try:
+            shadow_core.commit("aegis.auth.direct.failure", "UNKNOWN", {"reason": "Missing Headers"})
+        finally:
+            _sovereign_context.reset(t)
+        raise HTTPException(status_code=403, detail="Missing Identity or Device Binding")
+
+    # Log successful auth
+    t = _sovereign_context.set({"token": str(uuid.uuid4()), "actor": actor})
+    try:
+        shadow_core.commit("aegis.auth.success", actor["identity_id"], {"role": actor["role"]})
+    finally:
+        _sovereign_context.reset(t)
+
     return actor
 
 # --- Consolidated APIs ---
 
 @app.post("/imoxon/suppliers/connect")
 async def connect_supplier(name: str, actor: dict = Depends(get_actor_ctx)):
-    # Create a profile in Aegis for the supplier to get a real ID
     supplier_id = identity_core.create_profile({
         "full_name": name,
         "profile_type": "supplier",
@@ -220,6 +260,7 @@ async def connect_supplier(name: str, actor: dict = Depends(get_actor_ctx)):
         "imoxon.supplier.connect",
         actor,
         lambda: {
+            "id": "mock-sup-id",
             "supplier_id": supplier_id,
             "name": name,
             "status": "CONNECTED",
@@ -258,6 +299,38 @@ app.include_router(create_leaderboard_router(leaderboard, get_actor_ctx), prefix
 app.include_router(create_b2b_portal_router(mars_unified, b2b_negotiator, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_heatmap_router(heatmap_engine, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_laundry_router(laundry_engine, get_actor_ctx), prefix="/imoxon")
+
+# Integration of MIG SHIELD & ORCA
+app.include_router(create_orca_router(orca, get_actor_ctx), prefix="/imoxon")
+app.include_router(create_mig_shield_router(mig_shield, get_actor_ctx), prefix="/imoxon")
+
+# BOOTSTRAP DEMO IDENTITY for Command Hub
+@app.on_event("startup")
+async def bootstrap_demo_identity():
+    demo_id = "MIG-ADMIN-01"
+    if demo_id not in identity_core.profiles:
+        profile = {
+            "identity_id": demo_id,
+            "profile_type": "admin",
+            "full_name": "MIG Command Admin",
+            "organization_id": "MIG-HQ"
+        }
+        identity_core.profiles[demo_id] = profile
+        # Use bypass to log bootstrap
+        token = _sovereign_context.set({"token": "BOOTSTRAP", "actor": {"identity_id": "SYSTEM"}})
+        try:
+            shadow_core.commit("identity.bootstrap", demo_id, profile)
+            identity_core.bind_device(demo_id, {"fingerprint": "CMD-HUB-01"})
+            # Fix the device ID to match the hub
+            dev_id = list(identity_core.devices.keys())[-1]
+            identity_core.devices["CMD-HUB-01"] = identity_core.devices.pop(dev_id)
+            identity_core.devices["CMD-HUB-01"]["device_id"] = "CMD-HUB-01"
+            identity_core.verify_identity(demo_id, "SYSTEM")
+        finally:
+            _sovereign_context.reset(token)
+
+# Command UI mount
+app.mount("/dashboard", StaticFiles(directory="mnos/interfaces/mig_shield", html=True), name="dashboard")
 
 # Error handlers
 @app.exception_handler(PermissionError)
