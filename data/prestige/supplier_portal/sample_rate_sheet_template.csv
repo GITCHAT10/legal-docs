@@ -1,0 +1,5 @@
+category_code,category_name,season_name,start_date,end_date,net_rate,currency,tax_inclusive
+BEACH_VILLA,Beach Villa,Winter Peak,2024-01-01,2024-04-30,500.0,USD,false
+WATER_VILLA,Water Villa,Winter Peak,2024-01-01,2024-04-30,800.0,USD,false
+BEACH_VILLA,Beach Villa,Summer Low,2024-05-01,2024-09-30,350.0,USD,false
+WATER_VILLA,Water Villa,Summer Low,2024-05-01,2024-09-30,550.0,USD,false

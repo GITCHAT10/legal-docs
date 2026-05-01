@@ -90,6 +90,15 @@ from mnos.modules.prestige.flight_matrix.agent_portal_recommendation import Agen
 from mnos.modules.prestige.flight_matrix.resort_cluster_mapper import ResortClusterMapper
 from mnos.modules.prestige.flight_matrix.api import create_flight_matrix_router
 
+# SUPPLIER PORTAL
+from mnos.modules.prestige.supplier_portal.approval_workflow import ApprovalWorkflowOrchestrator
+from mnos.modules.prestige.supplier_portal.finance_review import FinanceReviewEngine
+from mnos.modules.prestige.supplier_portal.revenue_review import RevenueReviewEngine
+from mnos.modules.prestige.supplier_portal.cmo_market_strategy import CMOMarketStrategyManager
+from mnos.modules.prestige.supplier_portal.market_rate_engine import MarketRateEngine
+from mnos.modules.prestige.supplier_portal.supplier_actions import StopSellManager, OpenSaleManager, SpecialsManager
+from mnos.modules.prestige.supplier_portal.api import create_supplier_portal_router
+
 # Bubble OS Super App Layer
 from mnos.modules.bubble.chat.engine import ChatIntentEngine, ChatToTransactionEngine
 from mnos.modules.bubble.sdk.core.bridge import BubbleSDK
@@ -205,6 +214,19 @@ fm_matrix = TransferFeasibilityMatrix(imoxon, fm_loader, fm_config)
 fm_recovery = RecoveryWorkflow(imoxon)
 fm_mapper = ResortClusterMapper()
 fm_recommender = AgentPortalRecommendation(imoxon, fm_matrix, fm_mapper)
+
+# Supplier Portal Instances
+with open("config/prestige/supplier_portal.yaml", "r") as f:
+    sp_config = yaml.safe_load(f)
+
+sp_orchestrator = ApprovalWorkflowOrchestrator(imoxon, sp_config)
+sp_finance = FinanceReviewEngine()
+sp_revenue = RevenueReviewEngine()
+sp_cmo = CMOMarketStrategyManager()
+sp_rate_engine = MarketRateEngine()
+sp_specials = SpecialsManager(imoxon, sp_orchestrator)
+sp_stop_sell = StopSellManager(imoxon, sp_orchestrator)
+sp_open_sale = OpenSaleManager(imoxon, sp_orchestrator)
 
 # L1 & L2 Security
 @app.middleware("http")
@@ -344,6 +366,11 @@ app.include_router(
 
 app.include_router(
     create_flight_matrix_router(fm_matrix, fm_loader, fm_recommender, fm_recovery, get_actor_ctx),
+    prefix="/prestige/staging"
+)
+
+app.include_router(
+    create_supplier_portal_router(sp_orchestrator, sp_finance, sp_revenue, sp_cmo, sp_rate_engine, sp_specials, sp_stop_sell, sp_open_sale, get_actor_ctx),
     prefix="/prestige/staging"
 )
 
