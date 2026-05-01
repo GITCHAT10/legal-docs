@@ -15,10 +15,15 @@ async def run_final_cto_audit():
 
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         # 1. Setup Admin
-        res = await client.post("/aegis/identity/create", json={"full_name": "CTO Auditor", "profile_type": "admin"})
+        res = await client.post("/imoxon/aegis/identity/create", json={"full_name": "CTO Auditor", "profile_type": "admin"})
         actor_id = res.json()["identity_id"]
-        await client.post("/aegis/identity/device/bind", params={"identity_id": actor_id}, json={"fingerprint": "audit-hw-01"})
-        headers = {"X-AEGIS-IDENTITY": actor_id, "X-AEGIS-DEVICE": "audit-hw-01", "X-MNOS-SIGNATURE": "sys-audit"}
+        res_bind = await client.post("/imoxon/aegis/identity/device/bind", params={"identity_id": actor_id}, json={"fingerprint": "audit-hw-01"})
+        device_id = res_bind.json()["device_id"]
+        headers = {
+            "X-AEGIS-IDENTITY": actor_id,
+            "X-AEGIS-DEVICE": device_id,
+            "X-AEGIS-SIGNATURE": f"VALID_SIG_FOR_{actor_id}"
+        }
 
         # 2. Workflow 1: Alibaba Import Flow
         print("[1] Alibaba Product Import Workflow...")
@@ -35,8 +40,11 @@ async def run_final_cto_audit():
         # 4. Workflow 3: B2B Resort Procurement (SALA)
         print("[3] SALA Resort B2B Procurement Order...")
         b2b_data = {"amount": 2000, "items": [{"id": pid, "qty": 10}]}
-        res = await client.post("/imoxon/b2b/procurement-request", json=b2b_data, headers=headers)
-        pricing = res.json()["pricing"]
+        res = await client.post("/imoxon/orders/create", json=b2b_data, headers=headers)
+        order_id = res.json()["id"]
+        # Generate Invoice
+        res_inv = await client.post("/imoxon/orders/invoice", params={"order_id": order_id}, headers=headers)
+        pricing = res_inv.json()["pricing"]
         # MIRA Verification: 2000 + 200 (SC) = 2200. 2200 * 0.17 = 374. Total = 2574.
         print(f"    FCE Final Total: {pricing['total']} MVR")
 

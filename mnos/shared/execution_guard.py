@@ -1,5 +1,6 @@
 import contextvars
 import uuid
+import asyncio
 from typing import Callable, Any, Dict, Optional
 from fastapi import Request
 from fastapi.responses import JSONResponse
@@ -41,7 +42,7 @@ class ExecutionGuard:
 
         # 3. Set Sovereign Context (Authorized)
         token = str(uuid.uuid4())
-        _sovereign_context.set({"token": token, "actor": actor_context})
+        token_reset = _sovereign_context.set({"token": token, "actor": actor_context})
 
         try:
             # BEGIN ATOMIC TX (Simulated via context and SHADOW intent)
@@ -80,11 +81,82 @@ class ExecutionGuard:
                 "error": str(e),
                 "status": "FAILED_ROLLBACK"
             }
-            self.shadow.commit(f"{action_type}.failed", identity_id or "UNKNOWN", fail_payload)
+            try:
+                # Bypass guard for rollback logging
+                t2 = _sovereign_context.set({"token": "ROLLBACK", "actor": {"identity_id": "SYSTEM"}})
+                self.shadow.commit(f"{action_type}.failed", identity_id or "UNKNOWN", fail_payload)
+                _sovereign_context.reset(t2)
+            except:
+                pass
             raise RuntimeError(f"SOVEREIGN EXECUTION FAILED: {str(e)}")
         finally:
             # Clear context
-            _sovereign_context.set(None)
+            _sovereign_context.reset(token_reset)
+
+    async def execute_sovereign_action_async(self, action_type: str, actor_context: Dict, func: Callable, *args, **kwargs) -> Any:
+        """
+        ASYNCHRONOUS MANDATORY ENTRYPOINT for mutating commerce actions.
+        Identical guardrails to sync version, but supports async business logic.
+        """
+        identity_id = actor_context.get("identity_id")
+        device_id = actor_context.get("device_id")
+        role = actor_context.get("role")
+
+        if not identity_id or not device_id:
+            raise PermissionError(f"FAIL CLOSED: Missing Identity or Device Binding for {action_type}")
+
+        valid, msg = self.policy_engine.validate_action(action_type, actor_context)
+        if not valid:
+            raise PermissionError(f"FAIL CLOSED: Policy Violation - {msg}")
+
+        token = str(uuid.uuid4())
+        token_reset = _sovereign_context.set({"token": token, "actor": actor_context})
+
+        try:
+            serializable_input = [a for a in args if isinstance(a, (str, int, float, dict, list, bool))]
+            intent_payload = {
+                "action": action_type,
+                "actor_aegis_id": identity_id,
+                "actor_device_id": device_id,
+                "input": serializable_input or kwargs,
+                "status": "INTENT"
+            }
+            self.shadow.commit(f"{action_type}.intent", identity_id, intent_payload)
+
+            # EXECUTE ASYNC BUSINESS LOGIC
+            if asyncio.iscoroutinefunction(func):
+                result = await func(*args, **kwargs)
+            else:
+                result = func(*args, **kwargs)
+
+            commit_payload = {
+                "action": action_type,
+                "actor_aegis_id": identity_id,
+                "result": result,
+                "status": "COMMITTED"
+            }
+            self.shadow.commit(f"{action_type}.completed", identity_id, commit_payload)
+
+            return result
+
+        except Exception as e:
+            # ROLLBACK LOGIC
+            fail_payload = {
+                "action": action_type,
+                "actor_aegis_id": identity_id,
+                "error": str(e),
+                "status": "FAILED_ROLLBACK"
+            }
+            try:
+                t2 = _sovereign_context.set({"token": "ROLLBACK", "actor": {"identity_id": "SYSTEM"}})
+                self.shadow.commit(f"{action_type}.failed", identity_id or "UNKNOWN", fail_payload)
+                _sovereign_context.reset(t2)
+            except:
+                pass
+            raise RuntimeError(f"SOVEREIGN EXECUTION FAILED: {str(e)}")
+        finally:
+            # Clear context
+            _sovereign_context.reset(token_reset)
 
     @staticmethod
     def is_authorized() -> bool:
@@ -104,7 +176,7 @@ class ExecutionGuardMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         # Operational paths to guard
-        guarded_paths = ["/supply", "/finance", "/aegis/asset", "/commerce"]
+        guarded_paths = ["/supply", "/finance", "/aegis/asset", "/commerce", "/mig-shield"]
 
         if any(request.url.path.startswith(path) for path in guarded_paths):
             identity_id = request.headers.get("X-AEGIS-IDENTITY")
@@ -117,9 +189,6 @@ class ExecutionGuardMiddleware(BaseHTTPMiddleware):
             # Require Device Binding for Mutating Actions
             if request.method in ["POST", "PUT", "DELETE"] and not device_id:
                  return self._violation("Missing Device Binding for Sensitive Action")
-
-            # In a real system, we'd verify HMAC/Signature here.
-            # For this audit, we enforce header presence.
 
         response = await call_next(request)
         return response

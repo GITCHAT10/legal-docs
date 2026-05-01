@@ -15,7 +15,13 @@ class TourismEngine:
         )
 
     def _internal_book(self, data):
-        pricing = self.core.fce.finalize_invoice(data.get("price"), "TOURISM")
+        # Handle cases where price might be missing from test data
+        price = data.get("price") or data.get("base_rate")
+
+        if price is None:
+            raise ValueError("FAIL CLOSED: Missing price for booking payload")
+
+        pricing = self.core.fce.finalize_invoice(price, "TOURISM")
         booking = {
             "booking_id": f"T-BK-{uuid.uuid4().hex[:6].upper()}",
             "package_id": data.get("package_id"),

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>MIG SHIELD: Joint Command Dashboard</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0b0f19; color: #e0e0e0; margin: 0; padding: 20px; }
+        .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+        .panel { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 15px; }
+        h1 { color: #58a6ff; margin-top: 0; display: flex; align-items: center; justify-content: space-between;}
+        .status-tag { font-size: 14px; padding: 4px 12px; border-radius: 20px; background: #238636; color: white; }
+        .drone-card { background: #0d1117; border-left: 4px solid #238636; padding: 10px; margin-bottom: 10px; }
+        .btn { background: #238636; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .btn:hover { background: #2ea043; }
+        .telemetry-log { height: 300px; overflow-y: auto; background: black; color: #39ff14; font-family: monospace; padding: 10px; font-size: 12px; }
+        .kpi-report { margin-top: 20px; display: flex; gap: 20px; }
+        .kpi-item { background: #21262d; padding: 15px; border-radius: 8px; flex: 1; text-align: center; }
+        .kpi-val { font-size: 24px; font-weight: bold; color: #ffa657; }
+        .shadow-badge { color: #8b949e; font-size: 11px; margin-top: 5px; }
+    </style>
+</head>
+<body>
+    <h1>
+        <span>🌍 MIG SHIELD QRD COMMAND HUB</span>
+        <span class="status-tag">GAN PILOT ACTIVE</span>
+    </h1>
+
+    <div class="grid">
+        <div class="panel">
+            <h2>Live Operational View (Gan Pilot Node)</h2>
+            <div id="map-stub" style="height: 400px; background: #000 url('https://via.placeholder.com/800x400/000/58a6ff?text=MALDIVES+GAN+ATOLL+GRID') no-repeat center; border: 1px dashed #58a6ff; position: relative;">
+                <div id="drone-marker" style="position: absolute; width: 12px; height: 12px; background: #ff3e3e; border-radius: 50%; display: none; box-shadow: 0 0 10px #ff3e3e;"></div>
+            </div>
+
+            <div class="kpi-report" id="kpi-report">
+                <div class="kpi-item"><div>Dispatch Latency</div><div class="kpi-val" id="kpi-latency">--</div></div>
+                <div class="kpi-item"><div>Success Rate</div><div class="kpi-val" id="kpi-success">--</div></div>
+                <div class="kpi-item"><div>SHADOW Integrity</div><div class="kpi-val" id="kpi-shadow">--</div></div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>Dispatch Controls</h2>
+            <div class="drone-card">
+                <strong>QRD-O-01 (DJI M350)</strong><br>
+                Status: <span id="drone-status" style="color:#58a6ff">READY</span> | Bat: <span id="drone-bat">100%</span>
+                <p>
+                    <button class="btn" id="dispatch-btn" onclick="dispatchMission('DROWNING')">🚨 DISPATCH (Drowning)</button>
+                </p>
+                <div class="shadow-badge" id="shadow-badge">Audit Chain: IDLE</div>
+            </div>
+
+            <h3>Live Forensic Log</h3>
+            <div class="telemetry-log" id="telemetry-log">
+                [SYSTEM] Node initialized. Awaiting incident...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function dispatchMission(type) {
+            const log = document.getElementById('telemetry-log');
+            const btn = document.getElementById('dispatch-btn');
+            const status = document.getElementById('drone-status');
+            const badge = document.getElementById('shadow-badge');
+
+            btn.disabled = true;
+            status.innerText = "VERIFYING...";
+            log.innerHTML += `<div>[AEGIS] Verifying operator authority...</div>`;
+
+            const headers = {
+                'X-AEGIS-IDENTITY': 'MIG-ADMIN-01',
+                'X-AEGIS-DEVICE': 'CMD-HUB-01',
+                'X-AEGIS-SIGNATURE': 'VALID_SIG_FOR_MIG-ADMIN-01',
+                'Content-Type': 'application/json'
+            };
+
+            try {
+                log.innerHTML += `<div>[ORCA] Validating flight envelope...</div>`;
+                const res = await fetch('/imoxon/mig-shield/mission/dispatch', {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({ type: type, severity: 4, location: [randomCoord(), randomCoord()] })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    status.innerText = "IN_FLIGHT";
+                    status.style.color = "#ffa657";
+                    badge.innerText = `Audit Chain: ${data.incident_id} (SEALED)`;
+                    log.innerHTML += `<div style="color:#58a6ff">[SHADOW] Pre-hash committed. Launching drone...</div>`;
+                    log.innerHTML += `<div style="color:#39ff14">[LIVE] Drone ${data.drone_id} airborne in ${data.dispatch_time.toFixed(3)}s.</div>`;
+
+                    // Simulate completion
+                    setTimeout(() => {
+                        status.innerText = "READY";
+                        status.style.color = "#58a6ff";
+                        btn.disabled = false;
+                        log.innerHTML += `<div>[REFLECT] Mission ${data.incident_id} completed. Safe RTB.</div>`;
+                        updateKPIs();
+                    }, 5000);
+
+                } else {
+                    status.innerText = "BLOCKED";
+                    status.style.color = "#da3633";
+                    btn.disabled = false;
+                    log.innerHTML += `<div style="color:#da3633">[FAIL] ${data.detail}</div>`;
+                }
+            } catch (e) {
+                log.innerHTML += `<div style="color:#da3633">[ERROR] ${e.message}</div>`;
+                btn.disabled = false;
+            }
+        }
+
+        function randomCoord() { return (Math.random() * 8).toFixed(4); }
+
+        async function updateKPIs() {
+            try {
+                const res = await fetch('/imoxon/mig-shield/kpis', {
+                    headers: { 'X-AEGIS-IDENTITY': 'MIG-ADMIN-01', 'X-AEGIS-DEVICE': 'CMD-HUB-01', 'X-AEGIS-SIGNATURE': 'VALID_SIG_FOR_MIG-ADMIN-01' }
+                });
+                const data = await res.json();
+                document.getElementById('kpi-latency').innerText = (data.dispatch_latency_avg || 0).toFixed(2) + 's';
+                document.getElementById('kpi-success').innerText = (data.success_rate || 0).toFixed(1) + '%';
+                document.getElementById('kpi-shadow').innerText = data.shadow_integrity ? 'VERIFIED ✅' : 'FAIL ❌';
+            } catch(e) {}
+        }
+
+        updateKPIs();
+    </script>
+</body>
+</html>
