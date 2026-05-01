@@ -1,4 +1,4 @@
-name: iMOXON Sovereign Audit CI
+name: SALA-UPOS Sovereign Audit CI
 
 on:
   push:
@@ -25,13 +25,13 @@ jobs:
         pip install pydantic pytest-asyncio httpx python-multipart fastapi starlette pyyaml
 
     - name: Run Boot Check
-      run: NEXGEN_SECRET=audit-test python mnos/boot_check.py || true
+      run: NEXGEN_SECRET=audit-test python mnos/boot_check.py
 
     - name: Run Schema Validation
-      run: python validate_schema.py || true
+      run: python validate_schema.py
 
     - name: Run Lint
-      run: ruff check . || true
+      run: ruff check .
 
     - name: Run Tests
       run: |
@@ -44,4 +44,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Confirm Audit
-      run: echo "iMOXON Sovereign Audit CI / audit verified"
+      run: echo "SALA-UPOS Sovereign Audit CI / audit verified"
