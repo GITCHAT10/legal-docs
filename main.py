@@ -82,6 +82,14 @@ from mnos.modules.prestige.outreach.engine import OutreachEngine
 from mnos.modules.prestige.workflows.luxury_package import LuxuryPackageWorkflow
 from mnos.api.prestige import create_prestige_router
 
+# FLIGHT MATRIX
+from mnos.modules.prestige.flight_matrix.flight_connectivity_loader import FlightConnectivityLoader
+from mnos.modules.prestige.flight_matrix.transfer_feasibility_matrix import TransferFeasibilityMatrix
+from mnos.modules.prestige.flight_matrix.recovery_workflow import RecoveryWorkflow
+from mnos.modules.prestige.flight_matrix.agent_portal_recommendation import AgentPortalRecommendation
+from mnos.modules.prestige.flight_matrix.resort_cluster_mapper import ResortClusterMapper
+from mnos.modules.prestige.flight_matrix.api import create_flight_matrix_router
+
 # Bubble OS Super App Layer
 from mnos.modules.bubble.chat.engine import ChatIntentEngine, ChatToTransactionEngine
 from mnos.modules.bubble.sdk.core.bridge import BubbleSDK
@@ -186,6 +194,17 @@ prestige_registry.register_agent("ch_01", ChannelManagerAgent("ch_01", imoxon), 
 prestige_orchestrator = AgentOrchestrator(imoxon, prestige_registry)
 prestige_outreach = OutreachEngine(imoxon)
 prestige_luxury_wf = LuxuryPackageWorkflow(prestige_trip_service, prestige_registry)
+
+# Flight Matrix Instances
+import yaml
+with open("config/prestige/flight_matrix.yaml", "r") as f:
+    fm_config = yaml.safe_load(f)
+
+fm_loader = FlightConnectivityLoader(imoxon)
+fm_matrix = TransferFeasibilityMatrix(imoxon, fm_loader, fm_config)
+fm_recovery = RecoveryWorkflow(imoxon)
+fm_mapper = ResortClusterMapper()
+fm_recommender = AgentPortalRecommendation(imoxon, fm_matrix, fm_mapper)
 
 # L1 & L2 Security
 @app.middleware("http")
@@ -320,6 +339,11 @@ app.include_router(create_laundry_router(laundry_engine, get_actor_ctx), prefix=
 # PRESTIGE Staging Router
 app.include_router(
     create_prestige_router(prestige_trip_service, prestige_registry, prestige_outreach, prestige_luxury_wf, get_actor_ctx),
+    prefix="/prestige/staging"
+)
+
+app.include_router(
+    create_flight_matrix_router(fm_matrix, fm_loader, fm_recommender, fm_recovery, get_actor_ctx),
     prefix="/prestige/staging"
 )
 
