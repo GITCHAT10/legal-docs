@@ -1,4 +1,4 @@
-name: SALA-UPOS Sovereign Audit CI
+name: iMOXON Sovereign Audit CI
 
 on:
   push:
@@ -22,7 +22,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install pydantic pytest-asyncio httpx python-multipart fastapi starlette
+        pip install pydantic pytest-asyncio httpx python-multipart fastapi starlette pyyaml
 
     - name: Run Boot Check
       run: NEXGEN_SECRET=audit-test python mnos/boot_check.py || true
@@ -36,7 +36,7 @@ jobs:
     - name: Run Tests
       run: |
         export PYTHONPATH=$PYTHONPATH:.
-        python -m pytest test_sovereign_commerce.py test_consolidated_imoxon.py tests/test_prestige_staging.py tests/test_pr38_blockers.py tests/test_prestige_contracts.py tests/test_prestige_completion.py tests/test_prestige_final_verify.py tests/prestige/channel/test_channel_manager.py
+        python -m pytest test_sovereign_commerce.py test_consolidated_imoxon.py tests/test_prestige_staging.py tests/test_pr38_blockers.py tests/test_prestige_contracts.py tests/test_prestige_completion.py tests/test_prestige_final_verify.py tests/prestige/channel/test_channel_manager.py tests/prestige/flight_matrix/test_flight_matrix.py tests/prestige/supplier_portal/test_supplier_portal.py
 
   audit:
     name: audit
