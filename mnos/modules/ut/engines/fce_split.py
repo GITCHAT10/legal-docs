@@ -86,9 +86,12 @@ class UTFCESplitEngine:
         """
         BLOCKS payout unless SHADOW + ORCA + APOLLO validation is complete.
         """
+        quote = self.quotes.get(quote_id)
+        if not quote:
+            raise ValueError("QUOTE_NOT_FOUND")
+
         if not (orca_validated and shadow_sealed and apollo_synced):
             raise PermissionError("PAYOUT BLOCKED: Requires ORCA + SHADOW + APOLLO validation")
 
-        quote = self.quotes.get(quote_id)
         # Logic to trigger actual disbursement via FCE
         return {"status": "PAYOUT_RELEASED", "quote_id": quote_id}

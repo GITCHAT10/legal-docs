@@ -1,4 +1,5 @@
 from typing import Dict, Any, List
+from datetime import datetime, UTC, date
 
 class UTSafetyGateEngine:
     def __init__(self, shadow):
@@ -8,12 +9,23 @@ class UTSafetyGateEngine:
         """
         Validates safety parameters before dispatch.
         """
+        # Insurance Validation logic
+        insurance_valid = False
+        raw_expiry = asset_data.get("insurance_expiry")
+        if raw_expiry:
+            try:
+                # Support YYYY-MM-DD
+                expiry_date = datetime.strptime(raw_expiry, "%Y-%m-%d").date()
+                insurance_valid = expiry_date >= datetime.now(UTC).date()
+            except (ValueError, TypeError):
+                insurance_valid = False
+
         checks = {
             "vessel_capacity": asset_data.get("passenger_count", 0) <= asset_data.get("capacity", 0),
             "weather_clearance": weather_data.get("sea_state", 0) < 4,
             "captain_license": asset_data.get("captain_status") == "VERIFIED",
             "lifejackets_onboard": asset_data.get("lifejacket_count", 0) >= asset_data.get("passenger_count", 0),
-            "insurance_valid": asset_data.get("insurance_expiry", "") > "2025-01-01"
+            "insurance_valid": insurance_valid
         }
 
         all_passed = all(checks.values())

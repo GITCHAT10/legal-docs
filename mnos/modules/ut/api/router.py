@@ -38,8 +38,17 @@ def create_ut_router(booking_engine, route_engine, fce_split, boarding_service, 
 
     @router.post("/bookings/confirm")
     async def booking_confirm(booking_id: str, x_aegis_device: str = Header(None, alias="X-AEGIS-DEVICE"), actor: dict = Depends(get_actor_ctx)):
-        actor["device_id"] = x_aegis_device
-        return booking_engine.confirm_booking(actor, booking_id)
+        # Validate booking_id format (example: UT-XXXXXX)
+        if not booking_id.startswith("UT-"):
+            raise HTTPException(status_code=400, detail="INVALID_BOOKING_ID")
+
+        try:
+            actor["device_id"] = x_aegis_device
+            return booking_engine.confirm_booking(actor, booking_id)
+        except (ValueError, RuntimeError) as e:
+            if "not found" in str(e).lower() or "not in queue" in str(e).lower():
+                 raise HTTPException(status_code=404, detail="BOOKING_NOT_FOUND")
+            raise HTTPException(status_code=400, detail=str(e))
 
     # --- Finance & FCE ---
     @router.post("/fce/quote")
@@ -51,6 +60,10 @@ def create_ut_router(booking_engine, route_engine, fce_split, boarding_service, 
         try:
             actor["device_id"] = x_aegis_device
             return fce_split.release_payout(actor, quote_id, orca, shadow, apollo)
+        except (ValueError, RuntimeError) as e:
+            if "NOT_FOUND" in str(e) or "not found" in str(e).lower():
+                raise HTTPException(status_code=404, detail="QUOTE_NOT_FOUND")
+            raise HTTPException(status_code=400, detail=str(e))
         except PermissionError as e:
             raise HTTPException(status_code=403, detail=str(e))
 

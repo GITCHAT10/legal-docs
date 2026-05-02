@@ -7,7 +7,7 @@ import mnos.shared.execution_guard as eg
 # Set dummy secret
 os.environ["NEXGEN_SECRET"] = "TEST-SECRET"
 
-from main import app, identity_core, guard, shadow_core
+from main import app, identity_core, guard, shadow_core, ut_fce_split
 
 client = TestClient(app)
 
@@ -54,7 +54,6 @@ def test_esg_csr_one_usd_split_50_50():
         "X-AEGIS-SIGNATURE": f"VALID_SIG_FOR_{identity_id}"
     }
 
-    # Use verified role to pass any policy checks
     identity_core.profiles[identity_id] = {
         "identity_id": identity_id,
         "profile_type": "B2C_GUEST",
@@ -66,16 +65,7 @@ def test_esg_csr_one_usd_split_50_50():
     identity_core.devices["dev-2"] = {"identity_id": identity_id}
 
     trace_id = str(uuid.uuid4())
-    # The 403 might be from ExecutionGuard rejecting because of some policy.
-    # But intent creation doesn't have strict policy in the provided IdentityPolicyEngine
-    # UNLESS it falls into some category.
-
-    # Wait, the failure in the previous run for THIS test was 403.
-    # In test_no_orca_no_settlement it was also 403, but I matched the detail.
-
     response = client.post("/imoxon/ut/bookings/intent", json={"amount": 100, "trace_id": trace_id}, headers=headers)
-    if response.status_code == 403:
-        print(f"DEBUG: 403 detail: {response.json()}")
     assert response.status_code == 200
     data = response.json()
 
@@ -113,6 +103,11 @@ def test_no_orca_no_settlement():
     }
     identity_core.devices["dev-3"] = {"identity_id": identity_id}
 
-    response = client.post("/imoxon/ut/fce/payout/release?quote_id=any&orca=false&shadow=true&apollo=true", headers=headers)
+    # Create a real quote first
+    from decimal import Decimal
+    quote = ut_fce_split.create_quote("test-trace", Decimal("100"))
+    quote_id = quote["quote_id"]
+
+    response = client.post(f"/imoxon/ut/fce/payout/release?quote_id={quote_id}&orca=false&shadow=true&apollo=true", headers=headers)
     assert response.status_code == 403
     assert "PAYOUT BLOCKED" in response.json()["detail"]
