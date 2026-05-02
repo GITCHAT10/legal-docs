@@ -1,2 +1,2 @@
-from .engine import PrestigePricingEngine
-from .surcharge_calculator import SurchargeCalculator
+from .engine import PrestigePricingEngine as PrestigePricingEngine
+from .surcharge_calculator import SurchargeCalculator as SurchargeCalculator

@@ -1,7 +1,6 @@
 import time
 import json
-from typing import Dict, Any, Optional
-from mnos.shared.execution_guard import ExecutionGuard
+from typing import Dict
 
 class WebhookReceiver:
     def __init__(self, core_system):

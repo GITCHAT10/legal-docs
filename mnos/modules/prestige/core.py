@@ -1,5 +1,5 @@
 import uuid
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, Optional
 from mnos.modules.prestige.models import TripMasterObject
 from mnos.modules.prestige.channel.channel_config_loader import ChannelConfigLoader
 from mnos.modules.prestige.channel.auth_gateway import AuthGateway

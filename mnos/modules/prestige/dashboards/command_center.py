@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, UTC
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from mnos.modules.prestige.dashboards.status_models import ArrivalRecord, CommandStatus
 
 class CommandCenter:
@@ -13,7 +13,8 @@ class CommandCenter:
 
     def get_status(self, booking_id: str) -> CommandStatus:
         record = self.arrivals.get(booking_id)
-        if not record: return CommandStatus.GREEN
+        if not record:
+            return CommandStatus.GREEN
 
         # Logic: missing final 24h seal prevents GREEN
         if not record.logistics_seal and record.status == CommandStatus.GREEN:
@@ -23,7 +24,8 @@ class CommandCenter:
 
     def calculate_global_status(self, current_time: datetime = None) -> List[ArrivalRecord]:
         """72-hour arrivals view logic."""
-        if not current_time: current_time = datetime.now(UTC)
+        if not current_time:
+            current_time = datetime.now(UTC)
         window_end = current_time + timedelta(hours=72)
 
         view = []
@@ -40,7 +42,8 @@ class CommandCenter:
     def safe_view(self, booking_id: str) -> Dict[str, Any]:
         """Dashboard safe view hides sensitive data."""
         record = self.arrivals.get(booking_id)
-        if not record: return {}
+        if not record:
+            return {}
 
         data = record.model_dump()
         if record.privacy_level in ["P3", "P4"]:
@@ -53,7 +56,8 @@ class CommandCenter:
     def block_auto_recovery(self, booking_id: str, issue_type: str) -> bool:
         """P3/P4 RED transfer/villa/security issue blocks auto-recovery."""
         record = self.arrivals.get(booking_id)
-        if not record: return False
+        if not record:
+            return False
 
         if record.privacy_level in ["P3", "P4"]:
             if issue_type in ["transfer", "villa", "security"]:

@@ -1,5 +1,3 @@
-import uuid
-from typing import Dict, List, Any, Optional
 from mnos.modules.prestige.supplier_portal.models import ContractExtractionResult, ExtractedRoomRate, ExtractedMealPlanRule, ExtractedTransferRule
 
 class ContractExtractionEngine:

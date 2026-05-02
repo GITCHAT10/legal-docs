@@ -1,5 +1,5 @@
 from mnos.modules.prestige.agents.base import BasePrestigeAgent
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 class ShadowMemoryAgent(BasePrestigeAgent):
     def __init__(self, agent_id: str, core_system: Any):

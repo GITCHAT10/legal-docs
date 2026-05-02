@@ -1,6 +1,5 @@
 import datetime
 import uuid
-from typing import List, Dict, Optional
 from mnos.modules.prestige.models import OutreachContact
 
 class OutreachEngine:

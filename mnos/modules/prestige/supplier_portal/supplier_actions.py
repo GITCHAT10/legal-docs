@@ -1,5 +1,5 @@
 import uuid
-from typing import Dict, Any, List
+from typing import Dict, Any
 from mnos.modules.prestige.supplier_portal.models import SupplierAction
 
 class StopSellManager:

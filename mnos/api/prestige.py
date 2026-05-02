@@ -1,7 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
-from typing import Dict, List
-from mnos.modules.prestige.outreach.engine import OutreachEngine
-from mnos.modules.prestige.workflows.luxury_package import LuxuryPackageWorkflow
+from fastapi import APIRouter, Depends
 
 def create_prestige_router(prestige_core, registry, outreach_engine, luxury_workflow, get_actor_ctx):
     router = APIRouter(tags=["prestige"])
@@ -23,7 +20,7 @@ def create_prestige_router(prestige_core, registry, outreach_engine, luxury_work
         return await luxury_workflow.execute_inquiry(actor, data)
 
     @router.post("/agentic/booking-flow")
-    async def run_agentic_flow(data: dict, orchestrator=Depends(lambda: prestige_orchestrator), actor: dict = Depends(get_actor_ctx)):
+    async def run_agentic_flow(data: dict, actor: dict = Depends(get_actor_ctx)):
         # Inject orchestrator from main (mocking dep injection for router factory)
         from main import prestige_orchestrator
         return await prestige_orchestrator.run_booking_flow(data, actor)

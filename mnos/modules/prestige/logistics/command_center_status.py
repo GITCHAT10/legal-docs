@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import Dict, Any
 
 class CommandCenterStatus(str, Enum):
     GREEN = "GREEN"

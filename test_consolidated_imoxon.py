@@ -1,6 +1,5 @@
 import pytest
 import httpx
-import os
 from main import app
 from httpx import ASGITransport
 

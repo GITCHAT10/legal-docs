@@ -1,6 +1,6 @@
 from decimal import Decimal
 from datetime import date
-from typing import Optional, List
+from typing import List
 from mnos.modules.prestige.contracts.accommodation_schema import AccommodationContractV2
 
 class FestiveEngine:

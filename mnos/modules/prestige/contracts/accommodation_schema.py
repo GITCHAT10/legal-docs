@@ -3,7 +3,7 @@ from decimal import Decimal
 from uuid import UUID
 from enum import Enum
 from datetime import date
-from typing import Optional, Dict, Any, Set
+from typing import Optional
 
 class EstablishmentType(str, Enum):
     RESORT = "RESORT"

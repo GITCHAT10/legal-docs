@@ -19,7 +19,7 @@ async def test_agent_orchestrator_selects_required_agents(shadow):
         def get_agent(self, type):
             return BasePrestigeAgent(f"{type}_id", None)
 
-    orchestrator = AgentOrchestrator(None, MockRegistry())
+    AgentOrchestrator(None, MockRegistry())
     # This just verifies sequence and event emission logic (requires core)
     pass
 

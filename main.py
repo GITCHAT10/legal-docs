@@ -1,8 +1,7 @@
 import os
-from fastapi import FastAPI, HTTPException, Header, Depends, Query, Request
+import yaml
+from fastapi import FastAPI, HTTPException, Header, Depends, Request
 from fastapi.responses import JSONResponse
-from typing import List, Optional, Dict
-from decimal import Decimal
 
 # MNOS Core (N-DEOS)
 from mnos.modules.finance.fce import FCEEngine, FCEHardenedEngine
@@ -24,8 +23,7 @@ from mnos.gateway.engine import APIGatewayControlPlane
 
 # iMOXON Consolidated
 from mnos.modules.imoxon.core.engine import (
-    ImoxonCore, CatalogManager, ProcurementEngine as LegacyProcurementEngine,
-    CampaignManager, MerchantManager, POSManager
+    ImoxonCore, CatalogManager, CampaignManager, MerchantManager, POSManager
 )
 from mnos.modules.imoxon.procurement.engine import ProcurementEngine
 from mnos.modules.imoxon.resort.weekly_system import ResortWeeklyOrderSystem
@@ -104,6 +102,10 @@ from mnos.modules.bubble.chat.engine import ChatIntentEngine, ChatToTransactionE
 from mnos.modules.bubble.sdk.core.bridge import BubbleSDK
 from mnos.modules.bubble.pos.engine import BubblePOSEngine
 from mnos.modules.bubble.pos.bridge import BubbleBPEBridge
+
+# PRESTIGE UHNW Router
+from mnos.api.uhnw_intake import create_uhnw_router
+from mnos.modules.prestige.workflows.intake_validation import IntakeValidation
 
 app = FastAPI(title="iMOXON N-DEOS: Consolidated Architecture Final")
 
@@ -205,7 +207,6 @@ prestige_outreach = OutreachEngine(imoxon)
 prestige_luxury_wf = LuxuryPackageWorkflow(prestige_trip_service, prestige_registry)
 
 # Flight Matrix Instances
-import yaml
 with open("config/prestige/flight_matrix.yaml", "r") as f:
     fm_config = yaml.safe_load(f)
 
@@ -374,9 +375,6 @@ app.include_router(
     prefix="/prestige/staging"
 )
 
-# PRESTIGE UHNW Router
-from mnos.api.uhnw_intake import create_uhnw_router
-from mnos.modules.prestige.workflows.intake_validation import IntakeValidation
 uhnw_validator = IntakeValidation()
 app.include_router(
     create_uhnw_router(imoxon, uhnw_validator, get_actor_ctx),

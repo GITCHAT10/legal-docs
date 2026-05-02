@@ -1,6 +1,5 @@
 import pytest
 from datetime import datetime, timedelta, UTC
-from uuid import uuid4
 from mnos.modules.prestige.dashboards.command_center import CommandCenter
 from mnos.modules.prestige.dashboards.status_models import ArrivalRecord, CommandStatus
 from mnos.modules.prestige.outputs.brief_generator import BriefGenerator, BriefType

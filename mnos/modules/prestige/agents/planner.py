@@ -4,7 +4,7 @@ from typing import Dict
 class PlannerAgent(BasePrestigeAgent):
     async def _run_agent_logic(self, task_data: Dict) -> Dict:
         # Planner decomposes inquiry into sourcing tasks
-        inquiry = task_data.get("inquiry", "")
+        task_data.get("inquiry", "")
         model = self.get_capability_model("planning")
 
         return {

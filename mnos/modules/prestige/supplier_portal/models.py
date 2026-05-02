@@ -1,6 +1,5 @@
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field
-from datetime import datetime, date
+from pydantic import BaseModel
 
 class ExtractedRoomRate(BaseModel):
     category_code: str

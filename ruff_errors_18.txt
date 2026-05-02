@@ -1,0 +1,803 @@
+F841 Local variable `token` is assigned to but never used
+  --> mnos/api/finance.py:11:9
+   |
+ 9 |         import uuid
+10 |         # MANUALLY WRAP IN SOVEREIGN CONTEXT SINCE FCE_HARDENED IS LEGACY COMPONENT
+11 |         token = _sovereign_context.set({"token": str(uuid.uuid4()), "actor": actor})
+   |         ^^^^^
+12 |         try:
+13 |             escrow_id = fce_hardened.create_escrow(actor["identity_id"], total_amount, ref_id)
+   |
+help: Remove assignment to unused variable `token`
+
+F821 Undefined name `prestige_orchestrator`
+  --> mnos/api/prestige.py:23:73
+   |
+22 |     @router.post("/agentic/booking-flow")
+23 |     async def run_agentic_flow(data: dict, orchestrator=Depends(lambda: prestige_orchestrator), actor: dict = Depends(get_actor_ctx)):
+   |                                                                         ^^^^^^^^^^^^^^^^^^^^^
+24 |         # Inject orchestrator from main (mocking dep injection for router factory)
+25 |         from main import prestige_orchestrator
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/api/uhnw_intake.py:14:21
+   |
+13 |         status = "COMPLETED" if valid else "INCOMPLETE"
+14 |         if needs_esc: status = "HUMAN_ESCALATION_REQUIRED"
+   |                     ^
+15 |
+16 |         return {
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/aegis/verifier.py:27:34
+   |
+26 |     def verify_access(self, user_id: str, device_id: str, role: str) -> bool:
+27 |         if role == "TOURIST_USER": return False
+   |                                  ^
+28 |         if self.device_bindings.get(device_id) != user_id: return False
+29 |         return True
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/aegis/verifier.py:28:58
+   |
+26 |     def verify_access(self, user_id: str, device_id: str, role: str) -> bool:
+27 |         if role == "TOURIST_USER": return False
+28 |         if self.device_bindings.get(device_id) != user_id: return False
+   |                                                          ^
+29 |         return True
+   |
+
+E741 Ambiguous variable name: `l`
+  --> mnos/modules/finance/mira_bridge.py:54:9
+   |
+52 |             }
+53 |
+54 |         l = self.daily_ledgers[key]
+   |         ^
+55 |         l["total_base"] += pricing["base"]
+56 |         l["service_charge"] += pricing["service_charge"]
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/finance/mira_bridge.py:79:22
+   |
+77 |         """
+78 |         ledger = self.daily_ledgers.get((vendor_id, date))
+79 |         if not ledger: return True
+   |                      ^
+80 |
+81 |         # Simulated check: In real world, we'd query the SHADOW database for this day
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/finance/mira_bridge.py:92:20
+   |
+91 |     def get_daily_report(self, vendor_id: Optional[str] = None, date: Optional[str] = None):
+92 |         if not date: date = datetime.now(UTC).date().isoformat()
+   |                    ^
+93 |
+94 |         reports = []
+   |
+
+F841 Local variable `transfer_manifest` is assigned to but never used
+  --> mnos/modules/imoxon/mars_unified.py:87:9
+   |
+86 |         # 3. UT SYSTEM Dispatches (Fleet Consolidation)
+87 |         transfer_manifest = self._internal_dispatch_transfer(order_id, {"route": "Male -> Island", "fare": 0})
+   |         ^^^^^^^^^^^^^^^^^
+88 |
+89 |         # 4. MARS PAY Settlement Split
+   |
+help: Remove assignment to unused variable `transfer_manifest`
+
+F841 Local variable `device_id` is assigned to but never used
+ --> mnos/modules/imoxon/policies/engine.py:7:9
+  |
+5 |     def validate_action(self, action_type: str, context: dict):
+6 |         identity_id = context.get("identity_id")
+7 |         device_id = context.get("device_id")
+  |         ^^^^^^^^^
+8 |
+9 |         # Staff Binding requirements
+  |
+help: Remove assignment to unused variable `device_id`
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/imoxon/policies/engine.py:71:27
+   |
+70 |     def _has_role(self, identity_id, role_name):
+71 |         if not identity_id: return False
+   |                           ^
+72 |         # Simplified check for demo
+73 |         profile = self.identity_core.profiles.get(identity_id)
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/imoxon/policies/engine.py:77:27
+   |
+76 |     def _is_verified(self, identity_id):
+77 |         if not identity_id: return False
+   |                           ^
+78 |         profile = self.identity_core.profiles.get(identity_id)
+79 |         return profile and profile.get("verification_status") == "verified"
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/imoxon/procurement/engine.py:53:21
+   |
+51 |     def _internal_approve(self, order_id):
+52 |         order = self.orders.get(order_id)
+53 |         if not order: raise ValueError("Order not found")
+   |                     ^
+54 |
+55 |         actor = self.guard.get_actor()
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/imoxon/procurement/engine.py:97:21
+   |
+95 |     def _internal_invoice(self, order_id):
+96 |         order = self.orders.get(order_id)
+97 |         if not order: raise ValueError("Order not found")
+   |                     ^
+98 |
+99 |         # MIRA-compliant tax calculation via FCE
+   |
+
+E701 Multiple statements on one line (colon)
+   --> mnos/modules/imoxon/procurement/engine.py:120:21
+    |
+118 |     def _internal_settle(self, order_id):
+119 |         order = self.orders.get(order_id)
+120 |         if not order: raise ValueError("Order not found")
+    |                     ^
+121 |
+122 |         # Simulated check for national ID binding in actor context
+    |
+
+F821 Undefined name `datetime`
+  --> mnos/modules/imoxon/schemas/models.py:67:51
+   |
+65 |     total_amount = Column(Float)
+66 |     status = Column(String(30))
+67 |     created_at = Column(DateTime, default=lambda: datetime.now(UTC))
+   |                                                   ^^^^^^^^
+68 |
+69 | class SettlementSplit(Base):
+   |
+
+F821 Undefined name `UTC`
+  --> mnos/modules/imoxon/schemas/models.py:67:64
+   |
+65 |     total_amount = Column(Float)
+66 |     status = Column(String(30))
+67 |     created_at = Column(DateTime, default=lambda: datetime.now(UTC))
+   |                                                                ^^^
+68 |
+69 | class SettlementSplit(Base):
+   |
+
+F841 Local variable `device_id` is assigned to but never used
+  --> mnos/modules/imoxon/staff_onboarding.py:20:13
+   |
+19 |             # 3. Bind Device
+20 |             device_id = self.identity_core.bind_device(identity_id, {"fingerprint": staff.get("device_hash")})
+   |             ^^^^^^^^^
+21 |
+22 |             # 4. Verify Identity (Simplified batch verification)
+   |
+help: Remove assignment to unused variable `device_id`
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/imoxon/vvip_key.py:52:19
+   |
+50 |         """QR/NFC Hardware Verification Simulation."""
+51 |         key = self.minted_keys.get(key_id)
+52 |         if not key: return False
+   |                   ^
+53 |
+54 |         # 1. AEGIS Binding Check (Non-transferable)
+   |
+
+F841 Local variable `flight_no` is assigned to but never used
+ --> mnos/modules/prestige/agents/flight_agent.py:7:9
+  |
+5 |     async def _run_agent_logic(self, task_data: Dict) -> Dict:
+6 |         # International carrier preparation
+7 |         flight_no = task_data.get("flight_no")
+  |         ^^^^^^^^^
+8 |
+9 |         return {
+  |
+help: Remove assignment to unused variable `flight_no`
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/prestige/agents/orchestrator.py:38:25
+   |
+36 |         for agent_type in agent_sequence:
+37 |             agent = self.registry.get_agent(agent_type)
+38 |             if not agent: continue
+   |                         ^
+39 |
+40 |             with ExecutionGuard.authorized_context(actor_ctx):
+   |
+
+F841 Local variable `inquiry` is assigned to but never used
+ --> mnos/modules/prestige/agents/planner.py:7:9
+  |
+5 |     async def _run_agent_logic(self, task_data: Dict) -> Dict:
+6 |         # Planner decomposes inquiry into sourcing tasks
+7 |         inquiry = task_data.get("inquiry", "")
+  |         ^^^^^^^
+8 |         model = self.get_capability_model("planning")
+  |
+help: Remove assignment to unused variable `inquiry`
+
+F841 Local variable `weather` is assigned to but never used
+  --> mnos/modules/prestige/agents/risk_agent.py:8:9
+   |
+ 6 |         # Risk Agent checks privacy, weather, availability, payment, transfer risk
+ 7 |         privacy_level = task_data.get("privacy_level", "P1")
+ 8 |         weather = "FAIR" # mock
+   |         ^^^^^^^
+ 9 |
+10 |         return {
+   |
+help: Remove assignment to unused variable `weather`
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/prestige/channel/availability_sync_engine.py:58:20
+   |
+56 |     def check_stop_sell(self, item_id: str) -> bool:
+57 |         item = self.core.inventory_mapper.get_item(item_id)
+58 |         if not item: return True
+   |                    ^
+59 |
+60 |         if item.status == "STOP_SELL": return True
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/prestige/channel/availability_sync_engine.py:60:38
+   |
+58 |         if not item: return True
+59 |
+60 |         if item.status == "STOP_SELL": return True
+   |                                      ^
+61 |         if not item.cancellation_policy_ref: return True
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/prestige/channel/availability_sync_engine.py:61:44
+   |
+60 |         if item.status == "STOP_SELL": return True
+61 |         if not item.cancellation_policy_ref: return True
+   |                                            ^
+62 |
+63 |         # In real system, check transfer feasibility etc.
+   |
+
+F841 Local variable `payload` is assigned to but never used
+  --> mnos/modules/prestige/channel/rate_sync_engine.py:34:9
+   |
+33 |         # Prepare payload
+34 |         payload = {
+   |         ^^^^^^^
+35 |             "ext_id": item.external_ids.get(channel_id),
+36 |             "rates": {
+   |
+help: Remove assignment to unused variable `payload`
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/prestige/dashboards/command_center.py:16:22
+   |
+14 |     def get_status(self, booking_id: str) -> CommandStatus:
+15 |         record = self.arrivals.get(booking_id)
+16 |         if not record: return CommandStatus.GREEN
+   |                      ^
+17 |
+18 |         # Logic: missing final 24h seal prevents GREEN
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/prestige/dashboards/command_center.py:26:28
+   |
+24 |     def calculate_global_status(self, current_time: datetime = None) -> List[ArrivalRecord]:
+25 |         """72-hour arrivals view logic."""
+26 |         if not current_time: current_time = datetime.now(UTC)
+   |                            ^
+27 |         window_end = current_time + timedelta(hours=72)
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/prestige/dashboards/command_center.py:43:22
+   |
+41 |         """Dashboard safe view hides sensitive data."""
+42 |         record = self.arrivals.get(booking_id)
+43 |         if not record: return {}
+   |                      ^
+44 |
+45 |         data = record.model_dump()
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/prestige/dashboards/command_center.py:56:22
+   |
+54 |         """P3/P4 RED transfer/villa/security issue blocks auto-recovery."""
+55 |         record = self.arrivals.get(booking_id)
+56 |         if not record: return False
+   |                      ^
+57 |
+58 |         if record.privacy_level in ["P3", "P4"]:
+   |
+
+F841 Local variable `resort_name` is assigned to but never used
+  --> mnos/modules/prestige/flight_matrix/transfer_feasibility_matrix.py:20:9
+   |
+18 |         flight_number = context.get("flight_number")
+19 |         resort_id = context.get("resort_id")
+20 |         resort_name = context.get("resort_name")
+   |         ^^^^^^^^^^^
+21 |         transfer_mode = context.get("transfer_mode")
+22 |         atoll_zone = context.get("atoll_zone")
+   |
+help: Remove assignment to unused variable `resort_name`
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/prestige/flight_matrix/transfer_feasibility_matrix.py:83:34
+   |
+81 |         baggage_markets = self.config.get("heavy_baggage_markets", [])
+82 |         if context.get("market_region") in baggage_markets and context.get("aircraft_capacity") == "SMALL":
+83 |              if status == "GREEN": status = "YELLOW"
+   |                                  ^
+84 |              reasons.append("BAGGAGE_OFFLOAD_RISK")
+85 |              human_approval_required = True
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/prestige/inventory/room_matching.py:52:70
+   |
+50 |             # 5. Score/Rank
+51 |             score = 0
+52 |             if guest_privacy == PrivacyLevel.P4 and room.private_pool: score += 100
+   |                                                                      ^
+53 |             if guest_privacy == PrivacyLevel.P4 and room.room_category_type == "RESIDENCE": score += 200
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/prestige/inventory/room_matching.py:53:91
+   |
+51 |             score = 0
+52 |             if guest_privacy == PrivacyLevel.P4 and room.private_pool: score += 100
+53 |             if guest_privacy == PrivacyLevel.P4 and room.room_category_type == "RESIDENCE": score += 200
+   |                                                                                           ^
+54 |
+55 |             option = {
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/prestige/logistics/transfer_villa_sync.py:22:25
+   |
+20 |             # Reject lobby-only
+21 |             available = [ap for ap in access_points if ap.access_point_type != AccessPointType.HOTEL_LOBBY]
+22 |             if available: return available[0]
+   |                         ^
+23 |
+24 |         return access_points[0] if access_points else None
+   |
+
+F401 `.engine.PrestigePricingEngine` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+ --> mnos/modules/prestige/pricing/__init__.py:1:21
+  |
+1 | from .engine import PrestigePricingEngine
+  |                     ^^^^^^^^^^^^^^^^^^^^^
+2 | from .surcharge_calculator import SurchargeCalculator
+  |
+help: Use an explicit re-export: `PrestigePricingEngine as PrestigePricingEngine`
+
+F401 `.surcharge_calculator.SurchargeCalculator` imported but unused; consider removing, adding to `__all__`, or using a redundant alias
+ --> mnos/modules/prestige/pricing/__init__.py:2:35
+  |
+1 | from .engine import PrestigePricingEngine
+2 | from .surcharge_calculator import SurchargeCalculator
+  |                                   ^^^^^^^^^^^^^^^^^^^
+  |
+help: Use an explicit re-export: `SurchargeCalculator as SurchargeCalculator`
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/prestige/taxes/airport_fees_engine.py:56:75
+   |
+54 |             exempt = False
+55 |             if rule.fee_code == FeeCode.DPT:
+56 |                 if is_infant and rule.exemption_rule.get("infant_under_2"): exempt = True
+   |                                                                           ^
+57 |                 if is_diplomat and rule.exemption_rule.get("diplomatic"): exempt = True
+58 |                 if is_transit and rule.exemption_rule.get("transit"): exempt = True
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/prestige/taxes/airport_fees_engine.py:57:73
+   |
+55 |             if rule.fee_code == FeeCode.DPT:
+56 |                 if is_infant and rule.exemption_rule.get("infant_under_2"): exempt = True
+57 |                 if is_diplomat and rule.exemption_rule.get("diplomatic"): exempt = True
+   |                                                                         ^
+58 |                 if is_transit and rule.exemption_rule.get("transit"): exempt = True
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/prestige/taxes/airport_fees_engine.py:58:69
+   |
+56 |                 if is_infant and rule.exemption_rule.get("infant_under_2"): exempt = True
+57 |                 if is_diplomat and rule.exemption_rule.get("diplomatic"): exempt = True
+58 |                 if is_transit and rule.exemption_rule.get("transit"): exempt = True
+   |                                                                     ^
+59 |
+60 |             if rule.fee_code == FeeCode.ADF:
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/prestige/taxes/airport_fees_engine.py:61:73
+   |
+60 |             if rule.fee_code == FeeCode.ADF:
+61 |                 if is_diplomat and rule.exemption_rule.get("diplomatic"): exempt = True
+   |                                                                         ^
+62 |                 if is_direct_transit and rule.exemption_rule.get("direct_transit"): exempt = True
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/prestige/taxes/airport_fees_engine.py:62:83
+   |
+60 |             if rule.fee_code == FeeCode.ADF:
+61 |                 if is_diplomat and rule.exemption_rule.get("diplomatic"): exempt = True
+62 |                 if is_direct_transit and rule.exemption_rule.get("direct_transit"): exempt = True
+   |                                                                                   ^
+63 |
+64 |             if not exempt:
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/prestige/workflows/intake_validation.py:18:36
+   |
+16 |         - if private_jet selected, require jet logistics fields
+17 |         """
+18 |         if not intake.privacy_level: return False, "Missing privacy_level"
+   |                                    ^
+19 |         if not intake.travel_dates: return False, "Missing travel_dates"
+20 |         if not intake.adults: return False, "Missing adults count"
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/prestige/workflows/intake_validation.py:19:35
+   |
+17 |         """
+18 |         if not intake.privacy_level: return False, "Missing privacy_level"
+19 |         if not intake.travel_dates: return False, "Missing travel_dates"
+   |                                   ^
+20 |         if not intake.adults: return False, "Missing adults count"
+21 |         if not intake.arrival_mode: return False, "Missing arrival_mode"
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/prestige/workflows/intake_validation.py:20:29
+   |
+18 |         if not intake.privacy_level: return False, "Missing privacy_level"
+19 |         if not intake.travel_dates: return False, "Missing travel_dates"
+20 |         if not intake.adults: return False, "Missing adults count"
+   |                             ^
+21 |         if not intake.arrival_mode: return False, "Missing arrival_mode"
+22 |         if not intake.villa_preference: return False, "Missing villa_preference"
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/prestige/workflows/intake_validation.py:21:35
+   |
+19 |         if not intake.travel_dates: return False, "Missing travel_dates"
+20 |         if not intake.adults: return False, "Missing adults count"
+21 |         if not intake.arrival_mode: return False, "Missing arrival_mode"
+   |                                   ^
+22 |         if not intake.villa_preference: return False, "Missing villa_preference"
+23 |         if not intake.transfer_preference: return False, "Missing transfer_preference"
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/prestige/workflows/intake_validation.py:22:39
+   |
+20 |         if not intake.adults: return False, "Missing adults count"
+21 |         if not intake.arrival_mode: return False, "Missing arrival_mode"
+22 |         if not intake.villa_preference: return False, "Missing villa_preference"
+   |                                       ^
+23 |         if not intake.transfer_preference: return False, "Missing transfer_preference"
+24 |         if not intake.budget_band: return False, "Missing budget_band"
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/prestige/workflows/intake_validation.py:23:42
+   |
+21 |         if not intake.arrival_mode: return False, "Missing arrival_mode"
+22 |         if not intake.villa_preference: return False, "Missing villa_preference"
+23 |         if not intake.transfer_preference: return False, "Missing transfer_preference"
+   |                                          ^
+24 |         if not intake.budget_band: return False, "Missing budget_band"
+25 |         if not intake.payment_preference: return False, "Missing payment_preference"
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/prestige/workflows/intake_validation.py:24:34
+   |
+22 |         if not intake.villa_preference: return False, "Missing villa_preference"
+23 |         if not intake.transfer_preference: return False, "Missing transfer_preference"
+24 |         if not intake.budget_band: return False, "Missing budget_band"
+   |                                  ^
+25 |         if not intake.payment_preference: return False, "Missing payment_preference"
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/prestige/workflows/intake_validation.py:25:41
+   |
+23 |         if not intake.transfer_preference: return False, "Missing transfer_preference"
+24 |         if not intake.budget_band: return False, "Missing budget_band"
+25 |         if not intake.payment_preference: return False, "Missing payment_preference"
+   |                                         ^
+26 |
+27 |         if intake.arrival_mode == "PRIVATE_JET":
+   |
+
+F841 Local variable `plan` is assigned to but never used
+  --> mnos/modules/prestige/workflows/luxury_package.py:19:9
+   |
+18 |         # 1. Planner decomposes inquiry
+19 |         plan = await planner.execute_task({"inquiry": inquiry_data.get("text")})
+   |         ^^^^
+20 |
+21 |         # 2. Hotel Sourcing
+   |
+help: Remove assignment to unused variable `plan`
+
+F811 Redefinition of unused `time` from line 3
+ --> mnos/modules/shadow/ledger.py:3:8
+  |
+1 | import hashlib
+2 | import json
+3 | import time
+  |        ---- previous definition of `time` here
+4 | from decimal import Decimal
+5 | from datetime import date, datetime, time, UTC
+  |                                      ^^^^ `time` redefined here
+6 | import uuid
+7 | import copy
+  |
+help: Remove definition: `time`
+
+F841 Local variable `payload_str` is assigned to but never used
+  --> mnos/modules/shadow/ledger.py:65:13
+   |
+63 |         """
+64 |         try:
+65 |             payload_str = json.dumps(payload, sort_keys=True, cls=ShadowEncoder)
+   |             ^^^^^^^^^^^
+66 |             # In a real system, we'd use RSA/Ed25519 here on the hash of payload_str
+67 |         except Exception:
+   |
+help: Remove assignment to unused variable `payload_str`
+
+E741 Ambiguous variable name: `l`
+  --> mnos/modules/trawel/heatmap.py:18:56
+   |
+16 |         """Aggregated National Stats (SHADOW_VERIFIED_ONLY)."""
+17 |         total_revenue = sum(s["revenue"] for s in self.island_system.island_stats.values())
+18 |         total_tax = sum(l["tgst"] + l["green_tax"] for l in self.mira.daily_ledgers.values())
+   |                                                        ^
+19 |
+20 |         return {
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/trawel/heatmap.py:36:30
+   |
+34 |             occupancy = min((stats["revenue"] / 5000) * 100, 100)
+35 |             status = "GREEN"
+36 |             if occupancy > 90: status = "RED"
+   |                              ^
+37 |             elif occupancy > 70: status = "YELLOW"
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/trawel/heatmap.py:37:32
+   |
+35 |             status = "GREEN"
+36 |             if occupancy > 90: status = "RED"
+37 |             elif occupancy > 70: status = "YELLOW"
+   |                                ^
+38 |
+39 |             # Reinvestment Signal Layer
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/trawel/heatmap.py:54:21
+   |
+52 |         """Detailed island performance intelligence."""
+53 |         stats = self.island_system.island_stats.get(island)
+54 |         if not stats: return {}
+   |                     ^
+55 |
+56 |         daily_mira = self.mira.get_daily_report(date=datetime.now(UTC).date().isoformat())
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/trawel/leaderboard.py:22:22
+   |
+20 |         """Processes economic events to update rankings."""
+21 |         island = data.get("island")
+22 |         if not island: return
+   |                      ^
+23 |
+24 |         # SHADOW VALIDATION ONLY (Simulated)
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/trawel/scoring.py:20:21
+   |
+18 |         """
+19 |         stats = self.island_system.island_stats.get(island)
+20 |         if not stats: return
+   |                     ^
+21 |
+22 |         # Filtering for active/verified vendors only
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/trawel/scoring.py:36:22
+   |
+34 |         """Vendor must be AEGIS verified and have >= 5 SHADOW transactions."""
+35 |         v_data = self.vendor_registry.get(vendor_id)
+36 |         if not v_data: return False
+   |                      ^
+37 |
+38 |         # In a real system, we'd check AEGIS and SHADOW ledger counts
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/trawel/scoring.py:45:25
+   |
+43 |         PULSE_SCORE = ((Baseline - Current) / Baseline) × 100 × 5
+44 |         """
+45 |         if baseline <= 0: return
+   |                         ^
+46 |         improvement = (baseline - current) / baseline
+47 |         pulse = improvement * 100 * 5
+   |
+
+F841 Local variable `results` is assigned to but never used
+  --> run_final_audit.py:13:5
+   |
+11 |     os.environ["NEXGEN_SECRET"] = "cto-audit-2026"
+12 |     transport = ASGITransport(app=app)
+13 |     results = []
+   |     ^^^^^^^
+14 |
+15 |     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+   |
+help: Remove assignment to unused variable `results`
+
+F841 Local variable `initial_len` is assigned to but never used
+  --> test_sovereign_commerce.py:69:5
+   |
+67 | async def test_failed_transaction_rollback(client, headers):
+68 |     from main import shadow_core
+69 |     initial_len = len(shadow_core.chain)
+   |     ^^^^^^^^^^^
+70 |
+71 |     # Try an action that will fail business logic
+   |
+help: Remove assignment to unused variable `initial_len`
+
+F841 Local variable `headers` is assigned to but never used
+  --> tests/prestige/channel/test_channel_manager.py:78:5
+   |
+77 |     # Valid request
+78 |     headers = {}
+   |     ^^^^^^^
+79 |     payload = "{}"
+80 |     sig = "valid_sig_simulated" # validate_request would need real HMAC logic if not mocked
+   |
+help: Remove assignment to unused variable `headers`
+
+F841 Local variable `payload` is assigned to but never used
+  --> tests/prestige/channel/test_channel_manager.py:79:5
+   |
+77 |     # Valid request
+78 |     headers = {}
+79 |     payload = "{}"
+   |     ^^^^^^^
+80 |     sig = "valid_sig_simulated" # validate_request would need real HMAC logic if not mocked
+81 |     # For this test, we'll manually trigger failures
+   |
+help: Remove assignment to unused variable `payload`
+
+F841 Local variable `sig` is assigned to but never used
+  --> tests/prestige/channel/test_channel_manager.py:80:5
+   |
+78 |     headers = {}
+79 |     payload = "{}"
+80 |     sig = "valid_sig_simulated" # validate_request would need real HMAC logic if not mocked
+   |     ^^^
+81 |     # For this test, we'll manually trigger failures
+   |
+help: Remove assignment to unused variable `sig`
+
+E712 Avoid equality comparisons to `False`; use `not eu_rate.safe_to_publish:` for false checks
+  --> tests/prestige/supplier_portal/test_supplier_portal.py:58:12
+   |
+56 |     # 121 + 20.57 (TGST 17%) = 141.57
+57 |     assert eu_rate.selling_rate == 141.57
+58 |     assert eu_rate.safe_to_publish == False
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+59 |
+60 | def test_stop_sell_immediate_activation(core, orchestrator):
+   |
+help: Replace with `not eu_rate.safe_to_publish`
+
+F841 Local variable `did` is assigned to but never used
+  --> tests/test_b2b_negotiation.py:14:5
+   |
+12 |         "organization_id": "GLOBAL-TO"
+13 |     })
+14 |     did = identity_core.bind_device(uid, {"fingerprint": "agent-pc"})
+   |     ^^^
+15 |     # Mocking B2B Realm for this session
+16 |     from main import identity_gateway
+   |
+help: Remove assignment to unused variable `did`
+
+F841 Local variable `resp` is assigned to but never used
+  --> tests/test_nexus_skyi_loop.py:58:5
+   |
+57 | def test_unauthorized_package_build(guest_headers):
+58 |     resp = client.post("/imoxon/itravel/packages/build", json={}, headers=guest_headers)
+   |     ^^^^
+59 |     # Role 'guest' should not be allowed to 'trawel.package.build' based on generic policy if we had one,
+60 |     # but currently our simple IdentityPolicyEngine doesn't explicitly block it unless we add it.
+   |
+help: Remove assignment to unused variable `resp`
+
+F841 Local variable `initial_len` is assigned to but never used
+   --> tests/test_pr38_blockers.py:101:5
+    |
+ 99 | async def test_no_availability_event_is_shadow_sealed(client, headers):
+100 |     from main import shadow_core, prestige_sourcing
+101 |     initial_len = len(shadow_core.chain)
+    |     ^^^^^^^^^^^
+102 |
+103 |     async def mock_empty(query): return []
+    |
+help: Remove assignment to unused variable `initial_len`
+
+F841 Local variable `orchestrator` is assigned to but never used
+  --> tests/test_prestige_agentic.py:22:5
+   |
+20 |             return BasePrestigeAgent(f"{type}_id", None)
+21 |
+22 |     orchestrator = AgentOrchestrator(None, MockRegistry())
+   |     ^^^^^^^^^^^^
+23 |     # This just verifies sequence and event emission logic (requires core)
+24 |     pass
+   |
+help: Remove assignment to unused variable `orchestrator`
+
+F841 Local variable `headers` is assigned to but never used
+  --> tests/test_security_hardened.py:76:5
+   |
+74 |     # Alternatively, try a supplier action with a user role.
+75 |
+76 |     headers = {
+   |     ^^^^^^^
+77 |         "X-AEGIS-IDENTITY": user_id,
+78 |         "X-AEGIS-DEVICE": user_device
+   |
+help: Remove assignment to unused variable `headers`
+
+Found 73 errors.
+No fixes available (22 hidden fixes can be enabled with the `--unsafe-fixes` option).

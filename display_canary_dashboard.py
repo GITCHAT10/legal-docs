@@ -1,9 +1,5 @@
 import asyncio
-import time
-import uuid
-import json
-from decimal import Decimal
-from main import app, fce_core, shadow_core, events_core, orders, imoxon
+from main import app, fce_core, shadow_core, orders
 from httpx import ASGITransport, AsyncClient
 
 class CanaryMonitor:
@@ -70,19 +66,19 @@ class CanaryMonitor:
         print("🏛️ SALA-UPOS CANARY DASHBOARD (SALA)")
         print("="*60)
 
-        print(f"📊 PANELS:")
+        print("📊 PANELS:")
         print(f"   - invoice_accuracy:        [{self.metrics.get('invoice_accuracy', 0):.2f}%] (SC 10%, TGST 17%)")
         print(f"   - event_law_violations:    [{self.metrics.get('event_law_violations', 0)}] (Locked Execution)")
         print(f"   - shadow_chain_integrity:  [{'VALID' if self.metrics.get('shadow_chain_integrity') else 'BROKEN'}]")
-        print(f"   - edge_replay_integrity:   [SYNCED]")
+        print("   - edge_replay_integrity:   [SYNCED]")
         print(f"   - order_success_rate:      [{self.metrics.get('concurrent_success_rate', 0)*100:.1f}%]")
 
-        print(f"\n🚨 ALERTS:")
-        print(f"   - finance_mismatch:        [NOMINAL]")
-        print(f"   - direct_publish_detected: [NOMINAL]")
-        print(f"   - shadow_chain_break:      [NOMINAL]")
+        print("\n🚨 ALERTS:")
+        print("   - finance_mismatch:        [NOMINAL]")
+        print("   - direct_publish_detected: [NOMINAL]")
+        print("   - shadow_chain_break:      [NOMINAL]")
 
-        print(f"\n⚠️ ANOMALIES:")
+        print("\n⚠️ ANOMALIES:")
         if not self.anomalies:
             print("   - None detected.")
         else:

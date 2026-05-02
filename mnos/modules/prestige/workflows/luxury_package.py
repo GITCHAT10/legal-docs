@@ -1,5 +1,4 @@
-from typing import Dict, Any
-from mnos.shared.execution_guard import ExecutionGuard
+from typing import Dict
 
 class LuxuryPackageWorkflow:
     def __init__(self, prestige_core, registry):
@@ -17,7 +16,7 @@ class LuxuryPackageWorkflow:
         compliance_agent = self.registry.get_agent("compliance")
 
         # 1. Planner decomposes inquiry
-        plan = await planner.execute_task({"inquiry": inquiry_data.get("text")})
+        await planner.execute_task({"inquiry": inquiry_data.get("text")})
 
         # 2. Hotel Sourcing
         hotels = await hotel_agent.execute_task({

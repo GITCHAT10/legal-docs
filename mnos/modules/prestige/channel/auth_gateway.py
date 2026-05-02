@@ -1,9 +1,7 @@
 import hmac
 import hashlib
 import time
-import uuid
 from typing import Dict, Any, Optional, List
-from mnos.shared.execution_guard import ExecutionGuard
 
 class AuthGateway:
     def __init__(self, core_system):

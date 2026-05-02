@@ -55,7 +55,7 @@ def test_market_rate_generation_respects_markup(core):
     # 110 + 11 (SC 10%) = 121
     # 121 + 20.57 (TGST 17%) = 141.57
     assert eu_rate.selling_rate == 141.57
-    assert eu_rate.safe_to_publish == False
+    assert not eu_rate.safe_to_publish
 
 def test_stop_sell_immediate_activation(core, orchestrator):
     from mnos.modules.prestige.supplier_portal.supplier_actions import StopSellManager

@@ -1,6 +1,5 @@
 import time
-from typing import Dict, Any, List, Optional
-from mnos.shared.execution_guard import ExecutionGuard
+from typing import Dict
 
 class AvailabilitySyncEngine:
     def __init__(self, core_system):
@@ -56,10 +55,13 @@ class AvailabilitySyncEngine:
 
     def check_stop_sell(self, item_id: str) -> bool:
         item = self.core.inventory_mapper.get_item(item_id)
-        if not item: return True
+        if not item:
+            return True
 
-        if item.status == "STOP_SELL": return True
-        if not item.cancellation_policy_ref: return True
+        if item.status == "STOP_SELL":
+            return True
+        if not item.cancellation_policy_ref:
+            return True
 
         # In real system, check transfer feasibility etc.
         return False

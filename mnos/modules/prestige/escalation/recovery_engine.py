@@ -1,5 +1,4 @@
 from typing import Dict, Any, List
-from mnos.modules.prestige.escalation.mac_eos_playbook import EscalationState
 
 class RecoveryEngine:
     def generate_options(self, escalation_id: str, problem_type: str) -> List[Dict[str, Any]]:

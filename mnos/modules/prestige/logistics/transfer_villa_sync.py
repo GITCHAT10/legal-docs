@@ -19,7 +19,8 @@ class TransferVillaSync:
 
             # Reject lobby-only
             available = [ap for ap in access_points if ap.access_point_type != AccessPointType.HOTEL_LOBBY]
-            if available: return available[0]
+            if available:
+                return available[0]
 
         return access_points[0] if access_points else None
 

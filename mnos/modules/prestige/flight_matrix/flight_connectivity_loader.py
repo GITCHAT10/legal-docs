@@ -1,7 +1,7 @@
 import csv
 import io
 import uuid
-from typing import List, Dict, Optional
+from typing import List, Optional
 from datetime import datetime
 from mnos.modules.prestige.flight_matrix.models import FlightConnectivityRecord
 

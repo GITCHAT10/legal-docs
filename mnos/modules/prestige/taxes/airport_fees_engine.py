@@ -1,7 +1,7 @@
 import json
 import os
 from decimal import Decimal
-from typing import Dict, List, Any, Optional
+from typing import Dict, Any
 from mnos.modules.prestige.taxes.airport_fees_schema import AirportFeeRule, FeeCode, PassengerResidency, TravelClass
 
 class AirportFeesEngine:
@@ -53,13 +53,18 @@ class AirportFeesEngine:
             # Apply Exemptions
             exempt = False
             if rule.fee_code == FeeCode.DPT:
-                if is_infant and rule.exemption_rule.get("infant_under_2"): exempt = True
-                if is_diplomat and rule.exemption_rule.get("diplomatic"): exempt = True
-                if is_transit and rule.exemption_rule.get("transit"): exempt = True
+                if is_infant and rule.exemption_rule.get("infant_under_2"):
+                    exempt = True
+                if is_diplomat and rule.exemption_rule.get("diplomatic"):
+                    exempt = True
+                if is_transit and rule.exemption_rule.get("transit"):
+                    exempt = True
 
             if rule.fee_code == FeeCode.ADF:
-                if is_diplomat and rule.exemption_rule.get("diplomatic"): exempt = True
-                if is_direct_transit and rule.exemption_rule.get("direct_transit"): exempt = True
+                if is_diplomat and rule.exemption_rule.get("diplomatic"):
+                    exempt = True
+                if is_direct_transit and rule.exemption_rule.get("direct_transit"):
+                    exempt = True
 
             if not exempt:
                 fees.append({

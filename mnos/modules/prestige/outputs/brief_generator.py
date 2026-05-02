@@ -1,5 +1,5 @@
 import uuid
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any
 from mnos.modules.prestige.outputs.brief_models import PrestigeBrief, BriefType
 
 class BriefGenerator:

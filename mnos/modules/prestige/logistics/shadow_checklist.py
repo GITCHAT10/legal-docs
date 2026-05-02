@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import Dict, Any, List
 
 class ChecklistItem(str, Enum):
     GUEST_IDENTITY_VERIFIED = "GUEST_IDENTITY_VERIFIED"

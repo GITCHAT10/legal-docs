@@ -1,4 +1,4 @@
-from typing import Dict, Any, List
+from typing import Dict
 from mnos.modules.prestige.supplier_portal.models import CMOMarketStrategyProfile
 
 class CMOMarketStrategyManager:

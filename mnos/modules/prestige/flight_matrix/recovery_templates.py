@@ -1,4 +1,3 @@
-from typing import Dict, List, Any
 from mnos.modules.prestige.flight_matrix.models import RecoveryOption
 
 RECOVERY_TEMPLATES = {
@@ -43,7 +42,7 @@ def get_recovery_template(reason: str) -> RecoveryOption:
 
 def get_brief_tone(guest_segment: str, recovery_tone: str) -> str:
     if guest_segment == "UHNW":
-         return (f"To ensure a smooth and private arrival experience, Prestige Holidays recommends a "
-                 f"controlled first-night arrival near Velana International Airport, followed by a "
-                 f"daylight transfer to your island resort the next morning.")
+         return ("To ensure a smooth and private arrival experience, Prestige Holidays recommends a "
+                 "controlled first-night arrival near Velana International Airport, followed by a "
+                 "daylight transfer to your island resort the next morning.")
     return recovery_tone

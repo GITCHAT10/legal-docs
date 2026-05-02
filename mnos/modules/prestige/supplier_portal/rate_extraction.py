@@ -1,7 +1,6 @@
 import csv
 import io
 from typing import List, Dict, Any
-from mnos.modules.prestige.supplier_portal.models import ExtractedRateLine
 
 class RateExtractionEngine:
     """

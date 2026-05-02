@@ -1,5 +1,4 @@
-from typing import List, Dict, Optional
-from mnos.modules.prestige.flight_matrix.models import ResortClusterRecommendation
+from typing import List, Optional
 
 RESORT_CLUSTERS = {
     "speedboat_volume": [

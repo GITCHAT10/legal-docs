@@ -2,9 +2,6 @@ import pytest
 import httpx
 from main import app
 from httpx import ASGITransport
-from mnos.modules.prestige.outreach.engine import OutreachEngine
-from mnos.modules.prestige.workflows.luxury_package import LuxuryPackageWorkflow
-from mnos.shared.execution_guard import ExecutionGuard
 
 @pytest.fixture(scope="session")
 def anyio_backend():
@@ -101,7 +98,7 @@ async def test_empty_hotel_inventory_returns_no_availability(client, headers):
 @pytest.mark.anyio
 async def test_no_availability_event_is_shadow_sealed(client, headers):
     from main import shadow_core, prestige_sourcing
-    initial_len = len(shadow_core.chain)
+    len(shadow_core.chain)
 
     async def mock_empty(query): return []
     original_search = prestige_sourcing.search_hotels

@@ -1,6 +1,5 @@
 import pytest
 import httpx
-import os
 from main import app
 from httpx import ASGITransport
 
@@ -67,7 +66,7 @@ async def test_shadow_audit_creation(client, headers):
 @pytest.mark.anyio
 async def test_failed_transaction_rollback(client, headers):
     from main import shadow_core
-    initial_len = len(shadow_core.chain)
+    len(shadow_core.chain)
 
     # Try an action that will fail business logic
     # Catalog approve with invalid ID

@@ -1,5 +1,4 @@
-from typing import List, Dict, Any, Optional
-from uuid import UUID
+from typing import List, Dict, Any
 from mnos.modules.prestige.inventory.room_category_schema import RoomCategory, PrivacyLevel, EstablishmentType
 from mnos.modules.prestige.contracts.transfer_quote import UHNWIntake
 
@@ -50,8 +49,10 @@ class RoomMatchingEngine:
 
             # 5. Score/Rank
             score = 0
-            if guest_privacy == PrivacyLevel.P4 and room.private_pool: score += 100
-            if guest_privacy == PrivacyLevel.P4 and room.room_category_type == "RESIDENCE": score += 200
+            if guest_privacy == PrivacyLevel.P4 and room.private_pool:
+                score += 100
+            if guest_privacy == PrivacyLevel.P4 and room.room_category_type == "RESIDENCE":
+                score += 200
 
             option = {
                 "room": room,

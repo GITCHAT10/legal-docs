@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from decimal import Decimal, ROUND_HALF_UP
 from typing import List, Dict, Any, Optional
 from datetime import date, time, datetime, timedelta

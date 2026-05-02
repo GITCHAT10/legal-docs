@@ -35,7 +35,8 @@ class AgentOrchestrator:
 
         for agent_type in agent_sequence:
             agent = self.registry.get_agent(agent_type)
-            if not agent: continue
+            if not agent:
+                continue
 
             with ExecutionGuard.authorized_context(actor_ctx):
                 self.core.shadow.commit("prestige.agentic.agent_selected", agent.agent_id, {"type": agent_type, "trace_id": trace_id})

@@ -1,10 +1,8 @@
 import pytest
-import asyncio
-from decimal import Decimal
 from mnos.shared.execution_guard import ExecutionGuard
 from mnos.modules.prestige.channel.channel_config_loader import ChannelConfigLoader
 from mnos.modules.prestige.channel.auth_gateway import AuthGateway
-from mnos.modules.prestige.channel.inventory_mapper import InventoryMapper, InventoryItem, InventoryStatus
+from mnos.modules.prestige.channel.inventory_mapper import InventoryMapper, InventoryItem
 from mnos.modules.prestige.channel.rate_sync_engine import RateSyncEngine
 from mnos.modules.prestige.channel.availability_sync_engine import AvailabilitySyncEngine
 from mnos.modules.prestige.channel.reservation_validator import ReservationValidator
@@ -77,9 +75,6 @@ def test_auth_failure_revokes_credential(core, actor_ctx):
     core.auth_gateway.register_channel(actor_ctx, "siteminder", "secret123", "HMAC")
 
     # Valid request
-    headers = {}
-    payload = "{}"
-    sig = "valid_sig_simulated" # validate_request would need real HMAC logic if not mocked
     # For this test, we'll manually trigger failures
 
     core.auth_gateway._emit_security_alert("siteminder", "CRITICAL_AUTH_FAILURE")

@@ -1,7 +1,7 @@
 import uuid
-from typing import Dict, Any, List, Optional
-from datetime import datetime, time, timedelta
-from mnos.modules.prestige.flight_matrix.models import FlightMatrixDecision, FlightConnectivityRecord
+from typing import Dict, Any
+from datetime import datetime, timedelta
+from mnos.modules.prestige.flight_matrix.models import FlightMatrixDecision
 
 class TransferFeasibilityMatrix:
     def __init__(self, core_system, loader, config):
@@ -17,7 +17,7 @@ class TransferFeasibilityMatrix:
         trace_id = context.get("trace_id", uuid.uuid4().hex)
         flight_number = context.get("flight_number")
         resort_id = context.get("resort_id")
-        resort_name = context.get("resort_name")
+        context.get("resort_name")
         transfer_mode = context.get("transfer_mode")
         atoll_zone = context.get("atoll_zone")
         scheduled_arrival = context.get("scheduled_arrival_time_mle")
@@ -80,7 +80,8 @@ class TransferFeasibilityMatrix:
         # Gate E: Baggage Risk
         baggage_markets = self.config.get("heavy_baggage_markets", [])
         if context.get("market_region") in baggage_markets and context.get("aircraft_capacity") == "SMALL":
-             if status == "GREEN": status = "YELLOW"
+             if status == "GREEN":
+                 status = "YELLOW"
              reasons.append("BAGGAGE_OFFLOAD_RISK")
              human_approval_required = True
 

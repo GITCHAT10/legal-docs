@@ -1,7 +1,6 @@
 import time
 import uuid
-from typing import Dict, Any, List, Optional
-from mnos.shared.execution_guard import ExecutionGuard
+from typing import Dict, Any
 
 class ReservationValidator:
     def __init__(self, core_system):

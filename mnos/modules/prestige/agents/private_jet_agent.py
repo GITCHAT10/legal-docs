@@ -1,5 +1,5 @@
 from mnos.modules.prestige.agents.base import BasePrestigeAgent
-from typing import Dict, Any
+from typing import Dict
 
 class PrivateJetAgent(BasePrestigeAgent):
     async def _run_agent_logic(self, task_data: Dict) -> Dict:

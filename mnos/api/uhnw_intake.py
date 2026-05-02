@@ -11,7 +11,8 @@ def create_uhnw_router(core, validator: IntakeValidation, get_actor_ctx):
         needs_esc = validator.check_escalation(data)
 
         status = "COMPLETED" if valid else "INCOMPLETE"
-        if needs_esc: status = "HUMAN_ESCALATION_REQUIRED"
+        if needs_esc:
+            status = "HUMAN_ESCALATION_REQUIRED"
 
         return {
             "status": status,

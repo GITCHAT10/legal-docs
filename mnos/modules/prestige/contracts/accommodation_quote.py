@@ -1,5 +1,4 @@
-from decimal import Decimal, ROUND_HALF_UP
-from typing import Dict, Any, Optional
+from decimal import Decimal
 from mnos.modules.prestige.contracts.accommodation_schema import AccommodationContractV2, EstablishmentType, MealPlan
 
 class AccommodationQuoteEngine:

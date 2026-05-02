@@ -1,6 +1,5 @@
 import hashlib
 import json
-import time
 from decimal import Decimal
 from datetime import date, datetime, time, UTC
 import uuid
@@ -62,7 +61,7 @@ class ShadowLedger:
         before 'signing' (mocked).
         """
         try:
-            payload_str = json.dumps(payload, sort_keys=True, cls=ShadowEncoder)
+            json.dumps(payload, sort_keys=True, cls=ShadowEncoder)
             # In a real system, we'd use RSA/Ed25519 here on the hash of payload_str
         except Exception:
             pass # Fallback to generic signature if serialization fails

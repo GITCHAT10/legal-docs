@@ -1,4 +1,4 @@
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from mnos.modules.prestige.logistics.access_point_schema import AccessPoint, AccessPointType
 
 class ArrivalProtocolEngine:

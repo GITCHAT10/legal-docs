@@ -1,8 +1,6 @@
 import pytest
 from mnos.modules.prestige.flight_matrix.transfer_feasibility_matrix import TransferFeasibilityMatrix
 from mnos.modules.prestige.flight_matrix.recovery_workflow import RecoveryWorkflow
-from mnos.modules.prestige.flight_matrix.agent_portal_recommendation import AgentPortalRecommendation
-from mnos.modules.prestige.flight_matrix.resort_cluster_mapper import ResortClusterMapper
 from mnos.modules.prestige.flight_matrix.models import FlightMatrixDecision
 
 class MockShadow:

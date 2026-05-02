@@ -1,7 +1,4 @@
-import time
 import uuid
-from typing import Dict, Any, List, Optional
-from mnos.shared.execution_guard import ExecutionGuard
 
 class RateSyncEngine:
     def __init__(self, core_system):
@@ -34,7 +31,7 @@ class RateSyncEngine:
             raise ValueError("Rate validation failed")
 
         # Prepare payload
-        payload = {
+        {
             "ext_id": item.external_ids.get(channel_id),
             "rates": {
                 "amount": item.base_price,
