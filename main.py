@@ -29,6 +29,9 @@ from mnos.modules.imoxon.core.engine import (
 )
 from mnos.modules.imoxon.procurement.engine import ProcurementEngine
 from mnos.modules.imoxon.resort.weekly_system import ResortWeeklyOrderSystem
+from mnos.modules.imoxon.booking_gate.engine import BookingGateEngine
+from mnos.modules.imoxon.ut_bridge.engine import UTBridge
+from mnos.shared.exceptions import ExecutionValidationError
 
 # Finance RC1
 from mnos.modules.finance.payment_layer import PaymentAbstractionLayer
@@ -58,12 +61,41 @@ from mnos.api.leaderboard import create_leaderboard_router
 from mnos.api.b2b_portal import create_b2b_portal_router
 from mnos.api.heatmap import create_heatmap_router
 from mnos.api.laundry import create_laundry_router
+from mnos.api.orca import create_orca_router
+from mnos.api.imoxon.booking_gate import create_booking_gate_router
+from mnos.api.imoxon.supplier_rates import create_supplier_rate_router
+from mnos.api.imoxon.prestige_supplier import create_prestige_supplier_router
+from mnos.api.upos import create_upos_router
+from mnos.api.csr import create_csr_router
+from mnos.api.pms.reservations import create_pms_router
+from mnos.api.pms.folio import create_folio_router
 
 # Bubble OS Super App Layer
+from mnos.modules.ai_ml.engine import SovereignAIEngine, PredictiveMLEngine
 from mnos.modules.bubble.chat.engine import ChatIntentEngine, ChatToTransactionEngine
 from mnos.modules.bubble.sdk.core.bridge import BubbleSDK
 from mnos.modules.bubble.pos.engine import BubblePOSEngine
 from mnos.modules.bubble.pos.bridge import BubbleBPEBridge
+from mnos.modules.bubble.orchestrator import OrderExecutionValidator
+
+# ExMail Communication OS
+from mnos.modules.exmail.service import ExMailEngine
+from mnos.modules.exmail.escalation import EscalationEngine
+
+# PH Rate Engine
+from mnos.modules.imoxon.supplier.rate_engine import PHRateEngine
+from mnos.modules.prestige.supplier_portal import PrestigeSupplierPortal, MarketRateEngine
+
+# UPOS Engine
+from mnos.modules.upos.engine.engine import UPOSEngine, UPOSWalletLedger
+
+# CSR Engine
+from mnos.modules.csr.engine.engine import CSREngine
+
+# SILENT SHIELD
+from mnos.modules.silent_shield.edge import SilentShieldEdge
+from mnos.modules.silent_shield.privacy_engine import PrivacyAssuranceEngine
+from mnos.shared.visibility.tier_gate import TierGate, get_channel
 
 app = FastAPI(title="iMOXON N-DEOS: Consolidated Architecture Final")
 
@@ -133,17 +165,84 @@ imoxon.mira_bridge = mira_bridge
 imoxon.vvip_engine = vvip_engine
 imoxon.reinvestment = reinvestment_engine
 
+# AI/ML Sovereignty
+ai_engine = SovereignAIEngine(shadow_core, events_core)
+ml_engine = PredictiveMLEngine(shadow_core)
+
 # Bubble OS
 intent_engine = ChatIntentEngine(imoxon)
 chat_os = ChatToTransactionEngine(imoxon, intent_engine)
 sdk = BubbleSDK(imoxon)
+iluvia_orchestrator = OrderExecutionValidator(shadow_core, events_core, ml_engine=ml_engine)
+
+# ExMail OS
+exmail_engine = ExMailEngine(identity_core, shadow_core, events_core, ai_engine=ai_engine)
+escalation_engine = EscalationEngine(shadow_core, events_core)
+
+# PH Rate Engine Activation
+ph_rate_engine = PHRateEngine(guard, shadow_core, events_core, fce_core)
+market_rate_engine = MarketRateEngine(shadow_core, fce_core)
+prestige_portal = PrestigeSupplierPortal(guard, shadow_core, events_core, fce_core, market_rate_engine)
+
+# SILENT SHIELD
+shield_edge = SilentShieldEdge(shadow_core, events_core)
+privacy_engine = PrivacyAssuranceEngine(shadow_core)
+
+# UPOS Activation
+upos_ledger = UPOSWalletLedger(shadow_core, events_core)
+upos_engine = UPOSEngine(guard, fce_core, shadow_core, events_core, upos_ledger)
+
+# CSR Engine Activation
+csr_engine = CSREngine(guard, shadow_core, events_core)
+
+# Booking Gate & UT Bridge
+ut_bridge = UTBridge(guard, shadow_core, events_core)
+from mnos.modules.pms.reservations.services.availability_engine import AvailabilityEngine
+from mnos.modules.pms.reservations.services.booking_logic import BookingLogic
+pms_availability = AvailabilityEngine(shadow_core)
+pms_booking = BookingLogic(pms_availability, guard, shadow_core, events_core, privacy_engine=privacy_engine)
+
+booking_gate = BookingGateEngine(
+    guard, shadow_core, events_core,
+    pms_booking, pms_availability, ut_bridge,
+     iluvia_orchestrator,
+     upos_engine=upos_engine
+)
+
+
+# PMS Folio & Billing Engine
+from mnos.modules.pms.folio.services.billing_engine import BillingEngine
+from mnos.modules.pms.folio.services.folio_logic import FolioLogic
+pms_billing = BillingEngine()
+pms_folio = FolioLogic(pms_billing, guard, shadow_core, events_core)
 
 # L1 & L2 Security
 @app.middleware("http")
 async def gateway_middleware(request: Request, call_next):
+    # 1. SILENT SHIELD Edge Check (Simulated)
+    # Extract headers that would normally be set by Cloudflare
+    ip = request.client.host if request.client else "127.0.0.1"
+    ua = request.headers.get("user-agent", "")
+    token = request.headers.get("Authorization")
+
+    SYSTEM_CTX = {"identity_id": "SYSTEM", "role": "admin", "realm": "SYSTEM"}
+    with guard.sovereign_context(SYSTEM_CTX):
+        edge_res = shield_edge.process_request(ip, ua, request.url.path, token)
+    if edge_res["status"] == 429:
+         return JSONResponse(status_code=429, content={"detail": edge_res["message"]})
+
+    # 2. Inject Classified Channel for downstream
+    # We explicitly inject the header for the simulation so get_channel() dependency works.
+    request.scope["headers"].append((b"x-channel-type", edge_res["channel"].encode()))
+
     if request.url.path.startswith("/imoxon") or request.url.path.startswith("/bubble"):
         await gateway.enforce_policy(request)
-    return await call_next(request)
+
+    response = await call_next(request)
+
+    # Audit Trace
+    response.headers["X-Channel-Audit"] = edge_res["channel"]
+    return response
 
 app.add_middleware(ExecutionGuardMiddleware, guard=guard, events=events_core)
 
@@ -159,41 +258,50 @@ def get_actor_ctx(
     Forces identity verification via AEGIS registry and validates device binding.
     LOGS all attempts to SHADOW ledger.
     """
+    SYSTEM_CTX = {"identity_id": "SYSTEM", "role": "admin", "realm": "SYSTEM"}
+
     # Prefer Session-based Auth from Gateway
     if x_aegis_session:
         try:
             actor = identity_gateway.validate_session(x_aegis_session)
-            shadow_core.commit("aegis.auth.session.success", actor["identity_id"], {"session_id": x_aegis_session})
+            with guard.sovereign_context(SYSTEM_CTX):
+                shadow_core.commit("aegis.auth.session.success", actor["identity_id"], {"session_id": x_aegis_session})
             return actor
         except PermissionError as e:
-            shadow_core.commit("aegis.auth.session.failure", "UNKNOWN", {"reason": str(e)})
+            with guard.sovereign_context(SYSTEM_CTX):
+                shadow_core.commit("aegis.auth.session.failure", "UNKNOWN", {"reason": str(e)})
             raise HTTPException(status_code=403, detail=str(e))
 
     # Fallback to Direct Hardened Handshake (B2B / API)
     if not x_aegis_identity or not x_aegis_device or not x_aegis_signature:
-        shadow_core.commit("aegis.auth.direct.failure", "UNKNOWN", {"reason": "Missing Headers"})
+        with guard.sovereign_context(SYSTEM_CTX):
+            shadow_core.commit("aegis.auth.direct.failure", "UNKNOWN", {"reason": "Missing Headers"})
         raise HTTPException(status_code=401, detail="AEGIS_REQUIRED: Missing Identity, Device or Signature")
 
     # 1. Identity lookup via AEGIS registry (persistence)
     profile = identity_core.profiles.get(x_aegis_identity)
     if not profile:
-        shadow_core.commit("aegis.auth.identity.invalid", x_aegis_identity, {"reason": "Not in Registry"})
+        with guard.sovereign_context(SYSTEM_CTX):
+            shadow_core.commit("aegis.auth.identity.invalid", x_aegis_identity, {"reason": "Not in Registry"})
         raise HTTPException(status_code=401, detail="INVALID_IDENTITY: Unauthorized")
 
     # 2. Validate device binding (device.owner_id == identity.id)
     device = identity_core.devices.get(x_aegis_device)
     if not device or device.get("identity_id") != x_aegis_identity:
-        shadow_core.commit("aegis.auth.device.mismatch", x_aegis_identity, {"device_id": x_aegis_device})
+        with guard.sovereign_context(SYSTEM_CTX):
+            shadow_core.commit("aegis.auth.device.mismatch", x_aegis_identity, {"device_id": x_aegis_device})
         raise HTTPException(status_code=403, detail="DEVICE_BINDING_INVALID: Access Denied")
 
     # 3. Cryptographic Signature Validation
     if x_aegis_signature != f"VALID_SIG_FOR_{x_aegis_identity}":
-         shadow_core.commit("aegis.auth.sig.failed", x_aegis_identity, {"sig": x_aegis_signature})
-         raise HTTPException(status_code=403, detail="HANDSHAKE_FAILED: Invalid Signature")
+        with guard.sovereign_context(SYSTEM_CTX):
+            shadow_core.commit("aegis.auth.sig.failed", x_aegis_identity, {"sig": x_aegis_signature})
+        raise HTTPException(status_code=403, detail="HANDSHAKE_FAILED: Invalid Signature")
 
     # 4. Success: Derive role from database (NO HEADER TRUST)
     actor = {
         "identity_id": x_aegis_identity,
+        "device_id": x_aegis_device, # MANDATORY for ExecutionGuard
         "role": profile.get("profile_type"),
         "realm": "API_DIRECT",
         "org_id": profile.get("organization_id"),
@@ -201,7 +309,8 @@ def get_actor_ctx(
         "verified": profile.get("verification_status") == "verified",
         "persistent_hash": profile.get("persistent_identity_hash")
     }
-    shadow_core.commit("aegis.auth.direct.success", x_aegis_identity, {"role": actor["role"]})
+    with guard.sovereign_context(SYSTEM_CTX):
+        shadow_core.commit("aegis.auth.direct.success", x_aegis_identity, {"role": actor["role"]})
     return actor
 
 # --- Consolidated APIs ---
@@ -209,22 +318,25 @@ def get_actor_ctx(
 @app.post("/imoxon/suppliers/connect")
 async def connect_supplier(name: str, actor: dict = Depends(get_actor_ctx)):
     # Create a profile in Aegis for the supplier to get a real ID
-    supplier_id = identity_core.create_profile({
-        "full_name": name,
-        "profile_type": "supplier",
-        "organization_id": "IMOXON-NETWORK"
-    })
-    profile = identity_core.profiles[supplier_id]
-
-    return imoxon.execute_commerce_action(
-        "imoxon.supplier.connect",
-        actor,
-        lambda: {
+    # This must be guarded as it mutates SHADOW
+    def _internal_connect():
+        supplier_id = identity_core.create_profile({
+            "full_name": name,
+            "profile_type": "supplier",
+            "organization_id": "IMOXON-NETWORK"
+        })
+        profile = identity_core.profiles[supplier_id]
+        return {
             "supplier_id": supplier_id,
             "name": name,
             "status": "CONNECTED",
             "persistent_hash": profile["persistent_identity_hash"]
         }
+
+    return guard.execute_sovereign_action(
+        "imoxon.supplier.connect",
+        actor,
+        _internal_connect
     )
 
 @app.post("/imoxon/orders/create")
@@ -243,6 +355,36 @@ async def approve_product(pid: str, actor: dict = Depends(get_actor_ctx)):
 async def chat_message(message: str, actor: dict = Depends(get_actor_ctx)):
     return chat_os.process_message(actor, message)
 
+@app.post("/bubble/execution/confirm")
+async def confirm_execution(order_id: str, signal: dict, actor: dict = Depends(get_actor_ctx)):
+    """ILUVIA Reality Check: Confirm order via physical signal."""
+    return guard.execute_sovereign_action(
+        "bubble.execution.confirm",
+        actor,
+        iluvia_orchestrator.confirm_real_world,
+        order_id, signal
+    )
+
+@app.post("/exmail/ingest")
+async def exmail_ingest(channel: str, payload: dict, actor: dict = Depends(get_actor_ctx)):
+    """ExMail Ingestion: Normalize and route incoming communication."""
+    return guard.execute_sovereign_action(
+        "exmail.ingest",
+        actor,
+        exmail_engine.ingest,
+        channel, payload
+    )
+
+@app.post("/exmail/escalation/check")
+async def trigger_escalation_check(actor: dict = Depends(get_actor_ctx)):
+    """Manual trigger for Escalation Engine check."""
+    guard.execute_sovereign_action(
+        "exmail.escalation.check",
+        actor,
+        escalation_engine.run_check
+    )
+    return {"status": "ESCALATION_CHECK_TRIGGERED"}
+
 # --- Routers ---
 app.include_router(create_identity_router(identity_core, policy_engine, identity_gateway), prefix="/imoxon")
 app.include_router(create_commerce_router(imoxon, catalog, merchant, pos, procurement, get_actor_ctx), prefix="/imoxon")
@@ -258,12 +400,81 @@ app.include_router(create_leaderboard_router(leaderboard, get_actor_ctx), prefix
 app.include_router(create_b2b_portal_router(mars_unified, b2b_negotiator, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_heatmap_router(heatmap_engine, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_laundry_router(laundry_engine, get_actor_ctx), prefix="/imoxon")
+app.include_router(create_booking_gate_router(booking_gate, get_actor_ctx), prefix="/imoxon")
+app.include_router(create_supplier_rate_router(ph_rate_engine, get_actor_ctx), prefix="/imoxon/supplier-portal")
+app.include_router(create_prestige_supplier_router(prestige_portal, get_actor_ctx), prefix="/prestige/supplier-portal")
+app.include_router(create_upos_router(upos_engine, upos_ledger, get_actor_ctx, csr_engine=csr_engine), prefix="/upos")
+app.include_router(create_csr_router(csr_engine, get_actor_ctx), prefix="/csr")
+app.include_router(create_orca_router(hospitality, bpe, shadow_core, get_actor_ctx), prefix="/orca")
+app.include_router(create_pms_router(pms_booking, pms_availability, get_actor_ctx), prefix="/pms")
+app.include_router(create_folio_router(pms_folio, get_actor_ctx), prefix="/pms/folio")
 
 # Error handlers
 @app.exception_handler(PermissionError)
 async def permission_error_handler(request: Request, exc: PermissionError):
     return JSONResponse(status_code=403, content={"detail": str(exc)})
 
+@app.exception_handler(RuntimeError)
+async def runtime_error_handler(request: Request, exc: RuntimeError):
+    # Sovereign Execution Failures (re-raised by Guard)
+    return JSONResponse(status_code=500, content={"detail": str(exc)})
+
+@app.exception_handler(ExecutionValidationError)
+async def execution_validation_error_handler(request: Request, exc: ExecutionValidationError):
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+@app.get("/imoxon/inventory/rooms")
+async def get_rooms(channel: str = Depends(get_channel)):
+    """Sample route with SILENT SHIELD Tier Gating & Privacy Premium."""
+    # Sovereign context required for pricing logic audit in SHADOW
+    SYSTEM_CTX = {"identity_id": "SYSTEM", "role": "admin", "realm": "SYSTEM"}
+
+    with guard.sovereign_context(SYSTEM_CTX):
+        # Mock inventory linked to Privacy Engine
+        rooms = [
+            {"id": "R1", "name": "Standard Room", "tier": "BASE", "bundle_eligible": False, "price": 500, "villa_id": "ST-201"},
+            {"id": "R2", "name": "Deluxe Suite", "tier": "ENHANCED", "bundle_eligible": True, "price": 1200, "villa_id": "SV-101"},
+            {"id": "R3", "name": "VVIP ALPHA Villa", "tier": "ALPHA", "bundle_eligible": True, "price": 5000, "villa_id": "SV-102"}
+        ]
+
+        visible_rooms = []
+        for r in rooms:
+            # Check eligibility for bundle if suite/villa
+            gate_res = TierGate.apply_gate(channel, r["tier"], bundle_requested=r["bundle_eligible"])
+
+            if gate_res["status"] in ["AUTHORIZED", "ROOM_ONLY"]:
+                r_clean = r.copy()
+
+                # Apply Privacy Premium Pricing
+                multiplier = privacy_engine.get_pricing_tier(r["villa_id"])
+                r_clean["base_price"] = r["price"]
+                r_clean["total_price"] = r["price"] * multiplier
+                r_clean["privacy_multiplier"] = multiplier
+                r_clean["legal_clause"] = privacy_engine.get_assurance_legal_clause(r["villa_id"])
+
+                if gate_res["status"] == "ROOM_ONLY":
+                    r_clean["bundle_eligible"] = False
+                    r_clean["note"] = gate_res["message"]
+
+                visible_rooms.append(r_clean)
+
+        return visible_rooms
+
+@app.post("/bubble/privacy/report-incident")
+async def report_privacy_incident(villa_id: str, incident_type: str, details: dict, actor: dict = Depends(get_actor_ctx)):
+    """SALA Privacy Assurance: Report and log incident to SHADOW."""
+    return guard.execute_sovereign_action(
+        "privacy.assurance.report",
+        actor,
+        privacy_engine.log_privacy_incident,
+        villa_id, incident_type, details
+    )
+
 @app.get("/health")
 async def health():
-    return {"status": "online", "integrity": shadow_core.verify_integrity(), "version": "CONSOLIDATED-RC1"}
+    return {
+        "status": "online",
+        "integrity": shadow_core.verify_integrity(),
+        "version": "MAC_EOS_v1_PRODUCTION",
+        "sovereign_status": "LOCKED"
+    }

@@ -21,13 +21,18 @@ class DistributedEventBus:
             raise PermissionError(f"FAIL CLOSED: Direct event publish blocked for {event_type}. Must use ExecutionGuard.")
 
         event_id = str(uuid.uuid4())
+        # Resolve trace_id from context or payload
+        from mnos.shared.execution_guard import ExecutionGuard
+        actor = ExecutionGuard.get_actor() or {}
+        trace_id = actor.get("trace_id") or payload.get("trace_id") or uuid.uuid4().hex[:8]
+
         event = {
             "id": event_id,
             "type": event_type,
             "payload": payload,
             "partition": partition,
             "timestamp": datetime.now(UTC).isoformat(),
-            "trace_id": uuid.uuid4().hex[:8]
+            "trace_id": trace_id
         }
 
         # 1. Append to in-memory partition
