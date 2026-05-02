@@ -1,4 +1,4 @@
-name: SALA-UPOS Sovereign Audit CI
+name: iMOXON Sovereign Audit CI
 
 on:
   push:
