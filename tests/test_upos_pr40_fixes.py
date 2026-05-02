@@ -80,6 +80,24 @@ async def test_upos_invoice_tax_requirement(client, valid_headers):
     assert data["pricing"]["total"] == 1287.0
 
 @pytest.mark.anyio
+async def test_upos_mutation_requires_valid_actor_ctx(client):
+    # Try to create invoice without headers (GUEST)
+    res = await client.post("/upos/api/v1/invoices/create", json={"amount": 100})
+    # Depends(get_actor_ctx) returns {"identity_id": "GUEST", ...}
+    # upos_core.create_invoice calls execute_transaction -> guard.execute_sovereign_action
+    # ExecutionGuard requires identity_id != GUEST (implied by not identity_id or not device_id check)
+    assert res.status_code == 403
+    assert "EXECUTION GUARD REJECTION: Missing Actor Identity" in res.json()["detail"]
+
+@pytest.mark.anyio
+async def test_no_shadow_write_without_authorized_context():
+    from main import shadow_core
+    # Direct write attempt outside of Guard's sovereign context
+    with pytest.raises(PermissionError) as exc:
+        shadow_core.commit("unauthorized.event", "hacker", {"data": "exploit"})
+    assert "Unauthorized direct write to SHADOW Ledger blocked" in str(exc.value)
+
+@pytest.mark.anyio
 async def test_audit_expected_ci(client, valid_headers):
     """
     Simulates the auditExpected requirement for CI.
