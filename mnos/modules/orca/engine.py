@@ -4,11 +4,11 @@ class OrcaValidationEngine:
 
     def validate_action(self, action_type: str, context: dict):
         """
-        ORCA Validation Engine: Central Rule Authority for UPOS Cloud.
+        ORCA Validation Engine: Central Rule Authority for iMOXON.UPOS.
         Checks identity, role, and business rules before execution.
         """
         identity_id = context.get("identity_id")
-        device_id = context.get("device_id")
+        context.get("device_id")
 
         # Staff Binding requirements
         staff_actions = ["onboarding", "uniform_assignment", "linen_assignment", "delivery_acceptance", "wifi.staff_access"]
@@ -81,11 +81,13 @@ class OrcaValidationEngine:
         return True, "Accepted"
 
     def _has_role(self, identity_id, role_name):
-        if not identity_id: return False
+        if not identity_id:
+            return False
         profile = self.identity_core.profiles.get(identity_id)
         return profile and profile.get("profile_type") == role_name
 
     def _is_verified(self, identity_id):
-        if not identity_id: return False
+        if not identity_id:
+            return False
         profile = self.identity_core.profiles.get(identity_id)
         return profile and profile.get("verification_status") == "verified"

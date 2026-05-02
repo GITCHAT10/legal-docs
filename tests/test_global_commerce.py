@@ -107,7 +107,7 @@ def test_port_release_gate(setup_identity):
     # Approve customs then port
     u_clearance.approve_customs_release(admin_headers, job_id)
     u_clearance.approve_port_release(admin_headers, job_id)
-    assert u_clearance.clearance_jobs[job_id]["port_released"] == True
+    assert u_clearance.clearance_jobs[job_id]["port_released"]
 
 def test_smart_corridor_gates(setup_identity):
     from main import u_corridors, upos_core
@@ -149,7 +149,7 @@ def test_landed_cost_calculation():
     from mnos.modules.port.engine import UPortEngine
 
     customs = UCustomsEngine(None)
-    port = UPortEngine(None)
+    UPortEngine(None)
 
     prod = {"base_price": 1000.0, "hs_code": "6302.6000"} # 20% duty
     freight = 200.0

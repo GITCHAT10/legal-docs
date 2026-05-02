@@ -1,6 +1,3 @@
-import uuid
-from datetime import datetime, UTC
-from typing import Dict, List, Any, Optional
 
 class UShoppingEngine:
     """

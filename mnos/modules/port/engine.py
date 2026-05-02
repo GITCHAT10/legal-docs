@@ -1,6 +1,3 @@
-import uuid
-from datetime import datetime, UTC
-from typing import Dict, List, Any, Optional
 
 class UPortEngine:
     """
@@ -45,7 +42,8 @@ class UPortEngine:
         multiplier = 1.0
         if ctype == "LCL":
              multiplier = freight_tonne
-             if multiplier < 1.0: multiplier = 1.0
+             if multiplier < 1.0:
+                multiplier = 1.0
 
         base_handling = tariff["handling"] * multiplier
         base_wharfage = tariff["wharfage"] * multiplier

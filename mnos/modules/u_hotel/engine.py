@@ -1,7 +1,4 @@
 import uuid
-from datetime import datetime, UTC
-from typing import Dict, List, Any, Optional
-from decimal import Decimal
 
 class UHotelEngine:
     """
@@ -44,7 +41,8 @@ class UHotelEngine:
     def _internal_book(self, data, actor_ctx):
         prop_id = data.get("property_id")
         prop = self.properties.get(prop_id)
-        if not prop: raise ValueError("Property not found")
+        if not prop:
+            raise ValueError("Property not found")
 
         # Use UPOS for order creation
         order = self.upos._internal_create_order(

@@ -1,11 +1,9 @@
 import uuid
 from datetime import datetime, UTC, timedelta
-from typing import Dict, List, Any, Optional
-from decimal import Decimal
 
 class UWiFiEngine:
     """
-    U-WiFi Engine: Managed connectivity for UPOS Cloud.
+    U-WiFi Engine: Managed connectivity for iMOXON.UPOS.
     Handles Hotel, Resort, Island, Event, and Marine WiFi.
     """
     def __init__(self, upos_core):
@@ -141,7 +139,8 @@ class UWiFiEngine:
 
     def _internal_failover(self, router_id, reason):
         router = self.routers.get(router_id)
-        if not router: raise ValueError("Router not found")
+        if not router:
+            raise ValueError("Router not found")
 
         router["wan_status"] = "BACKUP_ACTIVE"
         router["failover_reason"] = reason

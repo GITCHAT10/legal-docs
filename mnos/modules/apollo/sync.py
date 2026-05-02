@@ -1,11 +1,10 @@
 import uuid
 import hashlib
 import json
-from datetime import datetime, UTC
 
 class ApolloSyncEngine:
     """
-    APOLLO Sync Engine: Handles offline sync and edge replay for UPOS Cloud.
+    APOLLO Sync Engine: Handles offline sync and edge replay for iMOXON.UPOS.
     Ensures idempotency and data integrity during recovery.
     """
     def __init__(self, guard, shadow, events, fce):
@@ -38,7 +37,7 @@ class ApolloSyncEngine:
                  continue
             action_type = event.get("action_type")
             actor_ctx = event.get("actor_ctx") or {}
-            data = event.get("data")
+            event.get("data")
 
             # Idempotency check: stable hash of event to prevent double replay
             event_hash = hashlib.sha256(json.dumps(event, sort_keys=True).encode()).hexdigest()

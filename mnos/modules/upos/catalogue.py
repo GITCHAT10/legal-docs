@@ -1,5 +1,4 @@
-import uuid
-from typing import Dict, List, Any, Optional
+from typing import List
 
 class UCatalogueEngine:
     """

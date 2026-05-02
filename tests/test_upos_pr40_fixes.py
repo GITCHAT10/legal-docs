@@ -2,7 +2,6 @@ import pytest
 import httpx
 from main import app, shadow_core, identity_core
 from httpx import ASGITransport
-import json
 
 @pytest.fixture(scope="session")
 def anyio_backend():

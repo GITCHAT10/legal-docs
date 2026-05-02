@@ -1,12 +1,14 @@
 import uuid
 from datetime import datetime, UTC
-from typing import Dict, List, Any, Optional
-from decimal import Decimal
+from typing import Dict, Any
 
 class UPOSCommerceCore:
     """
-    UPOS Commerce Core: Standardized transaction engine for all U-Series verticals.
+    iMOXON.UPOS Commerce Execution: Universal commerce engine for the MNOS ecosystem.
     Workflow: AEGIS -> ORCA -> ExecutionGuard -> UPOS -> FCE -> SHADOW
+
+    UPOS owns checkout, POS, marketplace cart, and transaction execution.
+    It does NOT own hotel/travel package/transport movement truth.
     """
     def __init__(self, guard, orca, fce, shadow, events, escrow):
         self.guard = guard
@@ -87,7 +89,8 @@ class UPOSCommerceCore:
 
     def _internal_payment(self, order_id, method):
         order = self.orders.get(order_id)
-        if not order: raise ValueError("Order not found")
+        if not order:
+            raise ValueError("Order not found")
 
         # Record payment
         payment_record = {

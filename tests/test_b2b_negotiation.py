@@ -1,6 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
-from main import app, identity_core, mars_unified
+from main import app, identity_core
 
 client = TestClient(app)
 
@@ -11,7 +11,7 @@ def b2b_agent_headers():
         "profile_type": "b2b_agent",
         "organization_id": "GLOBAL-TO"
     })
-    did = identity_core.bind_device(uid, {"fingerprint": "agent-pc"})
+    identity_core.bind_device(uid, {"fingerprint": "agent-pc"})
     # Mocking B2B Realm for this session
     from main import identity_gateway
     session_id = f"SES-B2B-{uid[:4]}"

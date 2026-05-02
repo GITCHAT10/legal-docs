@@ -1,13 +1,13 @@
 import os
-from fastapi import FastAPI, HTTPException, Header, Depends, Query, Request, Body
+import uuid
+from fastapi import FastAPI, HTTPException, Header, Depends, Request, Body
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from typing import List, Optional, Dict, Any
-from decimal import Decimal
+from typing import Optional, Any
 
-# UPOS Cloud Core (MAC EOS Governance)
-from mnos.modules.finance.fce import FCEEngine, FCEHardenedEngine
+# iMOXON.UPOS Core (MAC EOS Governance)
+from mnos.modules.finance.fce import FCEEngine
 from mnos.modules.shadow.ledger import ShadowLedger
 from mnos.modules.events.bus import DistributedEventBus
 from mnos.core.aegis_identity.identity import AegisIdentityCore
@@ -38,13 +38,11 @@ from mnos.modules.upos.catalogue import UCatalogueEngine
 from mnos.modules.u_hotel.engine import UHotelEngine
 from mnos.modules.u_marine.engine import UMarineEngine
 from mnos.modules.u_fb.engine import MaldivesRestaurantEngine as UFBEngine
-from mnos.modules.u_laundry.engine import MaldivesLaundryEngine as ULaundryEngine
 
 # Mocks/Legacy for compatibility
 from mnos.modules.finance.escrow import EscrowFCETCore
-from mnos.modules.imoxon.procurement.engine import ProcurementEngine
 
-app = FastAPI(title="UPOS Cloud: Universal Commerce Nervous System")
+app = FastAPI(title="iMOXON.UPOS: Sovereign Commerce Module")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
@@ -162,7 +160,6 @@ async def legacy_create_order(data: dict = Body(...), actor: dict = Depends(get_
 async def legacy_supplier_connect(data: dict = Body(...), actor: dict = Depends(get_actor_ctx)):
     return guard.execute_sovereign_action("imoxon.supplier.connect", actor, _internal_supplier_connect_legacy)
 
-import uuid
 def _internal_supplier_connect_legacy():
     return {"id": f"SUP-{uuid.uuid4().hex[:6].upper()}", "status": "CONNECTED"}
 
@@ -206,7 +203,8 @@ async def legacy_product_approve(pid: str, actor: dict = Depends(get_actor_ctx))
         raise e
 
 def _internal_approve_legacy(pid):
-    if pid == "none": raise ValueError("Product not found")
+    if pid == "none":
+        raise ValueError("Product not found")
     return {"id": pid, "status": "APPROVED"}
 
 @app.get("/imoxon/catalog")
@@ -356,12 +354,12 @@ async def aegis_verify_identity(identity_id: str, verifier_id: str):
 @app.get("/upos/enterprise/dashboard")
 async def enterprise_dashboard(actor: dict = Depends(get_actor_ctx)):
     """
-    U-Enterprise: Master Command Dashboard.
+    MNOS.UPOS Master Command Dashboard.
     Reports Live Revenue, Cost, GOP, and Logistics Risk.
     """
     # Procurement Aggregates
     resort_reqs = len(u_resort_procurement.requests)
-    enterprise_reqs = len(u_enterprise_procurement.requests)
+    len(u_enterprise_procurement.requests)
     total_quotes = len(u_resort_procurement.quotes)
 
     # Logistics Aggregate
@@ -481,4 +479,4 @@ async def upos_calculate_rev_share(data: dict, actor: dict = Depends(get_actor_c
 
 @app.get("/health")
 async def health():
-    return {"status": "online", "foundation": "SALA Node / UPOS Cloud", "version": "v1.0.0"}
+    return {"status": "online", "foundation": "SALA Node / iMOXON.UPOS", "version": "v1.0.0"}

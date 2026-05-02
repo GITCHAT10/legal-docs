@@ -1,6 +1,5 @@
 import uuid
-from datetime import datetime, UTC, timedelta
-from typing import Dict, List, Any, Optional
+from datetime import datetime, UTC
 
 class USmartCorridorsEngine:
     """
@@ -154,7 +153,7 @@ class USmartCorridorsEngine:
         return True
 
     def complete_delivery(self, actor_ctx: dict, manifest_id: str, item_id: str, proof: dict):
-        manifest = self.manifests.get(manifest_id)
+        self.manifests.get(manifest_id)
         # Logic to mark individual cargo as delivered
         # If all delivered, mark manifest as CLOSED
         return True
