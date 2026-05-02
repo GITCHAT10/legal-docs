@@ -65,6 +65,15 @@ from mnos.modules.bubble.sdk.core.bridge import BubbleSDK
 from mnos.modules.bubble.pos.engine import BubblePOSEngine
 from mnos.modules.bubble.pos.bridge import BubbleBPEBridge
 
+# UT PPMC Imports
+from mnos.modules.ut.engines.fce_split import UTFCESplitEngine
+from mnos.modules.ut.engines.route_engine import UTRouteEngine
+from mnos.modules.ut.engines.booking_engine import UTBookingEngine
+from mnos.modules.ut.engines.safety_gate import UTSafetyGateEngine
+from mnos.modules.ut.services.boarding_service import UTBoardingService
+from mnos.modules.ut.services.sync_service import UTAPOLLOSyncService
+from mnos.modules.ut.api.router import create_ut_router
+
 app = FastAPI(title="iMOXON N-DEOS: Consolidated Architecture Final")
 
 # --- System Law ---
@@ -137,6 +146,14 @@ imoxon.reinvestment = reinvestment_engine
 intent_engine = ChatIntentEngine(imoxon)
 chat_os = ChatToTransactionEngine(imoxon, intent_engine)
 sdk = BubbleSDK(imoxon)
+
+# UT PPMC Initialization
+ut_fce_split = UTFCESplitEngine(fce_core, shadow_core)
+ut_route_engine = UTRouteEngine()
+ut_booking_engine = UTBookingEngine(imoxon, ut_fce_split)
+ut_safety_gate = UTSafetyGateEngine(shadow_core)
+ut_boarding_service = UTBoardingService(shadow_core, events_core)
+ut_sync_service = UTAPOLLOSyncService(shadow_core, events_core)
 
 # L1 & L2 Security
 @app.middleware("http")
@@ -258,6 +275,20 @@ app.include_router(create_leaderboard_router(leaderboard, get_actor_ctx), prefix
 app.include_router(create_b2b_portal_router(mars_unified, b2b_negotiator, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_heatmap_router(heatmap_engine, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_laundry_router(laundry_engine, get_actor_ctx), prefix="/imoxon")
+
+# UT Router
+app.include_router(
+    create_ut_router(
+        ut_booking_engine,
+        ut_route_engine,
+        ut_fce_split,
+        ut_boarding_service,
+        ut_sync_service,
+        ut_safety_gate,
+        get_actor_ctx
+    ),
+    prefix="/imoxon"
+)
 
 # Error handlers
 @app.exception_handler(PermissionError)

@@ -1,0 +1,10 @@
+[
+  {"id": "GULFCRAFT_TOURING_38_STANDARD_SHARED", "name": "Gulfcraft Touring 38 - Standard Shared", "capacity": 20, "type": "SPEEDBOAT"},
+  {"id": "GULFCRAFT_TOURING_50_HIGH_CAPACITY_POOL", "name": "Gulfcraft Touring 50 - High Capacity Pool", "capacity": 40, "type": "SPEEDBOAT"},
+  {"id": "GULFCRAFT_TOURING_48_VIP_PREMIUM", "name": "Gulfcraft Touring 48 - VIP Premium", "capacity": 15, "type": "SPEEDBOAT"},
+  {"id": "SILVERCAT_34_STABILITY_COMFORT", "name": "Silvercat 34 - Stability & Comfort", "capacity": 12, "type": "SPEEDBOAT"},
+  {"id": "MAJESTY_60_62_72_VVIP_YACHT", "name": "Majesty 60/62/72 - VVIP Yacht", "capacity": 10, "type": "YACHT"},
+  {"id": "SC_36CC_DIVE_FISHING_ACTIVITY", "name": "SC 36CC - Dive & Fishing Activity", "capacity": 8, "type": "ACTIVITY_BOAT"},
+  {"id": "ORYX_379_PRIVATE_DAY_CRUISER", "name": "Oryx 379 - Private Day Cruiser", "capacity": 6, "type": "CRUISER"},
+  {"id": "SUPPORT_DHONI_DIVE_SURF_GEAR", "name": "Support Dhoni - Dive & Surf Gear", "capacity": 15, "type": "DHONI"}
+]
