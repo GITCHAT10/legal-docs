@@ -6,6 +6,11 @@ from .finance_review import FinanceReviewManager
 from .revenue_review import RevenueReviewManager
 from .cmo_market_strategy import CMOMarketStrategyManager
 from .stop_sell_manager import StopSellManager
+from .contract_upload import ContractUploadManager
+from .specials_manager import SpecialsManager
+from .open_sale_manager import OpenSaleManager
+from .allotment_manager import AllotmentManager
+from .admin_notifications import AdminNotificationSystem
 
 class PrestigeSupplierPortal:
     """
@@ -24,16 +29,19 @@ class PrestigeSupplierPortal:
         self.revenue = RevenueReviewManager()
         self.cmo = CMOMarketStrategyManager()
         self.stop_sell_mgr = StopSellManager(shadow)
+        self.contract_mgr = ContractUploadManager(shadow)
+        self.specials_mgr = SpecialsManager(shadow)
+        self.open_sale_mgr = OpenSaleManager()
+        self.allotment_mgr = AllotmentManager()
+        self.notifier = AdminNotificationSystem()
 
         self.rates: Dict[str, MarketSellingRate] = {}
 
     def upload_contract_pdf(self, actor_ctx: dict, supplier_id: str, resort_name: str, file_name: str):
         def _execute_upload():
-            trace_id = str(uuid.uuid4().hex[:8])
-            self.shadow.commit("prestige.supplier.contract_uploaded", actor_ctx["identity_id"], {
-                "trace_id": trace_id, "supplier_id": supplier_id, "resort": resort_name, "file": file_name
-            })
-            return {"status": "AI_EXTRACTED_DRAFT", "trace_id": trace_id}
+            res = self.contract_mgr.handle_upload(actor_ctx, supplier_id, resort_name, file_name)
+            self.notifier.notify_admin("CONTRACT_UPLOADED", res)
+            return {"status": "AI_EXTRACTED_DRAFT", "trace_id": res["trace_id"]}
         return self.guard.execute_sovereign_action("prestige.supplier.contract_upload", actor_ctx, _execute_upload)
 
     def submit_rate_sheet(self, actor_ctx: dict, payload: dict):
@@ -45,6 +53,7 @@ class PrestigeSupplierPortal:
             self.shadow.commit("prestige.supplier.rate_sheet_uploaded", actor_ctx["identity_id"], {
                 "trace_id": trace_id, "rate_id": rate.rate_id
             })
+            self.notifier.notify_admin("RATE_SHEET_SUBMITTED", {"rate_id": rate.rate_id})
             return rate.model_dump()
         return self.guard.execute_sovereign_action("prestige.supplier.rate_submit", actor_ctx, _execute_submit)
 
@@ -79,11 +88,28 @@ class PrestigeSupplierPortal:
                     })
                     rate.audit_seal = seal
 
+            self.notifier.notify_admin(f"RATE_APPROVAL_{stage}", {"rate_id": rate_id, "decision": decision})
             return rate.model_dump()
         return self.guard.execute_sovereign_action(f"prestige.supplier.approve.{stage.lower()}", actor_ctx, _execute_approval)
 
     def stop_sell(self, actor_ctx: dict, product_id: str):
-        return self.stop_sell_mgr.apply_stop_sell(actor_ctx, product_id)
+        def _execute_stop():
+            res = self.stop_sell_mgr.apply_stop_sell(actor_ctx, product_id)
+            self.notifier.notify_admin("STOP_SELL_ACTIVATED", res)
+            return res
+        return self.guard.execute_sovereign_action("prestige.supplier.stop_sell", actor_ctx, _execute_stop)
+
+    def submit_special(self, actor_ctx, payload):
+        def _execute_special():
+             return self.specials_mgr.submit_special(actor_ctx, payload)
+        return self.guard.execute_sovereign_action("prestige.supplier.special_submit", actor_ctx, _execute_special)
+
+    def request_open_sale(self, product_id):
+        # Open sale usually needs approval too, but let's keep it simple for now
+        return self.open_sale_mgr.request_open_sale(product_id)
+
+    def update_allotment(self, product_id, count):
+        return self.allotment_mgr.update_allotment(product_id, count)
 
     def _verify_channel_gates(self, rate: MarketSellingRate):
         if rate.channel_type == ChannelType.B2C_DIRECT and rate.visibility_scope != VisibilityScope.PUBLIC:

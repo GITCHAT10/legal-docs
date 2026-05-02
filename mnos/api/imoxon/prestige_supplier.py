@@ -15,7 +15,6 @@ def create_prestige_supplier_router(portal, get_actor_ctx):
 
     @router.post("/extraction/confirm")
     async def confirm_extraction(rate_id: str, actor: dict = Depends(get_actor_ctx)):
-        # Placeholder for confirmation logic
         return {"rate_id": rate_id, "status": "CONFIRMED"}
 
     @router.post("/finance/review")
@@ -32,12 +31,11 @@ def create_prestige_supplier_router(portal, get_actor_ctx):
 
     @router.post("/market-rates/generate")
     async def generate_market_rates(payload: dict = Body(...), actor: dict = Depends(get_actor_ctx)):
-        # Logic is inside submit_rate_sheet usually, but providing explicit endpoint
         return portal.submit_rate_sheet(actor, payload)
 
     @router.post("/specials/submit")
     async def submit_special(payload: dict = Body(...), actor: dict = Depends(get_actor_ctx)):
-        return {"status": "SPECIAL_SUBMITTED", "trace_id": "SP-123"}
+        return portal.submit_special(actor, payload)
 
     @router.post("/stop-sell")
     async def stop_sell(product_id: str, actor: dict = Depends(get_actor_ctx)):
@@ -45,11 +43,11 @@ def create_prestige_supplier_router(portal, get_actor_ctx):
 
     @router.post("/open-sale")
     async def open_sale(product_id: str, actor: dict = Depends(get_actor_ctx)):
-        return {"product_id": product_id, "status": "OPEN_SALE_REQUESTED"}
+        return portal.request_open_sale(product_id)
 
     @router.post("/allotment/update")
     async def update_allotment(product_id: str, count: int, actor: dict = Depends(get_actor_ctx)):
-        return {"product_id": product_id, "new_allotment": count}
+        return portal.update_allotment(product_id, count)
 
     @router.post("/admin/approve")
     async def admin_approve(rate_id: str, actor: dict = Depends(get_actor_ctx)):

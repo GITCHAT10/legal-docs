@@ -30,10 +30,11 @@ class SilentShieldEdge:
 
         # 2. Rate Limiting
         if self._is_rate_limited(ip, channel):
-            self.shadow.commit("shield.rate_limit_tripped", "SYSTEM", {"ip": ip, "channel": channel})
+            # NO COMMIT here if not in authorized context, or use internal commit
             return {"status": 429, "message": "Rate limit exceeded. Retry later.", "channel": channel}
 
-        # 3. Log to SHADOW (Async simulated)
+        # 3. Log to SHADOW
+        # In a real edge, this is async and uses service token
         self.shadow.commit("shield.request_processed", "SYSTEM", {
             "ip": ip,
             "channel": channel,

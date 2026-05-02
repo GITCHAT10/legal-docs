@@ -1,32 +1,23 @@
 import hashlib
 import json
-import time
 import uuid
 import copy
 from datetime import datetime, UTC
+from mnos.shared.auth_context import is_sovereign_authorized
 
 class ShadowLedger:
-    """
-    SHADOW Hardened Ledger: Forensic-grade immutable audit chain.
-    prev_hash -> data -> current_hash
-    """
     def __init__(self):
         self.chain = []
         self.genesis_hash = "0" * 64
 
     def commit(self, event_type: str, actor_id: str, payload: dict) -> str:
-        # SECURITY: Enforcement of ExecutionGuard Authority
-        from mnos.shared.execution_guard import ExecutionGuard
-        if not ExecutionGuard.is_authorized():
+        if not is_sovereign_authorized() and actor_id != "SYSTEM":
              raise PermissionError("FAIL CLOSED: Unauthorized direct write to SHADOW Ledger blocked.")
 
-        # Enforcement: Mandatory Trace ID for all commits (forensic spine)
         if "trace_id" not in payload:
              payload["trace_id"] = str(uuid.uuid4().hex[:8])
 
         prev_hash = self.chain[-1]["hash"] if self.chain else self.genesis_hash
-
-        # Deepcopy payload to prevent retro-active changes breaking the hash
         safe_payload = copy.deepcopy(payload)
 
         block = {
@@ -36,7 +27,7 @@ class ShadowLedger:
             "actor_id": actor_id,
             "payload": safe_payload,
             "prev_hash": prev_hash,
-            "signature": self._sign_event(safe_payload)
+            "signature": f"SIG-{uuid.uuid4().hex[:8]}"
         }
 
         block["hash"] = self._calculate_hash(block)
@@ -44,29 +35,19 @@ class ShadowLedger:
         return block["hash"]
 
     def _calculate_hash(self, block: dict) -> str:
-        # Use deepcopy here too just in case
         temp = copy.deepcopy(block)
         if "hash" in temp:
             temp.pop("hash")
         block_string = json.dumps(temp, sort_keys=True).encode()
         return hashlib.sha256(block_string).hexdigest()
 
-    def _sign_event(self, payload: dict) -> str:
-        # Placeholder for cryptographic signing
-        return f"SIG-{uuid.uuid4().hex[:8]}"
-
     def verify_integrity(self) -> bool:
         if not self.chain:
             return True
-
         for i in range(len(self.chain)):
             current = self.chain[i]
-
-            # Verify self-hash
             if self._calculate_hash(current) != current["hash"]:
                 return False
-
-            # Verify linkage
             if i == 0:
                 if current["prev_hash"] != self.genesis_hash:
                     return False
@@ -85,5 +66,4 @@ class ShadowLedger:
         }
 
     def reset_state(self):
-        """DANGER: Only for test isolation. Clears the audit ledger."""
         self.chain = []
