@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+pydantic
+pyyaml
+sqlalchemy
+pytest
+pytest-asyncio
+httpx
+python-multipart
+starlette
+ruff
+jinja2
