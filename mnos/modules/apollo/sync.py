@@ -72,7 +72,11 @@ class ApolloSyncEngine:
 
             except Exception as e:
                 # SAFE FALLBACK: Record failure to SHADOW without crashing
-                fail_actor = actor_ctx.get("identity_id", "UNKNOWN_ACTOR") if isinstance(actor_ctx, dict) else "UNKNOWN_ACTOR"
+                # Ensure no calls to actor_ctx.get if it's missing or malformed
+                fail_actor = "SYSTEM/APOLLO_REPLAY"
+                if isinstance(actor_ctx, dict) and actor_ctx.get("identity_id"):
+                    fail_actor = actor_ctx.get("identity_id")
+
                 fail_payload = {"error": str(e), "event": event, "status": "SYNC_FAILED"}
                 self.shadow.commit("apollo.sync.failure", fail_actor, fail_payload)
 

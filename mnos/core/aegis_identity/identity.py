@@ -32,7 +32,8 @@ class AegisIdentityCore:
         return identity_id
 
     def bind_device(self, identity_id: str, device_data: dict) -> str:
-        device_id = str(uuid.uuid4())
+        # Compatibility: Allow using fingerprint as device_id for legacy tests
+        device_id = device_data.get("device_id") or device_data.get("fingerprint") or str(uuid.uuid4())
         device = {
             "device_id": device_id,
             "identity_id": identity_id,

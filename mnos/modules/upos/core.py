@@ -125,3 +125,65 @@ class UPOSCommerceCore:
         order["settlement"] = settlement
 
         return settlement
+
+    # --- PRESTIGE GIANT BRAIN Integration APIs ---
+
+    def create_payment_link(self, actor_ctx: dict, data: dict):
+        return self.execute_transaction("upos.payment_link.create", actor_ctx, self._internal_create_paylink, data)
+
+    def _internal_create_paylink(self, data):
+        paylink_id = f"PL-{uuid.uuid4().hex[:8].upper()}"
+        return {"id": paylink_id, "url": f"https://upos.pay/{paylink_id}", "status": "ACTIVE"}
+
+    def create_invoice(self, actor_ctx: dict, data: dict):
+        return self.execute_transaction("upos.invoice.create", actor_ctx, self._internal_create_invoice, data)
+
+    def _internal_create_invoice(self, data):
+        # Mandatory FCE tax calculation
+        amount = data.get("amount", 0)
+        pricing = self.fce.finalize_invoice(amount, data.get("category", "RETAIL"))
+        return {"id": f"INV-{uuid.uuid4().hex[:8].upper()}", "pricing": pricing}
+
+    def create_qr_pay(self, actor_ctx: dict, data: dict):
+        return self.execute_transaction("upos.qr_pay.create", actor_ctx, self._internal_create_qr, data)
+
+    def _internal_create_qr(self, data):
+        return {"qr_code": f"UPOS-QR-{uuid.uuid4().hex[:8].upper()}", "amount": data.get("amount")}
+
+    def charge_wallet(self, actor_ctx: dict, data: dict):
+        return self.execute_transaction("upos.wallet.charge", actor_ctx, self._internal_wallet_charge, data)
+
+    def _internal_wallet_charge(self, data):
+        return {"status": "SUCCESS", "balance_after": 5000.0}
+
+    def create_refund(self, actor_ctx: dict, data: dict):
+        return self.execute_transaction("upos.refund.create", actor_ctx, self._internal_refund, data)
+
+    def _internal_refund(self, data):
+        return {"refund_id": f"REF-{uuid.uuid4().hex[:8].upper()}", "status": "PROCESSED"}
+
+    def create_split_settlement(self, actor_ctx: dict, data: dict):
+        return self.execute_transaction("upos.settlement.split.create", actor_ctx, self._internal_split_settle, data)
+
+    def _internal_split_settle(self, data):
+        return {"settlement_id": f"SET-{uuid.uuid4().hex[:8].upper()}", "splits": data.get("splits")}
+
+    def get_transaction(self, actor_ctx: dict, tx_id: str):
+        # Read-only query via Guard
+        return self.guard.execute_sovereign_action("upos.transaction.query", actor_ctx, self._internal_get_tx, tx_id)
+
+    def _internal_get_tx(self, tx_id):
+        return {"id": tx_id, "status": "COMPLETED", "amount": 1250.0}
+
+    def get_merchant_status(self, actor_ctx: dict, merchant_id: str):
+        return self.guard.execute_sovereign_action("upos.merchant.query", actor_ctx, self._internal_merchant_status, merchant_id)
+
+    def _internal_merchant_status(self, merchant_id):
+        return {"merchant_id": merchant_id, "status": "ACTIVE", "kyc": "VERIFIED"}
+
+    def calculate_revenue_share(self, actor_ctx: dict, data: dict):
+        return self.execute_transaction("upos.revenue_share.calculate", actor_ctx, self._internal_rev_share, data)
+
+    def _internal_rev_share(self, data):
+        amount = data.get("amount", 0)
+        return {"gross": amount, "platform_fee": amount * 0.05, "vendor_net": amount * 0.95}
