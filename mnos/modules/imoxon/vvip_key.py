@@ -1,6 +1,5 @@
 import uuid
 from datetime import datetime, UTC, timedelta
-from typing import Dict, List, Any, Optional
 
 class VVIPKeyEngine:
     """
@@ -50,7 +49,8 @@ class VVIPKeyEngine:
     def verify_access(self, actor_ctx: dict, key_id: str) -> bool:
         """QR/NFC Hardware Verification Simulation."""
         key = self.minted_keys.get(key_id)
-        if not key: return False
+        if not key:
+            return False
 
         # 1. AEGIS Binding Check (Non-transferable)
         if key["owner_id"] != actor_ctx["identity_id"]:

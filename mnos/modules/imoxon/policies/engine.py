@@ -4,7 +4,7 @@ class IdentityPolicyEngine:
 
     def validate_action(self, action_type: str, context: dict):
         identity_id = context.get("identity_id")
-        device_id = context.get("device_id")
+        context.get("device_id")
 
         # Staff Binding requirements
         staff_actions = ["onboarding", "uniform_assignment", "linen_assignment", "delivery_acceptance"]
@@ -12,8 +12,21 @@ class IdentityPolicyEngine:
             if not self._has_role(identity_id, "staff"):
                 return False, "Action requires staff binding"
 
+        # Procurement / Catalog Hardened Requirements
+        procurement_actions = ["imoxon.supplier.connect", "imoxon.catalog.import"]
+        if action_type in procurement_actions:
+             if not self._has_role(identity_id, "procurement_officer") and not self._has_role(identity_id, "admin"):
+                 return False, f"Action {action_type} requires procurement_officer or admin role"
+             if not self._is_verified(identity_id):
+                 return False, "Procurement action requires verified identity"
+
         # Hardened Verification requirements
-        hardened_actions = ["hospitality.property.register", "sky_i.loop_cycle.finalize", "imoxon.vendor.approve"]
+        hardened_actions = [
+            "hospitality.property.register",
+            "sky_i.loop_cycle.finalize",
+            "imoxon.vendor.approve",
+            "imoxon.product.approve"
+        ]
         if action_type in hardened_actions:
             if not self._is_verified(identity_id):
                  return False, f"CRITICAL ACTION: Identity {identity_id} must be verified (National ID / Biometric)"
@@ -55,12 +68,14 @@ class IdentityPolicyEngine:
         return True, "Accepted"
 
     def _has_role(self, identity_id, role_name):
-        if not identity_id: return False
+        if not identity_id:
+            return False
         # Simplified check for demo
         profile = self.identity_core.profiles.get(identity_id)
         return profile and profile.get("profile_type") == role_name
 
     def _is_verified(self, identity_id):
-        if not identity_id: return False
+        if not identity_id:
+            return False
         profile = self.identity_core.profiles.get(identity_id)
         return profile and profile.get("verification_status") == "verified"

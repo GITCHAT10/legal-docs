@@ -1,12 +1,11 @@
 import httpx
 import asyncio
 import os
-import json
 from main import app, shadow_core, events_core
 from httpx import ASGITransport
 
 async def run_promotion_and_checks():
-    print("🏛️ iMOXON CANARY PROMOTION: SALA")
+    print("🏛️ SALA-UPOS CANARY PROMOTION: SALA")
     print("-" * 60)
 
     os.environ["NEXGEN_SECRET"] = "ndeos-promotion-2026"
@@ -71,11 +70,11 @@ async def run_promotion_and_checks():
 
         print("-" * 60)
         print("📊 PROMOTION SUMMARY")
-        print(f"   - Target Node:  SALA Resort")
-        print(f"   - Status:       ACTIVE")
+        print("   - Target Node:  SALA Resort")
+        print("   - Status:       ACTIVE")
         print(f"   - Traffic:      {metrics['canary_traffic']}%")
         print(f"   - Integrity:    {'SECURE' if metrics['integrity'] else 'ERROR'}")
-        print(f"   - Compliance:   100% Locked")
+        print("   - Compliance:   100% Locked")
         print("\n📢 KILL-SWITCH: Auto-rollback ARMED on Shadow or Finance violation.")
         print("-" * 60)
 

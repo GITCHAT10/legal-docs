@@ -1,7 +1,6 @@
 import uuid
 from datetime import datetime, UTC
-from typing import Dict, List, Any, Optional
-from decimal import Decimal, ROUND_HALF_UP
+from typing import Optional
 
 class MiraBridgeEngine:
     """
@@ -52,13 +51,13 @@ class MiraBridgeEngine:
                 "tx_count": 0
             }
 
-        l = self.daily_ledgers[key]
-        l["total_base"] += pricing["base"]
-        l["service_charge"] += pricing["service_charge"]
-        l["tgst"] += pricing["tax_amount"]
-        l["green_tax"] += pricing.get("green_tax", 0.0)
-        l["total_sales"] += pricing["total"]
-        l["tx_count"] += 1
+        item_l = self.daily_ledgers[key]
+        item_l["total_base"] += pricing["base"]
+        item_l["service_charge"] += pricing["service_charge"]
+        item_l["tgst"] += pricing["tax_amount"]
+        item_l["green_tax"] += pricing.get("green_tax", 0.0)
+        item_l["total_sales"] += pricing["total"]
+        item_l["tx_count"] += 1
 
         # 3. Trigger Reinvestment Engine (25% loop)
         if hasattr(self.core, "reinvestment"):
@@ -77,7 +76,8 @@ class MiraBridgeEngine:
         Ensures daily totals match ledger entries.
         """
         ledger = self.daily_ledgers.get((vendor_id, date))
-        if not ledger: return True
+        if not ledger:
+            return True
 
         # Simulated check: In real world, we'd query the SHADOW database for this day
         # For simulation, we assume it matches unless a flag is set.
@@ -90,7 +90,8 @@ class MiraBridgeEngine:
         return True
 
     def get_daily_report(self, vendor_id: Optional[str] = None, date: Optional[str] = None):
-        if not date: date = datetime.now(UTC).date().isoformat()
+        if not date:
+            date = datetime.now(UTC).date().isoformat()
 
         reports = []
         for (vid, d), stats in self.daily_ledgers.items():

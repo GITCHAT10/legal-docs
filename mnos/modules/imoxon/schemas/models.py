@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String, Float, JSON, Boolean, DateTime, ForeignKey
 from mnos.db.schema import Base
-import uuid
+from datetime import datetime, UTC
 
 class ImoxonSupplier(Base):
     __tablename__ = 'imoxon_suppliers'

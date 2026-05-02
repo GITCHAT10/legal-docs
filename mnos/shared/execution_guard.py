@@ -1,6 +1,7 @@
 import contextvars
 import uuid
-from typing import Callable, Any, Dict, Optional
+from typing import Callable, Any, Dict, Optional, Generator
+from contextlib import contextmanager
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -39,9 +40,8 @@ class ExecutionGuard:
         if not valid:
             raise PermissionError(f"FAIL CLOSED: Policy Violation - {msg}")
 
-        # 3. Set Sovereign Context (Authorized)
-        token = str(uuid.uuid4())
-        _sovereign_context.set({"token": token, "actor": actor_context})
+        # 3. Set Sovereign Context (Authorized) - Token based for re-entrancy
+        token = _sovereign_context.set({"token": str(uuid.uuid4()), "actor": actor_context})
 
         try:
             # BEGIN ATOMIC TX (Simulated via context and SHADOW intent)
@@ -83,8 +83,8 @@ class ExecutionGuard:
             self.shadow.commit(f"{action_type}.failed", identity_id or "UNKNOWN", fail_payload)
             raise RuntimeError(f"SOVEREIGN EXECUTION FAILED: {str(e)}")
         finally:
-            # Clear context
-            _sovereign_context.set(None)
+            # Restore previous context (re-entrancy support)
+            _sovereign_context.reset(token)
 
     @staticmethod
     def is_authorized() -> bool:
@@ -94,6 +94,27 @@ class ExecutionGuard:
     def get_actor() -> Optional[Dict]:
         ctx = _sovereign_context.get()
         return ctx["actor"] if ctx else None
+
+    @staticmethod
+    @contextmanager
+    def authorized_context(actor: Dict) -> Generator[None, None, None]:
+        """
+        RE-ENTRANT SOVEREIGN CONTEXT:
+        Saves previous context and restores it after block completion.
+        Allows nested authorized operations.
+        """
+        token = _sovereign_context.set({"token": str(uuid.uuid4()), "actor": actor})
+        try:
+            yield
+        finally:
+            _sovereign_context.reset(token)
+
+    @staticmethod
+    @contextmanager
+    def sovereign_context(actor: Dict) -> Generator[None, None, None]:
+        """Alias for authorized_context to match blueprint wording."""
+        with ExecutionGuard.authorized_context(actor):
+            yield
 
 class ExecutionGuardMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, guard, events):

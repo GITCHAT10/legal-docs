@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends
 
 def create_commerce_router(imoxon, catalog, merchant, pos, procurement, get_actor_ctx):
     router = APIRouter(tags=["commerce"])

@@ -52,12 +52,8 @@ def test_role_derived_from_db(setup_identity):
         "full_name": "Regular User",
         "profile_type": "user"
     })
-    user_device = identity_core.bind_device(user_id, {"fingerprint": "user-phone"})
+    identity_core.bind_device(user_id, {"fingerprint": "user-phone"})
 
-    headers = {
-        "X-AEGIS-IDENTITY": user_id,
-        "X-AEGIS-DEVICE": user_device
-    }
 
     # Try an action that might require admin (e.g. hospitality registration in policy engine if restricted,
     # though currently policy engine for hospitality.property.register might not be strict in my previous implementation)
@@ -73,10 +69,6 @@ def test_role_derived_from_db(setup_identity):
     # We can just verify the response of a generic endpoint to see what actor context it got if we had a debug endpoint.
     # Alternatively, try a supplier action with a user role.
 
-    headers = {
-        "X-AEGIS-IDENTITY": user_id,
-        "X-AEGIS-DEVICE": user_device
-    }
     # "imoxon.supplier.connect" doesn't seem to have a specific role check in policy engine yet.
     # But we can verify it fails if we added one.
 
