@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package mnos.core.v1_1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+message MnosEvent {
+  string event_id = 1;
+  string event_type = 2;
+  string timestamp = 3; // ISO8601 string for parity with JSON
+
+  Source source = 4;
+  Actor actor = 5;
+  Context context = 6;
+
+  google.protobuf.Struct payload = 7;
+  Proof proof = 8;
+  Metadata metadata = 9;
+}
+
+message Source {
+  string system = 1;
+}
+
+message Actor {
+  string id = 1;
+  string role = 2;
+  string device_id = 3;
+}
+
+message Context {
+  Tenant tenant = 1;
+}
+
+message Tenant {
+  string brand = 1;
+  string tin = 2;
+  string jurisdiction = 3;
+}
+
+message Proof {
+  string fce_settlement_ref = 1;
+  OrcaValidation orca_validation = 2;
+  string shadow_chain_ref = 3;
+}
+
+message OrcaValidation {
+  bool validated = 1;
+  string verifier_id = 2;
+}
+
+message Metadata {
+  string schema_version = 1;
+  Encryption encryption = 2;
+}
+
+message Encryption {
+  repeated string encrypted_fields = 1;
+  string key_id = 2;
+}

@@ -1,0 +1,10 @@
+release_version: "1.1"
+release_name: "MNOS CORE SPINE V1.1 + FCE SETTLEMENT V1.1"
+status: "LOCKED"
+components:
+  - schema: "mnos_event_schema_v1_1"
+  - fce: "fce_settlement_v1_1"
+  - shadow: "shadow_ledger_v1.1"
+  - aegis: "role_matrix_v1.1"
+pilot_acceptance: "SALA_STAGING_PILOT_PASSED"
+ci_status: "iMOXON Sovereign Audit CI / auditExpected: PASS"

@@ -1,0 +1,92 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MNOS Canonical Event Schema v1.1",
+  "type": "object",
+  "required": [
+    "event_id",
+    "event_type",
+    "timestamp",
+    "source",
+    "actor",
+    "context",
+    "payload",
+    "proof",
+    "metadata"
+  ],
+  "properties": {
+    "event_id": { "type": "string", "format": "uuid" },
+    "event_type": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]*\\.[A-Z][A-Z0-9_]*\\.[A-Z][A-Z0-9_]*$"
+    },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "source": {
+      "type": "object",
+      "required": ["system"],
+      "properties": {
+        "system": {
+          "type": "string",
+          "enum": [
+            "CORE", "EDGE_NODE", "MAC_EOS", "UPOS", "PRESTIGE", "UT", "ILUVIA", "IMOXON",
+            "OCEANEX", "SKYFARM", "UHA", "SALA", "NOLU", "ELEGAL", "REDCORAL", "BUILDX",
+            "AIG_GROUNDVIEW", "QRD_MIG_SHIELD", "ESG_TERRAFORM", "WIFI_ROUTE",
+            "ADMIRALDA", "ADMIRALDA_V2", "EXMAIL", "EXMAIL_V2",
+            "MARS_PEOPLE", "MARS_PEOPLE_HR", "AIRBOX", "AIRBOX_EDGE",
+            "AIRCLOUD", "AIRCLOUD_SYNC", "TENANT_ISOLATION_GATE"
+          ]
+        }
+      }
+    },
+    "actor": {
+      "type": "object",
+      "required": ["id", "role"],
+      "properties": {
+        "id": { "type": "string" },
+        "role": { "type": "string" },
+        "device_id": { "type": "string" }
+      }
+    },
+    "context": {
+      "type": "object",
+      "properties": {
+        "tenant": {
+          "type": "object",
+          "properties": {
+            "brand": { "type": "string" },
+            "tin": { "type": "string" },
+            "jurisdiction": { "type": "string" }
+          }
+        }
+      }
+    },
+    "payload": { "type": "object" },
+    "proof": {
+      "type": "object",
+      "properties": {
+        "fce_settlement_ref": { "type": "string" },
+        "orca_validation": {
+          "type": "object",
+          "properties": {
+            "validated": { "type": "boolean" },
+            "verifier_id": { "type": "string" }
+          }
+        },
+        "shadow_chain_ref": { "type": "string" }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["schema_version"],
+      "properties": {
+        "schema_version": { "type": "string", "const": "1.1" },
+        "encryption": {
+          "type": "object",
+          "properties": {
+            "encrypted_fields": { "type": "array", "items": { "type": "string" } },
+            "key_id": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}
