@@ -25,6 +25,7 @@ class CargoDWS(BaseModel):
 class CargoItem(BaseModel):
     id: UUID
     shipment_id: UUID
+    container_id: Optional[UUID] = None
     description: str
     dws: CargoDWS
     cargo_lane: Optional[str] = "BLUE"
