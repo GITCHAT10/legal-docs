@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  auditExpected:
+  audit:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4

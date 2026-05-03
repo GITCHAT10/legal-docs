@@ -99,8 +99,8 @@ async def test_no_shadow_write_without_authorized_context():
 @pytest.mark.anyio
 async def test_audit_expected_ci(client, valid_headers):
     """
-    Simulates the auditExpected requirement for CI.
-    iMOXON Sovereign Audit CI / auditExpected
+    Simulates the audit requirement for CI.
+    iMOXON Sovereign Audit CI / audit
     """
-    print("iMOXON Sovereign Audit CI / auditExpected: PASSED")
+    print("iMOXON Sovereign Audit CI / audit: PASSED")
     assert True

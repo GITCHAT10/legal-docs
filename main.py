@@ -359,7 +359,7 @@ async def enterprise_dashboard(actor: dict = Depends(get_actor_ctx)):
     """
     # Procurement Aggregates
     resort_reqs = len(u_resort_procurement.requests)
-    len(u_enterprise_procurement.requests)
+    enterprise_reqs = len(u_enterprise_procurement.requests)
     total_quotes = len(u_resort_procurement.quotes)
 
     # Logistics Aggregate
