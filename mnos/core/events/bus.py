@@ -12,7 +12,7 @@ class DistributedEventBus:
     def __init__(self):
         self.partitions = defaultdict(list) # partition_key -> events[]
         self.offsets = defaultdict(int)     # consumer_id:partition -> offset
-        self.storage_dir = "mnos/modules/events/storage"
+        self.storage_dir = "mnos/core/events/storage"
         os.makedirs(self.storage_dir, exist_ok=True)
 
     def publish(self, event_type: str, payload: dict, partition: str = "GLOBAL"):

@@ -17,6 +17,7 @@ class ExecutionGuard:
         self.events = events
 
     def execute_sovereign_action(self, action_type: str, actor_context: Dict, func: Callable, *args, **kwargs) -> Any:
+        forced_status = kwargs.pop("forced_status", "COMMITTED")
         """
         MANDATORY ENTRYPOINT for all mutating commerce actions.
         ORBAN -> AEGIS -> ExecutionGuard -> FCE -> SHADOW
@@ -66,7 +67,7 @@ class ExecutionGuard:
                 "actor_aegis_id": identity_id,
                 "actor_device_id": device_id,
                 "result": result,
-                "status": "COMMITTED"
+                "status": forced_status
             }
             self.shadow.commit(f"{action_type}.completed", identity_id, commit_payload)
 

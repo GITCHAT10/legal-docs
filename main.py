@@ -5,11 +5,13 @@ from typing import List, Optional, Dict
 from decimal import Decimal
 
 # MNOS Core (N-DEOS)
-from mnos.modules.finance.fce import FCEEngine, FCEHardenedEngine
-from mnos.modules.shadow.ledger import ShadowLedger
-from mnos.modules.events.bus import DistributedEventBus
-from mnos.core.aegis_identity.identity import AegisIdentityCore
-from mnos.core.aegis_identity.gateway import AegisIdentityGateway
+from mnos.core.fce.engine import FCEEngine, FCEHardenedEngine
+from mnos.core.shadow.ledger import ShadowLedger
+from mnos.core.events.bus import DistributedEventBus
+from mnos.core.aegis.identity import AegisIdentityCore
+from mnos.core.aegis.gateway import AegisIdentityGateway
+from mnos.core.orca.engine import ORCAValidator
+from mnos.core.consent.engine import ConsentEngine
 from mnos.modules.imoxon.policies.engine import IdentityPolicyEngine
 from mnos.shared.execution_guard import ExecutionGuard, ExecutionGuardMiddleware
 from mnos.api.aegis_identity import create_identity_router
@@ -35,6 +37,15 @@ from mnos.modules.finance.payment_layer import PaymentAbstractionLayer
 from mnos.modules.finance.escrow import EscrowFCETCore
 
 # Specialized Engines
+from mnos.modules.redcoral.router import create_redcoral_router
+from mnos.modules.buildx.router import create_buildx_router
+from mnos.modules.atollx.dredge.router import create_dredge_router
+from mnos.modules.atollx.water.router import create_water_router
+from mnos.modules.atollx.design.router import create_design_router
+from mnos.modules.atollx.float.router import create_float_router
+from mnos.modules.atollx.pool.router import create_pool_router
+from mnos.modules.atollx.utilities.router import create_utilities_router
+from mnos.modules.atollx.airport.api.airport_router import create_airport_router
 from mnos.modules.tourism.engine import TourismEngine
 from mnos.modules.faith.engine import FaithEngine
 from mnos.modules.transport.engine import TransportEngine
@@ -82,6 +93,8 @@ events_core = DistributedEventBus()
 identity_core = AegisIdentityCore(shadow_core, events_core)
 identity_gateway = AegisIdentityGateway(identity_core, shadow_core)
 policy_engine = IdentityPolicyEngine(identity_core)
+orca_core = ORCAValidator(shadow_core)
+consent_core = ConsentEngine(shadow_core)
 gateway = APIGatewayControlPlane()
 
 # Guard remains central authority
@@ -258,6 +271,17 @@ app.include_router(create_leaderboard_router(leaderboard, get_actor_ctx), prefix
 app.include_router(create_b2b_portal_router(mars_unified, b2b_negotiator, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_heatmap_router(heatmap_engine, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_laundry_router(laundry_engine, get_actor_ctx), prefix="/imoxon")
+
+# RC + BX + AX Architecture
+app.include_router(create_redcoral_router(guard, shadow_core, orca_core, consent_core), prefix="/api")
+app.include_router(create_buildx_router(guard, shadow_core, orca_core, fce_core), prefix="/api")
+app.include_router(create_dredge_router(guard, shadow_core, orca_core), prefix="/api")
+app.include_router(create_water_router(guard, shadow_core, orca_core), prefix="/api")
+app.include_router(create_design_router(guard, shadow_core, orca_core), prefix="/api")
+app.include_router(create_float_router(guard, shadow_core, orca_core), prefix="/api")
+app.include_router(create_pool_router(guard, shadow_core, orca_core), prefix="/api")
+app.include_router(create_utilities_router(guard, shadow_core, orca_core), prefix="/api")
+app.include_router(create_airport_router(guard, shadow_core, orca_core, fce_core), prefix="/api")
 
 # Error handlers
 @app.exception_handler(PermissionError)

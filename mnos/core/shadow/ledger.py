@@ -4,6 +4,7 @@ import time
 import uuid
 import copy
 from datetime import datetime, UTC
+from decimal import Decimal
 
 class ShadowLedger:
     """
@@ -44,7 +45,17 @@ class ShadowLedger:
         temp = copy.deepcopy(block)
         if "hash" in temp:
             temp.pop("hash")
-        block_string = json.dumps(temp, sort_keys=True).encode()
+
+        def json_serial(obj):
+            if isinstance(obj, (datetime)):
+                return obj.isoformat()
+            if isinstance(obj, (Decimal)):
+                return str(obj)
+            if isinstance(obj, (uuid.UUID)):
+                return str(obj)
+            raise TypeError(f"Type {type(obj)} not serializable")
+
+        block_string = json.dumps(temp, sort_keys=True, default=json_serial).encode()
         return hashlib.sha256(block_string).hexdigest()
 
     def _sign_event(self, payload: dict) -> str:
