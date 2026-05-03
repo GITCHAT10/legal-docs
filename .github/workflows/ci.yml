@@ -2,7 +2,9 @@ name: iMOXON Sovereign Audit CI
 
 on:
   push:
-    branches: [ "**" ]
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   audit:
