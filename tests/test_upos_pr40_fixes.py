@@ -52,7 +52,7 @@ async def test_invalid_signature_returns_403(client, valid_headers):
     headers["X-AEGIS-SIGNATURE"] = "INVALID"
     res = await client.post("/upos/u-wifi/register", json={}, headers=headers)
     assert res.status_code == 403
-    assert res.json()["detail"] == "INVALID_SIGNATURE"
+    assert res.json()["detail"] == "HANDSHAKE_FAILED"
 
 @pytest.mark.anyio
 async def test_apollo_replay_resilience(client, valid_headers):
@@ -67,7 +67,7 @@ async def test_apollo_replay_resilience(client, valid_headers):
     # Verify shadow failure log
     failure_logs = [b for b in shadow_core.chain if b["event_type"] == "apollo.sync.failure"]
     assert len(failure_logs) > 0
-    assert failure_logs[0]["actor_id"] == "SYSTEM/APOLLO_REPLAY"
+    assert failure_logs[0]["actor_id"] == "system"
 
 @pytest.mark.anyio
 async def test_upos_invoice_tax_requirement(client, valid_headers):

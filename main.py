@@ -93,50 +93,63 @@ def get_actor_ctx(
     x_aegis_session: str = Header(None, alias="X-AEGIS-SESSION"),
     x_aegis_identity: str = Header(None, alias="X-AEGIS-IDENTITY"),
     x_aegis_device: str = Header(None, alias="X-AEGIS-DEVICE"),
-    x_aegis_signature: str = Header(None, alias="X-AEGIS-SIGNATURE")
+    x_aegis_signature: str = Header(None, alias="X-AEGIS-SIGNATURE"),
+    request: Request = None
 ):
     """
     AEGIS AUTH: Fail-closed identity context derivation.
     Enforces that identity MUST exist for any trusted session.
     """
+    trace_id = str(uuid.uuid4())
+
     if x_aegis_session:
         return identity_gateway.validate_session(x_aegis_session)
 
     if not x_aegis_identity:
         # ALLOW GUEST ONLY IF NO IDENTITY HEADER PROVIDED
-        return {"identity_id": "GUEST", "role": "guest", "verified": False}
+        return {
+            "identity_id": "GUEST",
+            "role": "guest",
+            "realm": "public",
+            "org_id": None,
+            "island": None,
+            "verified": False,
+            "persistent_hash": None,
+            "device_id": None,
+            "trace_id": trace_id
+        }
 
     # 1. Identity lookup - MUST exist if header provided
     profile = identity_core.profiles.get(x_aegis_identity)
     if not profile:
-        # Legacy tests expect 403 for missing device, but if identity itself is missing/unknown, we usually return 401
-        # To satisfy test_missing_device_rejected, we check if it's the specific 'actor-123' and return 403
-        if x_aegis_identity == "actor-123":
-             raise HTTPException(status_code=403, detail="Missing Identity or Device")
         shadow_core.commit("aegis.auth.identity.invalid", x_aegis_identity, {"reason": "Unknown Identity Header"})
         raise HTTPException(status_code=401, detail="INVALID_IDENTITY")
 
     # 2. Device binding - Only after identity confirmed
-    if x_aegis_device:
-        device = identity_core.devices.get(x_aegis_device)
-        if not device or device.get("identity_id") != x_aegis_identity:
-            shadow_core.commit("aegis.auth.device.mismatch", x_aegis_identity, {"device_id": x_aegis_device})
-            raise HTTPException(status_code=403, detail="DEVICE_BINDING_INVALID")
-    elif x_aegis_identity:
-        # If identity provided but no device, return 403 (for legacy tests)
-        raise HTTPException(status_code=403, detail="Missing Device Binding")
+    if not x_aegis_device:
+        raise HTTPException(status_code=403, detail="DEVICE_BINDING_INVALID")
+
+    device = identity_core.devices.get(x_aegis_device)
+    if not device or device.get("identity_id") != x_aegis_identity:
+        shadow_core.commit("aegis.auth.device.mismatch", x_aegis_identity, {"device_id": x_aegis_device})
+        raise HTTPException(status_code=403, detail="DEVICE_BINDING_INVALID")
 
     # 3. Signature validation - Only after identity and device verified
     if x_aegis_signature:
         if x_aegis_signature == "INVALID": # Mock validation
              shadow_core.commit("aegis.auth.signature.failed", x_aegis_identity, {"sig": x_aegis_signature})
-             raise HTTPException(status_code=403, detail="INVALID_SIGNATURE")
+             raise HTTPException(status_code=403, detail="HANDSHAKE_FAILED")
 
     return {
         "identity_id": x_aegis_identity,
-        "device_id": x_aegis_device,
         "role": profile.get("profile_type"),
-        "verified": profile.get("verification_status") == "verified"
+        "realm": profile.get("realm", "internal"),
+        "org_id": profile.get("organization_id"),
+        "island": profile.get("island"),
+        "verified": profile.get("verification_status") == "verified",
+        "persistent_hash": profile.get("persistent_hash"),
+        "device_id": x_aegis_device,
+        "trace_id": trace_id
     }
 
 # --- Legacy Compatibility Aliases (for Sovereign Audit CI) ---

@@ -106,7 +106,7 @@ class ExecutionGuardMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         # Operational paths to guard
-        guarded_paths = ["/supply", "/finance", "/aegis/asset", "/commerce", "/upos"]
+        guarded_paths = ["/supply", "/finance", "/aegis/asset", "/commerce", "/upos", "/imoxon"]
 
         if any(request.url.path.startswith(path) for path in guarded_paths):
             identity_id = request.headers.get("X-AEGIS-IDENTITY")

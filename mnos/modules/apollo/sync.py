@@ -36,8 +36,7 @@ class ApolloSyncEngine:
             if not isinstance(event, dict):
                  continue
             action_type = event.get("action_type")
-            actor_ctx = event.get("actor_ctx") or {}
-            event.get("data")
+            actor_ctx = event.get("actor_ctx")
 
             # Idempotency check: stable hash of event to prevent double replay
             event_hash = hashlib.sha256(json.dumps(event, sort_keys=True).encode()).hexdigest()
@@ -72,9 +71,15 @@ class ApolloSyncEngine:
             except Exception as e:
                 # SAFE FALLBACK: Record failure to SHADOW without crashing
                 # Ensure no calls to actor_ctx.get if it's missing or malformed
-                fail_actor = "SYSTEM/APOLLO_REPLAY"
-                if isinstance(actor_ctx, dict) and actor_ctx.get("identity_id"):
-                    fail_actor = actor_ctx.get("identity_id")
+                fail_actor = "system"
+                if isinstance(actor_ctx, dict) and hasattr(actor_ctx, "get"):
+                    # Double check it's actually dict-like
+                    try:
+                        potential_id = actor_ctx.get("identity_id")
+                        if potential_id:
+                            fail_actor = potential_id
+                    except Exception:
+                        pass
 
                 fail_payload = {"error": str(e), "event": event, "status": "SYNC_FAILED"}
                 self.shadow.commit("apollo.sync.failure", fail_actor, fail_payload)

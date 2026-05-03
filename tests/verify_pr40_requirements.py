@@ -51,7 +51,7 @@ async def test_invalid_signature_returns_403():
         }
         response = await client.get("/upos/enterprise/dashboard", headers=headers)
         assert response.status_code == 403
-        assert response.json()["detail"] == "INVALID_SIGNATURE"
+        assert response.json()["detail"] == "HANDSHAKE_FAILED"
 
 @pytest.mark.anyio
 async def test_apollo_missing_actor_ctx_logs_failure_and_continues():
