@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict
-from uuid import UUID
+from uuid import UUID, uuid4
 from decimal import Decimal
 from datetime import datetime
 
@@ -66,7 +66,7 @@ class FlightCost(BaseModel):
         )
 
 class AircraftDecision(BaseModel):
-    id: UUID = Field(default_factory=datetime.now) # Using datetime as default factory for simplicity in MVP, but should be UUID
+    id: UUID = Field(default_factory=uuid4)
     route: str
     decision_mode: str
     business_load_factor: float
