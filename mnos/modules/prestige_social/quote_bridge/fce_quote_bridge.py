@@ -92,14 +92,15 @@ class FCEQuoteBridge:
             request_id=request.request_id,
             lead_id=request.lead_id,
             quote_id=quote_id,
-            status=QuoteStatus.PENDING,
+            status=QuoteStatus.PENDING_HUMAN_VERIFICATION,
             quote_valid_until=(datetime.now(UTC) + timedelta(days=1)).isoformat(),
             quote_summary={
                 "resort_name": contract["name"],
                 "room_category": request.trip_request.stay_preference.room_category,
                 "meal_plan": request.trip_request.stay_preference.meal_plan,
                 "nights": nights,
-                "guests": request.trip_request.guests.dict()
+                "guests": request.trip_request.guests.dict(),
+                "transfer": request.trip_request.transfer.dict()
             },
             price_breakdown=price_breakdown,
             mvr_equivalent=mvr_equivalent,

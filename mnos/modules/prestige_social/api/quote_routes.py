@@ -49,6 +49,16 @@ async def verify_quote(quote_id: str, actor_ctx: Dict = {"actor_id": "SYSTEM"}):
         raise HTTPException(status_code=404, detail="Quote not found")
 
     quote = bridge.quotes[quote_id]
+
+    # Transfer Uncertainty Block
+    transfer = quote.quote_summary.get("transfer", {})
+    if transfer.get("required"):
+        if transfer.get("mode") == "unknown":
+            raise HTTPException(status_code=400, detail="TRANSFER_UNCERTAINTY_BLOCK: Transfer mode is unknown")
+        # If seaplane or certain modes, might require times
+        if transfer.get("mode") in ["seaplane", "domestic"] and (not transfer.get("international_arrival_time") or not transfer.get("international_departure_time")):
+             raise HTTPException(status_code=400, detail="TRANSFER_UNCERTAINTY_BLOCK: International arrival/departure times required for this transfer mode")
+
     quote.status = QuoteStatus.VERIFIED
     quote.approval.fce_verified = True
     quote.approval.human_can_send = True

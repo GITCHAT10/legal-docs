@@ -2,6 +2,7 @@ from enum import Enum
 
 class QuoteStatus(str, Enum):
     PENDING = "pending"
+    PENDING_HUMAN_VERIFICATION = "pending_human_verification"
     VERIFIED = "verified"
     REJECTED = "rejected"
     EXPIRED = "expired"

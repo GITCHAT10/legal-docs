@@ -75,7 +75,7 @@ def sample_request():
 def test_quote_request_created_from_hot_lead(bridge, sample_request):
     req = QuoteRequest(**sample_request)
     response = bridge.process_quote_request(req, {"actor_type": "system", "actor_id": "TEST"})
-    assert response.status == QuoteStatus.PENDING
+    assert response.status == QuoteStatus.PENDING_HUMAN_VERIFICATION
     assert response.shadow.event == "FCE_QUOTE_REQUESTED"
     assert response.approval.human_can_send is False
 

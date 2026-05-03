@@ -88,7 +88,7 @@ def test_full_integration_flow(sample_request_data):
 
     quote_id = list(quote_bridge.quotes.keys())[0]
     quote = quote_bridge.quotes[quote_id]
-    assert quote.status == QuoteStatus.PENDING
+    assert quote.status == QuoteStatus.PENDING_HUMAN_VERIFICATION
     assert quote.approval.human_can_send is False
 
     # 2. Unverified quote cannot be sent
@@ -179,3 +179,26 @@ def test_mark_won_lost_fail_closed_no_chain():
     })
     assert response.status_code == 400
     assert "LEAD_CHAIN_NOT_FOUND" in response.json()["detail"]
+
+def test_transfer_uncertainty_block(sample_request_data):
+    # Set transfer mode to unknown
+    sample_request_data["trip_request"]["transfer"]["mode"] = "unknown"
+    client.post("/fce/quotes/request", json=sample_request_data)
+    quote_id = list(quote_bridge.quotes.keys())[0]
+
+    # Attempt to verify
+    response = client.post(f"/fce/quotes/{quote_id}/verify")
+    assert response.status_code == 400
+    assert "TRANSFER_UNCERTAINTY_BLOCK" in response.json()["detail"]
+
+def test_transfer_times_missing_block(sample_request_data):
+    # Set transfer mode to seaplane and omit times
+    sample_request_data["trip_request"]["transfer"]["mode"] = "seaplane"
+    sample_request_data["trip_request"]["transfer"]["international_arrival_time"] = None
+    client.post("/fce/quotes/request", json=sample_request_data)
+    quote_id = list(quote_bridge.quotes.keys())[0]
+
+    # Attempt to verify
+    response = client.post(f"/fce/quotes/{quote_id}/verify")
+    assert response.status_code == 400
+    assert "TRANSFER_UNCERTAINTY_BLOCK" in response.json()["detail"]
