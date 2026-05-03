@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Dict, Any
-from ..quote_bridge.quote_models import QuoteRequest, QuoteResponse
+from ..quote_bridge.quote_models import QuoteRequest, QuoteResponse, QuoteStatus
 from ..quote_bridge.fce_quote_bridge import FCEQuoteBridge
 from ..audit.shadow_quote_events import create_shadow_event
 
@@ -49,8 +49,9 @@ async def verify_quote(quote_id: str, actor_ctx: Dict = {"actor_id": "SYSTEM"}):
         raise HTTPException(status_code=404, detail="Quote not found")
 
     quote = bridge.quotes[quote_id]
-    quote.status = "verified"
+    quote.status = QuoteStatus.VERIFIED
     quote.approval.fce_verified = True
+    quote.approval.human_can_send = True
 
     event = create_shadow_event(
         event_type="FCE_QUOTE_VERIFIED",
@@ -62,6 +63,10 @@ async def verify_quote(quote_id: str, actor_ctx: Dict = {"actor_id": "SYSTEM"}):
         payload={"quote_id": quote_id},
         quote_id=quote_id
     )
+    # Update quote shadow metadata with new hash
+    quote.shadow.audit_hash = event["hash"]
+    quote.shadow.event = "FCE_QUOTE_VERIFIED"
+
     return {"status": "verified", "audit_hash": event["hash"]}
 
 @router.post("/{quote_id}/revise")
@@ -70,7 +75,7 @@ async def revise_quote(quote_id: str, actor_ctx: Dict):
         raise HTTPException(status_code=404, detail="Quote not found")
 
     quote = bridge.quotes[quote_id]
-    quote.status = "revision_requested"
+    quote.status = QuoteStatus.REVISION_REQUESTED
 
     event = create_shadow_event(
         event_type="QUOTE_REVISION_REQUESTED",
@@ -82,4 +87,8 @@ async def revise_quote(quote_id: str, actor_ctx: Dict):
         payload={"reason": "Manual revision requested"},
         quote_id=quote_id
     )
+    # Update quote shadow metadata
+    quote.shadow.audit_hash = event["hash"]
+    quote.shadow.event = "QUOTE_REVISION_REQUESTED"
+
     return {"status": "revision_requested", "audit_hash": event["hash"]}

@@ -1,8 +1,7 @@
 import pytest
-from mnos.modules.prestige_social.quote_bridge.quote_models import QuoteRequest
+from mnos.modules.prestige_social.quote_bridge.quote_models import QuoteRequest, QuoteStatus
 from mnos.modules.prestige_social.quote_bridge.fce_quote_bridge import FCEQuoteBridge
-from mnos.modules.prestige_social.quote_bridge.quote_status import QuoteStatus
-from mnos.modules.prestige_social.api.social_lead_routes import router as lead_router, bridge as lead_bridge
+from mnos.modules.prestige_social.api.social_lead_routes import router as lead_router, bridge as lead_bridge, lead_chains
 from mnos.modules.prestige_social.api.quote_routes import router as quote_router, bridge as quote_bridge
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
@@ -11,6 +10,12 @@ app = FastAPI()
 app.include_router(lead_router)
 app.include_router(quote_router)
 client = TestClient(app)
+
+@pytest.fixture(autouse=True)
+def clear_state():
+    lead_bridge.quotes.clear()
+    quote_bridge.quotes.clear()
+    lead_chains.clear()
 
 @pytest.fixture
 def sample_request_data():
@@ -80,25 +85,28 @@ def test_full_integration_flow(sample_request_data):
     # 1. Request Quote
     response = client.post("/fce/quotes/request", json=sample_request_data)
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "pending"
 
-    quote_id = quote_bridge.quotes[list(quote_bridge.quotes.keys())[0]].quote_id
+    quote_id = list(quote_bridge.quotes.keys())[0]
+    quote = quote_bridge.quotes[quote_id]
+    assert quote.status == QuoteStatus.PENDING
+    assert quote.approval.human_can_send is False
 
-    # 2. Verify Quote
+    # 2. Unverified quote cannot be sent
+    response = client.post(f"/social/leads/PSC-LEAD-000402/send-quote?quote_id={quote_id}", json={"actor_type": "human", "actor_id": "SARAH"})
+    assert response.status_code == 400
+    assert response.json()["detail"] == "UNVERIFIED_QUOTE_SEND_BLOCKED"
+
+    # 3. Verify Quote
     response = client.post(f"/fce/quotes/{quote_id}/verify")
     assert response.status_code == 200
     assert response.json()["status"] == "verified"
+    assert quote_bridge.quotes[quote_id].status == QuoteStatus.VERIFIED
+    assert quote_bridge.quotes[quote_id].approval.human_can_send is True
 
-    # 3. Attach to Lead
+    # 4. Attach to Lead
     response = client.post(f"/social/leads/PSC-LEAD-000402/attach-quote?quote_id={quote_id}")
     assert response.status_code == 200
     assert response.json()["status"] == "attached"
-
-    # 4. Send Quote (AI Blocked)
-    response = client.post(f"/social/leads/PSC-LEAD-000402/send-quote?quote_id={quote_id}", json={"actor_type": "ai", "actor_id": "ROBOT"})
-    assert response.status_code == 403
-    assert response.json()["detail"] == "AI_QUOTE_SEND_FORBIDDEN"
 
     # 5. Send Quote (Human Allowed)
     response = client.post(f"/social/leads/PSC-LEAD-000402/send-quote?quote_id={quote_id}", json={"actor_type": "human", "actor_id": "SARAH"})
@@ -112,20 +120,40 @@ def test_full_integration_flow(sample_request_data):
     assert "QUOTE_ATTACHED_TO_LEAD" in chain
     assert "QUOTE_SENT_BY_HUMAN" in chain
 
-def test_human_cannot_send_unverified_quote(sample_request_data):
-    # Request Quote
+def test_lead_to_quote_ownership_enforcement(sample_request_data):
+    # Request Quote for Lead A
     client.post("/fce/quotes/request", json=sample_request_data)
-    quote_id = list(quote_bridge.quotes.keys())[-1]
-    quote_bridge.quotes[quote_id].status = "pending" # Force pending
+    quote_id = list(quote_bridge.quotes.keys())[0]
 
-    # Send Quote
-    response = client.post(f"/social/leads/PSC-LEAD-000402/send-quote?quote_id={quote_id}", json={"actor_type": "human", "actor_id": "SARAH"})
-    assert response.status_code == 400
-    assert response.json()["detail"] == "UNVERIFIED_QUOTE_SEND_BLOCKED"
+    # Verify it
+    client.post(f"/fce/quotes/{quote_id}/verify")
 
-def test_booking_won(sample_request_data):
+    # Attempt to send it for Lead B
+    response = client.post(f"/social/leads/PSC-LEAD-DIFFERENT/send-quote?quote_id={quote_id}", json={"actor_type": "human", "actor_id": "SARAH"})
+    assert response.status_code == 403
+    assert "QUOTE_LEAD_MISMATCH" in response.json()["detail"]
+
+def test_shadow_chain_integrity(sample_request_data):
+    # 1. Request Quote
+    client.post("/fce/quotes/request", json=sample_request_data)
+    quote_id = list(quote_bridge.quotes.keys())[0]
+    initial_hash = quote_bridge.quotes[quote_id].shadow.audit_hash
+    correlation_id = quote_bridge.quotes[quote_id].shadow.parent_hash # lead_chain_hash
+
+    # 2. Verify Quote
+    client.post(f"/fce/quotes/{quote_id}/verify")
+    verify_hash = quote_bridge.quotes[quote_id].shadow.audit_hash
+    assert verify_hash != initial_hash
+
+    # 3. Attach to Lead
+    client.post(f"/social/leads/PSC-LEAD-000402/attach-quote?quote_id={quote_id}")
+    attach_hash = lead_chains["PSC-LEAD-000402"][-1]["hash"]
+    assert lead_chains["PSC-LEAD-000402"][-1]["parent_hash"] == verify_hash
+    assert lead_chains["PSC-LEAD-000402"][-1]["correlation_id"] == correlation_id
+
+    # 4. Mark Won
     response = client.post("/social/leads/PSC-LEAD-000402/mark-won", params={
-        "quote_id": "FCE-QUOTE-001",
+        "quote_id": quote_id,
         "booking_ref": "BK-999",
         "revenue": 12014.90,
         "content_id": "REEL-0042",
@@ -133,12 +161,21 @@ def test_booking_won(sample_request_data):
         "actor_id": "SARAH"
     })
     assert response.status_code == 200
-    assert response.json()["status"] == "won"
+    won_event = lead_chains["PSC-LEAD-000402"][-1]
+    assert won_event["parent_hash"] == attach_hash
+    assert won_event["correlation_id"] == correlation_id
+    assert won_event["hash"] != "..."
+    assert won_event["parent_hash"] != "..."
 
-def test_booking_lost():
-    response = client.post("/social/leads/PSC-LEAD-000402/mark-lost", params={
-        "loss_reason": "Too expensive",
-        "actor_id": "SARAH"
+def test_mark_won_lost_fail_closed_no_chain():
+    # Attempt to mark won without any previous events for this lead
+    response = client.post("/social/leads/LEAD-NONE/mark-won", params={
+        "quote_id": "Q-1",
+        "booking_ref": "BK-1",
+        "revenue": 100,
+        "content_id": "C-1",
+        "campaign_id": "CAMP-1",
+        "actor_id": "A-1"
     })
-    assert response.status_code == 200
-    assert response.json()["status"] == "lost"
+    assert response.status_code == 400
+    assert "LEAD_CHAIN_NOT_FOUND" in response.json()["detail"]

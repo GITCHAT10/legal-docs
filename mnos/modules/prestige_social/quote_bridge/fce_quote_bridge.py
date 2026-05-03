@@ -74,7 +74,7 @@ class FCEQuoteBridge:
 
         # 5. Create SHADOW Event
         shadow_event = create_shadow_event(
-            event_type="FCE_QUOTE_VERIFIED",
+            event_type="FCE_QUOTE_REQUESTED",
             lead_id=request.lead_id,
             actor_type="system",
             actor_id="FCE_BRIDGE",
@@ -92,7 +92,7 @@ class FCEQuoteBridge:
             request_id=request.request_id,
             lead_id=request.lead_id,
             quote_id=quote_id,
-            status=QuoteStatus.VERIFIED,
+            status=QuoteStatus.PENDING,
             quote_valid_until=(datetime.now(UTC) + timedelta(days=1)).isoformat(),
             quote_summary={
                 "resort_name": contract["name"],
@@ -104,14 +104,14 @@ class FCEQuoteBridge:
             price_breakdown=price_breakdown,
             mvr_equivalent=mvr_equivalent,
             approval=QuoteApproval(
-                fce_verified=True,
-                human_can_send=True,
+                fce_verified=False,
+                human_can_send=False,
                 manager_approval_required=False,
                 discount_allowed=False
             ),
             compliance=Compliance(),
             shadow=ShadowMetadata(
-                event="FCE_QUOTE_VERIFIED",
+                event="FCE_QUOTE_REQUESTED",
                 audit_hash=shadow_event["hash"],
                 parent_hash=request.shadow_correlation_id
             )
