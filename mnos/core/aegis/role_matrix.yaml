@@ -1,0 +1,14 @@
+roles:
+  ADMIN:
+    permissions: ["*"]
+    requires_device: true
+  MERCHANT:
+    permissions: ["UPOS.SALE.*", "FCE.TAX.*"]
+    requires_device: true
+  AI_AGENT:
+    permissions: ["*.RECOMMEND", "*.PREPARE", "*.REQUEST"]
+    requires_device: false
+    can_execute_privileged: false
+  GUEST:
+    permissions: ["PUBLIC.*"]
+    requires_device: false

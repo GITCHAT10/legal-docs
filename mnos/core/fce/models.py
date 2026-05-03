@@ -1,0 +1,26 @@
+from pydantic import BaseModel, Field
+from typing import List, Optional
+from enum import Enum
+
+class SettlementStatus(Enum):
+    PENDING_PRECHECK = "PENDING_PRECHECK"
+    BLOCKED_SCHEMA_INVALID = "BLOCKED_SCHEMA_INVALID"
+    BLOCKED_NAMESPACE_MISMATCH = "BLOCKED_NAMESPACE_MISMATCH"
+    BLOCKED_TENANT_SCOPE = "BLOCKED_TENANT_SCOPE"
+    BLOCKED_MISSING_SHADOW_PROOF = "BLOCKED_MISSING_SHADOW_PROOF"
+    BLOCKED_MISSING_ORCA_PROOF = "BLOCKED_MISSING_ORCA_PROOF"
+    BLOCKED_TAX_MISMATCH = "BLOCKED_TAX_MISMATCH"
+    BLOCKED_DUPLICATE_IDEMPOTENCY = "BLOCKED_DUPLICATE_IDEMPOTENCY"
+    BLOCKED_UNSUPPORTED_CURRENCY = "BLOCKED_UNSUPPORTED_CURRENCY"
+    APPROVED = "APPROVED"
+    SETTLED = "SETTLED"
+    RECONCILED = "RECONCILED"
+    FAILED_CLOSED = "FAILED_CLOSED"
+
+class FCEPriceBreakdown(BaseModel):
+    base_price: float
+    service_charge: float
+    taxable_subtotal: float
+    tgst: float
+    customer_total: float
+    currency: str = "USD"
