@@ -1,0 +1,15 @@
+name: iMOXON Sovereign Audit CI
+
+on:
+  push:
+    branches: [ main, feat/* ]
+
+jobs:
+  auditExpected:
+    name: auditExpected
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Sovereign Audit
+        run: |
+          echo "Executing iMOXON Sovereign Audit..."

@@ -1,3 +1,7 @@
 __pycache__/
 *.pyc
+*.log
+verification/
+__pycache__/
+*.pyc
 .env
