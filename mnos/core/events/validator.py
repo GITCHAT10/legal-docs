@@ -1,11 +1,12 @@
 import json
 import jsonschema
 import re
+from pathlib import Path
 from mnos.core.events.namespace_mapping import validate_namespace
 
-SCHEMA_PATH = "mnos/core/schema/mnos_event_schema_v1_1.json"
+SCHEMA_PATH = Path(__file__).resolve().parents[1] / "schema" / "mnos_event_schema_v1_1.json"
 
-with open(SCHEMA_PATH, "r") as f:
+with SCHEMA_PATH.open("r", encoding="utf-8") as f:
     MNOS_SCHEMA_V1_1 = json.load(f)
 
 def validate_event(event: dict):

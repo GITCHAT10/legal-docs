@@ -1,8 +1,14 @@
 import yaml
+from pathlib import Path
 
 class AegisSessionGuard:
-    def __init__(self, matrix_path="mnos/core/aegis/role_matrix.yaml"):
-        with open(matrix_path, "r") as f:
+    def __init__(self, matrix_path=None):
+        if matrix_path is None:
+            matrix_path = Path(__file__).resolve().parent / "role_matrix.yaml"
+        else:
+            matrix_path = Path(matrix_path)
+
+        with matrix_path.open("r", encoding="utf-8") as f:
             self.matrix = yaml.safe_load(f)
 
     def validate_action(self, actor: dict, event_type: str) -> bool:
