@@ -1,6 +1,5 @@
 import hashlib
 import json
-import time
 import uuid
 import copy
 from datetime import datetime, UTC
@@ -79,3 +78,8 @@ class ShadowLedger:
             "root_hash": self.chain[-1]["hash"] if self.chain else None,
             "evidence": self.chain
         }
+
+    def get_block(self, index: int) -> dict:
+        if index < 0 or index >= len(self.chain):
+            raise IndexError("Block index out of range")
+        return self.chain[index]

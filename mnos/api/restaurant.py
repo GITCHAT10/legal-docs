@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 
 def create_restaurant_router(restaurant_engine, get_actor_ctx):
     router = APIRouter(prefix="/restaurant", tags=["restaurant"])

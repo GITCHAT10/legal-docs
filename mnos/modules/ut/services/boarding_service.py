@@ -1,6 +1,6 @@
 import hashlib
 import uuid
-from typing import Dict, Any
+from typing import Dict
 
 class UTBoardingService:
     def __init__(self, shadow, events):

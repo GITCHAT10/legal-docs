@@ -7,7 +7,7 @@ import mnos.shared.execution_guard as eg
 # Set dummy secret
 os.environ["NEXGEN_SECRET"] = "TEST-SECRET"
 
-from main import app, identity_core, guard, shadow_core, ut_fce_split
+from main import app, identity_core, ut_fce_split
 
 client = TestClient(app)
 

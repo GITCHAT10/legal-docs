@@ -1,7 +1,5 @@
 import httpx
 import asyncio
-import os
-import json
 from imoxon_national.ai_engine.role_detection import RoleDetectionAI
 from imoxon_national.core_fastapi.main import app
 from httpx import ASGITransport

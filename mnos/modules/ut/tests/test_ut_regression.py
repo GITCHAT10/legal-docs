@@ -1,6 +1,5 @@
 import pytest
 from fastapi.testclient import TestClient
-import uuid
 import os
 import mnos.shared.execution_guard as eg
 from datetime import datetime, UTC, timedelta
@@ -8,7 +7,7 @@ from datetime import datetime, UTC, timedelta
 # Set dummy secret
 os.environ["NEXGEN_SECRET"] = "TEST-SECRET"
 
-from main import app, identity_core, guard, shadow_core
+from main import app, identity_core
 
 client = TestClient(app)
 
@@ -35,11 +34,6 @@ def test_payout_rejects_unknown_quote_id():
 
 def test_safety_gate_rejects_expired_insurance():
     identity_id = "test-saf-1"
-    headers = {
-        "X-AEGIS-IDENTITY": identity_id,
-        "X-AEGIS-DEVICE": "dev-saf-1",
-        "X-AEGIS-SIGNATURE": f"VALID_SIG_FOR_{identity_id}"
-    }
     identity_core.profiles[identity_id] = {"profile_type": "UT_SAFETY", "verification_status": "verified"}
     identity_core.devices["dev-saf-1"] = {"identity_id": identity_id}
 
@@ -53,7 +47,7 @@ def test_safety_gate_rejects_expired_insurance():
     weather_data = {"sea_state": 1}
 
     result = ut_safety_gate.validate_dispatch(actor, asset_data, weather_data)
-    assert result["checks"]["insurance_valid"] == False
+    assert not result["checks"]["insurance_valid"]
     assert result["gate_status"] == "BLOCKED"
 
 def test_safety_gate_rejects_missing_insurance_expiry():
@@ -62,7 +56,7 @@ def test_safety_gate_rejects_missing_insurance_expiry():
     asset_data = {"capacity": 20, "passenger_count": 10, "captain_status": "VERIFIED", "lifejacket_count": 20}
     weather_data = {"sea_state": 1}
     result = ut_safety_gate.validate_dispatch(actor, asset_data, weather_data)
-    assert result["checks"]["insurance_valid"] == False
+    assert not result["checks"]["insurance_valid"]
     assert result["gate_status"] == "BLOCKED"
 
 def test_safety_gate_rejects_invalid_insurance_expiry():
@@ -71,7 +65,7 @@ def test_safety_gate_rejects_invalid_insurance_expiry():
     asset_data = {"capacity": 20, "passenger_count": 10, "captain_status": "VERIFIED", "lifejacket_count": 20, "insurance_expiry": "INVALID-DATE"}
     weather_data = {"sea_state": 1}
     result = ut_safety_gate.validate_dispatch(actor, asset_data, weather_data)
-    assert result["checks"]["insurance_valid"] == False
+    assert not result["checks"]["insurance_valid"]
     assert result["gate_status"] == "BLOCKED"
 
 def test_safety_gate_accepts_future_valid_insurance():
@@ -83,7 +77,7 @@ def test_safety_gate_accepts_future_valid_insurance():
     weather_data = {"sea_state": 1}
 
     result = ut_safety_gate.validate_dispatch(actor, asset_data, weather_data)
-    assert result["checks"]["insurance_valid"] == True
+    assert result["checks"]["insurance_valid"]
     assert result["gate_status"] == "APPROVED"
 
 def test_confirm_booking_not_found_returns_404():

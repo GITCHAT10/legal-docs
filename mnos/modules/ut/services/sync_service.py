@@ -1,5 +1,5 @@
 import uuid
-from typing import Dict, Any, List
+from typing import Dict
 
 class UTAPOLLOSyncService:
     def __init__(self, shadow, events):

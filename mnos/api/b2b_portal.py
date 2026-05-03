@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, HTTPException
-from typing import List
 
 def create_b2b_portal_router(nexus_brain, b2b_negotiator, get_actor_ctx):
     router = APIRouter(prefix="/b2b", tags=["b2b-portal"])

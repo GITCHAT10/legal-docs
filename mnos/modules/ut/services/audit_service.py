@@ -1,5 +1,5 @@
 import hashlib
-from typing import Dict, Any, List
+from typing import Dict, List
 
 class UTAuditService:
     def __init__(self, shadow):

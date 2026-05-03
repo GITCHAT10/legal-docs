@@ -1,6 +1,5 @@
 from fastapi import APIRouter, HTTPException
 
-from fastapi import APIRouter, Depends, HTTPException
 
 def create_identity_router(identity_core, policy_engine, gateway=None):
     router = APIRouter(prefix="/aegis/identity", tags=["identity"])

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends
+from decimal import Decimal
 
 def create_specialized_router(tourism, faith, transport, housing, exchange, education, get_actor_ctx):
     router = APIRouter(tags=["specialized"])
@@ -26,5 +27,13 @@ def create_specialized_router(tourism, faith, transport, housing, exchange, educ
     @router.post("/education/enroll")
     async def enroll_education(data: dict, actor: dict = Depends(get_actor_ctx)):
         return education.enroll(actor, data)
+
+    @router.post("/pricing/landed-cost")
+    async def calculate_landed_cost(base: float, cat: str = "RETAIL", actor: dict = Depends(get_actor_ctx)):
+        # Base + 15% Logistics + 10% Markup
+        landed_base = base * 1.15 * 1.10
+        # Maldives Tax Rules via FCE
+        from main import fce_core
+        return fce_core.calculate_local_order(Decimal(str(landed_base)), cat)
 
     return router
