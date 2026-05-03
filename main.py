@@ -59,6 +59,16 @@ from mnos.api.b2b_portal import create_b2b_portal_router
 from mnos.api.heatmap import create_heatmap_router
 from mnos.api.laundry import create_laundry_router
 
+# MIOS Modules
+from mnos.modules.mios.engines.skygodown import SkyGodownEngine
+from mnos.modules.mios.engines.freight import SkyFreightGDS, SkyParcelEngine
+from mnos.modules.mios.engines.clearing import SkyClearingEngine
+from mnos.modules.mios.engines.fce import MIOSFCEEngine
+from mnos.modules.mios.engines.fx import MIOSFXEngine
+from mnos.modules.mios.engines.handoff import MIOSAssetHandoffEngine
+from mnos.modules.mios.engines.aircraft_decision import AircraftDecisionEngine
+from mnos.modules.mios.api.router import create_mios_router
+
 # Bubble OS Super App Layer
 from mnos.modules.bubble.chat.engine import ChatIntentEngine, ChatToTransactionEngine
 from mnos.modules.bubble.sdk.core.bridge import BubbleSDK
@@ -128,6 +138,16 @@ vvip_engine = VVIPKeyEngine(imoxon)
 reinvestment_engine = RevenueReinvestmentEngine(imoxon)
 laundry_engine = MaldivesLaundryEngine(imoxon, mars_unified)
 heatmap_engine = GlobalDemandHeatmap(imoxon, island_gm, mira_bridge, reinvestment_engine)
+
+# MIOS Engines
+mios_godown = SkyGodownEngine(shadow_core)
+mios_freight = SkyFreightGDS(shadow_core)
+mios_parcel = SkyParcelEngine()
+mios_clearing = SkyClearingEngine(shadow_core)
+mios_fce = MIOSFCEEngine(shadow_core)
+mios_fx = MIOSFXEngine(shadow_core)
+mios_handoff = MIOSAssetHandoffEngine(shadow_core)
+mios_aircraft = AircraftDecisionEngine(shadow_core)
 
 imoxon.mira_bridge = mira_bridge
 imoxon.vvip_engine = vvip_engine
@@ -258,6 +278,11 @@ app.include_router(create_leaderboard_router(leaderboard, get_actor_ctx), prefix
 app.include_router(create_b2b_portal_router(mars_unified, b2b_negotiator, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_heatmap_router(heatmap_engine, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_laundry_router(laundry_engine, get_actor_ctx), prefix="/imoxon")
+
+# MIOS Integration
+app.include_router(create_mios_router(
+    mios_godown, mios_freight, mios_clearing, mios_fce, mios_fx, mios_handoff, mios_aircraft, get_actor_ctx
+), prefix="/imoxon")
 
 # Error handlers
 @app.exception_handler(PermissionError)
