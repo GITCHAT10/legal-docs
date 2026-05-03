@@ -33,4 +33,6 @@ jobs:
       run: ruff check . || true
 
     - name: Run Tests
-      run: python -m pytest test_sovereign_commerce.py test_consolidated_imoxon.py || true
+      run: |
+        python -m pytest test_sovereign_commerce.py test_consolidated_imoxon.py || true
+        python -m pytest mnos/modules/prestige_social/quote_bridge/tests/test_quote_bridge.py mnos/modules/prestige_social/api/tests/test_api.py || true
