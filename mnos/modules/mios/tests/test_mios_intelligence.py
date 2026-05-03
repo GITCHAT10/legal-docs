@@ -37,3 +37,21 @@ def test_human_approval_flow(shadow_svc):
     approval_id = gates.request_human_approval(shipment_id, "high_value_override", {"amount": 1000000})
     assert approval_id in gates.pending_approvals
     assert gates.pending_approvals[approval_id]["status"] == "PENDING"
+
+def test_human_approval_short_action(shadow_svc):
+    gates = ExecutionGates(shadow_svc.global_shadow)
+    shipment_id = uuid4()
+    # Test short action name that previously would crash deterministic UUID generation
+    approval_id = gates.request_human_approval(shipment_id, "A", {"note": "short"})
+    assert approval_id in gates.pending_approvals
+
+def test_multiple_approvals_collision(shadow_svc):
+    gates = ExecutionGates(shadow_svc.global_shadow)
+    shipment_id = uuid4()
+    action = "test_action"
+
+    id1 = gates.request_human_approval(shipment_id, action, {"v": 1})
+    id2 = gates.request_human_approval(shipment_id, action, {"v": 2})
+
+    assert id1 != id2
+    assert len(gates.pending_approvals) == 2

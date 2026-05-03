@@ -37,7 +37,8 @@ class SkyClearingEngine:
     def submit_to_customs(self, actor_ctx: dict, shipment_id: UUID, declaration_no: str):
         orca = self.validate_orca(shipment_id)
         if not orca["passed"]:
-            raise ValueError(f"ORCA validation failed: {orca['results']}")
+            details = orca.get("results") or orca.get("reason") or "Unknown ORCA validation failure"
+            raise ValueError(f"ORCA validation failed: {details}")
 
         record = self.records.get(shipment_id)
         record.declaration_no = declaration_no

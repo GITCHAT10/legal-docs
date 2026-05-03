@@ -100,6 +100,13 @@ def test_case_2_zh_ro_water_01_blocked(engines, actor_ctx):
     with pytest.raises(ValueError, match="ORCA validation failed"):
         clearing.submit_to_customs(actor_ctx, shipment_id, "DECL-001")
 
+def test_submit_to_customs_unknown_shipment(engines, actor_ctx):
+    clearing = engines["clearing"]
+    shipment_id = uuid4()
+    # validate_orca will return {"passed": False, "reason": "No clearing record found"}
+    with pytest.raises(ValueError, match="No clearing record found"):
+        clearing.submit_to_customs(actor_ctx, shipment_id, "DECL-001")
+
 def test_sky_parcel_caps(engines):
     parcel = engines["parcel"]
 

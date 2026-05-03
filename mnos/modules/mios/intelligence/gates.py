@@ -1,4 +1,4 @@
-from uuid import UUID
+from uuid import UUID, uuid4
 from typing import Dict, List, Any, Optional
 
 class ExecutionGates:
@@ -18,7 +18,7 @@ class ExecutionGates:
         self.pending_approvals: Dict[UUID, dict] = {}
 
     def request_human_approval(self, shipment_id: UUID, action_type: str, action_payload: dict) -> UUID:
-        approval_id = UUID(bytes=action_type.encode()[:16]) # Dummy repeatable ID for logic
+        approval_id = uuid4()
         self.pending_approvals[approval_id] = {
             "shipment_id": shipment_id,
             "action": action_type,
