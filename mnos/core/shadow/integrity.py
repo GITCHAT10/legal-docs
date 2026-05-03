@@ -1,4 +1,4 @@
-from mnos.core.shadow.ledger import ShadowLedger
+from mnos.modules.shadow.ledger import ShadowLedger
 
 def verify_chain_integrity(ledger: ShadowLedger) -> bool:
     return ledger.verify_integrity()

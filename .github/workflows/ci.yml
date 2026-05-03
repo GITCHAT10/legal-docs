@@ -8,6 +8,7 @@ on:
 
 jobs:
   audit:
+    name: auditExpected
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -21,15 +22,16 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+        pip install jsonschema pyyaml pytest pytest-asyncio fastapi httpx jinja2 python-multipart
 
     - name: Run Boot Check
-      run: NEXGEN_SECRET=audit-test python mnos/boot_check.py || true
+      run: NEXGEN_SECRET=audit-test python mnos/boot_check.py
 
     - name: Run Schema Validation
-      run: python validate_schema.py || true
+      run: python validate_schema.py
 
     - name: Run Lint
       run: ruff check . || true
 
-    - name: Run Tests
-      run: python -m pytest test_sovereign_commerce.py test_consolidated_imoxon.py || true
+    - name: Run MNOS Core Tests
+      run: PYTHONPATH=. python -m pytest tests/

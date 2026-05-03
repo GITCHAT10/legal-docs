@@ -1,5 +1,5 @@
 import pytest
-from mnos.core.shadow.ledger import ShadowLedger
+from mnos.modules.shadow.ledger import ShadowLedger
 from mnos.core.shadow.integrity import verify_chain_integrity
 
 def test_shadow_integrity():

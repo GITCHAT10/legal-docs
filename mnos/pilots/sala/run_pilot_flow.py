@@ -1,7 +1,7 @@
 from mnos.pilots.sala.staging_seed import SALA_PILOT_CONFIG
 from mnos.pilots.sala.sample_events.events import get_mac_eos_booking_create, get_upos_sale_complete
 from mnos.core.fce.settlement_guard import SettlementGuard
-from mnos.core.shadow.ledger import ShadowLedger
+from mnos.modules.shadow.ledger import ShadowLedger
 
 def run_pilot():
     print("Starting SALA Pilot Flow...")

@@ -1,7 +1,7 @@
 import pytest
 from mnos.core.orca.execution_guard import OrcaExecutionGuard
 from mnos.core.aegis.session_guard import AegisSessionGuard
-from mnos.core.shadow.ledger import ShadowLedger
+from mnos.modules.shadow.ledger import ShadowLedger
 
 @pytest.fixture
 def orca():

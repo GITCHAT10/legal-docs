@@ -1,5 +1,5 @@
 import pytest
-from mnos.core.shadow.ledger import ShadowLedger
+from mnos.modules.shadow.ledger import ShadowLedger
 from mnos.core.shadow.audit import record_audit_event
 from datetime import datetime
 
