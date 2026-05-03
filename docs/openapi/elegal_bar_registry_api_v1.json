@@ -1,0 +1,14 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "eLEGAL Bar Registry API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/v1/legal/verify": {
+      "post": {
+        "summary": "Verify Lawyer License"
+      }
+    }
+  }
+}

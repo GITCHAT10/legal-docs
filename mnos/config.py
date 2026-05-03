@@ -27,4 +27,13 @@ class Config:
     # Jurisdictions
     DEFAULT_JURISDICTION = "MV"
 
+    # eLEGAL Pilot v0.3 Feature Flags
+    AUTO_COURT_FILING = False
+    MIRA_LIVE_FILING = False
+    MVLAW_PRIVATE_API = False
+    BAR_API_GRAPHQL = False
+    BAR_API_WS = False
+    LEGAL_OUTPUT_AUTO_EXECUTE = False
+    PILOT_BRANDS = ["SALA_HOTELS", "97_DEGREES_EAST"]
+
 config = Config()

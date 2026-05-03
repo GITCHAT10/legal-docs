@@ -28,7 +28,20 @@ class EventBus:
         "elegal.tenancy.lease_created",
         "elegal.tenancy.rent_received",
         "elegal.tenancy.notice_issued",
-        "elegal.tenancy.dispute_triggered"
+        "elegal.tenancy.dispute_triggered",
+        "elegal.lawyer.login",
+        "elegal.bar.verified",
+        "elegal.integration.business_verified",
+        "elegal.aegis.context_switched",
+        "elegal.research.ingested",
+        "elegal.tenancy.notice_drafted",
+        "elegal.tenancy.notice_approved",
+        "elegal.mira.receipt_sealed",
+        "elegal.court.bundle_generated",
+        "elegal.fce.anchor_synced",
+        "elegal.court.correspondence_registered",
+        "elegal.research.rag_analyzed",
+        "elegal.research.regulatory_alert"
     }
 
     def __init__(self):

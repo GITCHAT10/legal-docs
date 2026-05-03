@@ -9,6 +9,17 @@ class WhatsAppInterface:
     SKY-i COMMS: WhatsApp Intelligence Loop integration.
     Route: SKY-i COMMS → AEGIS → SILVIA → JULES
     """
+    def normalize_event_type(self, intent: str) -> str:
+        """
+        Hardened Routing: Validates against allowed namespaces.
+        elegal., legal., nexus., fce., shadow., exmail. pass through.
+        Others are prefixed with nexus.
+        """
+        allowed_namespaces = ("elegal.", "legal.", "nexus.", "fce.", "shadow.", "exmail.")
+        if intent.startswith(allowed_namespaces):
+            return intent
+        return f"nexus.{intent}"
+
     def receive_message(self, phone: str, text: str, session_context: Dict[str, Any]):
         trace_id = str(uuid.uuid4())
 
@@ -23,9 +34,7 @@ class WhatsAppInterface:
                 return self._escalate(trace_id, phone, decision["reason"])
 
             # 3. JULES (Workflows) via EVENTS
-            intent = decision['intent']
-            # Hardened Routing: Prevent double-prefixing of legal or nexus intents
-            event_type = intent if intent.startswith("elegal.") or intent.startswith("nexus.") else f"nexus.{intent}"
+            event_type = self.normalize_event_type(decision['intent'])
 
             event_payload = events.publish(
                 event_type=event_type,
