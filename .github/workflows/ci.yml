@@ -2,9 +2,7 @@ name: iMOXON Sovereign Audit CI
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    branches: [ "*" ]
 
 jobs:
   audit:
@@ -23,13 +21,32 @@ jobs:
         pip install -r requirements.txt
 
     - name: Run Boot Check
-      run: NEXGEN_SECRET=audit-test python mnos/boot_check.py || true
+      run: NEXGEN_SECRET=audit-test python mnos/boot_check.py
 
     - name: Run Schema Validation
-      run: python validate_schema.py || true
+      run: python validate_schema.py
 
     - name: Run Lint
-      run: ruff check . || true
+      run: ruff check .
 
     - name: Run Tests
-      run: python -m pytest test_sovereign_commerce.py test_consolidated_imoxon.py || true
+      run: python -m pytest test_sovereign_commerce.py test_consolidated_imoxon.py
+
+  auditExpected:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run Architectural Verification
+      run: |
+        PYTHONPATH=. python3 -m pytest tests/test_rc_bx_ax.py tests/test_scoped_auth.py mnos/modules/atollx/airport/tests/test_airport.py
