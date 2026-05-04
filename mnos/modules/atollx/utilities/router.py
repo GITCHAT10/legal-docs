@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from typing import List, Optional, Dict
+from typing import List, Dict
 from mnos.shared.execution_guard import ExecutionGuard
 from mnos.shared.auth import get_actor_context
 
@@ -42,7 +42,7 @@ def create_utilities_router(guard: ExecutionGuard, shadow, orca):
         return guard.execute_sovereign_action(
             "atollx.utilities.route",
             actor,
-            lambda: {"status": "ROUTE_LOGGED", "route_id": route.route_id}
+            lambda **kwargs: {"status": "ROUTE_LOGGED", "route_id": route.route_id}
         )
 
     @router.post("/motion-simulation")
@@ -50,7 +50,7 @@ def create_utilities_router(guard: ExecutionGuard, shadow, orca):
         return guard.execute_sovereign_action(
             "atollx.utilities.simulation",
             actor,
-            lambda: {"status": "SIMULATION_LOGGED", "sim_id": sim.sim_id}
+            lambda **kwargs: {"status": "SIMULATION_LOGGED", "sim_id": sim.sim_id}
         )
 
     @router.post("/hose-bend")
@@ -58,7 +58,7 @@ def create_utilities_router(guard: ExecutionGuard, shadow, orca):
         return guard.execute_sovereign_action(
             "atollx.utilities.hose_bend",
             actor,
-            lambda: {"status": "HOSE_BEND_LOGGED", "reading_id": reading.reading_id}
+            lambda **kwargs: {"status": "HOSE_BEND_LOGGED", "reading_id": reading.reading_id}
         )
 
     @router.post("/cable-tension")
@@ -66,7 +66,7 @@ def create_utilities_router(guard: ExecutionGuard, shadow, orca):
         return guard.execute_sovereign_action(
             "atollx.utilities.cable_tension",
             actor,
-            lambda: {"status": "CABLE_TENSION_LOGGED", "reading_id": reading.reading_id}
+            lambda **kwargs: {"status": "CABLE_TENSION_LOGGED", "reading_id": reading.reading_id}
         )
 
     @router.post("/drybreak-disconnect")
@@ -79,7 +79,7 @@ def create_utilities_router(guard: ExecutionGuard, shadow, orca):
         return guard.execute_sovereign_action(
             "atollx.utilities.disconnect",
             actor,
-            lambda: {"status": "DISCONNECT_LOGGED", "event_id": event.event_id}
+            lambda **kwargs: {"status": "DISCONNECT_LOGGED", "event_id": event.event_id}
         )
 
     @router.post("/zero-leak-validate")

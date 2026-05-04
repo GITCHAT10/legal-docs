@@ -1,6 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
-from typing import List, Optional, Dict
 from mnos.shared.execution_guard import ExecutionGuard
 from mnos.shared.auth import get_actor_context
 
@@ -43,7 +42,7 @@ def create_float_router(guard: ExecutionGuard, shadow, orca):
         return guard.execute_sovereign_action(
             "atollx.float.platform",
             actor,
-            lambda: {"status": "PLATFORM_LOGGED", "platform_id": platform.platform_id}
+            lambda **kwargs: {"status": "PLATFORM_LOGGED", "platform_id": platform.platform_id}
         )
 
     @router.post("/stability")
@@ -51,7 +50,7 @@ def create_float_router(guard: ExecutionGuard, shadow, orca):
         return guard.execute_sovereign_action(
             "atollx.float.stability",
             actor,
-            lambda: {"status": "STABILITY_LOGGED", "calc_id": calc.calc_id}
+            lambda **kwargs: {"status": "STABILITY_LOGGED", "calc_id": calc.calc_id}
         )
 
     @router.post("/mooring")
@@ -59,7 +58,7 @@ def create_float_router(guard: ExecutionGuard, shadow, orca):
         return guard.execute_sovereign_action(
             "atollx.float.mooring",
             actor,
-            lambda: {"status": "MOORING_LOGGED", "system_id": system.system_id}
+            lambda **kwargs: {"status": "MOORING_LOGGED", "system_id": system.system_id}
         )
 
     @router.post("/tension")
@@ -67,7 +66,7 @@ def create_float_router(guard: ExecutionGuard, shadow, orca):
         return guard.execute_sovereign_action(
             "atollx.float.tension",
             actor,
-            lambda: {"status": "TENSION_LOGGED", "reading_id": reading.reading_id}
+            lambda **kwargs: {"status": "TENSION_LOGGED", "reading_id": reading.reading_id}
         )
 
     @router.post("/stp")
@@ -75,7 +74,7 @@ def create_float_router(guard: ExecutionGuard, shadow, orca):
         return guard.execute_sovereign_action(
             "atollx.float.stp",
             actor,
-            lambda: {"status": "STP_LOGGED", "reading_id": reading.reading_id}
+            lambda **kwargs: {"status": "STP_LOGGED", "reading_id": reading.reading_id}
         )
 
     @router.post("/validate")

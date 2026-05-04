@@ -1,8 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
-from typing import List, Dict, Any
 from mnos.modules.atollx.airport.models.airport_models import (
-    AirportProject, RunwayDesign, TaxiwayDesign, ApronDesign,
-    PavementDesign, ObstacleSurfaceReview, AirNavigationReview,
+    AirportProject, RunwayDesign, PavementDesign, ObstacleSurfaceReview, AirNavigationReview,
     RFFSCategoryReview, AviationEngineerCertification, MCAACompliancePackage
 )
 from mnos.shared.execution_guard import ExecutionGuard
@@ -16,7 +14,7 @@ def create_airport_router(guard: ExecutionGuard, shadow, orca, fce):
         return guard.execute_sovereign_action(
             "atollx.airport.project.create",
             actor,
-            lambda: {"status": "PROJECT_CREATED", "project_id": project.project_id}
+            lambda **kwargs: {"status": "PROJECT_CREATED", "project_id": project.project_id}
         )
 
     @router.post("/runway/design")
@@ -24,7 +22,7 @@ def create_airport_router(guard: ExecutionGuard, shadow, orca, fce):
         return guard.execute_sovereign_action(
             "atollx.airport.runway.design",
             actor,
-            lambda: {"status": "DESIGN_SUBMITTED", "design_id": design.design_id}
+            lambda **kwargs: {"status": "DESIGN_SUBMITTED", "design_id": design.design_id}
         )
 
     @router.post("/icao/check")
@@ -32,7 +30,7 @@ def create_airport_router(guard: ExecutionGuard, shadow, orca, fce):
         return guard.execute_sovereign_action(
             "atollx.airport.icao.precheck",
             actor,
-            lambda: {"status": "ICAO_PRECHECK_COMPLETED", "project_id": project_id, "compliant": True}
+            lambda **kwargs: {"status": "ICAO_PRECHECK_COMPLETED", "project_id": project_id, "compliant": True}
         )
 
     @router.post("/mcaa/check")
@@ -40,7 +38,7 @@ def create_airport_router(guard: ExecutionGuard, shadow, orca, fce):
         return guard.execute_sovereign_action(
             "atollx.airport.mcaa.precheck",
             actor,
-            lambda: {"status": "MCAA_PRECHECK_COMPLETED", "project_id": project_id, "compliant": True}
+            lambda **kwargs: {"status": "MCAA_PRECHECK_COMPLETED", "project_id": project_id, "compliant": True}
         )
 
     @router.post("/pavement/validate")
@@ -52,7 +50,7 @@ def create_airport_router(guard: ExecutionGuard, shadow, orca, fce):
         return guard.execute_sovereign_action(
             "atollx.airport.pavement.validate",
             actor,
-            lambda: {"status": "PAVEMENT_VALIDATED", "pavement_id": design.pavement_id}
+            lambda **kwargs: {"status": "PAVEMENT_VALIDATED", "pavement_id": design.pavement_id}
         )
 
     @router.post("/ols/review")
@@ -66,7 +64,7 @@ def create_airport_router(guard: ExecutionGuard, shadow, orca, fce):
         return guard.execute_sovereign_action(
             "atollx.airport.ols.review",
             actor,
-            lambda: {"status": status, "review_id": review.review_id},
+            lambda **kwargs: {"status": status, "review_id": review.review_id},
             forced_status=forced_status
         )
 
@@ -81,7 +79,7 @@ def create_airport_router(guard: ExecutionGuard, shadow, orca, fce):
         return guard.execute_sovereign_action(
             "atollx.airport.airnav.review",
             actor,
-            lambda: {"status": status, "review_id": review.review_id},
+            lambda **kwargs: {"status": status, "review_id": review.review_id},
             forced_status=forced_status
         )
 
@@ -93,7 +91,7 @@ def create_airport_router(guard: ExecutionGuard, shadow, orca, fce):
         return guard.execute_sovereign_action(
             "atollx.airport.rffs.validate",
             actor,
-            lambda: {"status": "RFFS_CATEGORY_VALIDATED", "review_id": review.review_id}
+            lambda **kwargs: {"status": "RFFS_CATEGORY_VALIDATED", "review_id": review.review_id}
         )
 
     @router.post("/engineer/certify")
@@ -101,7 +99,7 @@ def create_airport_router(guard: ExecutionGuard, shadow, orca, fce):
         return guard.execute_sovereign_action(
             "atollx.airport.engineer.certify",
             actor,
-            lambda: {"status": "ENGINEER_CERTIFIED", "cert_id": cert.cert_id}
+            lambda **kwargs: {"status": "ENGINEER_CERTIFIED", "cert_id": cert.cert_id}
         )
 
     @router.post("/mcaa/submission-package")
@@ -116,7 +114,7 @@ def create_airport_router(guard: ExecutionGuard, shadow, orca, fce):
         return guard.execute_sovereign_action(
             "atollx.airport.mcaa.submission_ready",
             actor,
-            lambda: {"status": "MCAA_SUBMISSION_READY", "package_id": package.package_id}
+            lambda **kwargs: {"status": "MCAA_SUBMISSION_READY", "package_id": package.package_id}
         )
 
     @router.post("/orca/validate")
@@ -143,7 +141,7 @@ def create_airport_router(guard: ExecutionGuard, shadow, orca, fce):
         return guard.execute_sovereign_action(
             "atollx.airport.fce.settlement",
             actor,
-            lambda: {
+            lambda **kwargs: {
                 "status": "SETTLEMENT_REQUESTED",
                 "milestone_id": milestone_id,
                 "amount": amount_mvr,

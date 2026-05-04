@@ -1,7 +1,6 @@
 import httpx
 import asyncio
 import os
-import json
 from main import app
 from httpx import ASGITransport
 

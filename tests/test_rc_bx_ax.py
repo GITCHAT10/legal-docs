@@ -1,7 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
-from main import app, guard, shadow_core, orca_core, identity_core
-from mnos.shared.execution_guard import _sovereign_context
+from main import app, shadow_core, orca_core, identity_core
 
 client = TestClient(app)
 

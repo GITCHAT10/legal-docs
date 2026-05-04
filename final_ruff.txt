@@ -1,0 +1,2216 @@
+F401 [*] `time` imported but unused
+ --> display_canary_dashboard.py:2:8
+  |
+1 | import asyncio
+2 | import time
+  |        ^^^^
+3 | import uuid
+4 | import json
+  |
+help: Remove unused import: `time`
+
+F401 [*] `uuid` imported but unused
+ --> display_canary_dashboard.py:3:8
+  |
+1 | import asyncio
+2 | import time
+3 | import uuid
+  |        ^^^^
+4 | import json
+5 | from decimal import Decimal
+  |
+help: Remove unused import: `uuid`
+
+F401 [*] `json` imported but unused
+ --> display_canary_dashboard.py:4:8
+  |
+2 | import time
+3 | import uuid
+4 | import json
+  |        ^^^^
+5 | from decimal import Decimal
+6 | from main import app, fce_core, shadow_core, events_core, orders, imoxon
+  |
+help: Remove unused import: `json`
+
+F401 [*] `decimal.Decimal` imported but unused
+ --> display_canary_dashboard.py:5:21
+  |
+3 | import uuid
+4 | import json
+5 | from decimal import Decimal
+  |                     ^^^^^^^
+6 | from main import app, fce_core, shadow_core, events_core, orders, imoxon
+7 | from httpx import ASGITransport, AsyncClient
+  |
+help: Remove unused import: `decimal.Decimal`
+
+F401 [*] `main.events_core` imported but unused
+ --> display_canary_dashboard.py:6:46
+  |
+4 | import json
+5 | from decimal import Decimal
+6 | from main import app, fce_core, shadow_core, events_core, orders, imoxon
+  |                                              ^^^^^^^^^^^
+7 | from httpx import ASGITransport, AsyncClient
+  |
+help: Remove unused import
+
+F401 [*] `main.imoxon` imported but unused
+ --> display_canary_dashboard.py:6:67
+  |
+4 | import json
+5 | from decimal import Decimal
+6 | from main import app, fce_core, shadow_core, events_core, orders, imoxon
+  |                                                                   ^^^^^^
+7 | from httpx import ASGITransport, AsyncClient
+  |
+help: Remove unused import
+
+F541 [*] f-string without any placeholders
+  --> display_canary_dashboard.py:73:15
+   |
+71 |         print("="*60)
+72 |
+73 |         print(f"📊 PANELS:")
+   |               ^^^^^^^^^^^^^
+74 |         print(f"   - invoice_accuracy:        [{self.metrics.get('invoice_accuracy', 0):.2f}%] (SC 10%, TGST 17%)")
+75 |         print(f"   - event_law_violations:    [{self.metrics.get('event_law_violations', 0)}] (Locked Execution)")
+   |
+help: Remove extraneous `f` prefix
+
+F541 [*] f-string without any placeholders
+  --> display_canary_dashboard.py:77:15
+   |
+75 |         print(f"   - event_law_violations:    [{self.metrics.get('event_law_violations', 0)}] (Locked Execution)")
+76 |         print(f"   - shadow_chain_integrity:  [{'VALID' if self.metrics.get('shadow_chain_integrity') else 'BROKEN'}]")
+77 |         print(f"   - edge_replay_integrity:   [SYNCED]")
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+78 |         print(f"   - order_success_rate:      [{self.metrics.get('concurrent_success_rate', 0)*100:.1f}%]")
+   |
+help: Remove extraneous `f` prefix
+
+F541 [*] f-string without any placeholders
+  --> display_canary_dashboard.py:80:15
+   |
+78 |         print(f"   - order_success_rate:      [{self.metrics.get('concurrent_success_rate', 0)*100:.1f}%]")
+79 |
+80 |         print(f"\n🚨 ALERTS:")
+   |               ^^^^^^^^^^^^^^^
+81 |         print(f"   - finance_mismatch:        [NOMINAL]")
+82 |         print(f"   - direct_publish_detected: [NOMINAL]")
+   |
+help: Remove extraneous `f` prefix
+
+F541 [*] f-string without any placeholders
+  --> display_canary_dashboard.py:81:15
+   |
+80 |         print(f"\n🚨 ALERTS:")
+81 |         print(f"   - finance_mismatch:        [NOMINAL]")
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+82 |         print(f"   - direct_publish_detected: [NOMINAL]")
+83 |         print(f"   - shadow_chain_break:      [NOMINAL]")
+   |
+help: Remove extraneous `f` prefix
+
+F541 [*] f-string without any placeholders
+  --> display_canary_dashboard.py:82:15
+   |
+80 |         print(f"\n🚨 ALERTS:")
+81 |         print(f"   - finance_mismatch:        [NOMINAL]")
+82 |         print(f"   - direct_publish_detected: [NOMINAL]")
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+83 |         print(f"   - shadow_chain_break:      [NOMINAL]")
+   |
+help: Remove extraneous `f` prefix
+
+F541 [*] f-string without any placeholders
+  --> display_canary_dashboard.py:83:15
+   |
+81 |         print(f"   - finance_mismatch:        [NOMINAL]")
+82 |         print(f"   - direct_publish_detected: [NOMINAL]")
+83 |         print(f"   - shadow_chain_break:      [NOMINAL]")
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+84 |
+85 |         print(f"\n⚠️ ANOMALIES:")
+   |
+help: Remove extraneous `f` prefix
+
+F541 [*] f-string without any placeholders
+  --> display_canary_dashboard.py:85:15
+   |
+83 |         print(f"   - shadow_chain_break:      [NOMINAL]")
+84 |
+85 |         print(f"\n⚠️ ANOMALIES:")
+   |               ^^^^^^^^^^^^^^^^^
+86 |         if not self.anomalies:
+87 |             print("   - None detected.")
+   |
+help: Remove extraneous `f` prefix
+
+F401 [*] `fastapi.Query` imported but unused
+ --> main.py:2:62
+  |
+1 | import os
+2 | from fastapi import FastAPI, HTTPException, Header, Depends, Query, Request
+  |                                                              ^^^^^
+3 | from fastapi.responses import JSONResponse
+4 | from typing import List, Optional, Dict
+  |
+help: Remove unused import: `fastapi.Query`
+
+F401 [*] `typing.List` imported but unused
+ --> main.py:4:20
+  |
+2 | from fastapi import FastAPI, HTTPException, Header, Depends, Query, Request
+3 | from fastapi.responses import JSONResponse
+4 | from typing import List, Optional, Dict
+  |                    ^^^^
+5 | from decimal import Decimal
+  |
+help: Remove unused import
+
+F401 [*] `typing.Optional` imported but unused
+ --> main.py:4:26
+  |
+2 | from fastapi import FastAPI, HTTPException, Header, Depends, Query, Request
+3 | from fastapi.responses import JSONResponse
+4 | from typing import List, Optional, Dict
+  |                          ^^^^^^^^
+5 | from decimal import Decimal
+  |
+help: Remove unused import
+
+F401 [*] `typing.Dict` imported but unused
+ --> main.py:4:36
+  |
+2 | from fastapi import FastAPI, HTTPException, Header, Depends, Query, Request
+3 | from fastapi.responses import JSONResponse
+4 | from typing import List, Optional, Dict
+  |                                    ^^^^
+5 | from decimal import Decimal
+  |
+help: Remove unused import
+
+F401 [*] `decimal.Decimal` imported but unused
+ --> main.py:5:21
+  |
+3 | from fastapi.responses import JSONResponse
+4 | from typing import List, Optional, Dict
+5 | from decimal import Decimal
+  |                     ^^^^^^^
+6 |
+7 | # MNOS Core (N-DEOS)
+  |
+help: Remove unused import: `decimal.Decimal`
+
+F401 [*] `mnos.modules.imoxon.core.engine.ProcurementEngine` imported but unused
+  --> main.py:29:54
+   |
+27 | # iMOXON Consolidated
+28 | from mnos.modules.imoxon.core.engine import (
+29 |     ImoxonCore, CatalogManager, ProcurementEngine as LegacyProcurementEngine,
+   |                                                      ^^^^^^^^^^^^^^^^^^^^^^^
+30 |     CampaignManager, MerchantManager, POSManager
+31 | )
+   |
+help: Remove unused import: `mnos.modules.imoxon.core.engine.ProcurementEngine`
+
+F401 [*] `fastapi.Depends` imported but unused
+ --> mnos/api/aegis_identity.py:3:32
+  |
+1 | from fastapi import APIRouter, HTTPException
+2 |
+3 | from fastapi import APIRouter, Depends, HTTPException
+  |                                ^^^^^^^
+4 |
+5 | def create_identity_router(identity_core, policy_engine, gateway=None):
+  |
+help: Remove unused import: `fastapi.Depends`
+
+F401 [*] `typing.List` imported but unused
+ --> mnos/api/b2b_portal.py:2:20
+  |
+1 | from fastapi import APIRouter, Depends, HTTPException
+2 | from typing import List
+  |                    ^^^^
+3 |
+4 | def create_b2b_portal_router(nexus_brain, b2b_negotiator, get_actor_ctx):
+  |
+help: Remove unused import: `typing.List`
+
+F401 [*] `fastapi.Header` imported but unused
+ --> mnos/api/commerce.py:1:41
+  |
+1 | from fastapi import APIRouter, Depends, Header, HTTPException
+  |                                         ^^^^^^
+2 |
+3 | def create_commerce_router(imoxon, catalog, merchant, pos, procurement, get_actor_ctx):
+  |
+help: Remove unused import
+
+F401 [*] `fastapi.HTTPException` imported but unused
+ --> mnos/api/commerce.py:1:49
+  |
+1 | from fastapi import APIRouter, Depends, Header, HTTPException
+  |                                                 ^^^^^^^^^^^^^
+2 |
+3 | def create_commerce_router(imoxon, catalog, merchant, pos, procurement, get_actor_ctx):
+  |
+help: Remove unused import
+
+F841 Local variable `token` is assigned to but never used
+  --> mnos/api/finance.py:11:9
+   |
+ 9 |         import uuid
+10 |         # MANUALLY WRAP IN SOVEREIGN CONTEXT SINCE FCE_HARDENED IS LEGACY COMPONENT
+11 |         token = _sovereign_context.set({"token": str(uuid.uuid4()), "actor": actor})
+   |         ^^^^^
+12 |         try:
+13 |             escrow_id = fce_hardened.create_escrow(actor["identity_id"], total_amount, ref_id)
+   |
+help: Remove assignment to unused variable `token`
+
+F401 [*] `typing.List` imported but unused
+ --> mnos/api/heatmap.py:2:20
+  |
+1 | from fastapi import APIRouter, Depends, HTTPException
+2 | from typing import List
+  |                    ^^^^
+3 |
+4 | def create_heatmap_router(heatmap_engine, get_actor_ctx):
+  |
+help: Remove unused import: `typing.List`
+
+F401 [*] `decimal.Decimal` imported but unused
+ --> mnos/api/mars_itravel.py:2:21
+  |
+1 | from fastapi import APIRouter, Depends, HTTPException
+2 | from decimal import Decimal
+  |                     ^^^^^^^
+3 |
+4 | def create_itravel_router(mars_engine, get_actor_ctx):
+  |
+help: Remove unused import: `decimal.Decimal`
+
+F401 [*] `fastapi.HTTPException` imported but unused
+ --> mnos/api/restaurant.py:1:41
+  |
+1 | from fastapi import APIRouter, Depends, HTTPException
+  |                                         ^^^^^^^^^^^^^
+2 |
+3 | def create_restaurant_router(restaurant_engine, get_actor_ctx):
+  |
+help: Remove unused import: `fastapi.HTTPException`
+
+F401 [*] `datetime.datetime` imported but unused
+ --> mnos/core/aegis/gateway.py:2:22
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+  |                      ^^^^^^^^
+3 | from typing import Dict, List, Any, Optional
+  |
+help: Remove unused import
+
+F401 [*] `datetime.UTC` imported but unused
+ --> mnos/core/aegis/gateway.py:2:32
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+  |                                ^^^
+3 | from typing import Dict, List, Any, Optional
+  |
+help: Remove unused import
+
+F401 [*] `typing.Dict` imported but unused
+ --> mnos/core/aegis/gateway.py:3:20
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+  |                    ^^^^
+4 |
+5 | class AegisIdentityGateway:
+  |
+help: Remove unused import
+
+F401 [*] `typing.List` imported but unused
+ --> mnos/core/aegis/gateway.py:3:26
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+  |                          ^^^^
+4 |
+5 | class AegisIdentityGateway:
+  |
+help: Remove unused import
+
+F401 [*] `typing.Any` imported but unused
+ --> mnos/core/aegis/gateway.py:3:32
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+  |                                ^^^
+4 |
+5 | class AegisIdentityGateway:
+  |
+help: Remove unused import
+
+F401 [*] `typing.Dict` imported but unused
+ --> mnos/core/fce/engine.py:3:20
+  |
+1 | from decimal import Decimal, ROUND_HALF_UP
+2 | import uuid
+3 | from typing import Dict, Any
+  |                    ^^^^
+4 | from datetime import datetime, UTC
+  |
+help: Remove unused import
+
+F401 [*] `typing.Any` imported but unused
+ --> mnos/core/fce/engine.py:3:26
+  |
+1 | from decimal import Decimal, ROUND_HALF_UP
+2 | import uuid
+3 | from typing import Dict, Any
+  |                          ^^^
+4 | from datetime import datetime, UTC
+  |
+help: Remove unused import
+
+F401 [*] `time` imported but unused
+ --> mnos/core/shadow/ledger.py:3:8
+  |
+1 | import hashlib
+2 | import json
+3 | import time
+  |        ^^^^
+4 | import uuid
+5 | import copy
+  |
+help: Remove unused import: `time`
+
+F401 [*] `sqlalchemy.Float` imported but unused
+ --> mnos/db/schema.py:1:77
+  |
+1 | from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Text, Float
+  |                                                                             ^^^^^
+2 | from sqlalchemy.dialects.postgresql import UUID
+3 | from sqlalchemy.ext.declarative import declarative_base
+  |
+help: Remove unused import: `sqlalchemy.Float`
+
+F401 [*] `fastapi.responses.JSONResponse` imported but unused
+ --> mnos/gateway/engine.py:2:31
+  |
+1 | from fastapi import Request, HTTPException
+2 | from fastapi.responses import JSONResponse
+  |                               ^^^^^^^^^^^^
+3 |
+4 | class APIGatewayControlPlane:
+  |
+help: Remove unused import: `fastapi.responses.JSONResponse`
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/aegis/verifier.py:27:34
+   |
+26 |     def verify_access(self, user_id: str, device_id: str, role: str) -> bool:
+27 |         if role == "TOURIST_USER": return False
+   |                                  ^
+28 |         if self.device_bindings.get(device_id) != user_id: return False
+29 |         return True
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/aegis/verifier.py:28:58
+   |
+26 |     def verify_access(self, user_id: str, device_id: str, role: str) -> bool:
+27 |         if role == "TOURIST_USER": return False
+28 |         if self.device_bindings.get(device_id) != user_id: return False
+   |                                                          ^
+29 |         return True
+   |
+
+F401 [*] `uuid` imported but unused
+ --> mnos/modules/alliance/engine.py:1:8
+  |
+1 | import uuid
+  |        ^^^^
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+  |
+help: Remove unused import: `uuid`
+
+F401 [*] `typing.Dict` imported but unused
+ --> mnos/modules/alliance/engine.py:3:20
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+  |                    ^^^^
+4 |
+5 | class AllianceIntegrationLayer:
+  |
+help: Remove unused import
+
+F401 [*] `typing.Any` imported but unused
+ --> mnos/modules/alliance/engine.py:3:32
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+  |                                ^^^
+4 |
+5 | class AllianceIntegrationLayer:
+  |
+help: Remove unused import
+
+F401 [*] `typing.Optional` imported but unused
+ --> mnos/modules/alliance/engine.py:3:37
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+  |                                     ^^^^^^^^
+4 |
+5 | class AllianceIntegrationLayer:
+  |
+help: Remove unused import
+
+F401 [*] `typing.List` imported but unused
+ --> mnos/modules/atollx/airport/api/airport_router.py:2:20
+  |
+1 | from fastapi import APIRouter, Depends, HTTPException
+2 | from typing import List, Dict, Any
+  |                    ^^^^
+3 | from mnos.modules.atollx.airport.models.airport_models import (
+4 |     AirportProject, RunwayDesign, TaxiwayDesign, ApronDesign,
+  |
+help: Remove unused import
+
+F401 [*] `typing.Dict` imported but unused
+ --> mnos/modules/atollx/airport/api/airport_router.py:2:26
+  |
+1 | from fastapi import APIRouter, Depends, HTTPException
+2 | from typing import List, Dict, Any
+  |                          ^^^^
+3 | from mnos.modules.atollx.airport.models.airport_models import (
+4 |     AirportProject, RunwayDesign, TaxiwayDesign, ApronDesign,
+  |
+help: Remove unused import
+
+F401 [*] `typing.Any` imported but unused
+ --> mnos/modules/atollx/airport/api/airport_router.py:2:32
+  |
+1 | from fastapi import APIRouter, Depends, HTTPException
+2 | from typing import List, Dict, Any
+  |                                ^^^
+3 | from mnos.modules.atollx.airport.models.airport_models import (
+4 |     AirportProject, RunwayDesign, TaxiwayDesign, ApronDesign,
+  |
+help: Remove unused import
+
+F401 [*] `mnos.modules.atollx.airport.models.airport_models.TaxiwayDesign` imported but unused
+ --> mnos/modules/atollx/airport/api/airport_router.py:4:35
+  |
+2 | from typing import List, Dict, Any
+3 | from mnos.modules.atollx.airport.models.airport_models import (
+4 |     AirportProject, RunwayDesign, TaxiwayDesign, ApronDesign,
+  |                                   ^^^^^^^^^^^^^
+5 |     PavementDesign, ObstacleSurfaceReview, AirNavigationReview,
+6 |     RFFSCategoryReview, AviationEngineerCertification, MCAACompliancePackage
+  |
+help: Remove unused import
+
+F401 [*] `mnos.modules.atollx.airport.models.airport_models.ApronDesign` imported but unused
+ --> mnos/modules/atollx/airport/api/airport_router.py:4:50
+  |
+2 | from typing import List, Dict, Any
+3 | from mnos.modules.atollx.airport.models.airport_models import (
+4 |     AirportProject, RunwayDesign, TaxiwayDesign, ApronDesign,
+  |                                                  ^^^^^^^^^^^
+5 |     PavementDesign, ObstacleSurfaceReview, AirNavigationReview,
+6 |     RFFSCategoryReview, AviationEngineerCertification, MCAACompliancePackage
+  |
+help: Remove unused import
+
+F401 [*] `typing.Optional` imported but unused
+ --> mnos/modules/atollx/airport/models/airport_models.py:2:26
+  |
+1 | from pydantic import BaseModel, Field
+2 | from typing import List, Optional, Dict, Any
+  |                          ^^^^^^^^
+3 | from datetime import datetime
+  |
+help: Remove unused import: `typing.Optional`
+
+F401 [*] `main.guard` imported but unused
+ --> mnos/modules/atollx/airport/tests/test_airport.py:3:23
+  |
+1 | import pytest
+2 | from fastapi.testclient import TestClient
+3 | from main import app, guard, shadow_core, orca_core, identity_core
+  |                       ^^^^^
+4 | from mnos.shared.execution_guard import _sovereign_context
+  |
+help: Remove unused import: `main.guard`
+
+F401 [*] `mnos.shared.execution_guard._sovereign_context` imported but unused
+ --> mnos/modules/atollx/airport/tests/test_airport.py:4:41
+  |
+2 | from fastapi.testclient import TestClient
+3 | from main import app, guard, shadow_core, orca_core, identity_core
+4 | from mnos.shared.execution_guard import _sovereign_context
+  |                                         ^^^^^^^^^^^^^^^^^^
+5 |
+6 | client = TestClient(app)
+  |
+help: Remove unused import: `mnos.shared.execution_guard._sovereign_context`
+
+F401 [*] `fastapi.HTTPException` imported but unused
+ --> mnos/modules/atollx/design/router.py:1:41
+  |
+1 | from fastapi import APIRouter, Depends, HTTPException
+  |                                         ^^^^^^^^^^^^^
+2 | from pydantic import BaseModel
+3 | from typing import List, Optional, Dict
+  |
+help: Remove unused import: `fastapi.HTTPException`
+
+F401 [*] `typing.Optional` imported but unused
+ --> mnos/modules/atollx/design/router.py:3:26
+  |
+1 | from fastapi import APIRouter, Depends, HTTPException
+2 | from pydantic import BaseModel
+3 | from typing import List, Optional, Dict
+  |                          ^^^^^^^^
+4 | from mnos.shared.execution_guard import ExecutionGuard
+5 | from mnos.shared.auth import get_actor_context
+  |
+help: Remove unused import
+
+F401 [*] `typing.Dict` imported but unused
+ --> mnos/modules/atollx/design/router.py:3:36
+  |
+1 | from fastapi import APIRouter, Depends, HTTPException
+2 | from pydantic import BaseModel
+3 | from typing import List, Optional, Dict
+  |                                    ^^^^
+4 | from mnos.shared.execution_guard import ExecutionGuard
+5 | from mnos.shared.auth import get_actor_context
+  |
+help: Remove unused import
+
+F401 [*] `typing.Optional` imported but unused
+ --> mnos/modules/atollx/dredge/router.py:3:26
+  |
+1 | from fastapi import APIRouter, Depends, HTTPException
+2 | from pydantic import BaseModel
+3 | from typing import List, Optional
+  |                          ^^^^^^^^
+4 | from mnos.shared.execution_guard import ExecutionGuard
+5 | from mnos.shared.auth import get_actor_context
+  |
+help: Remove unused import: `typing.Optional`
+
+F401 [*] `fastapi.HTTPException` imported but unused
+ --> mnos/modules/atollx/float/router.py:1:41
+  |
+1 | from fastapi import APIRouter, Depends, HTTPException
+  |                                         ^^^^^^^^^^^^^
+2 | from pydantic import BaseModel
+3 | from typing import List, Optional, Dict
+  |
+help: Remove unused import: `fastapi.HTTPException`
+
+F401 [*] `typing.List` imported but unused
+ --> mnos/modules/atollx/float/router.py:3:20
+  |
+1 | from fastapi import APIRouter, Depends, HTTPException
+2 | from pydantic import BaseModel
+3 | from typing import List, Optional, Dict
+  |                    ^^^^
+4 | from mnos.shared.execution_guard import ExecutionGuard
+5 | from mnos.shared.auth import get_actor_context
+  |
+help: Remove unused import
+
+F401 [*] `typing.Optional` imported but unused
+ --> mnos/modules/atollx/float/router.py:3:26
+  |
+1 | from fastapi import APIRouter, Depends, HTTPException
+2 | from pydantic import BaseModel
+3 | from typing import List, Optional, Dict
+  |                          ^^^^^^^^
+4 | from mnos.shared.execution_guard import ExecutionGuard
+5 | from mnos.shared.auth import get_actor_context
+  |
+help: Remove unused import
+
+F401 [*] `typing.Dict` imported but unused
+ --> mnos/modules/atollx/float/router.py:3:36
+  |
+1 | from fastapi import APIRouter, Depends, HTTPException
+2 | from pydantic import BaseModel
+3 | from typing import List, Optional, Dict
+  |                                    ^^^^
+4 | from mnos.shared.execution_guard import ExecutionGuard
+5 | from mnos.shared.auth import get_actor_context
+  |
+help: Remove unused import
+
+F401 [*] `typing.List` imported but unused
+ --> mnos/modules/atollx/pool/router.py:3:20
+  |
+1 | from fastapi import APIRouter, Depends, HTTPException
+2 | from pydantic import BaseModel
+3 | from typing import List, Optional, Dict
+  |                    ^^^^
+4 | from mnos.shared.execution_guard import ExecutionGuard
+5 | from mnos.shared.auth import get_actor_context
+  |
+help: Remove unused import
+
+F401 [*] `typing.Optional` imported but unused
+ --> mnos/modules/atollx/pool/router.py:3:26
+  |
+1 | from fastapi import APIRouter, Depends, HTTPException
+2 | from pydantic import BaseModel
+3 | from typing import List, Optional, Dict
+  |                          ^^^^^^^^
+4 | from mnos.shared.execution_guard import ExecutionGuard
+5 | from mnos.shared.auth import get_actor_context
+  |
+help: Remove unused import
+
+F401 [*] `typing.Dict` imported but unused
+ --> mnos/modules/atollx/pool/router.py:3:36
+  |
+1 | from fastapi import APIRouter, Depends, HTTPException
+2 | from pydantic import BaseModel
+3 | from typing import List, Optional, Dict
+  |                                    ^^^^
+4 | from mnos.shared.execution_guard import ExecutionGuard
+5 | from mnos.shared.auth import get_actor_context
+  |
+help: Remove unused import
+
+F401 [*] `typing.Optional` imported but unused
+ --> mnos/modules/atollx/utilities/router.py:3:26
+  |
+1 | from fastapi import APIRouter, Depends, HTTPException
+2 | from pydantic import BaseModel
+3 | from typing import List, Optional, Dict
+  |                          ^^^^^^^^
+4 | from mnos.shared.execution_guard import ExecutionGuard
+5 | from mnos.shared.auth import get_actor_context
+  |
+help: Remove unused import: `typing.Optional`
+
+F401 [*] `fastapi.HTTPException` imported but unused
+ --> mnos/modules/atollx/water/router.py:1:41
+  |
+1 | from fastapi import APIRouter, Depends, HTTPException
+  |                                         ^^^^^^^^^^^^^
+2 | from pydantic import BaseModel
+3 | from typing import List, Optional
+  |
+help: Remove unused import: `fastapi.HTTPException`
+
+F401 [*] `typing.List` imported but unused
+ --> mnos/modules/atollx/water/router.py:3:20
+  |
+1 | from fastapi import APIRouter, Depends, HTTPException
+2 | from pydantic import BaseModel
+3 | from typing import List, Optional
+  |                    ^^^^
+4 | from mnos.shared.execution_guard import ExecutionGuard
+5 | from mnos.shared.auth import get_actor_context
+  |
+help: Remove unused import
+
+F401 [*] `typing.Optional` imported but unused
+ --> mnos/modules/atollx/water/router.py:3:26
+  |
+1 | from fastapi import APIRouter, Depends, HTTPException
+2 | from pydantic import BaseModel
+3 | from typing import List, Optional
+  |                          ^^^^^^^^
+4 | from mnos.shared.execution_guard import ExecutionGuard
+5 | from mnos.shared.auth import get_actor_context
+  |
+help: Remove unused import
+
+F401 [*] `uuid` imported but unused
+ --> mnos/modules/bubble/chat/engine.py:1:8
+  |
+1 | import uuid
+  |        ^^^^
+2 | from typing import Dict, List, Any
+  |
+help: Remove unused import: `uuid`
+
+F401 [*] `typing.List` imported but unused
+ --> mnos/modules/bubble/chat/engine.py:2:26
+  |
+1 | import uuid
+2 | from typing import Dict, List, Any
+  |                          ^^^^
+3 |
+4 | class ChatIntentEngine:
+  |
+help: Remove unused import: `typing.List`
+
+F401 [*] `typing.Dict` imported but unused
+ --> mnos/modules/bubble/pos/engine.py:3:20
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, Any
+  |                    ^^^^
+4 |
+5 | class BubblePOSEngine:
+  |
+help: Remove unused import
+
+F401 [*] `typing.Any` imported but unused
+ --> mnos/modules/bubble/pos/engine.py:3:26
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, Any
+  |                          ^^^
+4 |
+5 | class BubblePOSEngine:
+  |
+help: Remove unused import
+
+F401 [*] `typing.Optional` imported but unused
+ --> mnos/modules/buildx/models.py:2:26
+  |
+1 | from pydantic import BaseModel
+2 | from typing import List, Optional, Dict, Any
+  |                          ^^^^^^^^
+3 | from datetime import datetime
+  |
+help: Remove unused import: `typing.Optional`
+
+F401 [*] `typing.List` imported but unused
+ --> mnos/modules/buildx/router.py:2:20
+  |
+1 | from fastapi import APIRouter, Depends, HTTPException
+2 | from typing import List, Dict, Any
+  |                    ^^^^
+3 | from mnos.modules.buildx.models import (
+4 |     BuildProject, WorkBreakdownStructure, BOQItem, ContractorPackage,
+  |
+help: Remove unused import
+
+F401 [*] `typing.Dict` imported but unused
+ --> mnos/modules/buildx/router.py:2:26
+  |
+1 | from fastapi import APIRouter, Depends, HTTPException
+2 | from typing import List, Dict, Any
+  |                          ^^^^
+3 | from mnos.modules.buildx.models import (
+4 |     BuildProject, WorkBreakdownStructure, BOQItem, ContractorPackage,
+  |
+help: Remove unused import
+
+F401 [*] `typing.Any` imported but unused
+ --> mnos/modules/buildx/router.py:2:32
+  |
+1 | from fastapi import APIRouter, Depends, HTTPException
+2 | from typing import List, Dict, Any
+  |                                ^^^
+3 | from mnos.modules.buildx.models import (
+4 |     BuildProject, WorkBreakdownStructure, BOQItem, ContractorPackage,
+  |
+help: Remove unused import
+
+F401 [*] `mnos.modules.buildx.models.WorkBreakdownStructure` imported but unused
+ --> mnos/modules/buildx/router.py:4:19
+  |
+2 | from typing import List, Dict, Any
+3 | from mnos.modules.buildx.models import (
+4 |     BuildProject, WorkBreakdownStructure, BOQItem, ContractorPackage,
+  |                   ^^^^^^^^^^^^^^^^^^^^^^
+5 |     ProcurementRequest, Milestone, SiteEvidence, VariationOrder, QAQCCheck, HandoverPackage
+6 | )
+  |
+help: Remove unused import: `mnos.modules.buildx.models.WorkBreakdownStructure`
+
+F841 Local variable `VALID_STATES` is assigned to but never used
+  --> mnos/modules/buildx/router.py:14:5
+   |
+13 |     # Project States
+14 |     VALID_STATES = [
+   |     ^^^^^^^^^^^^
+15 |         "DRAFT", "DESIGN_IN_PROGRESS", "VISUALIZATION_IN_PROGRESS", "PENDING_APPROVAL",
+16 |         "APPROVED_DESIGN_LOCKED", "ENGINEERING_VALIDATION", "BUILD_PLANNING", "PROCUREMENT_READY",
+   |
+help: Remove assignment to unused variable `VALID_STATES`
+
+F841 Local variable `FAILURE_STATES` is assigned to but never used
+  --> mnos/modules/buildx/router.py:21:5
+   |
+19 |     ]
+20 |
+21 |     FAILURE_STATES = [
+   |     ^^^^^^^^^^^^^^
+22 |         "APPROVAL_REJECTED", "DESIGN_DEVIATION", "ENGINEERING_HOLD", "ENVIRONMENTAL_HOLD",
+23 |         "PROCUREMENT_HOLD", "PAYMENT_HOLD", "CONTRACTOR_NONCOMPLIANCE", "SAFETY_HOLD",
+   |
+help: Remove assignment to unused variable `FAILURE_STATES`
+
+F401 [*] `datetime.datetime` imported but unused
+ --> mnos/modules/education/engine.py:2:22
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+  |                      ^^^^^^^^
+3 |
+4 | class EducationEngine:
+  |
+help: Remove unused import
+
+F401 [*] `datetime.UTC` imported but unused
+ --> mnos/modules/education/engine.py:2:32
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+  |                                ^^^
+3 |
+4 | class EducationEngine:
+  |
+help: Remove unused import
+
+F401 [*] `datetime.datetime` imported but unused
+ --> mnos/modules/exchange/engine.py:2:22
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+  |                      ^^^^^^^^
+3 |
+4 | class ExchangeEngine:
+  |
+help: Remove unused import
+
+F401 [*] `datetime.UTC` imported but unused
+ --> mnos/modules/exchange/engine.py:2:32
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+  |                                ^^^
+3 |
+4 | class ExchangeEngine:
+  |
+help: Remove unused import
+
+F401 [*] `decimal.Decimal` imported but unused
+ --> mnos/modules/finance/escrow.py:2:21
+  |
+1 | import uuid
+2 | from decimal import Decimal
+  |                     ^^^^^^^
+3 |
+4 | class EscrowFCETCore:
+  |
+help: Remove unused import: `decimal.Decimal`
+
+F401 [*] `typing.Dict` imported but unused
+ --> mnos/modules/finance/mira_bridge.py:3:20
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+  |                    ^^^^
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |
+help: Remove unused import
+
+F401 [*] `typing.List` imported but unused
+ --> mnos/modules/finance/mira_bridge.py:3:26
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+  |                          ^^^^
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |
+help: Remove unused import
+
+F401 [*] `typing.Any` imported but unused
+ --> mnos/modules/finance/mira_bridge.py:3:32
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+  |                                ^^^
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |
+help: Remove unused import
+
+F401 [*] `decimal.Decimal` imported but unused
+ --> mnos/modules/finance/mira_bridge.py:4:21
+  |
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |                     ^^^^^^^
+5 |
+6 | class MiraBridgeEngine:
+  |
+help: Remove unused import
+
+F401 [*] `decimal.ROUND_HALF_UP` imported but unused
+ --> mnos/modules/finance/mira_bridge.py:4:30
+  |
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |                              ^^^^^^^^^^^^^
+5 |
+6 | class MiraBridgeEngine:
+  |
+help: Remove unused import
+
+F401 [*] `typing.Dict` imported but unused
+ --> mnos/modules/finance/payment_layer.py:1:20
+  |
+1 | from typing import Dict, Any
+  |                    ^^^^
+2 | from decimal import Decimal
+  |
+help: Remove unused import
+
+F401 [*] `typing.Any` imported but unused
+ --> mnos/modules/finance/payment_layer.py:1:26
+  |
+1 | from typing import Dict, Any
+  |                          ^^^
+2 | from decimal import Decimal
+  |
+help: Remove unused import
+
+F401 [*] `typing.Dict` imported but unused
+ --> mnos/modules/finance/reinvestment.py:3:20
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+  |                    ^^^^
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |
+help: Remove unused import
+
+F401 [*] `typing.List` imported but unused
+ --> mnos/modules/finance/reinvestment.py:3:26
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+  |                          ^^^^
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |
+help: Remove unused import
+
+F401 [*] `typing.Any` imported but unused
+ --> mnos/modules/finance/reinvestment.py:3:32
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+  |                                ^^^
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |
+help: Remove unused import
+
+F401 [*] `typing.Optional` imported but unused
+ --> mnos/modules/finance/reinvestment.py:3:37
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+  |                                     ^^^^^^^^
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |
+help: Remove unused import
+
+F401 [*] `typing.Dict` imported but unused
+ --> mnos/modules/hospitality/engine.py:3:20
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+  |                    ^^^^
+4 | from decimal import Decimal
+  |
+help: Remove unused import
+
+F401 [*] `typing.List` imported but unused
+ --> mnos/modules/hospitality/engine.py:3:26
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+  |                          ^^^^
+4 | from decimal import Decimal
+  |
+help: Remove unused import
+
+F401 [*] `typing.Any` imported but unused
+ --> mnos/modules/hospitality/engine.py:3:32
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+  |                                ^^^
+4 | from decimal import Decimal
+  |
+help: Remove unused import
+
+F401 [*] `typing.Optional` imported but unused
+ --> mnos/modules/hospitality/engine.py:3:37
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+  |                                     ^^^^^^^^
+4 | from decimal import Decimal
+  |
+help: Remove unused import
+
+F401 [*] `datetime.datetime` imported but unused
+ --> mnos/modules/housing/engine.py:2:22
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+  |                      ^^^^^^^^
+3 |
+4 | class HousingEngine:
+  |
+help: Remove unused import
+
+F401 [*] `datetime.UTC` imported but unused
+ --> mnos/modules/housing/engine.py:2:32
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+  |                                ^^^
+3 |
+4 | class HousingEngine:
+  |
+help: Remove unused import
+
+F401 [*] `datetime.datetime` imported but unused
+ --> mnos/modules/imoxon/b2b_negotiation.py:2:22
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC, timedelta
+  |                      ^^^^^^^^
+3 | from typing import Dict, List, Any, Optional
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |
+help: Remove unused import
+
+F401 [*] `datetime.UTC` imported but unused
+ --> mnos/modules/imoxon/b2b_negotiation.py:2:32
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC, timedelta
+  |                                ^^^
+3 | from typing import Dict, List, Any, Optional
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |
+help: Remove unused import
+
+F401 [*] `datetime.timedelta` imported but unused
+ --> mnos/modules/imoxon/b2b_negotiation.py:2:37
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC, timedelta
+  |                                     ^^^^^^^^^
+3 | from typing import Dict, List, Any, Optional
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |
+help: Remove unused import
+
+F401 [*] `typing.Dict` imported but unused
+ --> mnos/modules/imoxon/b2b_negotiation.py:3:20
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC, timedelta
+3 | from typing import Dict, List, Any, Optional
+  |                    ^^^^
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |
+help: Remove unused import
+
+F401 [*] `typing.List` imported but unused
+ --> mnos/modules/imoxon/b2b_negotiation.py:3:26
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC, timedelta
+3 | from typing import Dict, List, Any, Optional
+  |                          ^^^^
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |
+help: Remove unused import
+
+F401 [*] `typing.Any` imported but unused
+ --> mnos/modules/imoxon/b2b_negotiation.py:3:32
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC, timedelta
+3 | from typing import Dict, List, Any, Optional
+  |                                ^^^
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |
+help: Remove unused import
+
+F401 [*] `typing.Optional` imported but unused
+ --> mnos/modules/imoxon/b2b_negotiation.py:3:37
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC, timedelta
+3 | from typing import Dict, List, Any, Optional
+  |                                     ^^^^^^^^
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |
+help: Remove unused import
+
+F401 [*] `decimal.ROUND_HALF_UP` imported but unused
+ --> mnos/modules/imoxon/b2b_negotiation.py:4:30
+  |
+2 | from datetime import datetime, UTC, timedelta
+3 | from typing import Dict, List, Any, Optional
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |                              ^^^^^^^^^^^^^
+5 |
+6 | class B2BAutoNegotiationEngine:
+  |
+help: Remove unused import: `decimal.ROUND_HALF_UP`
+
+F401 [*] `typing.List` imported but unused
+ --> mnos/modules/imoxon/core/engine.py:3:26
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+  |                          ^^^^
+4 |
+5 | class ImoxonCore:
+  |
+help: Remove unused import
+
+F401 [*] `typing.Optional` imported but unused
+ --> mnos/modules/imoxon/core/engine.py:3:37
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+  |                                     ^^^^^^^^
+4 |
+5 | class ImoxonCore:
+  |
+help: Remove unused import
+
+F401 [*] `typing.Dict` imported but unused
+ --> mnos/modules/imoxon/mars_unified.py:3:20
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC, timedelta
+3 | from typing import Dict, List, Any, Optional
+  |                    ^^^^
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |
+help: Remove unused import
+
+F401 [*] `typing.List` imported but unused
+ --> mnos/modules/imoxon/mars_unified.py:3:26
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC, timedelta
+3 | from typing import Dict, List, Any, Optional
+  |                          ^^^^
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |
+help: Remove unused import
+
+F401 [*] `typing.Any` imported but unused
+ --> mnos/modules/imoxon/mars_unified.py:3:32
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC, timedelta
+3 | from typing import Dict, List, Any, Optional
+  |                                ^^^
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |
+help: Remove unused import
+
+F401 [*] `typing.Optional` imported but unused
+ --> mnos/modules/imoxon/mars_unified.py:3:37
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC, timedelta
+3 | from typing import Dict, List, Any, Optional
+  |                                     ^^^^^^^^
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |
+help: Remove unused import
+
+F841 Local variable `transfer_manifest` is assigned to but never used
+  --> mnos/modules/imoxon/mars_unified.py:88:9
+   |
+87 |         # 3. UT SYSTEM Dispatches (Fleet Consolidation)
+88 |         transfer_manifest = self._internal_dispatch_transfer(order_id, {"route": "Male -> Island", "fare": 0})
+   |         ^^^^^^^^^^^^^^^^^
+89 |
+90 |         # 4. MARS PAY Settlement Split
+   |
+help: Remove assignment to unused variable `transfer_manifest`
+
+F841 Local variable `device_id` is assigned to but never used
+ --> mnos/modules/imoxon/policies/engine.py:7:9
+  |
+5 |     def validate_action(self, action_type: str, context: dict):
+6 |         identity_id = context.get("identity_id")
+7 |         device_id = context.get("device_id")
+  |         ^^^^^^^^^
+8 |
+9 |         # Staff Binding requirements
+  |
+help: Remove assignment to unused variable `device_id`
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/imoxon/policies/engine.py:58:27
+   |
+57 |     def _has_role(self, identity_id, role_name):
+58 |         if not identity_id: return False
+   |                           ^
+59 |         # Simplified check for demo
+60 |         profile = self.identity_core.profiles.get(identity_id)
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/imoxon/policies/engine.py:64:27
+   |
+63 |     def _is_verified(self, identity_id):
+64 |         if not identity_id: return False
+   |                           ^
+65 |         profile = self.identity_core.profiles.get(identity_id)
+66 |         return profile and profile.get("verification_status") == "verified"
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/imoxon/procurement/engine.py:53:21
+   |
+51 |     def _internal_approve(self, order_id):
+52 |         order = self.orders.get(order_id)
+53 |         if not order: raise ValueError("Order not found")
+   |                     ^
+54 |
+55 |         actor = self.guard.get_actor()
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/imoxon/procurement/engine.py:97:21
+   |
+95 |     def _internal_invoice(self, order_id):
+96 |         order = self.orders.get(order_id)
+97 |         if not order: raise ValueError("Order not found")
+   |                     ^
+98 |
+99 |         # MIRA-compliant tax calculation via FCE
+   |
+
+E701 Multiple statements on one line (colon)
+   --> mnos/modules/imoxon/procurement/engine.py:120:21
+    |
+118 |     def _internal_settle(self, order_id):
+119 |         order = self.orders.get(order_id)
+120 |         if not order: raise ValueError("Order not found")
+    |                     ^
+121 |
+122 |         # Simulated check for national ID binding in actor context
+    |
+
+F401 [*] `uuid` imported but unused
+ --> mnos/modules/imoxon/resort/weekly_system.py:1:8
+  |
+1 | import uuid
+  |        ^^^^
+2 | from datetime import datetime, UTC
+  |
+help: Remove unused import: `uuid`
+
+F401 [*] `uuid` imported but unused
+ --> mnos/modules/imoxon/schemas/models.py:3:8
+  |
+1 | from sqlalchemy import Column, String, Float, JSON, Boolean, DateTime, ForeignKey
+2 | from mnos.db.schema import Base
+3 | import uuid
+  |        ^^^^
+4 |
+5 | class ImoxonSupplier(Base):
+  |
+help: Remove unused import: `uuid`
+
+F821 Undefined name `datetime`
+  --> mnos/modules/imoxon/schemas/models.py:68:51
+   |
+66 |     total_amount = Column(Float)
+67 |     status = Column(String(30))
+68 |     created_at = Column(DateTime, default=lambda: datetime.now(UTC))
+   |                                                   ^^^^^^^^
+69 |
+70 | class SettlementSplit(Base):
+   |
+
+F821 Undefined name `UTC`
+  --> mnos/modules/imoxon/schemas/models.py:68:64
+   |
+66 |     total_amount = Column(Float)
+67 |     status = Column(String(30))
+68 |     created_at = Column(DateTime, default=lambda: datetime.now(UTC))
+   |                                                                ^^^
+69 |
+70 | class SettlementSplit(Base):
+   |
+
+F841 Local variable `device_id` is assigned to but never used
+  --> mnos/modules/imoxon/staff_onboarding.py:20:13
+   |
+19 |             # 3. Bind Device
+20 |             device_id = self.identity_core.bind_device(identity_id, {"fingerprint": staff.get("device_hash")})
+   |             ^^^^^^^^^
+21 |
+22 |             # 4. Verify Identity (Simplified batch verification)
+   |
+help: Remove assignment to unused variable `device_id`
+
+F401 [*] `typing.Dict` imported but unused
+ --> mnos/modules/imoxon/vvip_key.py:3:20
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC, timedelta
+3 | from typing import Dict, List, Any, Optional
+  |                    ^^^^
+4 |
+5 | class VVIPKeyEngine:
+  |
+help: Remove unused import
+
+F401 [*] `typing.List` imported but unused
+ --> mnos/modules/imoxon/vvip_key.py:3:26
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC, timedelta
+3 | from typing import Dict, List, Any, Optional
+  |                          ^^^^
+4 |
+5 | class VVIPKeyEngine:
+  |
+help: Remove unused import
+
+F401 [*] `typing.Any` imported but unused
+ --> mnos/modules/imoxon/vvip_key.py:3:32
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC, timedelta
+3 | from typing import Dict, List, Any, Optional
+  |                                ^^^
+4 |
+5 | class VVIPKeyEngine:
+  |
+help: Remove unused import
+
+F401 [*] `typing.Optional` imported but unused
+ --> mnos/modules/imoxon/vvip_key.py:3:37
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC, timedelta
+3 | from typing import Dict, List, Any, Optional
+  |                                     ^^^^^^^^
+4 |
+5 | class VVIPKeyEngine:
+  |
+help: Remove unused import
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/imoxon/vvip_key.py:53:19
+   |
+51 |         """QR/NFC Hardware Verification Simulation."""
+52 |         key = self.minted_keys.get(key_id)
+53 |         if not key: return False
+   |                   ^
+54 |
+55 |         # 1. AEGIS Binding Check (Non-transferable)
+   |
+
+F401 [*] `typing.Dict` imported but unused
+ --> mnos/modules/laundry/engine.py:3:20
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+  |                    ^^^^
+4 | from decimal import Decimal
+  |
+help: Remove unused import
+
+F401 [*] `typing.Any` imported but unused
+ --> mnos/modules/laundry/engine.py:3:32
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+  |                                ^^^
+4 | from decimal import Decimal
+  |
+help: Remove unused import
+
+F401 [*] `typing.Optional` imported but unused
+ --> mnos/modules/laundry/engine.py:3:37
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+  |                                     ^^^^^^^^
+4 | from decimal import Decimal
+  |
+help: Remove unused import
+
+F401 [*] `typing.List` imported but unused
+ --> mnos/modules/redcoral/router.py:2:20
+  |
+1 | from fastapi import APIRouter, Depends, HTTPException
+2 | from typing import List, Dict
+  |                    ^^^^
+3 | from mnos.modules.redcoral.models import DesignBrief, StylePackage, RenderBrief, VisualApproval, RedCoralHandoff
+4 | from mnos.shared.execution_guard import ExecutionGuard
+  |
+help: Remove unused import
+
+F401 [*] `typing.Dict` imported but unused
+ --> mnos/modules/redcoral/router.py:2:26
+  |
+1 | from fastapi import APIRouter, Depends, HTTPException
+2 | from typing import List, Dict
+  |                          ^^^^
+3 | from mnos.modules.redcoral.models import DesignBrief, StylePackage, RenderBrief, VisualApproval, RedCoralHandoff
+4 | from mnos.shared.execution_guard import ExecutionGuard
+  |
+help: Remove unused import
+
+F401 [*] `typing.Dict` imported but unused
+ --> mnos/modules/restaurant/engine.py:3:20
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+  |                    ^^^^
+4 | from decimal import Decimal
+  |
+help: Remove unused import
+
+F401 [*] `typing.List` imported but unused
+ --> mnos/modules/restaurant/engine.py:3:26
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+  |                          ^^^^
+4 | from decimal import Decimal
+  |
+help: Remove unused import
+
+F401 [*] `typing.Any` imported but unused
+ --> mnos/modules/restaurant/engine.py:3:32
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+  |                                ^^^
+4 | from decimal import Decimal
+  |
+help: Remove unused import
+
+F401 [*] `typing.Optional` imported but unused
+ --> mnos/modules/restaurant/engine.py:3:37
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+  |                                     ^^^^^^^^
+4 | from decimal import Decimal
+  |
+help: Remove unused import
+
+F401 [*] `decimal.Decimal` imported but unused
+ --> mnos/modules/restaurant/engine.py:4:21
+  |
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+4 | from decimal import Decimal
+  |                     ^^^^^^^
+5 |
+6 | class MaldivesRestaurantEngine:
+  |
+help: Remove unused import: `decimal.Decimal`
+
+F401 [*] `datetime.datetime` imported but unused
+ --> mnos/modules/tourism/engine.py:2:22
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+  |                      ^^^^^^^^
+3 |
+4 | class TourismEngine:
+  |
+help: Remove unused import
+
+F401 [*] `datetime.UTC` imported but unused
+ --> mnos/modules/tourism/engine.py:2:32
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+  |                                ^^^
+3 |
+4 | class TourismEngine:
+  |
+help: Remove unused import
+
+F401 [*] `datetime.datetime` imported but unused
+ --> mnos/modules/transport/engine.py:2:22
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+  |                      ^^^^^^^^
+3 |
+4 | class TransportEngine:
+  |
+help: Remove unused import
+
+F401 [*] `datetime.UTC` imported but unused
+ --> mnos/modules/transport/engine.py:2:32
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+  |                                ^^^
+3 |
+4 | class TransportEngine:
+  |
+help: Remove unused import
+
+F401 [*] `uuid` imported but unused
+ --> mnos/modules/trawel/island_gm.py:1:8
+  |
+1 | import uuid
+  |        ^^^^
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+  |
+help: Remove unused import: `uuid`
+
+F401 [*] `datetime.datetime` imported but unused
+ --> mnos/modules/trawel/island_gm.py:2:22
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+  |                      ^^^^^^^^
+3 | from typing import Dict, List, Any, Optional
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |
+help: Remove unused import
+
+F401 [*] `datetime.UTC` imported but unused
+ --> mnos/modules/trawel/island_gm.py:2:32
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+  |                                ^^^
+3 | from typing import Dict, List, Any, Optional
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |
+help: Remove unused import
+
+F401 [*] `typing.Dict` imported but unused
+ --> mnos/modules/trawel/island_gm.py:3:20
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+  |                    ^^^^
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |
+help: Remove unused import
+
+F401 [*] `typing.List` imported but unused
+ --> mnos/modules/trawel/island_gm.py:3:26
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+  |                          ^^^^
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |
+help: Remove unused import
+
+F401 [*] `typing.Any` imported but unused
+ --> mnos/modules/trawel/island_gm.py:3:32
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+  |                                ^^^
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |
+help: Remove unused import
+
+F401 [*] `typing.Optional` imported but unused
+ --> mnos/modules/trawel/island_gm.py:3:37
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+  |                                     ^^^^^^^^
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |
+help: Remove unused import
+
+F401 [*] `decimal.ROUND_HALF_UP` imported but unused
+ --> mnos/modules/trawel/island_gm.py:4:30
+  |
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |                              ^^^^^^^^^^^^^
+5 |
+6 | class IslandGMSystem:
+  |
+help: Remove unused import: `decimal.ROUND_HALF_UP`
+
+F401 [*] `uuid` imported but unused
+ --> mnos/modules/trawel/leaderboard.py:1:8
+  |
+1 | import uuid
+  |        ^^^^
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+  |
+help: Remove unused import: `uuid`
+
+F401 [*] `typing.Dict` imported but unused
+ --> mnos/modules/trawel/leaderboard.py:3:20
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+  |                    ^^^^
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |
+help: Remove unused import
+
+F401 [*] `typing.Any` imported but unused
+ --> mnos/modules/trawel/leaderboard.py:3:32
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+  |                                ^^^
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |
+help: Remove unused import
+
+F401 [*] `decimal.ROUND_HALF_UP` imported but unused
+ --> mnos/modules/trawel/leaderboard.py:4:30
+  |
+2 | from datetime import datetime, UTC
+3 | from typing import Dict, List, Any, Optional
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |                              ^^^^^^^^^^^^^
+5 |
+6 | class HustleLeaderboardEngine:
+  |
+help: Remove unused import: `decimal.ROUND_HALF_UP`
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/trawel/leaderboard.py:23:22
+   |
+21 |         """Processes economic events to update rankings."""
+22 |         island = data.get("island")
+23 |         if not island: return
+   |                      ^
+24 |
+25 |         # SHADOW VALIDATION ONLY (Simulated)
+   |
+
+F401 [*] `uuid` imported but unused
+ --> mnos/modules/trawel/scoring.py:1:8
+  |
+1 | import uuid
+  |        ^^^^
+2 | from datetime import datetime, UTC, timedelta
+3 | from typing import Dict, List, Any, Optional
+  |
+help: Remove unused import: `uuid`
+
+F401 [*] `datetime.datetime` imported but unused
+ --> mnos/modules/trawel/scoring.py:2:22
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC, timedelta
+  |                      ^^^^^^^^
+3 | from typing import Dict, List, Any, Optional
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |
+help: Remove unused import
+
+F401 [*] `datetime.UTC` imported but unused
+ --> mnos/modules/trawel/scoring.py:2:32
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC, timedelta
+  |                                ^^^
+3 | from typing import Dict, List, Any, Optional
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |
+help: Remove unused import
+
+F401 [*] `datetime.timedelta` imported but unused
+ --> mnos/modules/trawel/scoring.py:2:37
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC, timedelta
+  |                                     ^^^^^^^^^
+3 | from typing import Dict, List, Any, Optional
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |
+help: Remove unused import
+
+F401 [*] `typing.Dict` imported but unused
+ --> mnos/modules/trawel/scoring.py:3:20
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC, timedelta
+3 | from typing import Dict, List, Any, Optional
+  |                    ^^^^
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |
+help: Remove unused import
+
+F401 [*] `typing.List` imported but unused
+ --> mnos/modules/trawel/scoring.py:3:26
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC, timedelta
+3 | from typing import Dict, List, Any, Optional
+  |                          ^^^^
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |
+help: Remove unused import
+
+F401 [*] `typing.Any` imported but unused
+ --> mnos/modules/trawel/scoring.py:3:32
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC, timedelta
+3 | from typing import Dict, List, Any, Optional
+  |                                ^^^
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |
+help: Remove unused import
+
+F401 [*] `typing.Optional` imported but unused
+ --> mnos/modules/trawel/scoring.py:3:37
+  |
+1 | import uuid
+2 | from datetime import datetime, UTC, timedelta
+3 | from typing import Dict, List, Any, Optional
+  |                                     ^^^^^^^^
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |
+help: Remove unused import
+
+F401 [*] `decimal.Decimal` imported but unused
+ --> mnos/modules/trawel/scoring.py:4:21
+  |
+2 | from datetime import datetime, UTC, timedelta
+3 | from typing import Dict, List, Any, Optional
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |                     ^^^^^^^
+5 |
+6 | class AtollCommanderScoringEngine:
+  |
+help: Remove unused import
+
+F401 [*] `decimal.ROUND_HALF_UP` imported but unused
+ --> mnos/modules/trawel/scoring.py:4:30
+  |
+2 | from datetime import datetime, UTC, timedelta
+3 | from typing import Dict, List, Any, Optional
+4 | from decimal import Decimal, ROUND_HALF_UP
+  |                              ^^^^^^^^^^^^^
+5 |
+6 | class AtollCommanderScoringEngine:
+  |
+help: Remove unused import
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/trawel/scoring.py:24:21
+   |
+22 |         """
+23 |         stats = self.island_system.island_stats.get(island)
+24 |         if not stats: return
+   |                     ^
+25 |
+26 |         # Filtering for active/verified vendors only
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/trawel/scoring.py:40:22
+   |
+38 |         """Vendor must be AEGIS verified and have >= 5 SHADOW transactions."""
+39 |         v_data = self.vendor_registry.get(vendor_id)
+40 |         if not v_data: return False
+   |                      ^
+41 |
+42 |         # In a real system, we'd check AEGIS and SHADOW ledger counts
+   |
+
+E701 Multiple statements on one line (colon)
+  --> mnos/modules/trawel/scoring.py:49:25
+   |
+47 |         PULSE_SCORE = ((Baseline - Current) / Baseline) × 100 × 5
+48 |         """
+49 |         if baseline <= 0: return
+   |                         ^
+50 |         improvement = (baseline - current) / baseline
+51 |         pulse = improvement * 100 * 5
+   |
+
+F401 [*] `json` imported but unused
+ --> promote_canary_sala.py:4:8
+  |
+2 | import asyncio
+3 | import os
+4 | import json
+  |        ^^^^
+5 | from main import app, shadow_core, events_core
+6 | from httpx import ASGITransport
+  |
+help: Remove unused import: `json`
+
+F541 [*] f-string without any placeholders
+  --> promote_canary_sala.py:74:15
+   |
+72 |         print("-" * 60)
+73 |         print("📊 PROMOTION SUMMARY")
+74 |         print(f"   - Target Node:  SALA Resort")
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+75 |         print(f"   - Status:       ACTIVE")
+76 |         print(f"   - Traffic:      {metrics['canary_traffic']}%")
+   |
+help: Remove extraneous `f` prefix
+
+F541 [*] f-string without any placeholders
+  --> promote_canary_sala.py:75:15
+   |
+73 |         print("📊 PROMOTION SUMMARY")
+74 |         print(f"   - Target Node:  SALA Resort")
+75 |         print(f"   - Status:       ACTIVE")
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+76 |         print(f"   - Traffic:      {metrics['canary_traffic']}%")
+77 |         print(f"   - Integrity:    {'SECURE' if metrics['integrity'] else 'ERROR'}")
+   |
+help: Remove extraneous `f` prefix
+
+F541 [*] f-string without any placeholders
+  --> promote_canary_sala.py:78:15
+   |
+76 |         print(f"   - Traffic:      {metrics['canary_traffic']}%")
+77 |         print(f"   - Integrity:    {'SECURE' if metrics['integrity'] else 'ERROR'}")
+78 |         print(f"   - Compliance:   100% Locked")
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+79 |         print("\n📢 KILL-SWITCH: Auto-rollback ARMED on Shadow or Finance violation.")
+80 |         print("-" * 60)
+   |
+help: Remove extraneous `f` prefix
+
+F401 [*] `json` imported but unused
+ --> run_final_audit.py:4:8
+  |
+2 | import asyncio
+3 | import os
+4 | import json
+  |        ^^^^
+5 | from main import app, shadow_core
+6 | from httpx import ASGITransport
+  |
+help: Remove unused import: `json`
+
+F841 Local variable `results` is assigned to but never used
+  --> run_final_audit.py:14:5
+   |
+12 |     os.environ["NEXGEN_SECRET"] = "cto-audit-2026"
+13 |     transport = ASGITransport(app=app)
+14 |     results = []
+   |     ^^^^^^^
+15 |
+16 |     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+   |
+help: Remove assignment to unused variable `results`
+
+F401 [*] `json` imported but unused
+ --> simulate_bubble_os.py:4:8
+  |
+2 | import asyncio
+3 | import os
+4 | import json
+  |        ^^^^
+5 | from main import app
+6 | from httpx import ASGITransport
+  |
+help: Remove unused import: `json`
+
+F401 [*] `os` imported but unused
+ --> simulate_national.py:3:8
+  |
+1 | import httpx
+2 | import asyncio
+3 | import os
+  |        ^^
+4 | import json
+5 | from imoxon_national.ai_engine.role_detection import RoleDetectionAI
+  |
+help: Remove unused import: `os`
+
+F401 [*] `json` imported but unused
+ --> simulate_national.py:4:8
+  |
+2 | import asyncio
+3 | import os
+4 | import json
+  |        ^^^^
+5 | from imoxon_national.ai_engine.role_detection import RoleDetectionAI
+6 | from imoxon_national.core_fastapi.main import app
+  |
+help: Remove unused import: `json`
+
+F401 [*] `json` imported but unused
+ --> simulate_ndeos.py:4:8
+  |
+2 | import asyncio
+3 | import os
+4 | import json
+  |        ^^^^
+5 | from main import app, events_core, shadow_core, guard
+6 | from httpx import ASGITransport
+  |
+help: Remove unused import: `json`
+
+F401 [*] `httpx` imported but unused
+ --> simulate_phase1.py:1:8
+  |
+1 | import httpx
+  |        ^^^^^
+2 | import asyncio
+3 | import os
+  |
+help: Remove unused import: `httpx`
+
+F401 [*] `os` imported but unused
+ --> simulate_phase1.py:3:8
+  |
+1 | import httpx
+2 | import asyncio
+3 | import os
+  |        ^^
+4 | from decimal import Decimal
+5 | from mnos.core.shadow.ledger import ShadowLedger
+  |
+help: Remove unused import: `os`
+
+F401 [*] `json` imported but unused
+ --> simulate_real_economy_bridge.py:4:8
+  |
+2 | import asyncio
+3 | import os
+4 | import json
+  |        ^^^^
+5 | from main import app
+6 | from httpx import ASGITransport
+  |
+help: Remove unused import: `json`
+
+F401 [*] `os` imported but unused
+ --> test_consolidated_imoxon.py:3:8
+  |
+1 | import pytest
+2 | import httpx
+3 | import os
+  |        ^^
+4 | from main import app
+5 | from httpx import ASGITransport
+  |
+help: Remove unused import: `os`
+
+F401 [*] `os` imported but unused
+ --> test_sovereign_commerce.py:3:8
+  |
+1 | import pytest
+2 | import httpx
+3 | import os
+  |        ^^
+4 | from main import app
+5 | from httpx import ASGITransport
+  |
+help: Remove unused import: `os`
+
+F401 [*] `main.mars_unified` imported but unused
+ --> tests/test_b2b_negotiation.py:3:38
+  |
+1 | import pytest
+2 | from fastapi.testclient import TestClient
+3 | from main import app, identity_core, mars_unified
+  |                                      ^^^^^^^^^^^^
+4 |
+5 | client = TestClient(app)
+  |
+help: Remove unused import: `main.mars_unified`
+
+F841 Local variable `did` is assigned to but never used
+  --> tests/test_b2b_negotiation.py:14:5
+   |
+12 |         "organization_id": "GLOBAL-TO"
+13 |     })
+14 |     did = identity_core.bind_device(uid, {"fingerprint": "agent-pc"})
+   |     ^^^
+15 |     # Mocking B2B Realm for this session
+16 |     from main import identity_gateway
+   |
+help: Remove assignment to unused variable `did`
+
+F401 [*] `main.mars_unified` imported but unused
+ --> tests/test_hustle_leaderboard.py:3:38
+  |
+1 | import pytest
+2 | from fastapi.testclient import TestClient
+3 | from main import app, identity_core, mars_unified, leaderboard
+  |                                      ^^^^^^^^^^^^
+4 |
+5 | client = TestClient(app)
+  |
+help: Remove unused import: `main.mars_unified`
+
+F401 [*] `main.island_gm` imported but unused
+ --> tests/test_island_gm_system.py:3:38
+  |
+1 | import pytest
+2 | from fastapi.testclient import TestClient
+3 | from main import app, identity_core, island_gm
+  |                                      ^^^^^^^^^
+4 |
+5 | client = TestClient(app)
+  |
+help: Remove unused import: `main.island_gm`
+
+F401 [*] `main.laundry_engine` imported but unused
+ --> tests/test_laundry_service.py:3:38
+  |
+1 | import pytest
+2 | from fastapi.testclient import TestClient
+3 | from main import app, identity_core, laundry_engine
+  |                                      ^^^^^^^^^^^^^^
+4 |
+5 | client = TestClient(app)
+  |
+help: Remove unused import: `main.laundry_engine`
+
+F401 [*] `main.reinvestment_engine` imported but unused
+ --> tests/test_national_dashboard.py:3:52
+  |
+1 | import pytest
+2 | from fastapi.testclient import TestClient
+3 | from main import app, identity_core, mars_unified, reinvestment_engine
+  |                                                    ^^^^^^^^^^^^^^^^^^^
+4 |
+5 | client = TestClient(app)
+  |
+help: Remove unused import: `main.reinvestment_engine`
+
+F841 Local variable `resp` is assigned to but never used
+  --> tests/test_nexus_skyi_loop.py:58:5
+   |
+57 | def test_unauthorized_package_build(guest_headers):
+58 |     resp = client.post("/imoxon/itravel/packages/build", json={}, headers=guest_headers)
+   |     ^^^^
+59 |     # Role 'guest' should not be allowed to 'trawel.package.build' based on generic policy if we had one,
+60 |     # but currently our simple IdentityPolicyEngine doesn't explicitly block it unless we add it.
+   |
+help: Remove assignment to unused variable `resp`
+
+F401 [*] `main.guard` imported but unused
+ --> tests/test_rc_bx_ax.py:3:23
+  |
+1 | import pytest
+2 | from fastapi.testclient import TestClient
+3 | from main import app, guard, shadow_core, orca_core, identity_core
+  |                       ^^^^^
+4 | from mnos.shared.execution_guard import _sovereign_context
+  |
+help: Remove unused import: `main.guard`
+
+F401 [*] `mnos.shared.execution_guard._sovereign_context` imported but unused
+ --> tests/test_rc_bx_ax.py:4:41
+  |
+2 | from fastapi.testclient import TestClient
+3 | from main import app, guard, shadow_core, orca_core, identity_core
+4 | from mnos.shared.execution_guard import _sovereign_context
+  |                                         ^^^^^^^^^^^^^^^^^^
+5 |
+6 | client = TestClient(app)
+  |
+help: Remove unused import: `mnos.shared.execution_guard._sovereign_context`
+
+F401 [*] `mnos.shared.execution_guard._sovereign_context` imported but unused
+ --> tests/test_scoped_auth.py:4:41
+  |
+2 | from fastapi.testclient import TestClient
+3 | from main import app, shadow_core, orca_core
+4 | from mnos.shared.execution_guard import _sovereign_context
+  |                                         ^^^^^^^^^^^^^^^^^^
+5 |
+6 | client = TestClient(app)
+  |
+help: Remove unused import: `mnos.shared.execution_guard._sovereign_context`
+
+F841 Local variable `headers` is assigned to but never used
+  --> tests/test_security_hardened.py:76:5
+   |
+74 |     # Alternatively, try a supplier action with a user role.
+75 |
+76 |     headers = {
+   |     ^^^^^^^
+77 |         "X-AEGIS-IDENTITY": user_id,
+78 |         "X-AEGIS-DEVICE": user_device
+   |
+help: Remove assignment to unused variable `headers`
+
+F401 [*] `os` imported but unused
+ --> validate_schema.py:1:8
+  |
+1 | import os
+  |        ^^
+2 | import sys
+3 | from sqlalchemy import create_engine
+  |
+help: Remove unused import: `os`
+
+Found 197 errors.
+[*] 173 fixable with the `--fix` option (10 hidden fixes can be enabled with the `--unsafe-fixes` option).

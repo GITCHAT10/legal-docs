@@ -55,7 +55,7 @@ def test_nexus_skyi_closed_loop_economy(admin_headers, guest_headers):
     assert settlement["ngo_fee"] == 10.0  # 2% of 500
 
 def test_unauthorized_package_build(guest_headers):
-    resp = client.post("/imoxon/itravel/packages/build", json={}, headers=guest_headers)
+    client.post("/imoxon/itravel/packages/build", json={}, headers=guest_headers)
     # Role 'guest' should not be allowed to 'trawel.package.build' based on generic policy if we had one,
     # but currently our simple IdentityPolicyEngine doesn't explicitly block it unless we add it.
     # However, 'get_dashboard' in grid-control DOES check for admin.

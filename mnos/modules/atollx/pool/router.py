@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from typing import List, Optional, Dict
 from mnos.shared.execution_guard import ExecutionGuard
 from mnos.shared.auth import get_actor_context
 
@@ -41,7 +40,7 @@ def create_pool_router(guard: ExecutionGuard, shadow, orca):
         return guard.execute_sovereign_action(
             "atollx.pool.system",
             actor,
-            lambda: {"status": "POOL_LOGGED", "pool_id": pool.pool_id}
+            lambda **kwargs: {"status": "POOL_LOGGED", "pool_id": pool.pool_id}
         )
 
     @router.post("/water-quality")
@@ -54,7 +53,7 @@ def create_pool_router(guard: ExecutionGuard, shadow, orca):
         return guard.execute_sovereign_action(
             "atollx.pool.water_quality",
             actor,
-            lambda: {"status": "QUALITY_LOGGED", "reading_id": reading.reading_id}
+            lambda **kwargs: {"status": "QUALITY_LOGGED", "reading_id": reading.reading_id}
         )
 
     @router.post("/automation")
@@ -62,7 +61,7 @@ def create_pool_router(guard: ExecutionGuard, shadow, orca):
         return guard.execute_sovereign_action(
             "atollx.pool.automation",
             actor,
-            lambda: {"status": "COMMAND_LOGGED", "command_id": command.command_id}
+            lambda **kwargs: {"status": "COMMAND_LOGGED", "command_id": command.command_id}
         )
 
     @router.post("/energy")
@@ -70,7 +69,7 @@ def create_pool_router(guard: ExecutionGuard, shadow, orca):
         return guard.execute_sovereign_action(
             "atollx.pool.energy",
             actor,
-            lambda: {"status": "ENERGY_LOGGED", "reading_id": reading.reading_id}
+            lambda **kwargs: {"status": "ENERGY_LOGGED", "reading_id": reading.reading_id}
         )
 
     @router.post("/design-approval")
@@ -78,7 +77,7 @@ def create_pool_router(guard: ExecutionGuard, shadow, orca):
         return guard.execute_sovereign_action(
             "atollx.pool.design_approve",
             actor,
-            lambda: {"status": "DESIGN_APPROVED", "approval_id": approval.approval_id}
+            lambda **kwargs: {"status": "DESIGN_APPROVED", "approval_id": approval.approval_id}
         )
 
     @router.post("/validate")

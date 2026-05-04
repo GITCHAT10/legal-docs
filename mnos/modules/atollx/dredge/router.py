@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List
 from mnos.shared.execution_guard import ExecutionGuard
 from mnos.shared.auth import get_actor_context
 
@@ -43,7 +43,7 @@ def create_dredge_router(guard: ExecutionGuard, shadow, orca):
         return guard.execute_sovereign_action(
             "atollx.dredge.survey",
             actor,
-            lambda: {"status": "SURVEY_LOGGED", "survey_id": survey.survey_id}
+            lambda **kwargs: {"status": "SURVEY_LOGGED", "survey_id": survey.survey_id}
         )
 
     @router.post("/plan")
@@ -51,7 +51,7 @@ def create_dredge_router(guard: ExecutionGuard, shadow, orca):
         return guard.execute_sovereign_action(
             "atollx.dredge.plan",
             actor,
-            lambda: {"status": "PLAN_CREATED", "plan_id": plan.plan_id}
+            lambda **kwargs: {"status": "PLAN_CREATED", "plan_id": plan.plan_id}
         )
 
     @router.post("/telemetry")
@@ -59,7 +59,7 @@ def create_dredge_router(guard: ExecutionGuard, shadow, orca):
         return guard.execute_sovereign_action(
             "atollx.dredge.telemetry",
             actor,
-            lambda: {"status": "TELEMETRY_LOGGED", "telemetry_id": telemetry.telemetry_id}
+            lambda **kwargs: {"status": "TELEMETRY_LOGGED", "telemetry_id": telemetry.telemetry_id}
         )
 
     @router.post("/validate")
@@ -79,7 +79,7 @@ def create_dredge_router(guard: ExecutionGuard, shadow, orca):
         return guard.execute_sovereign_action(
             "atollx.dredge.volume_claim",
             actor,
-            lambda: {"status": "VOLUME_CLAIMED", "claim_id": claim.claim_id}
+            lambda **kwargs: {"status": "VOLUME_CLAIMED", "claim_id": claim.claim_id}
         )
 
     return router

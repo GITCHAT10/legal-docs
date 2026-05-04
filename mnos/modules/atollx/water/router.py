@@ -1,6 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
-from typing import List, Optional
 from mnos.shared.execution_guard import ExecutionGuard
 from mnos.shared.auth import get_actor_context
 
@@ -44,7 +43,7 @@ def create_water_router(guard: ExecutionGuard, shadow, orca):
         return guard.execute_sovereign_action(
             "atollx.water.batch",
             actor,
-            lambda: {"status": "BATCH_LOGGED", "batch_id": batch.batch_id}
+            lambda **kwargs: {"status": "BATCH_LOGGED", "batch_id": batch.batch_id}
         )
 
     @router.post("/quality")
@@ -59,7 +58,7 @@ def create_water_router(guard: ExecutionGuard, shadow, orca):
         return guard.execute_sovereign_action(
             "atollx.water.quality",
             actor,
-            lambda: {"status": status, "reading_id": reading.reading_id, "orca": orca_res},
+            lambda **kwargs: {"status": status, "reading_id": reading.reading_id, "orca": orca_res},
             forced_status=status
         )
 
@@ -68,7 +67,7 @@ def create_water_router(guard: ExecutionGuard, shadow, orca):
         return guard.execute_sovereign_action(
             "atollx.water.odor",
             actor,
-            lambda: {"status": "ODOR_LOGGED", "reading_id": reading.reading_id}
+            lambda **kwargs: {"status": "ODOR_LOGGED", "reading_id": reading.reading_id}
         )
 
     @router.post("/sludge")
@@ -76,7 +75,7 @@ def create_water_router(guard: ExecutionGuard, shadow, orca):
         return guard.execute_sovereign_action(
             "atollx.water.sludge",
             actor,
-            lambda: {"status": "SLUDGE_LOGGED", "record_id": record.record_id}
+            lambda **kwargs: {"status": "SLUDGE_LOGGED", "record_id": record.record_id}
         )
 
     @router.post("/validate-class-a")
@@ -88,7 +87,7 @@ def create_water_router(guard: ExecutionGuard, shadow, orca):
         return guard.execute_sovereign_action(
             "atollx.water.fce_credit",
             actor,
-            lambda: {"status": "CREDIT_ISSUED", "credit_id": credit.credit_id}
+            lambda **kwargs: {"status": "CREDIT_ISSUED", "credit_id": credit.credit_id}
         )
 
     return router

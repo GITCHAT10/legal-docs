@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
-from typing import List, Optional, Dict
+from typing import List
 from mnos.shared.execution_guard import ExecutionGuard
 from mnos.shared.auth import get_actor_context
 
@@ -47,7 +47,7 @@ def create_design_router(guard: ExecutionGuard, shadow, orca):
         return guard.execute_sovereign_action(
             "atollx.design.civil",
             actor,
-            lambda: {"status": "CIVIL_LOGGED", "design_id": design.design_id}
+            lambda **kwargs: {"status": "CIVIL_LOGGED", "design_id": design.design_id}
         )
 
     @router.post("/bim")
@@ -55,7 +55,7 @@ def create_design_router(guard: ExecutionGuard, shadow, orca):
         return guard.execute_sovereign_action(
             "atollx.design.bim",
             actor,
-            lambda: {"status": "BIM_LOGGED", "model_id": model.model_id}
+            lambda **kwargs: {"status": "BIM_LOGGED", "model_id": model.model_id}
         )
 
     @router.post("/mep")
@@ -63,7 +63,7 @@ def create_design_router(guard: ExecutionGuard, shadow, orca):
         return guard.execute_sovereign_action(
             "atollx.design.mep",
             actor,
-            lambda: {"status": "MEP_LOGGED", "element_id": element.element_id}
+            lambda **kwargs: {"status": "MEP_LOGGED", "element_id": element.element_id}
         )
 
     @router.post("/energy")
@@ -71,7 +71,7 @@ def create_design_router(guard: ExecutionGuard, shadow, orca):
         return guard.execute_sovereign_action(
             "atollx.design.energy",
             actor,
-            lambda: {"status": "ENERGY_LOGGED", "model_id": model.model_id}
+            lambda **kwargs: {"status": "ENERGY_LOGGED", "model_id": model.model_id}
         )
 
     @router.post("/clash-check")
@@ -79,7 +79,7 @@ def create_design_router(guard: ExecutionGuard, shadow, orca):
         return guard.execute_sovereign_action(
             "atollx.design.clash",
             actor,
-            lambda: {"status": "CLASH_CHECKED", "report_id": report.report_id}
+            lambda **kwargs: {"status": "CLASH_CHECKED", "report_id": report.report_id}
         )
 
     @router.post("/prefab")
@@ -87,7 +87,7 @@ def create_design_router(guard: ExecutionGuard, shadow, orca):
         return guard.execute_sovereign_action(
             "atollx.design.prefab",
             actor,
-            lambda: {"status": "PREFAB_LOGGED", "package_id": pkg.package_id}
+            lambda **kwargs: {"status": "PREFAB_LOGGED", "package_id": pkg.package_id}
         )
 
     @router.post("/validate")
