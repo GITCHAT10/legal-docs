@@ -1,0 +1,9 @@
+Starting MNOS Compliance Verification...
+
+Compliance Summary:
+------------------------------
+Ingestion API       : PASS
+Secret Enforcement  : PASS
+Policy Determinism  : PASS
+Policy Rejection    : PASS
+------------------------------
