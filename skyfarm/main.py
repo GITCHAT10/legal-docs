@@ -10,6 +10,7 @@ import skyfarm.trace.models
 import skyfarm.restaurant.models
 import skyfarm.retail.models
 import skyfarm.integration.models
+import skyfarm.chefs_farm.models
 import threading
 from skyfarm.integration.outbox_worker import process_outbox
 from skyfarm.integration.logging_utils import logger
@@ -26,6 +27,7 @@ from skyfarm.trace.router import router as trace_router
 from skyfarm.restaurant.router import router as restaurant_router
 from skyfarm.retail.router import router as retail_router
 from skyfarm.integration.router import router as integration_router
+from skyfarm.chefs_farm.router import router as chefs_farm_router
 
 # Background Worker Thread
 def start_worker():
@@ -58,6 +60,7 @@ app.include_router(trace_router)
 app.include_router(restaurant_router)
 app.include_router(retail_router)
 app.include_router(integration_router)
+app.include_router(chefs_farm_router)
 
 @app.get("/")
 def read_root():

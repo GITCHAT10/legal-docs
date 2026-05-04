@@ -1,0 +1,61 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.0.3, pluggy-1.6.0
+rootdir: /app
+plugins: asyncio-1.3.0, anyio-4.13.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 15 items
+
+tests/test_mnos_compliance_suite.py ......                               [ 40%]
+tests/test_integration_failure_paths.py ..                               [ 53%]
+tests/test_outbox_retry.py .                                             [ 60%]
+tests/test_integration_hardening.py ...                                  [ 80%]
+tests/test_skyfarm.py ...                                                [100%]
+
+=============================== warnings summary ===============================
+mnos/database.py:13
+  /app/mnos/database.py:13: MovedIn20Warning: The ``declarative_base()`` function is now available as sqlalchemy.orm.declarative_base(). (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    Base = declarative_base()
+
+skyfarm/database.py:21
+  /app/skyfarm/database.py:21: MovedIn20Warning: The ``declarative_base()`` function is now available as sqlalchemy.orm.declarative_base(). (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    Base = declarative_base()
+
+tests/test_mnos_compliance_suite.py: 9 warnings
+tests/test_outbox_retry.py: 10 warnings
+  /home/jules/.pyenv/versions/3.12.13/lib/python3.12/site-packages/sqlalchemy/sql/schema.py:3624: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    return util.wrap_callable(lambda ctx: fn(), fn)  # type: ignore
+
+tests/test_outbox_retry.py::test_outbox_retry_backoff
+  /app/tests/test_outbox_retry.py:20: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    next_attempt_at=datetime.utcnow() - timedelta(minutes=1)
+
+tests/test_outbox_retry.py::test_outbox_retry_backoff
+  /app/skyfarm/integration/outbox_worker.py:33: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_outbox_retry.py::test_outbox_retry_backoff
+tests/test_outbox_retry.py::test_outbox_retry_backoff
+tests/test_outbox_retry.py::test_outbox_retry_backoff
+tests/test_outbox_retry.py::test_outbox_retry_backoff
+tests/test_outbox_retry.py::test_outbox_retry_backoff
+tests/test_outbox_retry.py::test_outbox_retry_backoff
+tests/test_outbox_retry.py::test_outbox_retry_backoff
+tests/test_outbox_retry.py::test_outbox_retry_backoff
+  /app/skyfarm/integration/outbox_worker.py:83: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    entry.next_attempt_at = datetime.utcnow() + timedelta(seconds=backoffs[entry.attempt_count])
+
+tests/test_outbox_retry.py::test_outbox_retry_backoff
+  /app/tests/test_outbox_retry.py:39: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    assert entry.next_attempt_at > datetime.utcnow() + timedelta(seconds=50)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================= 15 passed, 32 warnings in 1.52s ========================
+Starting MNOS Compliance Verification...
+
+Compliance Summary:
+------------------------------
+Ingestion API       : PASS
+Secret Enforcement  : PASS
+Policy Determinism  : PASS
+Policy Rejection    : PASS
+------------------------------
