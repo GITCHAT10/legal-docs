@@ -7,18 +7,28 @@ def create_b2b_portal_router(nexus_brain, b2b_negotiator, get_actor_ctx):
     @router.post("/rfq")
     async def request_quote(rfq_data: dict, actor: dict = Depends(get_actor_ctx)):
         """Auto-Negotiation: Request for Quote (TO vs DMC)."""
+        from mnos.shared.execution_guard import _sovereign_context
+        import uuid
+        _sovereign_context.set({"token": str(uuid.uuid4()), "actor": actor})
         try:
             return b2b_negotiator.process_rfq(actor, rfq_data)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
+        finally:
+            _sovereign_context.set(None)
 
     @router.post("/booking/confirm")
     async def confirm_booking(quote_id: str, actor: dict = Depends(get_actor_ctx)):
         """Instant Booking: Confirm quote and lock inventory."""
+        from mnos.shared.execution_guard import _sovereign_context
+        import uuid
+        _sovereign_context.set({"token": str(uuid.uuid4()), "actor": actor})
         try:
             return b2b_negotiator.confirm_booking(actor, quote_id)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
+        finally:
+            _sovereign_context.set(None)
 
     @router.get("/inventory/search")
     async def search_inventory(actor: dict = Depends(get_actor_ctx)):

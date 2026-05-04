@@ -1,0 +1,22 @@
+{
+  "AIG": "aig-corporate-web",
+  "MNOS Admin": "mnos-admin-console",
+  "FCE": "fce-finance-interface",
+  "ELEONE": "eleone-agent-interface",
+  "PRESTIGE": "prestige-booking-interface",
+  "UHA": "uha-learning-interface",
+  "ILUVIA Store": "iluvia-storefront-interface",
+  "ILUVIA Community": "iluvia-community-interface",
+  "BUILDX": "buildx-service-interface",
+  "REDCORAL": "redcoral-portfolio-interface",
+  "UT": "ut-logistics-interface",
+  "SKYGODOWN": "skygodown-logistics-interface",
+  "iMOXON": "imoxon-procurement-interface",
+  "Media Room": "aig-media-room",
+  "EXMAIL": "exmail-campaign-interface",
+  "eLEGAL": "elegal-public-desk",
+  "OCEANeX": "oceanex-industrial-interface",
+  "SKYFARM": "skyfarm-agri-interface",
+  "Impact": "oceanex-impact-csr-interface",
+  "MARS Visa": "mars-visa-interface"
+}

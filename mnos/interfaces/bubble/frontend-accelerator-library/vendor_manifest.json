@@ -1,0 +1,17 @@
+{
+  "library_name": "MNOS Branded Frontend Accelerator Library",
+  "source_role": "UI, frontend, dashboard, marketing and design accelerator only",
+  "public_branding_allowed": false,
+  "public_brand_owner": "AIG / MNOS / MIG",
+  "design_authority": "REDCORAL",
+  "interface_authority": "BUBBLE",
+  "core_authority": "MNOS Core",
+  "authority_level": "zero",
+  "vendors": [
+    "Stackbros",
+    "ThemeForest",
+    "CodeCanyon",
+    "Envato Market"
+  ],
+  "doctrine": "Templates create screens. MNOS creates truth."
+}

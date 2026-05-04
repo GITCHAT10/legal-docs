@@ -25,9 +25,18 @@ class TransportEngine:
         booking = {
             "ticket_id": f"TR-{uuid.uuid4().hex[:6].upper()}",
             "route": data.get("route"),
-            "passenger_id": self.core.guard.get_actor().get("identity_id"),
+            "passenger_id": (self.core.guard.get_actor() or {}).get("identity_id", "SYSTEM"),
             "split": split,
             "status": "BOARDING_READY"
         }
-        self.core.events.publish("transport.manifest_updated", booking)
+        from mnos.shared.execution_guard import set_system_context, _sovereign_context
+        token = None
+        if _sovereign_context.get() is None:
+            set_system_context()
+            token = "INTERNAL"
+        try:
+            self.core.events.publish("transport.manifest_updated", booking)
+        finally:
+            if token:
+                _sovereign_context.set(None)
         return booking

@@ -52,6 +52,7 @@ class FCEEngine:
         # Full reversal logic
         refund = original_invoice.copy()
         refund["total"] = -original_invoice["total"]
+        refund["total_guest_payable"] = -original_invoice.get("total_guest_payable", 0)
         refund["type"] = "REVERSAL"
         return refund
 

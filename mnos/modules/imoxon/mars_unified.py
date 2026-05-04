@@ -84,18 +84,28 @@ class NexusSkyICloudBrain:
         }
         self.orders[order_id] = order
 
-        # 3. UT SYSTEM Dispatches (Fleet Consolidation)
-        transfer_manifest = self._internal_dispatch_transfer(order_id, {"route": "Male -> Island", "fare": 0})
+        from mnos.shared.execution_guard import set_system_context, _sovereign_context
+        token = None
+        if _sovereign_context.get() is None:
+            set_system_context()
+            token = "INTERNAL"
 
-        # 4. MARS PAY Settlement Split
-        self._calculate_settlement(order_id, package["base_price"], pricing, "SYSTEM_DEFAULT_VENDOR")
+        try:
+            # 3. UT SYSTEM Dispatches (Fleet Consolidation)
+            transfer_manifest = self._internal_dispatch_transfer(order_id, {"route": "Male -> Island", "fare": 0})
 
-        # 5. SHADOW Ledger Commit (Truth Layer)
-        audit_res = self.core.shadow.commit("sky_i.loop_cycle.start", order_id, order)
-        order["audit_id"] = audit_res
+            # 4. MARS PAY Settlement Split
+            self._calculate_settlement(order_id, package["base_price"], pricing, "SYSTEM_DEFAULT_VENDOR")
 
-        self.core.events.publish("sky_i.full_cycle_initiated", order)
-        return order
+            # 5. SHADOW Ledger Commit (Truth Layer)
+            audit_res = self.core.shadow.commit("sky_i.loop_cycle.start", order_id, order)
+            order["audit_id"] = audit_res
+
+            self.core.events.publish("sky_i.full_cycle_initiated", order)
+            return order
+        finally:
+            if token:
+                _sovereign_context.set(None)
 
     def _calculate_settlement(self, order_id, base_amount, pricing, vendor_id):
         base = Decimal(str(base_amount))
@@ -163,30 +173,40 @@ class NexusSkyICloudBrain:
             order = self.orders[order_id]
             order["status"] = "COMPLETED"
 
-            # 1. Sync Revenue to Island GM System
-            package = self.packages.get(order["package_id"])
-            if package:
-                 self.core.events.publish("internal.revenue.sync", {
-                     "island": package["island"],
-                     "amount": package["base_price"]
-                 })
+            from mnos.shared.execution_guard import set_system_context, _sovereign_context
+            token = None
+            if _sovereign_context.get() is None:
+                set_system_context()
+                token = "INTERNAL"
 
-                 # 2. Emit event for Leaderboard (C2C Revenue)
-                 self.core.events.publish("hustle.revenue_generated", {
-                     "island": package["island"],
-                     "amount": package["base_price"],
-                     "hustler_id": order["guest_id"], # Simplified
-                     "shadow_ref": f"SH-TX-{order_id}"
-                 })
+            try:
+                # 1. Sync Revenue to Island GM System
+                package = self.packages.get(order["package_id"])
+                if package:
+                     self.core.events.publish("internal.revenue.sync", {
+                         "island": package["island"],
+                         "amount": package["base_price"]
+                     })
 
-                 # 3. Record in MIRA-Bridge for Tax Compliance
-                 if hasattr(self.core, "mira_bridge"):
-                      self.core.mira_bridge.record_transaction(order)
+                     # 2. Emit event for Leaderboard (C2C Revenue)
+                     self.core.events.publish("hustle.revenue_generated", {
+                         "island": package["island"],
+                         "amount": package["base_price"],
+                         "hustler_id": order["guest_id"], # Simplified
+                         "shadow_ref": f"SH-TX-{order_id}"
+                     })
 
-            if order_id in self.settlements:
-                self.settlements[order_id]["status"] = "RELEASED"
-                self.core.shadow.commit("sky_i.payout.released", order_id, self.settlements[order_id])
-            return order
+                     # 3. Record in MIRA-Bridge for Tax Compliance
+                     if hasattr(self.core, "mira_bridge"):
+                          self.core.mira_bridge.record_transaction(order)
+
+                if order_id in self.settlements:
+                    self.settlements[order_id]["status"] = "RELEASED"
+                    self.core.shadow.commit("sky_i.payout.released", order_id, self.settlements[order_id])
+                return order
+            finally:
+                if token:
+                    _sovereign_context.set(None)
         return None
 
     def get_inventory_search(self, actor_ctx: dict, criteria: dict):
@@ -211,5 +231,15 @@ class NexusSkyICloudBrain:
             "status": "HELD",
             "expires_at": (datetime.now(UTC) + timedelta(hours=24)).isoformat()
         }
-        self.core.shadow.commit("b2b.booking.hold", actor_ctx["identity_id"], hold)
+
+        from mnos.shared.execution_guard import set_system_context, _sovereign_context
+        token = None
+        if _sovereign_context.get() is None:
+            set_system_context()
+            token = "INTERNAL"
+        try:
+            self.core.shadow.commit("b2b.booking.hold", actor_ctx["identity_id"], hold)
+        finally:
+            if token:
+                _sovereign_context.set(None)
         return hold

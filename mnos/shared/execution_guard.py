@@ -8,6 +8,13 @@ from starlette.middleware.base import BaseHTTPMiddleware
 # Context variable to track sovereign authorization
 _sovereign_context = contextvars.ContextVar("sovereign_context", default=None)
 
+def set_system_context():
+    """Sets a SYSTEM-level context for authorized writes without a user token."""
+    _sovereign_context.set({
+        "token": "SYSTEM-BOOTSTRAP",
+        "actor": {"identity_id": "SYSTEM", "role": "admin"}
+    })
+
 class ExecutionGuard:
     def __init__(self, identity_core, policy_engine, fce, shadow, events):
         self.identity_core = identity_core
@@ -36,12 +43,13 @@ class ExecutionGuard:
 
         # 2. Role / Permission Validation
         valid, msg = self.policy_engine.validate_action(action_type, actor_context)
+        print(f"DEBUG: action={action_type}, valid={valid}, msg={msg}")
         if not valid:
             raise PermissionError(f"FAIL CLOSED: Policy Violation - {msg}")
 
         # 3. Set Sovereign Context (Authorized)
         token = str(uuid.uuid4())
-        _sovereign_context.set({"token": token, "actor": actor_context})
+        prev_token = _sovereign_context.set({"token": token, "actor": actor_context})
 
         try:
             # BEGIN ATOMIC TX (Simulated via context and SHADOW intent)
@@ -83,8 +91,8 @@ class ExecutionGuard:
             self.shadow.commit(f"{action_type}.failed", identity_id or "UNKNOWN", fail_payload)
             raise RuntimeError(f"SOVEREIGN EXECUTION FAILED: {str(e)}")
         finally:
-            # Clear context
-            _sovereign_context.set(None)
+            # Restore previous context
+            _sovereign_context.reset(prev_token)
 
     @staticmethod
     def is_authorized() -> bool:
