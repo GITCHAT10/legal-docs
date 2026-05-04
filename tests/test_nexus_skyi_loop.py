@@ -14,12 +14,12 @@ def guest_headers(create_security_headers):
 
 def test_nexus_skyi_closed_loop_economy(admin_headers, guest_headers):
     # 1. Setup Island
-    client.post("/imoxon/island-gm/registry/setup", json={"name": "Maafushi", "gm_id": "GM-X"}, headers=admin_headers)
+    client.post("/imoxon/island-gm/registry/setup", json={"name": "Male", "gm_id": "GM-X"}, headers=admin_headers)
 
     # 2. TRAWEL Builds Package
     pkg_config = {
-        "name": "Maafushi Weekend Explorer",
-        "island": "Maafushi",
+        "name": "Male Weekend Explorer",
+        "island": "Male",
         "base_price": 500.0,
         "inventory": {"room_type": "DELUXE", "nights": 2}
     }

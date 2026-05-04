@@ -57,7 +57,7 @@ class SkyClearingEngine:
 
     def verify_port_release(self, actor_ctx: dict, shipment_id: UUID):
         record = self.records.get(shipment_id)
-        if not record.customs_payment_matched:
+        if not record or not record.customs_payment_matched:
             raise ValueError("Customs payment not matched")
 
         record.port_release_verified = True

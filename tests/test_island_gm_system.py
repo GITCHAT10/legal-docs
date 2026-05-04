@@ -34,4 +34,13 @@ def test_island_dashboard_access(admin_headers, create_security_headers):
     # 3. Access as guest (Denied)
     guest_headers = create_security_headers(full_name="Guest", profile_type="user")
     resp = client.get("/imoxon/island-gm/dashboard?island=BaaAtoll", headers=guest_headers)
+    # The error logic in fix_island_gm.py is:
+    # if role != "admin":
+    #     if role == "island_gm":
+    #         if actor_ctx.get("assigned_island") != island_name:
+    #             raise PermissionError("Access Denied: Island Mismatch")
+    #     else:
+    #         raise PermissionError("Access Denied: Role Unauthorized")
+
+    # PermissionError in main.py is handled and returns 403.
     assert resp.status_code == 403

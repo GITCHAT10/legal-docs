@@ -20,7 +20,6 @@ def test_laundry_workflow_multi_store(admin_headers, guest_headers):
     store1_id = resp.json()["id"]
 
     # 2. Submit Laundry Job
-    # items: List[dict]
     job_items = [{"service_type": "WASH_FOLD", "qty": 2}]
     resp = client.post(f"/imoxon/laundry/order?store_id={store1_id}", json=job_items, headers=guest_headers)
     assert resp.status_code == 200

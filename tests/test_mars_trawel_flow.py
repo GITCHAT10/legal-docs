@@ -14,10 +14,10 @@ def guest_headers(create_security_headers):
 
 def test_maafushi_guest_order_flow(admin_headers, guest_headers):
     # 1. Register the island first
-    client.post("/imoxon/island-gm/islands/register", json={"name": "Maafushi", "gm_id": "GM-01"}, headers=admin_headers)
+    client.post("/imoxon/island-gm/registry/setup", json={"name": "Male", "gm_id": "GM-MALE"}, headers=admin_headers)
 
     # 2. Build Package
-    pkg_config = {"name": "Maafushi Weekend", "island": "Maafushi", "base_price": 400.0, "inventory": {"room": "SUPERIOR"}}
+    pkg_config = {"name": "Male Weekend", "island": "Male", "base_price": 400.0, "inventory": {"room": "SUPERIOR"}}
     resp = client.post("/imoxon/itravel/packages/build", json=pkg_config, headers=admin_headers)
     pkg_id = resp.json()["id"]
 
@@ -29,8 +29,10 @@ def test_maafushi_guest_order_flow(admin_headers, guest_headers):
 
     # 4. Finalize Order
     resp = client.post(f"/imoxon/itravel/orders/finalize?order_id={order_id}", headers=admin_headers)
+    # If it fails 400, it's because of missing SYSTEM_DEFAULT_VENDOR in vendors for reinvestment signal
+    # Let's check it
     if resp.status_code != 200:
-        print(f"DEBUG finalize failed: {resp.text}")
+        print(f"DEBUG: {resp.text}")
     assert resp.status_code == 200
     assert resp.json()["status"] == "COMPLETED"
 

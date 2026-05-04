@@ -154,6 +154,19 @@ imoxon.mira_bridge = mira_bridge
 imoxon.island_gm = island_gm
 imoxon.mars_unified = mars_unified
 imoxon.reinvestment = reinvestment_engine
+imoxon.restaurant = restaurant
+imoxon.laundry = laundry_engine
+
+# Final authoritative linkage
+island_gm.vendors = mars_unified.vendors
+imoxon.island_gm = island_gm
+imoxon.mars_unified = mars_unified
+imoxon.reinvestment = reinvestment_engine
+imoxon.restaurant = restaurant
+imoxon.laundry = laundry_engine
+imoxon.island_gm = island_gm
+imoxon.mars_unified = mars_unified
+imoxon.reinvestment = reinvestment_engine
 imoxon.vvip_engine = vvip_engine
 imoxon.reinvestment = reinvestment_engine
 
@@ -186,6 +199,7 @@ def get_actor_ctx(
     Forces identity verification via AEGIS registry and validates device binding.
     LOGS all attempts to SHADOW ledger.
     """
+    from mnos.shared.execution_guard import _sovereign_context
     # Prefer Session-based Auth from Gateway
     if x_aegis_session:
         try:
@@ -193,6 +207,7 @@ def get_actor_ctx(
             from mnos.shared.execution_guard import set_system_context
             set_system_context()
             shadow_core.commit("aegis.auth.session.success", actor["identity_id"], {"session_id": x_aegis_session})
+            _sovereign_context.set(None)
             return actor
         except PermissionError as e:
             from mnos.shared.execution_guard import set_system_context
@@ -205,6 +220,7 @@ def get_actor_ctx(
         from mnos.shared.execution_guard import set_system_context
         set_system_context()
         shadow_core.commit("aegis.auth.direct.failure", "UNKNOWN", {"reason": "Missing Headers"})
+        _sovereign_context.set(None)
         print(f"DEBUG AUTH: Missing headers. ID={x_aegis_identity}, DEV={x_aegis_device}, SIG={x_aegis_signature}")
         raise HTTPException(status_code=403, detail="AEGIS_REQUIRED: Missing Identity, Device or Signature")
 
@@ -214,6 +230,7 @@ def get_actor_ctx(
         from mnos.shared.execution_guard import set_system_context
         set_system_context()
         shadow_core.commit("aegis.auth.identity.invalid", x_aegis_identity, {"reason": "Not in Registry"})
+        _sovereign_context.set(None)
         print(f"DEBUG AUTH: Identity {x_aegis_identity} not in registry")
         raise HTTPException(status_code=403, detail="INVALID_IDENTITY: Unauthorized")
 
@@ -224,6 +241,7 @@ def get_actor_ctx(
         from mnos.shared.execution_guard import set_system_context
         set_system_context()
         shadow_core.commit("aegis.auth.device.mismatch", x_aegis_identity, {"device_id": x_aegis_device})
+        _sovereign_context.set(None)
         print(f"DEBUG AUTH: Device mismatch or not found. Device identity={device.get('identity_id') if device else 'N/A'}")
         raise HTTPException(status_code=403, detail="DEVICE_BINDING_INVALID: Access Denied")
 
@@ -232,6 +250,7 @@ def get_actor_ctx(
          from mnos.shared.execution_guard import set_system_context
          set_system_context()
          shadow_core.commit("aegis.auth.sig.failed", x_aegis_identity, {"sig": x_aegis_signature})
+         _sovereign_context.set(None)
          print(f"DEBUG AUTH: Signature failed. Got={x_aegis_signature}, expected=VALID_SIG_FOR_{x_aegis_identity}")
          raise HTTPException(status_code=403, detail="HANDSHAKE_FAILED: Invalid Signature")
 
@@ -249,6 +268,8 @@ def get_actor_ctx(
     from mnos.shared.execution_guard import set_system_context
     set_system_context()
     shadow_core.commit("aegis.auth.direct.success", x_aegis_identity, {"role": actor["role"]})
+    from mnos.shared.execution_guard import _sovereign_context
+    _sovereign_context.set(None)
     return actor
 
 @app.get("/imoxon/catalog")
@@ -257,9 +278,12 @@ async def get_catalog_legacy(actor: dict = Depends(get_actor_ctx)):
 
 @app.post("/imoxon/pricing/landed-cost")
 async def legacy_landed_cost(base: float, cat: str, actor: dict = Depends(get_actor_ctx)):
-    from mnos.shared.execution_guard import set_system_context
+    from mnos.shared.execution_guard import set_system_context, _sovereign_context
     set_system_context()
-    return fce_core.finalize_invoice(base * 1.15 * 1.10, cat)
+    try:
+        return fce_core.finalize_invoice(base * 1.15 * 1.10, cat)
+    finally:
+        _sovereign_context.set(None)
 
 # --- Consolidated APIs ---
 

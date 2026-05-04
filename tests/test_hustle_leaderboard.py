@@ -16,5 +16,5 @@ def test_war_room_surge_alerts(admin_headers, user_headers):
     # 1. Access Dashboard
     resp = client.get("/imoxon/leaderboard/war-room/alerts", headers=admin_headers)
     assert resp.status_code == 200
-    # It returns a list or dict of alerts
+    # It returns a list of alerts
     assert isinstance(resp.json(), list)
