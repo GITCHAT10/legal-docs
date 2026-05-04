@@ -25,4 +25,22 @@ jobs:
         run: |
           export ALLOW_INSECURE_DEV=true
           pytest tests/test_mnos_compliance_suite.py
+
+  auditExpected:
+    name: auditExpected
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest responses
+      - name: Run verification
+        run: |
+          export ALLOW_INSECURE_DEV=true
           python tests/verify_mnos_compliance.py
