@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
 from mnos.shared.execution_guard import ExecutionGuard
+from mnos.shared.auth import get_actor_context
 
 class SonarSurvey(BaseModel):
     survey_id: str
@@ -38,7 +39,7 @@ def create_dredge_router(guard: ExecutionGuard, shadow, orca):
     router = APIRouter(prefix="/atollx/dredge", tags=["ATOLLX_DREDGE"])
 
     @router.post("/survey")
-    async def create_survey(survey: SonarSurvey, actor: dict = Depends(guard.get_actor)):
+    async def create_survey(survey: SonarSurvey, actor: dict = Depends(get_actor_context)):
         return guard.execute_sovereign_action(
             "atollx.dredge.survey",
             actor,
@@ -46,7 +47,7 @@ def create_dredge_router(guard: ExecutionGuard, shadow, orca):
         )
 
     @router.post("/plan")
-    async def create_plan(plan: DredgePlan, actor: dict = Depends(guard.get_actor)):
+    async def create_plan(plan: DredgePlan, actor: dict = Depends(get_actor_context)):
         return guard.execute_sovereign_action(
             "atollx.dredge.plan",
             actor,
@@ -54,7 +55,7 @@ def create_dredge_router(guard: ExecutionGuard, shadow, orca):
         )
 
     @router.post("/telemetry")
-    async def log_telemetry(telemetry: DredgeTelemetry, actor: dict = Depends(guard.get_actor)):
+    async def log_telemetry(telemetry: DredgeTelemetry, actor: dict = Depends(get_actor_context)):
         return guard.execute_sovereign_action(
             "atollx.dredge.telemetry",
             actor,
@@ -62,13 +63,11 @@ def create_dredge_router(guard: ExecutionGuard, shadow, orca):
         )
 
     @router.post("/validate")
-    async def validate_marine(actor: dict = Depends(guard.get_actor or (lambda: None))):
-        if not actor:
-            raise HTTPException(status_code=403, detail="EXECUTION GUARD REJECTION: Missing Actor Identity")
+    async def validate_marine(actor: dict = Depends(get_actor_context)):
         return orca.validate("MARINE_WORKS", actor["identity_id"], {})
 
     @router.post("/volume-claim")
-    async def claim_volume(claim: ReclamationVolumeClaim, actor: dict = Depends(guard.get_actor)):
+    async def claim_volume(claim: ReclamationVolumeClaim, actor: dict = Depends(get_actor_context)):
         # REQUIREMENT: Dredge volume claim must fail if sonar/bathymetry proof is missing.
         proof_found = any(
             e["event_type"] == "atollx.dredge.survey.completed" and e["payload"]["result"]["status"] == "SURVEY_LOGGED"

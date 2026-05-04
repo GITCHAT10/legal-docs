@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional, Dict
 from mnos.shared.execution_guard import ExecutionGuard
+from mnos.shared.auth import get_actor_context
 
 class UmbilicalRoute(BaseModel):
     route_id: str
@@ -37,7 +38,7 @@ def create_utilities_router(guard: ExecutionGuard, shadow, orca):
     router = APIRouter(prefix="/atollx/utilities", tags=["ATOLLX_UTILITIES"])
 
     @router.post("/route")
-    async def create_route(route: UmbilicalRoute, actor: dict = Depends(guard.get_actor)):
+    async def create_route(route: UmbilicalRoute, actor: dict = Depends(get_actor_context)):
         return guard.execute_sovereign_action(
             "atollx.utilities.route",
             actor,
@@ -45,7 +46,7 @@ def create_utilities_router(guard: ExecutionGuard, shadow, orca):
         )
 
     @router.post("/motion-simulation")
-    async def log_simulation(sim: UtilityMotionSimulation, actor: dict = Depends(guard.get_actor)):
+    async def log_simulation(sim: UtilityMotionSimulation, actor: dict = Depends(get_actor_context)):
         return guard.execute_sovereign_action(
             "atollx.utilities.simulation",
             actor,
@@ -53,7 +54,7 @@ def create_utilities_router(guard: ExecutionGuard, shadow, orca):
         )
 
     @router.post("/hose-bend")
-    async def log_hose_bend(reading: HoseBendReading, actor: dict = Depends(guard.get_actor)):
+    async def log_hose_bend(reading: HoseBendReading, actor: dict = Depends(get_actor_context)):
         return guard.execute_sovereign_action(
             "atollx.utilities.hose_bend",
             actor,
@@ -61,7 +62,7 @@ def create_utilities_router(guard: ExecutionGuard, shadow, orca):
         )
 
     @router.post("/cable-tension")
-    async def log_cable_tension(reading: CableTensionReading, actor: dict = Depends(guard.get_actor)):
+    async def log_cable_tension(reading: CableTensionReading, actor: dict = Depends(get_actor_context)):
         return guard.execute_sovereign_action(
             "atollx.utilities.cable_tension",
             actor,
@@ -69,7 +70,7 @@ def create_utilities_router(guard: ExecutionGuard, shadow, orca):
         )
 
     @router.post("/drybreak-disconnect")
-    async def log_disconnect(event: DryBreakDisconnectEvent, actor: dict = Depends(guard.get_actor)):
+    async def log_disconnect(event: DryBreakDisconnectEvent, actor: dict = Depends(get_actor_context)):
         # REQUIREMENT: Floating utility dry-break disconnect must fail if zero-leak validation fails.
         orca_res = orca.validate("ZERO_LEAK", actor["identity_id"], {"leak_detected": event.leak_detected})
         if not orca_res["passed"]:
@@ -82,7 +83,7 @@ def create_utilities_router(guard: ExecutionGuard, shadow, orca):
         )
 
     @router.post("/zero-leak-validate")
-    async def validate_zero_leak(route_id: str, actor: dict = Depends(guard.get_actor)):
+    async def validate_zero_leak(route_id: str, actor: dict = Depends(get_actor_context)):
         return orca.validate("ZERO_LEAK", actor["identity_id"], {"route_id": route_id})
 
     return router

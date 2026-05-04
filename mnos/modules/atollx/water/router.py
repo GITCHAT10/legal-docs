@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
 from mnos.shared.execution_guard import ExecutionGuard
+from mnos.shared.auth import get_actor_context
 
 class WaterBatch(BaseModel):
     batch_id: str
@@ -39,7 +40,7 @@ def create_water_router(guard: ExecutionGuard, shadow, orca):
     router = APIRouter(prefix="/atollx/water", tags=["ATOLLX_WATER"])
 
     @router.post("/batch")
-    async def create_batch(batch: WaterBatch, actor: dict = Depends(guard.get_actor)):
+    async def create_batch(batch: WaterBatch, actor: dict = Depends(get_actor_context)):
         return guard.execute_sovereign_action(
             "atollx.water.batch",
             actor,
@@ -47,7 +48,7 @@ def create_water_router(guard: ExecutionGuard, shadow, orca):
         )
 
     @router.post("/quality")
-    async def log_quality(reading: WaterQualityReading, actor: dict = Depends(guard.get_actor)):
+    async def log_quality(reading: WaterQualityReading, actor: dict = Depends(get_actor_context)):
         # REQUIREMENT: Water batch must quarantine if Class A validation fails.
         orca_res = orca.validate("CLASS_A_WATER", actor["identity_id"], {"contamination_level": reading.contamination_level})
 
@@ -63,7 +64,7 @@ def create_water_router(guard: ExecutionGuard, shadow, orca):
         )
 
     @router.post("/odor")
-    async def log_odor(reading: OdorReading, actor: dict = Depends(guard.get_actor)):
+    async def log_odor(reading: OdorReading, actor: dict = Depends(get_actor_context)):
         return guard.execute_sovereign_action(
             "atollx.water.odor",
             actor,
@@ -71,7 +72,7 @@ def create_water_router(guard: ExecutionGuard, shadow, orca):
         )
 
     @router.post("/sludge")
-    async def log_sludge(record: SludgeRecord, actor: dict = Depends(guard.get_actor)):
+    async def log_sludge(record: SludgeRecord, actor: dict = Depends(get_actor_context)):
         return guard.execute_sovereign_action(
             "atollx.water.sludge",
             actor,
@@ -79,11 +80,11 @@ def create_water_router(guard: ExecutionGuard, shadow, orca):
         )
 
     @router.post("/validate-class-a")
-    async def validate_class_a(batch_id: str, actor: dict = Depends(guard.get_actor)):
+    async def validate_class_a(batch_id: str, actor: dict = Depends(get_actor_context)):
         return orca.validate("CLASS_A_WATER", actor["identity_id"], {"batch_id": batch_id})
 
     @router.post("/fce-credit")
-    async def issue_fce_credit(credit: ReclaimedWaterCredit, actor: dict = Depends(guard.get_actor)):
+    async def issue_fce_credit(credit: ReclaimedWaterCredit, actor: dict = Depends(get_actor_context)):
         return guard.execute_sovereign_action(
             "atollx.water.fce_credit",
             actor,

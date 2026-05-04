@@ -11,7 +11,7 @@ class ORCAValidator:
 
     def validate(self, validation_type: str, actor_id: str, data: dict) -> dict:
         # Placeholder for complex validation logic
-        passed = True
+        passed = data.get("passed", True)
         failure_reasons = []
 
         # Example check
@@ -33,7 +33,9 @@ class ORCAValidator:
             "validation_type": validation_type,
             "passed": passed,
             "failure_reasons": failure_reasons,
-            "cert_hash": cert_hash
+            "cert_hash": cert_hash,
+            "project_id": data.get("project_id"),
+            "milestone_id": data.get("milestone_id")
         }
 
         self.shadow.commit(f"orca.validation.{validation_type}", actor_id, result)

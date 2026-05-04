@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional, Dict
 from mnos.shared.execution_guard import ExecutionGuard
+from mnos.shared.auth import get_actor_context
 
 class FloatingPlatform(BaseModel):
     platform_id: str
@@ -38,7 +39,7 @@ def create_float_router(guard: ExecutionGuard, shadow, orca):
     router = APIRouter(prefix="/atollx/float", tags=["ATOLLX_FLOAT"])
 
     @router.post("/platform")
-    async def create_platform(platform: FloatingPlatform, actor: dict = Depends(guard.get_actor)):
+    async def create_platform(platform: FloatingPlatform, actor: dict = Depends(get_actor_context)):
         return guard.execute_sovereign_action(
             "atollx.float.platform",
             actor,
@@ -46,7 +47,7 @@ def create_float_router(guard: ExecutionGuard, shadow, orca):
         )
 
     @router.post("/stability")
-    async def log_stability(calc: StabilityCalculation, actor: dict = Depends(guard.get_actor)):
+    async def log_stability(calc: StabilityCalculation, actor: dict = Depends(get_actor_context)):
         return guard.execute_sovereign_action(
             "atollx.float.stability",
             actor,
@@ -54,7 +55,7 @@ def create_float_router(guard: ExecutionGuard, shadow, orca):
         )
 
     @router.post("/mooring")
-    async def create_mooring(system: MooringSystem, actor: dict = Depends(guard.get_actor)):
+    async def create_mooring(system: MooringSystem, actor: dict = Depends(get_actor_context)):
         return guard.execute_sovereign_action(
             "atollx.float.mooring",
             actor,
@@ -62,7 +63,7 @@ def create_float_router(guard: ExecutionGuard, shadow, orca):
         )
 
     @router.post("/tension")
-    async def log_tension(reading: MooringTensionReading, actor: dict = Depends(guard.get_actor)):
+    async def log_tension(reading: MooringTensionReading, actor: dict = Depends(get_actor_context)):
         return guard.execute_sovereign_action(
             "atollx.float.tension",
             actor,
@@ -70,7 +71,7 @@ def create_float_router(guard: ExecutionGuard, shadow, orca):
         )
 
     @router.post("/stp")
-    async def log_stp(reading: FloatingSTPReading, actor: dict = Depends(guard.get_actor)):
+    async def log_stp(reading: FloatingSTPReading, actor: dict = Depends(get_actor_context)):
         return guard.execute_sovereign_action(
             "atollx.float.stp",
             actor,
@@ -78,7 +79,7 @@ def create_float_router(guard: ExecutionGuard, shadow, orca):
         )
 
     @router.post("/validate")
-    async def validate_float(actor: dict = Depends(guard.get_actor)):
+    async def validate_float(actor: dict = Depends(get_actor_context)):
         return orca.validate("FLOATING_STABILITY", actor["identity_id"], {})
 
     return router

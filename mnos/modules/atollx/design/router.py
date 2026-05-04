@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional, Dict
 from mnos.shared.execution_guard import ExecutionGuard
+from mnos.shared.auth import get_actor_context
 
 class CivilDesign(BaseModel):
     design_id: str
@@ -42,7 +43,7 @@ def create_design_router(guard: ExecutionGuard, shadow, orca):
     router = APIRouter(prefix="/atollx/design", tags=["ATOLLX_DESIGN"])
 
     @router.post("/civil")
-    async def create_civil(design: CivilDesign, actor: dict = Depends(guard.get_actor)):
+    async def create_civil(design: CivilDesign, actor: dict = Depends(get_actor_context)):
         return guard.execute_sovereign_action(
             "atollx.design.civil",
             actor,
@@ -50,7 +51,7 @@ def create_design_router(guard: ExecutionGuard, shadow, orca):
         )
 
     @router.post("/bim")
-    async def create_bim(model: BIMModel, actor: dict = Depends(guard.get_actor)):
+    async def create_bim(model: BIMModel, actor: dict = Depends(get_actor_context)):
         return guard.execute_sovereign_action(
             "atollx.design.bim",
             actor,
@@ -58,7 +59,7 @@ def create_design_router(guard: ExecutionGuard, shadow, orca):
         )
 
     @router.post("/mep")
-    async def create_mep(element: MEPElement, actor: dict = Depends(guard.get_actor)):
+    async def create_mep(element: MEPElement, actor: dict = Depends(get_actor_context)):
         return guard.execute_sovereign_action(
             "atollx.design.mep",
             actor,
@@ -66,7 +67,7 @@ def create_design_router(guard: ExecutionGuard, shadow, orca):
         )
 
     @router.post("/energy")
-    async def create_energy(model: EnergyModel, actor: dict = Depends(guard.get_actor)):
+    async def create_energy(model: EnergyModel, actor: dict = Depends(get_actor_context)):
         return guard.execute_sovereign_action(
             "atollx.design.energy",
             actor,
@@ -74,7 +75,7 @@ def create_design_router(guard: ExecutionGuard, shadow, orca):
         )
 
     @router.post("/clash-check")
-    async def check_clash(report: ClashReport, actor: dict = Depends(guard.get_actor)):
+    async def check_clash(report: ClashReport, actor: dict = Depends(get_actor_context)):
         return guard.execute_sovereign_action(
             "atollx.design.clash",
             actor,
@@ -82,7 +83,7 @@ def create_design_router(guard: ExecutionGuard, shadow, orca):
         )
 
     @router.post("/prefab")
-    async def create_prefab(pkg: PrefabPackage, actor: dict = Depends(guard.get_actor)):
+    async def create_prefab(pkg: PrefabPackage, actor: dict = Depends(get_actor_context)):
         return guard.execute_sovereign_action(
             "atollx.design.prefab",
             actor,
@@ -90,7 +91,7 @@ def create_design_router(guard: ExecutionGuard, shadow, orca):
         )
 
     @router.post("/validate")
-    async def validate_design(actor: dict = Depends(guard.get_actor)):
+    async def validate_design(actor: dict = Depends(get_actor_context)):
         return orca.validate("ENGINEERING_DESIGN", actor["identity_id"], {})
 
     return router

@@ -2,12 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from typing import List, Dict
 from mnos.modules.redcoral.models import DesignBrief, StylePackage, RenderBrief, VisualApproval, DesignBaseline, RedCoralHandoff
 from mnos.shared.execution_guard import ExecutionGuard
+from mnos.shared.auth import get_actor_context
 
 def create_redcoral_router(guard: ExecutionGuard, shadow, orca, consent):
     router = APIRouter(prefix="/redcoral", tags=["REDCORAL"])
 
     @router.post("/brief")
-    async def create_brief(brief: DesignBrief, actor: dict = Depends(guard.get_actor)):
+    async def create_brief(brief: DesignBrief, actor: dict = Depends(get_actor_context)):
         return guard.execute_sovereign_action(
             "redcoral.brief.create",
             actor,
@@ -15,7 +16,7 @@ def create_redcoral_router(guard: ExecutionGuard, shadow, orca, consent):
         )
 
     @router.post("/style-package")
-    async def create_style_package(pkg: StylePackage, actor: dict = Depends(guard.get_actor)):
+    async def create_style_package(pkg: StylePackage, actor: dict = Depends(get_actor_context)):
         return guard.execute_sovereign_action(
             "redcoral.style.create",
             actor,
@@ -23,7 +24,7 @@ def create_redcoral_router(guard: ExecutionGuard, shadow, orca, consent):
         )
 
     @router.post("/render-brief")
-    async def create_render_brief(render: RenderBrief, actor: dict = Depends(guard.get_actor)):
+    async def create_render_brief(render: RenderBrief, actor: dict = Depends(get_actor_context)):
         return guard.execute_sovereign_action(
             "redcoral.render.create",
             actor,
@@ -31,7 +32,7 @@ def create_redcoral_router(guard: ExecutionGuard, shadow, orca, consent):
         )
 
     @router.post("/approve-design")
-    async def approve_design(approval: VisualApproval, actor: dict = Depends(guard.get_actor)):
+    async def approve_design(approval: VisualApproval, actor: dict = Depends(get_actor_context)):
         # Check ORCA visual deviation placeholder
         orca_result = orca.validate("VISUAL_DEVIATION", actor["identity_id"], {"project_id": approval.project_id})
         if not orca_result["passed"]:
@@ -48,7 +49,7 @@ def create_redcoral_router(guard: ExecutionGuard, shadow, orca, consent):
         )
 
     @router.get("/design-baseline/{project_id}")
-    async def get_design_baseline(project_id: str, actor: dict = Depends(guard.get_actor)):
+    async def get_design_baseline(project_id: str, actor: dict = Depends(get_actor_context)):
         # Mock retrieval for now
         return {
             "project_id": project_id,
@@ -57,13 +58,13 @@ def create_redcoral_router(guard: ExecutionGuard, shadow, orca, consent):
         }
 
     @router.post("/handoff-to-buildx")
-    async def handoff_to_buildx(handoff: RedCoralHandoff, actor: dict = Depends(guard.get_actor or (lambda: None))):
-        if not actor:
-            raise HTTPException(status_code=403, detail="EXECUTION GUARD REJECTION: Missing Actor Identity")
+    async def handoff_to_buildx(handoff: RedCoralHandoff, actor: dict = Depends(get_actor_context)):
         # REQUIREMENT: RC design cannot hand off to BX unless design is approved and SHADOW-logged.
         # We verify by checking if a redcoral.design.approve.completed event exists for this project in shadow.
         approved = any(
-            e["event_type"] == "redcoral.design.approve.completed" and e["payload"]["result"]["status"] == "DESIGN_APPROVED"
+            e["event_type"] == "redcoral.design.approve.completed" and
+            e["payload"]["result"]["status"] == "DESIGN_APPROVED" and
+            (e["payload"]["result"].get("project_id") == handoff.project_id or e["payload"].get("project_id") == handoff.project_id)
             for e in shadow.chain
         )
         if not approved:

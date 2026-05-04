@@ -5,6 +5,7 @@ from mnos.modules.buildx.models import (
     ProcurementRequest, Milestone, SiteEvidence, VariationOrder, QAQCCheck, HandoverPackage
 )
 from mnos.shared.execution_guard import ExecutionGuard
+from mnos.shared.auth import get_actor_context
 
 def create_buildx_router(guard: ExecutionGuard, shadow, orca, fce):
     router = APIRouter(prefix="/buildx", tags=["BUILDX"])
@@ -24,7 +25,7 @@ def create_buildx_router(guard: ExecutionGuard, shadow, orca, fce):
     ]
 
     @router.post("/project")
-    async def create_project(project: BuildProject, actor: dict = Depends(guard.get_actor)):
+    async def create_project(project: BuildProject, actor: dict = Depends(get_actor_context)):
         return guard.execute_sovereign_action(
             "buildx.project.create",
             actor,
@@ -32,7 +33,7 @@ def create_buildx_router(guard: ExecutionGuard, shadow, orca, fce):
         )
 
     @router.post("/boq")
-    async def create_boq(boq: BOQItem, actor: dict = Depends(guard.get_actor)):
+    async def create_boq(boq: BOQItem, actor: dict = Depends(get_actor_context)):
         return guard.execute_sovereign_action(
             "buildx.boq.create",
             actor,
@@ -40,7 +41,7 @@ def create_buildx_router(guard: ExecutionGuard, shadow, orca, fce):
         )
 
     @router.post("/contractor-package")
-    async def create_contractor_package(pkg: ContractorPackage, actor: dict = Depends(guard.get_actor)):
+    async def create_contractor_package(pkg: ContractorPackage, actor: dict = Depends(get_actor_context)):
         return guard.execute_sovereign_action(
             "buildx.contractor.create",
             actor,
@@ -48,7 +49,7 @@ def create_buildx_router(guard: ExecutionGuard, shadow, orca, fce):
         )
 
     @router.post("/procurement-request")
-    async def create_procurement_request(req: ProcurementRequest, actor: dict = Depends(guard.get_actor)):
+    async def create_procurement_request(req: ProcurementRequest, actor: dict = Depends(get_actor_context)):
         # REQUIREMENT: No procurement without iMOXON traceability.
         # This is handled by routing the request to iMOXON through the execution guard.
         return guard.execute_sovereign_action(
@@ -58,7 +59,7 @@ def create_buildx_router(guard: ExecutionGuard, shadow, orca, fce):
         )
 
     @router.post("/milestone")
-    async def create_milestone(milestone: Milestone, actor: dict = Depends(guard.get_actor)):
+    async def create_milestone(milestone: Milestone, actor: dict = Depends(get_actor_context)):
         return guard.execute_sovereign_action(
             "buildx.milestone.create",
             actor,
@@ -66,7 +67,7 @@ def create_buildx_router(guard: ExecutionGuard, shadow, orca, fce):
         )
 
     @router.post("/site-evidence")
-    async def upload_site_evidence(evidence: SiteEvidence, actor: dict = Depends(guard.get_actor)):
+    async def upload_site_evidence(evidence: SiteEvidence, actor: dict = Depends(get_actor_context)):
         return guard.execute_sovereign_action(
             "buildx.evidence.upload",
             actor,
@@ -78,7 +79,7 @@ def create_buildx_router(guard: ExecutionGuard, shadow, orca, fce):
         )
 
     @router.post("/variation")
-    async def create_variation(vo: VariationOrder, actor: dict = Depends(guard.get_actor)):
+    async def create_variation(vo: VariationOrder, actor: dict = Depends(get_actor_context)):
         return guard.execute_sovereign_action(
             "buildx.variation.create",
             actor,
@@ -86,7 +87,7 @@ def create_buildx_router(guard: ExecutionGuard, shadow, orca, fce):
         )
 
     @router.post("/qaqc")
-    async def create_qaqc(check: QAQCCheck, actor: dict = Depends(guard.get_actor)):
+    async def create_qaqc(check: QAQCCheck, actor: dict = Depends(get_actor_context)):
         return guard.execute_sovereign_action(
             "buildx.qaqc.create",
             actor,
@@ -94,13 +95,15 @@ def create_buildx_router(guard: ExecutionGuard, shadow, orca, fce):
         )
 
     @router.post("/handover")
-    async def initiate_handover(package: HandoverPackage, actor: dict = Depends(guard.get_actor)):
+    async def initiate_handover(package: HandoverPackage, actor: dict = Depends(get_actor_context)):
         # REQUIREMENT: Full project can move to HANDOVER_COMPLETE only after RC visual match,
         # AX validation, BX QA/QC, SHADOW proof, and FCE settlement status are complete.
 
         # Check BX QA/QC
         qaqc_passed = any(
-            e["event_type"] == "buildx.qaqc.create.completed" and e["payload"]["result"]["status"] == "QAQC_LOGGED"
+            e["event_type"] == "buildx.qaqc.create.completed" and
+            e["payload"]["result"]["status"] == "QAQC_LOGGED" and
+            (e["payload"]["result"].get("project_id") == package.project_id or e["payload"].get("project_id") == package.project_id)
             for e in shadow.chain
         )
         if not qaqc_passed:
@@ -113,20 +116,35 @@ def create_buildx_router(guard: ExecutionGuard, shadow, orca, fce):
         )
 
     @router.post("/request-fce-settlement")
-    async def request_fce_settlement(milestone_id: str, amount_mvr: float, actor: dict = Depends(guard.get_actor)):
+    async def request_fce_settlement(milestone_id: str, project_id: str, amount_mvr: float, actor: dict = Depends(get_actor_context)):
         # REQUIREMENT: BX cannot request FCE settlement unless milestone has site evidence and SHADOW proof.
         evidence_found = any(
-            e["event_type"] == "buildx.site_evidence" and e["payload"]["milestone_id"] == milestone_id
+            e["event_type"] == "buildx.site_evidence" and
+            e["payload"]["milestone_id"] == milestone_id and
+            e["payload"].get("project_id") == project_id
             for e in shadow.chain
         )
         if not evidence_found:
             raise HTTPException(status_code=400, detail="FAIL CLOSED: Milestone requires site evidence and SHADOW proof before settlement.")
 
         # REQUIREMENT: ORCA failed validation must block FCE settlement.
-        # We check for any failed ORCA validations for this actor/project.
+        # Filter failed ORCA validations by project_id and milestone_id
         for event in shadow.chain:
             if event["event_type"].startswith("orca.validation.") and not event["payload"].get("passed"):
-                raise HTTPException(status_code=400, detail="FAIL CLOSED: ORCA validation failure blocked FCE settlement.")
+                # Scope check: Must match project if project is present in failure
+                v_payload = event["payload"]
+                v_project_id = v_payload.get("project_id")
+                v_milestone_id = v_payload.get("milestone_id")
+
+                # Logic: If failure has a project_id, it must match current project_id.
+                # If failure has no project_id but has milestone_id, it must match current milestone_id.
+                # If it matches current project OR (it has no project and matches current milestone), block.
+                if v_project_id:
+                    if v_project_id == project_id:
+                         raise HTTPException(status_code=400, detail="FAIL CLOSED: ORCA validation failure blocked FCE settlement.")
+                elif v_milestone_id:
+                    if v_milestone_id == milestone_id:
+                         raise HTTPException(status_code=400, detail="FAIL CLOSED: ORCA validation failure blocked FCE settlement.")
 
         return guard.execute_sovereign_action(
             "buildx.fce.settlement",

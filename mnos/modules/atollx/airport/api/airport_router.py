@@ -6,15 +6,13 @@ from mnos.modules.atollx.airport.models.airport_models import (
     RFFSCategoryReview, AviationEngineerCertification, MCAACompliancePackage
 )
 from mnos.shared.execution_guard import ExecutionGuard
+from mnos.shared.auth import get_actor_context
 
 def create_airport_router(guard: ExecutionGuard, shadow, orca, fce):
     router = APIRouter(prefix="/atollx/airport", tags=["ATOLLX_AIRPORT"])
 
     @router.post("/project")
-    async def create_project(project: AirportProject, actor: dict = Depends(guard.get_actor or (lambda: None))):
-        if not actor:
-            raise HTTPException(status_code=403, detail="EXECUTION GUARD REJECTION: Missing Actor Identity")
-
+    async def create_project(project: AirportProject, actor: dict = Depends(get_actor_context)):
         return guard.execute_sovereign_action(
             "atollx.airport.project.create",
             actor,
@@ -22,10 +20,7 @@ def create_airport_router(guard: ExecutionGuard, shadow, orca, fce):
         )
 
     @router.post("/runway/design")
-    async def submit_runway_design(design: RunwayDesign, actor: dict = Depends(guard.get_actor or (lambda: None))):
-        if not actor:
-            raise HTTPException(status_code=403, detail="EXECUTION GUARD REJECTION: Missing Actor Identity")
-
+    async def submit_runway_design(design: RunwayDesign, actor: dict = Depends(get_actor_context)):
         return guard.execute_sovereign_action(
             "atollx.airport.runway.design",
             actor,
@@ -33,10 +28,7 @@ def create_airport_router(guard: ExecutionGuard, shadow, orca, fce):
         )
 
     @router.post("/icao/check")
-    async def icao_check(project_id: str, actor: dict = Depends(guard.get_actor or (lambda: None))):
-        if not actor:
-            raise HTTPException(status_code=403, detail="EXECUTION GUARD REJECTION: Missing Actor Identity")
-
+    async def icao_check(project_id: str, actor: dict = Depends(get_actor_context)):
         return guard.execute_sovereign_action(
             "atollx.airport.icao.precheck",
             actor,
@@ -44,10 +36,7 @@ def create_airport_router(guard: ExecutionGuard, shadow, orca, fce):
         )
 
     @router.post("/mcaa/check")
-    async def mcaa_check(project_id: str, actor: dict = Depends(guard.get_actor or (lambda: None))):
-        if not actor:
-            raise HTTPException(status_code=403, detail="EXECUTION GUARD REJECTION: Missing Actor Identity")
-
+    async def mcaa_check(project_id: str, actor: dict = Depends(get_actor_context)):
         return guard.execute_sovereign_action(
             "atollx.airport.mcaa.precheck",
             actor,
@@ -55,9 +44,7 @@ def create_airport_router(guard: ExecutionGuard, shadow, orca, fce):
         )
 
     @router.post("/pavement/validate")
-    async def validate_pavement(design: PavementDesign, actor: dict = Depends(guard.get_actor or (lambda: None))):
-        if not actor:
-            raise HTTPException(status_code=403, detail="EXECUTION GUARD REJECTION: Missing Actor Identity")
+    async def validate_pavement(design: PavementDesign, actor: dict = Depends(get_actor_context)):
 
         if not design.validated_by_specialist:
             raise HTTPException(status_code=400, detail="FAIL CLOSED: Specialist validation required for pavement.")
@@ -69,10 +56,7 @@ def create_airport_router(guard: ExecutionGuard, shadow, orca, fce):
         )
 
     @router.post("/ols/review")
-    async def ols_review(review: ObstacleSurfaceReview, actor: dict = Depends(guard.get_actor or (lambda: None))):
-        if not actor:
-            raise HTTPException(status_code=403, detail="EXECUTION GUARD REJECTION: Missing Actor Identity")
-
+    async def ols_review(review: ObstacleSurfaceReview, actor: dict = Depends(get_actor_context)):
         status = "OLS_REVIEW_COMPLETED"
         forced_status = "COMMITTED"
         if not review.ols_compliant:
@@ -87,10 +71,7 @@ def create_airport_router(guard: ExecutionGuard, shadow, orca, fce):
         )
 
     @router.post("/navigation/review")
-    async def navigation_review(review: AirNavigationReview, actor: dict = Depends(guard.get_actor or (lambda: None))):
-        if not actor:
-            raise HTTPException(status_code=403, detail="EXECUTION GUARD REJECTION: Missing Actor Identity")
-
+    async def navigation_review(review: AirNavigationReview, actor: dict = Depends(get_actor_context)):
         status = "AIRNAV_REVIEW_COMPLETED"
         forced_status = "COMMITTED"
         if review.navaid_interference_detected:
@@ -105,10 +86,7 @@ def create_airport_router(guard: ExecutionGuard, shadow, orca, fce):
         )
 
     @router.post("/rffs/category")
-    async def rffs_category(review: RFFSCategoryReview, actor: dict = Depends(guard.get_actor or (lambda: None))):
-        if not actor:
-            raise HTTPException(status_code=403, detail="EXECUTION GUARD REJECTION: Missing Actor Identity")
-
+    async def rffs_category(review: RFFSCategoryReview, actor: dict = Depends(get_actor_context)):
         if not review.validation_status:
             raise HTTPException(status_code=400, detail="FAIL CLOSED: RFFS category validation required.")
 
@@ -119,10 +97,7 @@ def create_airport_router(guard: ExecutionGuard, shadow, orca, fce):
         )
 
     @router.post("/engineer/certify")
-    async def engineer_certify(cert: AviationEngineerCertification, actor: dict = Depends(guard.get_actor or (lambda: None))):
-        if not actor:
-            raise HTTPException(status_code=403, detail="EXECUTION GUARD REJECTION: Missing Actor Identity")
-
+    async def engineer_certify(cert: AviationEngineerCertification, actor: dict = Depends(get_actor_context)):
         return guard.execute_sovereign_action(
             "atollx.airport.engineer.certify",
             actor,
@@ -130,10 +105,7 @@ def create_airport_router(guard: ExecutionGuard, shadow, orca, fce):
         )
 
     @router.post("/mcaa/submission-package")
-    async def mcaa_submission(package: MCAACompliancePackage, actor: dict = Depends(guard.get_actor or (lambda: None))):
-        if not actor:
-            raise HTTPException(status_code=403, detail="EXECUTION GUARD REJECTION: Missing Actor Identity")
-
+    async def mcaa_submission(package: MCAACompliancePackage, actor: dict = Depends(get_actor_context)):
         required = [
             package.icao_precheck, package.mcaa_precheck, package.ols_review,
             package.pavement_review, package.rffs_review, package.engineer_certification
@@ -148,20 +120,25 @@ def create_airport_router(guard: ExecutionGuard, shadow, orca, fce):
         )
 
     @router.post("/orca/validate")
-    async def orca_validate(validation_type: str, actor: dict = Depends(guard.get_actor or (lambda: None))):
-        if not actor:
-            raise HTTPException(status_code=403, detail="EXECUTION GUARD REJECTION: Missing Actor Identity")
+    async def orca_validate(validation_type: str, actor: dict = Depends(get_actor_context)):
         return orca.validate(validation_type, actor["identity_id"], {})
 
     @router.post("/fce/settlement-request")
-    async def fce_settlement(milestone_id: str, amount_mvr: float, actor: dict = Depends(guard.get_actor or (lambda: None))):
-        if not actor:
-            raise HTTPException(status_code=403, detail="EXECUTION GUARD REJECTION: Missing Actor Identity")
-
+    async def fce_settlement(milestone_id: str, project_id: str, amount_mvr: float, actor: dict = Depends(get_actor_context)):
         # Check ORCA validation blockers
         for event in shadow.chain:
             if event["event_type"].startswith("orca.validation.") and not event["payload"].get("passed"):
-                raise HTTPException(status_code=400, detail="FAIL CLOSED: ORCA validation failure blocked FCE settlement.")
+                # Scope check: Must match project if project is present in failure
+                v_payload = event["payload"]
+                v_project_id = v_payload.get("project_id")
+                v_milestone_id = v_payload.get("milestone_id")
+
+                if v_project_id:
+                    if v_project_id == project_id:
+                         raise HTTPException(status_code=400, detail="FAIL CLOSED: ORCA validation failure blocked FCE settlement.")
+                elif v_milestone_id:
+                    if v_milestone_id == milestone_id:
+                         raise HTTPException(status_code=400, detail="FAIL CLOSED: ORCA validation failure blocked FCE settlement.")
 
         return guard.execute_sovereign_action(
             "atollx.airport.fce.settlement",
