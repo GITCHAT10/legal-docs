@@ -1,19 +1,18 @@
 import os
-from fastapi import FastAPI, HTTPException, Header, Depends, Query, Request
+from fastapi import FastAPI, HTTPException, Header, Depends, Request
 from fastapi.responses import JSONResponse
-from typing import List, Optional, Dict
-from decimal import Decimal
 
 # MNOS Core (N-DEOS)
-from mnos.modules.finance.fce import FCEEngine, FCEHardenedEngine
-from mnos.modules.shadow.ledger import ShadowLedger
-from mnos.modules.events.bus import DistributedEventBus
-from mnos.core.aegis_identity.identity import AegisIdentityCore
-from mnos.core.aegis_identity.gateway import AegisIdentityGateway
+from mnos.core.fce.engine import FCEEngine, FCEHardenedEngine
+from mnos.core.shadow.ledger import ShadowLedger
+from mnos.core.events.bus import DistributedEventBus
+from mnos.core.aegis.identity import AegisIdentityCore
+from mnos.core.aegis.gateway import AegisIdentityGateway
+from mnos.core.orca.engine import ORCAValidator
+from mnos.core.consent.engine import ConsentEngine
 from mnos.modules.imoxon.policies.engine import IdentityPolicyEngine
 from mnos.shared.execution_guard import ExecutionGuard, ExecutionGuardMiddleware
 from mnos.api.aegis_identity import create_identity_router
-from mnos.api.commerce import create_commerce_router
 from mnos.api.finance import create_finance_router
 from mnos.api.specialized import create_specialized_router
 from mnos.api.hospitality import create_hospitality_router
@@ -24,8 +23,7 @@ from mnos.gateway.engine import APIGatewayControlPlane
 
 # iMOXON Consolidated
 from mnos.modules.imoxon.core.engine import (
-    ImoxonCore, CatalogManager, ProcurementEngine as LegacyProcurementEngine,
-    CampaignManager, MerchantManager, POSManager
+    ImoxonCore, CatalogManager, CampaignManager, MerchantManager, POSManager
 )
 from mnos.modules.imoxon.procurement.engine import ProcurementEngine
 from mnos.modules.imoxon.resort.weekly_system import ResortWeeklyOrderSystem
@@ -35,6 +33,18 @@ from mnos.modules.finance.payment_layer import PaymentAbstractionLayer
 from mnos.modules.finance.escrow import EscrowFCETCore
 
 # Specialized Engines
+from mnos.modules.redcoral.router import create_redcoral_router
+from mnos.modules.buildx.router import create_buildx_router
+from mnos.modules.atollx.dredge.router import create_dredge_router
+from mnos.modules.atollx.water.router import create_water_router
+from mnos.modules.atollx.design.router import create_design_router
+from mnos.modules.atollx.float.router import create_float_router
+from mnos.modules.atollx.pool.router import create_pool_router
+from mnos.modules.atollx.utilities.router import create_utilities_router
+from mnos.modules.atollx.airport.api.airport_router import create_airport_router
+from mnos.modules.atollx.ops.api.ops_router import create_ops_router
+from mnos.modules.redcoral.assets.api.asset_router import create_asset_router
+from mnos.modules.redcoral.commerce.api.commerce_router import create_commerce_router
 from mnos.modules.tourism.engine import TourismEngine
 from mnos.modules.faith.engine import FaithEngine
 from mnos.modules.transport.engine import TransportEngine
@@ -82,6 +92,8 @@ events_core = DistributedEventBus()
 identity_core = AegisIdentityCore(shadow_core, events_core)
 identity_gateway = AegisIdentityGateway(identity_core, shadow_core)
 policy_engine = IdentityPolicyEngine(identity_core)
+orca_core = ORCAValidator(shadow_core)
+consent_core = ConsentEngine(shadow_core)
 gateway = APIGatewayControlPlane()
 
 # Guard remains central authority
@@ -245,7 +257,6 @@ async def chat_message(message: str, actor: dict = Depends(get_actor_ctx)):
 
 # --- Routers ---
 app.include_router(create_identity_router(identity_core, policy_engine, identity_gateway), prefix="/imoxon")
-app.include_router(create_commerce_router(imoxon, catalog, merchant, pos, procurement, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_finance_router(fce_hardened, mira_bridge, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_specialized_router(tourism, faith, transport, housing, exchange, education, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_hospitality_router(hospitality, get_actor_ctx), prefix="/imoxon")
@@ -258,6 +269,20 @@ app.include_router(create_leaderboard_router(leaderboard, get_actor_ctx), prefix
 app.include_router(create_b2b_portal_router(mars_unified, b2b_negotiator, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_heatmap_router(heatmap_engine, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_laundry_router(laundry_engine, get_actor_ctx), prefix="/imoxon")
+
+# RC + BX + AX Architecture
+app.include_router(create_redcoral_router(guard, shadow_core, orca_core, consent_core), prefix="/api")
+app.include_router(create_buildx_router(guard, shadow_core, orca_core, fce_core), prefix="/api")
+app.include_router(create_dredge_router(guard, shadow_core, orca_core), prefix="/api")
+app.include_router(create_water_router(guard, shadow_core, orca_core), prefix="/api")
+app.include_router(create_design_router(guard, shadow_core, orca_core), prefix="/api")
+app.include_router(create_float_router(guard, shadow_core, orca_core), prefix="/api")
+app.include_router(create_pool_router(guard, shadow_core, orca_core), prefix="/api")
+app.include_router(create_utilities_router(guard, shadow_core, orca_core), prefix="/api")
+app.include_router(create_airport_router(guard, shadow_core, orca_core, fce_core), prefix="/api")
+app.include_router(create_ops_router(guard, shadow_core, orca_core, fce_core), prefix="/api")
+app.include_router(create_asset_router(guard, shadow_core, orca_core, consent_core), prefix="/api")
+app.include_router(create_commerce_router(guard, shadow_core, orca_core, fce_core), prefix="/api")
 
 # Error handlers
 @app.exception_handler(PermissionError)

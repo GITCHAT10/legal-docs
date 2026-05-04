@@ -22,8 +22,8 @@
 
 ### 5. EXACT FILES CHANGED (FIXED)
 - `mnos/modules/imoxon/core/engine.py`: Consolidated B2B+B2C hub.
-- `mnos/modules/finance/fce.py`: Hardened decimal math and multi-party clearing.
-- `mnos/modules/events/bus.py`: Distributed partitioned streaming backbone.
+- `mnos/core/fce/engine.py`: Hardened decimal math and multi-party clearing.
+- `mnos/core/events/bus.py`: Distributed partitioned streaming backbone.
 - `main.py`: Final consolidated entrypoint wiring.
 
 ## FINAL RECOMMENDATION: MERGE_SAFE

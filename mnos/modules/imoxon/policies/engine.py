@@ -4,7 +4,7 @@ class IdentityPolicyEngine:
 
     def validate_action(self, action_type: str, context: dict):
         identity_id = context.get("identity_id")
-        device_id = context.get("device_id")
+        context.get("device_id")
 
         # Staff Binding requirements
         staff_actions = ["onboarding", "uniform_assignment", "linen_assignment", "delivery_acceptance"]

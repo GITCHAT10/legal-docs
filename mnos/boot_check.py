@@ -8,10 +8,13 @@ def boot_check():
     """
     required_dirs = [
         "mnos/core",
-        "mnos/modules/aegis",
-        "mnos/modules/finance",
-        "mnos/modules/shadow",
-        "mnos/modules/events"
+        "mnos/core/aegis",
+        "mnos/core/shadow",
+        "mnos/core/events",
+        "mnos/core/fce",
+        "mnos/modules/redcoral",
+        "mnos/modules/buildx",
+        "mnos/modules/atollx"
     ]
 
     for d in required_dirs:

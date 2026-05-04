@@ -1,7 +1,6 @@
 import httpx
 import asyncio
 import os
-import json
 from main import app, events_core, shadow_core, guard
 from httpx import ASGITransport
 from mnos.edge.base import EdgeNode

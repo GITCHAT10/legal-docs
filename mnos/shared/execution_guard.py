@@ -17,6 +17,7 @@ class ExecutionGuard:
         self.events = events
 
     def execute_sovereign_action(self, action_type: str, actor_context: Dict, func: Callable, *args, **kwargs) -> Any:
+        forced_status = kwargs.pop("forced_status", "COMMITTED")
         """
         MANDATORY ENTRYPOINT for all mutating commerce actions.
         ORBAN -> AEGIS -> ExecutionGuard -> FCE -> SHADOW
@@ -44,6 +45,17 @@ class ExecutionGuard:
         _sovereign_context.set({"token": token, "actor": actor_context})
 
         try:
+            # Extract project_id and trace_id from args/kwargs or context
+            project_id = kwargs.get("project_id") or actor_context.get("project_id")
+            # If not in kwargs, check first arg if it's a project_id string or a model with project_id
+            if not project_id and args:
+                if isinstance(args[0], str):
+                    project_id = args[0]
+                elif hasattr(args[0], "project_id"):
+                    project_id = getattr(args[0], "project_id")
+
+            trace_id = actor_context.get("trace_id")
+
             # BEGIN ATOMIC TX (Simulated via context and SHADOW intent)
             # Filter non-serializable args for intent log
             serializable_input = [a for a in args if isinstance(a, (str, int, float, dict, list, bool))]
@@ -53,9 +65,11 @@ class ExecutionGuard:
                 "actor_device_id": device_id,
                 "actor_role": role,
                 "input": serializable_input or kwargs,
-                "status": "INTENT"
+                "status": "INTENT",
+                "project_id": project_id,
+                "trace_id": trace_id
             }
-            self.shadow.commit(f"{action_type}.intent", identity_id, intent_payload)
+            self.shadow.commit(f"{action_type}.intent", identity_id, intent_payload, project_id=project_id, trace_id=trace_id)
 
             # EXECUTE BUSINESS LOGIC
             result = func(*args, **kwargs)
@@ -66,9 +80,11 @@ class ExecutionGuard:
                 "actor_aegis_id": identity_id,
                 "actor_device_id": device_id,
                 "result": result,
-                "status": "COMMITTED"
+                "status": forced_status,
+                "project_id": project_id,
+                "trace_id": trace_id
             }
-            self.shadow.commit(f"{action_type}.completed", identity_id, commit_payload)
+            self.shadow.commit(f"{action_type}.completed", identity_id, commit_payload, project_id=project_id, trace_id=trace_id)
 
             return result
 
@@ -78,7 +94,9 @@ class ExecutionGuard:
                 "action": action_type,
                 "actor_aegis_id": identity_id,
                 "error": str(e),
-                "status": "FAILED_ROLLBACK"
+                "status": "FAILED_ROLLBACK",
+                "project_id": project_id if 'project_id' in locals() else None,
+                "trace_id": trace_id if 'trace_id' in locals() else None
             }
             self.shadow.commit(f"{action_type}.failed", identity_id or "UNKNOWN", fail_payload)
             raise RuntimeError(f"SOVEREIGN EXECUTION FAILED: {str(e)}")

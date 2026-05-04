@@ -1,6 +1,5 @@
 import uuid
 from datetime import datetime, UTC, timedelta
-from typing import Dict, List, Any, Optional
 from decimal import Decimal, ROUND_HALF_UP
 
 class NexusSkyICloudBrain:
@@ -85,7 +84,7 @@ class NexusSkyICloudBrain:
         self.orders[order_id] = order
 
         # 3. UT SYSTEM Dispatches (Fleet Consolidation)
-        transfer_manifest = self._internal_dispatch_transfer(order_id, {"route": "Male -> Island", "fare": 0})
+        self._internal_dispatch_transfer(order_id, {"route": "Male -> Island", "fare": 0})
 
         # 4. MARS PAY Settlement Split
         self._calculate_settlement(order_id, package["base_price"], pricing, "SYSTEM_DEFAULT_VENDOR")

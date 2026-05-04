@@ -1,10 +1,10 @@
 import pytest
 from mnos.modules.hospitality.engine import LowCostHospitalityEngine
 from mnos.modules.imoxon.core.engine import ImoxonCore
-from mnos.modules.finance.fce import FCEEngine
-from mnos.modules.shadow.ledger import ShadowLedger
-from mnos.modules.events.bus import DistributedEventBus
-from mnos.core.aegis_identity.identity import AegisIdentityCore
+from mnos.core.fce.engine import FCEEngine
+from mnos.core.shadow.ledger import ShadowLedger
+from mnos.core.events.bus import DistributedEventBus
+from mnos.core.aegis.identity import AegisIdentityCore
 from mnos.modules.imoxon.policies.engine import IdentityPolicyEngine
 from mnos.shared.execution_guard import ExecutionGuard
 
