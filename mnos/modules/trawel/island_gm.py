@@ -61,8 +61,13 @@ class IslandGMSystem:
 
     def get_gm_dashboard(self, actor_ctx: dict, island_name: str):
         """Island Command Panel: Real-time stats for GM."""
-        if actor_ctx.get("role") == "island_gm" and actor_ctx.get("assigned_island") != island_name:
-             raise PermissionError("Access Denied: Island Mismatch")
+        role = actor_ctx.get("role")
+        if role != "admin":
+            if role == "island_gm":
+                if actor_ctx.get("assigned_island") != island_name:
+                    raise PermissionError("Access Denied: Island Mismatch")
+            else:
+                raise PermissionError("Access Denied: Role Unauthorized")
 
         stats = self.island_stats.get(island_name)
         if not stats:

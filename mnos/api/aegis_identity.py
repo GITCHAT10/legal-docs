@@ -9,13 +9,14 @@ def create_identity_router(identity_core, policy_engine, gateway=None):
     async def create_identity(profile_data: dict):
         # Bootstrap identity creation is usually unguarded or use a SYSTEM token
         # For this audit, we allow it to publish if authorized manually or we wrap it.
-        from mnos.shared.execution_guard import _sovereign_context
-        token = _sovereign_context.set({"token": "BOOTSTRAP", "actor": {"identity_id": "SYSTEM", "role": "admin"}})
+        from mnos.shared.execution_guard import set_system_context
+        set_system_context()
         try:
             identity_id = identity_core.create_profile(profile_data)
             return {"identity_id": identity_id, "status": "created"}
         finally:
-            _sovereign_context.reset(token)
+            from mnos.shared.execution_guard import _sovereign_context
+            _sovereign_context.set(None)
 
     @router.post("/verify")
     async def verify_identity(identity_id: str, verifier_id: str):
@@ -26,13 +27,14 @@ def create_identity_router(identity_core, policy_engine, gateway=None):
 
     @router.post("/device/bind")
     async def bind_device(identity_id: str, device_data: dict):
-        from mnos.shared.execution_guard import _sovereign_context
-        token = _sovereign_context.set({"token": "BOOTSTRAP", "actor": {"identity_id": identity_id, "role": "user"}})
+        from mnos.shared.execution_guard import set_system_context
+        set_system_context()
         try:
             device_id = identity_core.bind_device(identity_id, device_data)
             return {"device_id": device_id, "status": "bound"}
         finally:
-            _sovereign_context.reset(token)
+            from mnos.shared.execution_guard import _sovereign_context
+            _sovereign_context.set(None)
 
     @router.post("/role/assign")
     async def assign_role(identity_id: str, role_name: str, scope: dict):

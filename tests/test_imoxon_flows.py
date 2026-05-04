@@ -1,27 +1,20 @@
 import pytest
 from fastapi.testclient import TestClient
-from main import app, identity_core
+from main import app
 
 client = TestClient(app)
 
 @pytest.fixture
-def admin_headers():
-    identity_id = identity_core.create_profile({
-        "full_name": "Admin User",
-        "profile_type": "admin"
-    })
-    device_id = identity_core.bind_device(identity_id, {"fingerprint": "admin-device"})
-    return {
-        "X-AEGIS-IDENTITY": identity_id,
-        "X-AEGIS-DEVICE": device_id
-    }
+def admin_headers(create_security_headers):
+    return create_security_headers(full_name="Admin User", profile_type="admin")
 
 def test_full_supplier_onboarding_flow(admin_headers):
     # 1. Connect Supplier
     resp = client.post("/imoxon/suppliers/connect", params={"name": "Thoddoo Farms"}, headers=admin_headers)
     assert resp.status_code == 200
-    supplier_id = resp.json()["id"]
-    assert supplier_id.startswith("p_") or len(supplier_id) > 10 # uuid based
+    # Connect supplier returns a profile dict which has identity_id
+    supplier_id = resp.json()["supplier_id"]
+    assert len(supplier_id) > 10 # uuid based
 
     # 2. Import Product
     product_data = {"name": "Maldivian Watermelon", "price": 10.0}

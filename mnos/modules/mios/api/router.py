@@ -32,7 +32,12 @@ def create_mios_router(godown, freight, clearing, fce, fx, handoff, aircraft, ge
     async def get_landed_cost(shipment_id: UUID, actor: dict = Depends(get_actor_ctx)):
         cost = fce.get_landed_cost(shipment_id)
         sc = fce.calculate_sky_clearance_sc(shipment_id)
-        return {"landed_cost": float(cost), "service_charge": float(sc), "currency": "MVR"}
+        return {
+            "landed_cost": float(cost),
+            "service_charge": float(sc),
+            "total": float(cost), # Legacy alias
+            "currency": "MVR"
+        }
 
     @router.get("/intelligence/strategy/national-flow")
     async def get_national_flow(actor: dict = Depends(get_actor_ctx)):

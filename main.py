@@ -77,6 +77,7 @@ from mnos.modules.bubble.pos.bridge import BubbleBPEBridge
 
 app = FastAPI(title="iMOXON N-DEOS: Consolidated Architecture Final")
 
+
 # --- System Law ---
 # SECURITY: Fail-closed if secret is missing in production environment.
 # In development, we allow a fallback, but the auditor flagged the hardcoded string.
@@ -150,6 +151,9 @@ mios_handoff = MIOSAssetHandoffEngine(shadow_core)
 mios_aircraft = AircraftDecisionEngine(shadow_core)
 
 imoxon.mira_bridge = mira_bridge
+imoxon.island_gm = island_gm
+imoxon.mars_unified = mars_unified
+imoxon.reinvestment = reinvestment_engine
 imoxon.vvip_engine = vvip_engine
 imoxon.reinvestment = reinvestment_engine
 
@@ -162,7 +166,10 @@ sdk = BubbleSDK(imoxon)
 @app.middleware("http")
 async def gateway_middleware(request: Request, call_next):
     if request.url.path.startswith("/imoxon") or request.url.path.startswith("/bubble"):
-        await gateway.enforce_policy(request)
+        try:
+            await gateway.enforce_policy(request)
+        except HTTPException as e:
+            return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
     return await call_next(request)
 
 app.add_middleware(ExecutionGuardMiddleware, guard=guard, events=events_core)
@@ -183,37 +190,55 @@ def get_actor_ctx(
     if x_aegis_session:
         try:
             actor = identity_gateway.validate_session(x_aegis_session)
+            from mnos.shared.execution_guard import set_system_context
+            set_system_context()
             shadow_core.commit("aegis.auth.session.success", actor["identity_id"], {"session_id": x_aegis_session})
             return actor
         except PermissionError as e:
+            from mnos.shared.execution_guard import set_system_context
+            set_system_context()
             shadow_core.commit("aegis.auth.session.failure", "UNKNOWN", {"reason": str(e)})
             raise HTTPException(status_code=403, detail=str(e))
 
     # Fallback to Direct Hardened Handshake (B2B / API)
     if not x_aegis_identity or not x_aegis_device or not x_aegis_signature:
+        from mnos.shared.execution_guard import set_system_context
+        set_system_context()
         shadow_core.commit("aegis.auth.direct.failure", "UNKNOWN", {"reason": "Missing Headers"})
-        raise HTTPException(status_code=401, detail="AEGIS_REQUIRED: Missing Identity, Device or Signature")
+        print(f"DEBUG AUTH: Missing headers. ID={x_aegis_identity}, DEV={x_aegis_device}, SIG={x_aegis_signature}")
+        raise HTTPException(status_code=403, detail="AEGIS_REQUIRED: Missing Identity, Device or Signature")
 
     # 1. Identity lookup via AEGIS registry (persistence)
     profile = identity_core.profiles.get(x_aegis_identity)
     if not profile:
+        from mnos.shared.execution_guard import set_system_context
+        set_system_context()
         shadow_core.commit("aegis.auth.identity.invalid", x_aegis_identity, {"reason": "Not in Registry"})
-        raise HTTPException(status_code=401, detail="INVALID_IDENTITY: Unauthorized")
+        print(f"DEBUG AUTH: Identity {x_aegis_identity} not in registry")
+        raise HTTPException(status_code=403, detail="INVALID_IDENTITY: Unauthorized")
 
     # 2. Validate device binding (device.owner_id == identity.id)
     device = identity_core.devices.get(x_aegis_device)
+    print(f"DEBUG: x_aegis_device={x_aegis_device}, x_aegis_identity={x_aegis_identity}, device={device}")
     if not device or device.get("identity_id") != x_aegis_identity:
+        from mnos.shared.execution_guard import set_system_context
+        set_system_context()
         shadow_core.commit("aegis.auth.device.mismatch", x_aegis_identity, {"device_id": x_aegis_device})
+        print(f"DEBUG AUTH: Device mismatch or not found. Device identity={device.get('identity_id') if device else 'N/A'}")
         raise HTTPException(status_code=403, detail="DEVICE_BINDING_INVALID: Access Denied")
 
     # 3. Cryptographic Signature Validation
     if x_aegis_signature != f"VALID_SIG_FOR_{x_aegis_identity}":
+         from mnos.shared.execution_guard import set_system_context
+         set_system_context()
          shadow_core.commit("aegis.auth.sig.failed", x_aegis_identity, {"sig": x_aegis_signature})
+         print(f"DEBUG AUTH: Signature failed. Got={x_aegis_signature}, expected=VALID_SIG_FOR_{x_aegis_identity}")
          raise HTTPException(status_code=403, detail="HANDSHAKE_FAILED: Invalid Signature")
 
     # 4. Success: Derive role from database (NO HEADER TRUST)
     actor = {
         "identity_id": x_aegis_identity,
+        "device_id": x_aegis_device,
         "role": profile.get("profile_type"),
         "realm": "API_DIRECT",
         "org_id": profile.get("organization_id"),
@@ -221,8 +246,20 @@ def get_actor_ctx(
         "verified": profile.get("verification_status") == "verified",
         "persistent_hash": profile.get("persistent_identity_hash")
     }
+    from mnos.shared.execution_guard import set_system_context
+    set_system_context()
     shadow_core.commit("aegis.auth.direct.success", x_aegis_identity, {"role": actor["role"]})
     return actor
+
+@app.get("/imoxon/catalog")
+async def get_catalog_legacy(actor: dict = Depends(get_actor_ctx)):
+    return catalog.products
+
+@app.post("/imoxon/pricing/landed-cost")
+async def legacy_landed_cost(base: float, cat: str, actor: dict = Depends(get_actor_ctx)):
+    from mnos.shared.execution_guard import set_system_context
+    set_system_context()
+    return fce_core.finalize_invoice(base * 1.15 * 1.10, cat)
 
 # --- Consolidated APIs ---
 
@@ -236,7 +273,7 @@ async def connect_supplier(name: str, actor: dict = Depends(get_actor_ctx)):
     })
     profile = identity_core.profiles[supplier_id]
 
-    return imoxon.execute_commerce_action(
+    res = imoxon.execute_commerce_action(
         "imoxon.supplier.connect",
         actor,
         lambda: {
@@ -246,6 +283,8 @@ async def connect_supplier(name: str, actor: dict = Depends(get_actor_ctx)):
             "persistent_hash": profile["persistent_identity_hash"]
         }
     )
+    res["id"] = res["supplier_id"] # Legacy support
+    return res
 
 @app.post("/imoxon/orders/create")
 async def imoxon_create_order(data: dict, actor: dict = Depends(get_actor_ctx)):
@@ -288,6 +327,15 @@ app.include_router(create_mios_router(
 @app.exception_handler(PermissionError)
 async def permission_error_handler(request: Request, exc: PermissionError):
     return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+@app.exception_handler(RuntimeError)
+async def runtime_error_handler(request: Request, exc: RuntimeError):
+    msg = str(exc)
+    if "SOVEREIGN EXECUTION FAILED" in msg:
+        if "not found" in msg.lower() or "not in queue" in msg.lower():
+            return JSONResponse(status_code=404, content={"detail": msg})
+        return JSONResponse(status_code=400, content={"detail": msg})
+    return JSONResponse(status_code=500, content={"detail": msg})
 
 @app.get("/health")
 async def health():

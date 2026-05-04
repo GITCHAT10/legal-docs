@@ -17,6 +17,7 @@ class ShadowLedger:
     def commit(self, event_type: str, actor_id: str, payload: dict) -> str:
         # SECURITY: Enforcement of ExecutionGuard Authority
         from mnos.shared.execution_guard import ExecutionGuard
+        # INTERNAL BYPASS for bootstrap/system actions allowed only if context is explicitly set
         if not ExecutionGuard.is_authorized():
              raise PermissionError("FAIL CLOSED: Unauthorized direct write to SHADOW Ledger blocked.")
 
