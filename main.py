@@ -392,7 +392,7 @@ async def enterprise_dashboard(actor: dict = Depends(get_actor_ctx)):
                 "disputed_orders": len([r for r in u_resort_procurement.requests.values() if r["status"] == "DISPUTED"])
             },
             "enterprise_procurement": {
-                "active_agreements": len(u_enterprise_procurement.agreements), "open_bulk_requests": enterprise_reqs,
+                "active_agreements": len(u_enterprise_procurement.agreements), "open_requests": enterprise_reqs, "open_bulk_requests": enterprise_reqs,
                 "bulk_requests_pending": len([r for r in u_enterprise_procurement.requests.values() if r["status"] == "SUBMITTED"]),
                 "budget_reserved_total": sum(1 for r in u_enterprise_procurement.requests.values() if r.get("budget_reserved"))
             },
