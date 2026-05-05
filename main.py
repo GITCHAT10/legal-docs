@@ -1,8 +1,7 @@
 import os
-from fastapi import FastAPI, HTTPException, Header, Depends, Query, Request
+from fastapi import FastAPI, HTTPException, Header, Depends, Request, Body
 from fastapi.responses import JSONResponse
-from typing import List, Optional, Dict
-from decimal import Decimal
+from typing import Any
 
 # MNOS Core (N-DEOS)
 from mnos.modules.finance.fce import FCEEngine, FCEHardenedEngine
@@ -24,8 +23,7 @@ from mnos.gateway.engine import APIGatewayControlPlane
 
 # iMOXON Consolidated
 from mnos.modules.imoxon.core.engine import (
-    ImoxonCore, CatalogManager, ProcurementEngine as LegacyProcurementEngine,
-    CampaignManager, MerchantManager, POSManager
+    ImoxonCore, CatalogManager, CampaignManager, MerchantManager, POSManager
 )
 from mnos.modules.imoxon.procurement.engine import ProcurementEngine
 from mnos.modules.imoxon.resort.weekly_system import ResortWeeklyOrderSystem
@@ -64,6 +62,15 @@ from mnos.modules.bubble.chat.engine import ChatIntentEngine, ChatToTransactionE
 from mnos.modules.bubble.sdk.core.bridge import BubbleSDK
 from mnos.modules.bubble.pos.engine import BubblePOSEngine
 from mnos.modules.bubble.pos.bridge import BubbleBPEBridge
+
+# UT PPMC Imports
+from mnos.modules.ut.engines.fce_split import UTFCESplitEngine
+from mnos.modules.ut.engines.route_engine import UTRouteEngine
+from mnos.modules.ut.engines.booking_engine import UTBookingEngine
+from mnos.modules.ut.engines.safety_gate import UTSafetyGateEngine
+from mnos.modules.ut.services.boarding_service import UTBoardingService
+from mnos.modules.ut.services.sync_service import UTAPOLLOSyncService
+from mnos.modules.ut.api.router import create_ut_router
 
 app = FastAPI(title="iMOXON N-DEOS: Consolidated Architecture Final")
 
@@ -138,6 +145,14 @@ intent_engine = ChatIntentEngine(imoxon)
 chat_os = ChatToTransactionEngine(imoxon, intent_engine)
 sdk = BubbleSDK(imoxon)
 
+# UT PPMC Initialization
+ut_fce_split = UTFCESplitEngine(fce_core, shadow_core)
+ut_route_engine = UTRouteEngine()
+ut_booking_engine = UTBookingEngine(imoxon, ut_fce_split)
+ut_safety_gate = UTSafetyGateEngine(shadow_core)
+ut_boarding_service = UTBoardingService(shadow_core, events_core)
+ut_sync_service = UTAPOLLOSyncService(shadow_core, events_core)
+
 # L1 & L2 Security
 @app.middleware("http")
 async def gateway_middleware(request: Request, call_next):
@@ -163,37 +178,68 @@ def get_actor_ctx(
     if x_aegis_session:
         try:
             actor = identity_gateway.validate_session(x_aegis_session)
-            shadow_core.commit("aegis.auth.session.success", actor["identity_id"], {"session_id": x_aegis_session})
+            from mnos.shared.execution_guard import set_system_context, _sovereign_context
+            token = set_system_context()
+            try:
+                shadow_core.commit("aegis.auth.session.success", actor["identity_id"], {"session_id": x_aegis_session})
+            finally:
+                _sovereign_context.reset(token)
             return actor
         except PermissionError as e:
-            shadow_core.commit("aegis.auth.session.failure", "UNKNOWN", {"reason": str(e)})
+            from mnos.shared.execution_guard import set_system_context, _sovereign_context
+            token = set_system_context()
+            try:
+                shadow_core.commit("aegis.auth.session.failure", "UNKNOWN", {"reason": str(e)})
+            finally:
+                _sovereign_context.reset(token)
             raise HTTPException(status_code=403, detail=str(e))
 
     # Fallback to Direct Hardened Handshake (B2B / API)
     if not x_aegis_identity or not x_aegis_device or not x_aegis_signature:
-        shadow_core.commit("aegis.auth.direct.failure", "UNKNOWN", {"reason": "Missing Headers"})
+        from mnos.shared.execution_guard import set_system_context, _sovereign_context
+        token = set_system_context()
+        try:
+            shadow_core.commit("aegis.auth.direct.failure", "UNKNOWN", {"reason": "Missing Headers"})
+        finally:
+            _sovereign_context.reset(token)
         raise HTTPException(status_code=401, detail="AEGIS_REQUIRED: Missing Identity, Device or Signature")
 
     # 1. Identity lookup via AEGIS registry (persistence)
     profile = identity_core.profiles.get(x_aegis_identity)
     if not profile:
-        shadow_core.commit("aegis.auth.identity.invalid", x_aegis_identity, {"reason": "Not in Registry"})
+        from mnos.shared.execution_guard import set_system_context, _sovereign_context
+        token = set_system_context()
+        try:
+            shadow_core.commit("aegis.auth.identity.invalid", x_aegis_identity, {"reason": "Not in Registry"})
+        finally:
+            _sovereign_context.reset(token)
         raise HTTPException(status_code=401, detail="INVALID_IDENTITY: Unauthorized")
 
     # 2. Validate device binding (device.owner_id == identity.id)
     device = identity_core.devices.get(x_aegis_device)
     if not device or device.get("identity_id") != x_aegis_identity:
-        shadow_core.commit("aegis.auth.device.mismatch", x_aegis_identity, {"device_id": x_aegis_device})
+        from mnos.shared.execution_guard import set_system_context, _sovereign_context
+        token = set_system_context()
+        try:
+            shadow_core.commit("aegis.auth.device.mismatch", x_aegis_identity, {"device_id": x_aegis_device})
+        finally:
+            _sovereign_context.reset(token)
         raise HTTPException(status_code=403, detail="DEVICE_BINDING_INVALID: Access Denied")
 
     # 3. Cryptographic Signature Validation
     if x_aegis_signature != f"VALID_SIG_FOR_{x_aegis_identity}":
-         shadow_core.commit("aegis.auth.sig.failed", x_aegis_identity, {"sig": x_aegis_signature})
+         from mnos.shared.execution_guard import set_system_context, _sovereign_context
+         token = set_system_context()
+         try:
+            shadow_core.commit("aegis.auth.sig.failed", x_aegis_identity, {"sig": x_aegis_signature})
+         finally:
+            _sovereign_context.reset(token)
          raise HTTPException(status_code=403, detail="HANDSHAKE_FAILED: Invalid Signature")
 
     # 4. Success: Derive role from database (NO HEADER TRUST)
     actor = {
         "identity_id": x_aegis_identity,
+        "device_id": x_aegis_device, # MANDATORY FOR EXECUTION GUARD
         "role": profile.get("profile_type"),
         "realm": "API_DIRECT",
         "org_id": profile.get("organization_id"),
@@ -201,25 +247,40 @@ def get_actor_ctx(
         "verified": profile.get("verification_status") == "verified",
         "persistent_hash": profile.get("persistent_identity_hash")
     }
-    shadow_core.commit("aegis.auth.direct.success", x_aegis_identity, {"role": actor["role"]})
+    from mnos.shared.execution_guard import set_system_context, _sovereign_context
+    token = set_system_context()
+    try:
+        shadow_core.commit("aegis.auth.direct.success", x_aegis_identity, {"role": actor["role"]})
+    finally:
+        _sovereign_context.reset(token)
     return actor
 
 # --- Consolidated APIs ---
 
 @app.post("/imoxon/suppliers/connect")
-async def connect_supplier(name: str, actor: dict = Depends(get_actor_ctx)):
+async def connect_supplier(data: dict = Body(...), x_aegis_device: str = Header(None, alias="X-AEGIS-DEVICE"), actor: dict = Depends(get_actor_ctx)):
+    # Legacy compatibility: handle both name param and data dict
+    name = data.get("name", "Unknown Supplier")
+
     # Create a profile in Aegis for the supplier to get a real ID
-    supplier_id = identity_core.create_profile({
-        "full_name": name,
-        "profile_type": "supplier",
-        "organization_id": "IMOXON-NETWORK"
-    })
+    from mnos.shared.execution_guard import set_system_context, _sovereign_context
+    token = set_system_context()
+    try:
+        supplier_id = identity_core.create_profile({
+            "full_name": name,
+            "profile_type": "supplier",
+            "organization_id": "IMOXON-NETWORK"
+        })
+    finally:
+        _sovereign_context.reset(token)
+
     profile = identity_core.profiles[supplier_id]
 
     return imoxon.execute_commerce_action(
         "imoxon.supplier.connect",
         actor,
         lambda: {
+            "id": supplier_id, # Legacy test expects 'id'
             "supplier_id": supplier_id,
             "name": name,
             "status": "CONNECTED",
@@ -228,19 +289,27 @@ async def connect_supplier(name: str, actor: dict = Depends(get_actor_ctx)):
     )
 
 @app.post("/imoxon/orders/create")
-async def imoxon_create_order(data: dict, actor: dict = Depends(get_actor_ctx)):
+async def imoxon_create_order(data: dict = Body(...), x_aegis_device: str = Header(None, alias="X-AEGIS-DEVICE"), actor: dict = Depends(get_actor_ctx)):
     return procurement.create_purchase_request(actor, data.get("items"), data.get("amount"))
 
 @app.post("/imoxon/products/import")
-async def import_product(sid: str, raw: dict, actor: dict = Depends(get_actor_ctx)):
+async def import_product(sid: str, raw: Any = Body(...), x_aegis_device: str = Header(None, alias="X-AEGIS-DEVICE"), actor: dict = Depends(get_actor_ctx)):
+    # Legacy support: raw might be a list
+    if isinstance(raw, list):
+        imported = []
+        for item in raw:
+            res = catalog.import_supplier_product(actor, sid, item)
+            imported.append(res)
+        return {"products": imported, "status": "BATCH_IMPORTED"}
+
     return catalog.import_supplier_product(actor, sid, raw)
 
 @app.post("/imoxon/products/approve")
-async def approve_product(pid: str, actor: dict = Depends(get_actor_ctx)):
+async def approve_product(pid: str, x_aegis_device: str = Header(None, alias="X-AEGIS-DEVICE"), actor: dict = Depends(get_actor_ctx)):
     return catalog.approve_product(actor, pid)
 
 @app.post("/bubble/chat/message")
-async def chat_message(message: str, actor: dict = Depends(get_actor_ctx)):
+async def chat_message(message: str = Body(...), x_aegis_device: str = Header(None, alias="X-AEGIS-DEVICE"), actor: dict = Depends(get_actor_ctx)):
     return chat_os.process_message(actor, message)
 
 # --- Routers ---
@@ -259,10 +328,34 @@ app.include_router(create_b2b_portal_router(mars_unified, b2b_negotiator, get_ac
 app.include_router(create_heatmap_router(heatmap_engine, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_laundry_router(laundry_engine, get_actor_ctx), prefix="/imoxon")
 
+# UT Router
+app.include_router(
+    create_ut_router(
+        ut_booking_engine,
+        ut_route_engine,
+        ut_fce_split,
+        ut_boarding_service,
+        ut_sync_service,
+        ut_safety_gate,
+        get_actor_ctx
+    ),
+    prefix="/imoxon"
+)
+
 # Error handlers
 @app.exception_handler(PermissionError)
 async def permission_error_handler(request: Request, exc: PermissionError):
     return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+@app.exception_handler(RuntimeError)
+async def runtime_error_handler(request: Request, exc: RuntimeError):
+    # Map SOVEREIGN EXECUTION FAILED to 4xx if business logic violation
+    msg = str(exc)
+    if "SOVEREIGN EXECUTION FAILED" in msg:
+        if "not found" in msg.lower() or "not in queue" in msg.lower():
+            return JSONResponse(status_code=404, content={"detail": msg})
+        return JSONResponse(status_code=400, content={"detail": msg})
+    return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
 
 @app.get("/health")
 async def health():

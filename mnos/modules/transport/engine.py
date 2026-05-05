@@ -1,5 +1,4 @@
 import uuid
-from datetime import datetime, UTC
 
 class TransportEngine:
     def __init__(self, core):

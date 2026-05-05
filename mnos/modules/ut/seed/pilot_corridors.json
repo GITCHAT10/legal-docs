@@ -1,0 +1,7 @@
+[
+  {"id": "SOUTH_MALE", "name": "South Male Atoll", "is_pilot": true},
+  {"id": "VAAVU", "name": "Vaavu Atoll", "is_pilot": true},
+  {"id": "NORTH_ARI", "name": "North Ari Atoll", "is_pilot": true},
+  {"id": "SOUTH_ARI", "name": "South Ari Atoll", "is_pilot": true},
+  {"id": "BAA", "name": "Baa Atoll", "is_pilot": true}
+]

@@ -1,6 +1,5 @@
 import pytest
 import httpx
-import os
 from main import app
 from httpx import ASGITransport
 
@@ -17,10 +16,11 @@ async def client():
 @pytest.fixture
 async def headers(client):
     # Setup authorized actor
-    res = await client.post("/aegis/identity/create", json={"full_name": "Test Admin", "profile_type": "admin"})
+    res = await client.post("/imoxon/aegis/identity/create", json={"full_name": "Test Admin", "profile_type": "admin"})
     actor_id = res.json()["identity_id"]
-    await client.post("/aegis/identity/device/bind", params={"identity_id": actor_id}, json={"fingerprint": "test-dev"})
-    return {"X-AEGIS-IDENTITY": actor_id, "X-AEGIS-DEVICE": "test-dev"}
+    res = await client.post("/imoxon/aegis/identity/device/bind", params={"identity_id": actor_id}, json={"fingerprint": "test-dev"})
+    device_id = res.json()["device_id"]
+    return {"X-AEGIS-IDENTITY": actor_id, "X-AEGIS-DEVICE": device_id, "X-AEGIS-SIGNATURE": f"VALID_SIG_FOR_{actor_id}"}
 
 @pytest.mark.anyio
 async def test_supplier_product_import(client, headers):
@@ -61,4 +61,4 @@ async def test_landed_cost_calculation(client, headers):
 async def test_no_direct_db_write():
     from main import shadow_core
     with pytest.raises(PermissionError):
-        shadow_core.commit("manual.hack", {"data": "rogue"})
+        shadow_core.commit("manual.hack", "actor-1", {"data": "rogue"})

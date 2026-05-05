@@ -8,6 +8,10 @@ from starlette.middleware.base import BaseHTTPMiddleware
 # Context variable to track sovereign authorization
 _sovereign_context = contextvars.ContextVar("sovereign_context", default=None)
 
+def set_system_context():
+    """Helper for bootstrap/auth-failure logging."""
+    return _sovereign_context.set({"token": "SYSTEM-TASK", "actor": {"identity_id": "SYSTEM", "role": "admin"}})
+
 class ExecutionGuard:
     def __init__(self, identity_core, policy_engine, fce, shadow, events):
         self.identity_core = identity_core

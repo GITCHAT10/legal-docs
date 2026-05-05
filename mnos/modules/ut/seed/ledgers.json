@@ -1,0 +1,16 @@
+[
+  {"id": "COMMERCIAL", "name": "Commercial Ledger"},
+  {"id": "PUBLIC_SUBSIDY", "name": "Public Subsidy Ledger"},
+  {"id": "SOVEREIGN", "name": "Sovereign Ledger"},
+  {"id": "CORPORATE", "name": "Corporate Ledger"},
+  {"id": "SUPPLIER_PAYABLE", "name": "Supplier Payable Ledger"},
+  {"id": "AGENT_COMMISSION", "name": "Agent Commission Ledger"},
+  {"id": "PLATFORM_FEE", "name": "Platform Fee Ledger"},
+  {"id": "ESG_MARINE", "name": "ESG Marine Ledger"},
+  {"id": "CSR_TRAINING", "name": "CSR Training Ledger"},
+  {"id": "REFUND", "name": "Refund Ledger"},
+  {"id": "EXCESS_PAYLOAD", "name": "Excess Payload Ledger"},
+  {"id": "CHARTER_POOL", "name": "Charter Pool Ledger"},
+  {"id": "FUEL_RESERVE", "name": "Fuel Reserve Ledger"},
+  {"id": "CONNECTIVITY", "name": "Connectivity Ledger"}
+]
