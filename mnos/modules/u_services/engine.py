@@ -1,5 +1,4 @@
 import uuid
-from datetime import datetime, UTC
 
 class EducationEngine:
     def __init__(self, core):

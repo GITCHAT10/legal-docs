@@ -1,6 +1,5 @@
 import pytest
 import httpx
-import os
 from main import app
 from httpx import ASGITransport
 
@@ -25,15 +24,27 @@ async def headers(client):
 @pytest.mark.anyio
 async def test_unsigned_request_rejected(client):
     res = await client.post("/imoxon/orders/create", json={})
+    # No identity header provided -> Middleware rejects with 403
     assert res.status_code == 403
-    assert "Missing Identity or Device" in res.json()["detail"]
+    assert "EXECUTION GUARD REJECTION: Missing Actor Identity" in res.json()["detail"]
 
 @pytest.mark.anyio
 async def test_missing_device_rejected(client):
-    headers = {"X-AEGIS-IDENTITY": "actor-123"}
+    # Identity exists but device not provided -> Middleware rejects with 403
+    res = await client.post("/aegis/identity/create", json={"full_name": "Ghost Actor", "profile_type": "staff"})
+    actor_id = res.json()["identity_id"]
+    headers = {"X-AEGIS-IDENTITY": actor_id}
     res = await client.post("/imoxon/orders/create", json={}, headers=headers)
     assert res.status_code == 403
-    assert "Missing Identity or Device" in res.json()["detail"]
+    assert "EXECUTION GUARD REJECTION: Missing Device Binding for Sensitive Action" in res.json()["detail"]
+
+@pytest.mark.anyio
+async def test_unknown_identity_rejected(client):
+    # Identity header provided but unknown -> get_actor_ctx rejects with 401
+    headers = {"X-AEGIS-IDENTITY": "actor-123", "X-AEGIS-DEVICE": "some-device"}
+    res = await client.post("/imoxon/orders/create", json={}, headers=headers)
+    assert res.status_code == 401
+    assert "INVALID_IDENTITY" in res.json()["detail"]
 
 @pytest.mark.anyio
 async def test_maldives_billing_math(client, headers):
@@ -74,6 +85,6 @@ async def test_failed_transaction_rollback(client, headers):
 
 @pytest.mark.anyio
 async def test_unauthorized_mutation_rejection(client):
-    # Try to approve product without valid admin headers
+    # Try to approve product without identity headers -> Middleware rejects with 403
     res = await client.post("/imoxon/products/approve", params={"pid": "123"})
     assert res.status_code == 403

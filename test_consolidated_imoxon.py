@@ -1,6 +1,5 @@
 import pytest
 import httpx
-import os
 from main import app
 from httpx import ASGITransport
 
@@ -40,11 +39,11 @@ async def test_product_approval_required(client, headers):
     res = await client.post("/imoxon/products/import", params={"sid": sid}, json=[{"name": "Secret Item", "price": 10}], headers=headers)
     pid = res.json()["products"][0]["id"]
     # Check Catalog (should be empty)
-    res = await client.get("/imoxon/catalog")
+    res = await client.get("/imoxon/catalog", headers=headers)
     assert pid not in res.json()
     # Approve
     await client.post("/imoxon/products/approve", params={"pid": pid}, headers=headers)
-    res = await client.get("/imoxon/catalog")
+    res = await client.get("/imoxon/catalog", headers=headers)
     assert pid in res.json()
 
 @pytest.mark.anyio

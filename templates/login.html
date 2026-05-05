@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>iMOXON.UPOS | Login</title>
+    <link rel="stylesheet" href="/static/css/upos_style.css">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <h2>Welcome to iMOXON.UPOS</h2>
+            <p>Choose your access type to continue.</p>
+
+            <div class="portal-grid">
+                <div class="portal-card" onclick="window.location.href='/login/resort'">
+                    <h3>Resort Admin</h3>
+                    <p>B2B / Enterprise</p>
+                </div>
+                <div class="portal-card" onclick="window.location.href='/login/procurement'">
+                    <h3>Procurement</h3>
+                    <p>Department Purchase</p>
+                </div>
+                <div class="portal-card" onclick="window.location.href='/login/vendor'">
+                    <h3>Vendor</h3>
+                    <p>Supplier Portal</p>
+                </div>
+                <div class="portal-card" onclick="window.location.href='/login/logistics'">
+                    <h3>Logistics</h3>
+                    <p>Captain / Runner</p>
+                </div>
+            </div>
+
+            <div style="margin-top: 2rem;">
+                <p>Don't have an account? <a href="#">Request Pilot Access</a></p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

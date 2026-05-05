@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, HTTPException
-from decimal import Decimal
 
 def create_itravel_router(mars_engine, get_actor_ctx):
     router = APIRouter(prefix="/itravel", tags=["itravel"])

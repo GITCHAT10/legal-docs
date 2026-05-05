@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>iMOXON.UPOS | Logistics & Captain</title>
+    <link rel="stylesheet" href="/static/css/upos_style.css">
+    <style>
+        .manifest-card { background: white; margin: 1rem; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .manifest-header { background: var(--upos-navy); color: white; padding: 1rem; }
+        .manifest-body { padding: 1rem; }
+        .cargo-list { list-style: none; padding: 0; }
+        .cargo-item { border-bottom: 1px solid var(--upos-silver); padding: 0.5rem 0; display: flex; justify-content: space-between; }
+        .btn-action { width: 100%; padding: 1rem; border: none; background: var(--upos-green); color: white; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div style="background: var(--upos-navy); color: white; padding: 1rem; text-align: center;">
+        <h2>U-Logistics | Captain Mode</h2>
+    </div>
+
+    <div class="manifest-card">
+        <div class="manifest-header">
+            <h3>Manifest: MAN-9912</h3>
+            <p>Route: Male -> Baa Atoll (Direct)</p>
+            <p>Vessel: Speedy Dhoni 4</p>
+        </div>
+        <div class="manifest-body">
+            <h4>Cargo Loading List (12 Items)</h4>
+            <ul class="cargo-list">
+                <li class="cargo-item">
+                    <span>Order ORD-1122 - 10 Cartons</span>
+                    <span style="color: var(--upos-green);">LOADED</span>
+                </li>
+                <li class="cargo-item">
+                    <span>Order ORD-1123 - 2 Cases (Cold Chain)</span>
+                    <span style="color: var(--upos-amber);">TEMP_CHECK_PENDING</span>
+                </li>
+            </ul>
+        </div>
+        <button class="btn-action">Confirm Departure</button>
+    </div>
+
+    <div style="padding: 1rem;">
+        <button class="btn-primary" style="background: var(--upos-red); width: 100%;">Report Damage / Dispute</button>
+    </div>
+</body>
+</html>

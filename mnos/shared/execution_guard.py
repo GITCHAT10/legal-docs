@@ -41,6 +41,8 @@ class ExecutionGuard:
 
         # 3. Set Sovereign Context (Authorized)
         token = str(uuid.uuid4())
+
+        # Ensure actor_context has what we need for get_actor()
         _sovereign_context.set({"token": token, "actor": actor_context})
 
         try:
@@ -104,7 +106,7 @@ class ExecutionGuardMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         # Operational paths to guard
-        guarded_paths = ["/supply", "/finance", "/aegis/asset", "/commerce"]
+        guarded_paths = ["/supply", "/finance", "/aegis/asset", "/commerce", "/upos", "/imoxon"]
 
         if any(request.url.path.startswith(path) for path in guarded_paths):
             identity_id = request.headers.get("X-AEGIS-IDENTITY")
@@ -112,6 +114,9 @@ class ExecutionGuardMiddleware(BaseHTTPMiddleware):
 
             # Require AEGIS Identity for all guarded paths
             if not identity_id:
+                # Bypass for health check if it was under /upos (it's not but good practice)
+                if request.url.path == "/health":
+                     return await call_next(request)
                 return self._violation("Missing Actor Identity")
 
             # Require Device Binding for Mutating Actions
