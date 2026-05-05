@@ -19,7 +19,8 @@ class HustleLeaderboardEngine:
     def update_leaderboard(self, event_type: str, data: dict):
         """Processes economic events to update rankings."""
         island = data.get("island")
-        if not island: return
+        if not island:
+            return
 
         # SHADOW VALIDATION ONLY (Simulated)
         if not data.get("shadow_ref"):
