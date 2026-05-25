@@ -13,6 +13,7 @@ def create_b2b_portal_router(nexus_brain, b2b_negotiator, get_actor_ctx):
             raise HTTPException(status_code=400, detail=str(e))
 
     @router.post("/booking/confirm")
+    @router.post("/confirm")
     async def confirm_booking(quote_id: str, actor: dict = Depends(get_actor_ctx)):
         """Instant Booking: Confirm quote and lock inventory."""
         try:

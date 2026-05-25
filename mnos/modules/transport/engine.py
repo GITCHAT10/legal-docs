@@ -16,6 +16,14 @@ class TransportEngine:
 
     def _internal_book(self, data):
         # Fare calculation
+        passenger_id = data.get("passenger_id")
+        if not passenger_id:
+            actor = self.core.guard.get_actor()
+            if actor:
+                passenger_id = actor.get("identity_id")
+            else:
+                passenger_id = "SYSTEM_GUEST"
+
         fare = data.get("fare", 0)
         split = {
             "fare": fare,
@@ -25,7 +33,7 @@ class TransportEngine:
         booking = {
             "ticket_id": f"TR-{uuid.uuid4().hex[:6].upper()}",
             "route": data.get("route"),
-            "passenger_id": self.core.guard.get_actor().get("identity_id"),
+            "passenger_id": passenger_id,
             "split": split,
             "status": "BOARDING_READY"
         }

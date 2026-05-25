@@ -4,12 +4,21 @@ from decimal import Decimal
 def create_itravel_router(mars_engine, get_actor_ctx):
     router = APIRouter(prefix="/itravel", tags=["itravel"])
 
+    @router.post("/owner/register")
+    async def register_owner(data: dict, actor: dict = Depends(get_actor_ctx)):
+        return mars_engine.register_owner(actor, data)
+
+    @router.post("/vendor/register")
+    async def register_vendor(data: dict, actor: dict = Depends(get_actor_ctx)):
+        return mars_engine.register_vendor(actor, data)
+
     @router.post("/packages/build")
     async def build_package(config: dict, actor: dict = Depends(get_actor_ctx)):
         """TRAWEL: Build a demand-predicted package."""
         return mars_engine.predict_and_build_package(actor, config)
 
     @router.post("/orders/full-cycle")
+    @router.post("/cycle/process")
     async def create_full_cycle_order(guest_id: str, package_id: str, actor: dict = Depends(get_actor_ctx)):
         """NEXUS SKY-i: Trigger full closed-loop economy cycle."""
         try:

@@ -276,14 +276,14 @@ def get_actor_ctx(
     if not x_aegis_identity or not x_aegis_device or not x_aegis_signature:
         with guard.sovereign_context(SYSTEM_CTX):
             shadow_core.commit("aegis.auth.direct.failure", "UNKNOWN", {"reason": "Missing Headers"})
-        raise HTTPException(status_code=401, detail="AEGIS_REQUIRED: Missing Identity, Device or Signature")
+        raise HTTPException(status_code=403, detail="AEGIS_REQUIRED: Missing Identity, Device or Signature")
 
     # 1. Identity lookup via AEGIS registry (persistence)
     profile = identity_core.profiles.get(x_aegis_identity)
     if not profile:
         with guard.sovereign_context(SYSTEM_CTX):
             shadow_core.commit("aegis.auth.identity.invalid", x_aegis_identity, {"reason": "Not in Registry"})
-        raise HTTPException(status_code=401, detail="INVALID_IDENTITY: Unauthorized")
+        raise HTTPException(status_code=403, detail="INVALID_IDENTITY: Unauthorized")
 
     # 2. Validate device binding (device.owner_id == identity.id)
     device = identity_core.devices.get(x_aegis_device)
@@ -296,7 +296,7 @@ def get_actor_ctx(
     if x_aegis_signature != f"VALID_SIG_FOR_{x_aegis_identity}":
         with guard.sovereign_context(SYSTEM_CTX):
             shadow_core.commit("aegis.auth.sig.failed", x_aegis_identity, {"sig": x_aegis_signature})
-        raise HTTPException(status_code=403, detail="HANDSHAKE_FAILED: Invalid Signature")
+        raise HTTPException(status_code=403, detail="Invalid Cryptographic Handshake")
 
     # 4. Success: Derive role from database (NO HEADER TRUST)
     actor = {

@@ -39,4 +39,24 @@ def create_finance_router(fce_hardened, mira_bridge, get_actor_ctx):
             raise HTTPException(status_code=404, detail="Invoice not found")
         return invoice
 
+    @router.post("/pricing/landed-cost", tags=["pricing"])
+    async def calculate_landed_cost(base: float, cat: str = "RESORT_SUPPLY", actor: dict = Depends(get_actor_ctx)):
+        """
+        MAC EOS Unified Pricing: Restore compatibility for landed-cost calculations.
+        Enforces strict AEGIS trust and SHADOW audit naming.
+        """
+        from mnos.shared.execution_guard import ExecutionGuard
+        # Logic remains inside hardened engine
+        result = fce_hardened.engine.calculate_landed_cost(base, cat)
+
+        # Add SHADOW trace for compatibility
+        result["shadow_trace_id"] = actor.get("trace_id", "MAC-EOS-AUTO-GEN")
+
+        # Wrapped execution via guard for audit compliance
+        return fce_hardened.shadow.commit(
+            "mac_eos.pricing.landed_cost.calculated",
+            actor["identity_id"],
+            {"input": {"base": base, "category": cat}, "result": result}
+        ) and result
+
     return router

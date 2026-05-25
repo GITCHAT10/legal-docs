@@ -11,8 +11,35 @@ class ShadowLedger:
         self.genesis_hash = "0" * 64
 
     def commit(self, event_type: str, actor_id: str, payload: dict) -> str:
-        if not is_sovereign_authorized() and actor_id != "SYSTEM":
-             raise PermissionError("FAIL CLOSED: Unauthorized direct write to SHADOW Ledger blocked.")
+        BOOTSTRAP_ALLOWED_EVENTS = [
+            "identity.created",
+            "identity.profile.created",
+            "identity.device.bound",
+            "identity.actor.verified",
+            "identity.verified",
+            "system.bootstrap.fixture",
+            "internal.revenue.sync"
+        ]
+
+        auth_mode = "SOVEREIGN_CONTEXT"
+        sov_ctx_val = "ACTIVE"
+
+        if not is_sovereign_authorized():
+            # MAC EOS Bootstrap Rule: Allow SYSTEM to commit without active context
+            # ONLY for identity/device/infra genesis.
+            is_bootstrap = (
+                actor_id == "SYSTEM" and
+                event_type in BOOTSTRAP_ALLOWED_EVENTS and
+                payload.get("bootstrap") is True and
+                "bootstrap_reason" in payload and
+                ("trace_id" in payload or "correlation_id" in payload)
+            )
+
+            if not is_bootstrap:
+                raise PermissionError(f"FAIL CLOSED: Unauthorized direct write to SHADOW Ledger blocked for {event_type}.")
+
+            auth_mode = "SYSTEM_BOOTSTRAP"
+            sov_ctx_val = "BOOSTRAP_SYSTEM"
 
         if "trace_id" not in payload:
              payload["trace_id"] = str(uuid.uuid4().hex[:8])
@@ -27,7 +54,9 @@ class ShadowLedger:
             "actor_id": actor_id,
             "payload": safe_payload,
             "prev_hash": prev_hash,
-            "signature": f"SIG-{uuid.uuid4().hex[:8]}"
+            "signature": f"SIG-{uuid.uuid4().hex[:8]}",
+            "authorization_mode": auth_mode,
+            "sovereign_context": sov_ctx_val
         }
 
         block["hash"] = self._calculate_hash(block)

@@ -17,7 +17,18 @@ class DistributedEventBus:
 
     def publish(self, event_type: str, payload: dict, partition: str = "GLOBAL"):
         from mnos.shared.execution_guard import ExecutionGuard
-        if not ExecutionGuard.is_authorized():
+        # MAC EOS Bootstrap Rule: Allow SYSTEM to publish without active context
+        # ONLY for identity/device genesis.
+        BOOTSTRAP_ALLOWED_EVENTS = ["IDENTITY_CREATED", "DEVICE_BOUND", "IDENTITY_VERIFIED"]
+
+        is_bootstrap = (
+            not ExecutionGuard.is_authorized() and
+            event_type in BOOTSTRAP_ALLOWED_EVENTS and
+            payload.get("bootstrap") is True and
+            "bootstrap_reason" in payload
+        )
+
+        if not ExecutionGuard.is_authorized() and not is_bootstrap:
             raise PermissionError(f"FAIL CLOSED: Direct event publish blocked for {event_type}. Must use ExecutionGuard.")
 
         event_id = str(uuid.uuid4())

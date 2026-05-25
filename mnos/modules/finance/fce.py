@@ -92,6 +92,25 @@ class FCEEngine:
         }
         return settlement
 
+    def calculate_landed_cost(self, base_price: float, category: str = "RESORT_SUPPLY") -> dict:
+        """
+        MAC EOS Unified Pricing: Landed Cost Calculation.
+        Formula: (Base * 1.15 Logistics * 1.10 Markup) -> then apply Maldives Billing Rules.
+        """
+        base = Decimal(str(base_price))
+        # 1. Apply Logistics (15%) and Markup (10%)
+        landed_base = (base * Decimal("1.15") * Decimal("1.10")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+        # 2. Apply Maldives Billing Rules (SC + Tax) via existing engine logic
+        result = self.calculate_local_order(landed_base, category)
+
+        # 3. Add MAC EOS compatibility fields
+        result["landed_cost"] = result["total"]
+        result["original_base"] = base_price
+        result["landed_base_before_tax"] = float(landed_base)
+
+        return result
+
 class FCEHardenedEngine:
     """
     FCE Hardened Engine: Legacy wrapper for Phase 1.

@@ -20,7 +20,13 @@ async def headers(client):
     res = await client.post("/aegis/identity/create", json={"full_name": "Test Admin", "profile_type": "admin"})
     actor_id = res.json()["identity_id"]
     await client.post("/aegis/identity/device/bind", params={"identity_id": actor_id}, json={"fingerprint": "test-dev"})
-    return {"X-AEGIS-IDENTITY": actor_id, "X-AEGIS-DEVICE": "test-dev"}
+    # VALID SIGNATURE required for hardened direct auth
+    signature = f"VALID_SIG_FOR_{actor_id}"
+    return {
+        "X-AEGIS-IDENTITY": actor_id,
+        "X-AEGIS-DEVICE": "test-dev",
+        "X-AEGIS-SIGNATURE": signature
+    }
 
 @pytest.mark.anyio
 async def test_supplier_product_import(client, headers):

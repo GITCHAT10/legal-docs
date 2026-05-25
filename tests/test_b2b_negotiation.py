@@ -1,31 +1,21 @@
 import pytest
 from fastapi.testclient import TestClient
-from main import app, identity_core, mars_unified
+from main import app, identity_core, mars_unified, identity_gateway
 
 client = TestClient(app)
 
 @pytest.fixture
-def b2b_agent_headers():
-    uid = identity_core.create_profile({
-        "full_name": "Travel Agent X",
-        "profile_type": "b2b_agent",
-        "organization_id": "GLOBAL-TO"
-    })
-    did = identity_core.bind_device(uid, {"fingerprint": "agent-pc"})
-    # Mocking B2B Realm for this session
-    from main import identity_gateway
+def b2b_agent_headers(create_hardened_identity):
+    agent = create_hardened_identity("Travel Agent X", "b2b_agent", organization_id="GLOBAL-TO")
+    uid = agent["identity_id"]
+
+    # Session based auth for B2B
     session_id = f"SES-B2B-{uid[:4]}"
     identity_gateway.sessions[session_id] = {
-        "identity_id": uid, "role": "b2b_agent", "realm": "B2B", "org_id": "GLOBAL-TO"
+        "identity_id": uid, "role": "b2b_agent", "realm": "B2B", "org_id": "GLOBAL-TO",
+        "device_id": agent["device_id"]
     }
     return {"X-AEGIS-SESSION": session_id}
-
-@pytest.fixture
-def admin_headers():
-    uid = identity_core.create_profile({"full_name": "Root", "profile_type": "admin"})
-    did = identity_core.bind_device(uid, {"fingerprint": "root-hw"})
-    identity_core.verify_identity(uid, "SYS")
-    return {"X-AEGIS-IDENTITY": uid, "X-AEGIS-DEVICE": did, "X-AEGIS-SIGNATURE": f"VALID_SIG_FOR_{uid}"}
 
 def test_b2b_rfq_package_mode(admin_headers, b2b_agent_headers):
     # 1. Setup: Admin creates inventory
@@ -68,6 +58,7 @@ def test_b2b_booking_confirmation(admin_headers, b2b_agent_headers):
     # 2. Get Quote
     rfq_data = {"partner_type": "DMC", "pax_count": 1}
     resp = client.post("/imoxon/b2b/rfq", json=rfq_data, headers=b2b_agent_headers)
+    assert resp.status_code == 200
     quote_id = resp.json()["quote_id"]
 
     # 3. Confirm Booking

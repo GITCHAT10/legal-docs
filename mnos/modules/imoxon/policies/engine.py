@@ -24,6 +24,15 @@ class IdentityPolicyEngine:
                 if role != "supplier":
                     return False, "Action requires supplier role"
 
+        # Module Gating
+        if action_type.startswith("island-gm"):
+            if role not in ["admin", "island_gm"]:
+                 return False, f"Role {role} not authorized for island-gm module"
+
+        if action_type.startswith("b2b"):
+            if role not in ["admin", "b2b_agent"]:
+                 return False, f"Role {role} not authorized for B2B module"
+
         # Legacy rules
         if action_type == "hospitality.property.register" and not self._is_verified(identity_id):
             return False, "Identity must be verified"

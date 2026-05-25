@@ -8,19 +8,6 @@ from mnos.core.aegis_identity.identity import AegisIdentityCore
 from mnos.modules.imoxon.policies.engine import IdentityPolicyEngine
 from mnos.shared.execution_guard import ExecutionGuard
 
-class MockGuard:
-    def __init__(self, policy_engine):
-        self.policy_engine = policy_engine
-
-    def execute_sovereign_action(self, action_type, actor_ctx, logic_func, *args, **kwargs):
-        success, msg = self.policy_engine.validate_action(action_type, actor_ctx)
-        if not success:
-            raise PermissionError(msg)
-        return logic_func(*args, **kwargs)
-
-    def get_actor(self):
-        return {"identity_id": "test_actor"}
-
 @pytest.fixture
 def setup_engine():
     shadow = ShadowLedger()
@@ -34,8 +21,12 @@ def setup_engine():
     imoxon = ImoxonCore(guard, fce, shadow, events)
     engine = LowCostHospitalityEngine(imoxon)
 
-    # Register a test property
-    admin_ctx = {"identity_id": "admin", "device_id": "dev1", "role": "admin"}
+    # Register a test property with a VERIFIED admin
+    admin_id = identity.create_profile({"full_name": "Admin", "profile_type": "admin"})
+    identity.verify_identity(admin_id, "SYSTEM-VERIFIER")
+    device_id = identity.bind_device(admin_id, {"fingerprint": "dev1"})
+
+    admin_ctx = {"identity_id": admin_id, "device_id": device_id, "role": "admin"}
     engine.register_property(admin_ctx, {"name": "Tune Maldives", "location": "Hulhumale", "base_rate": 50.0})
 
     return engine, imoxon
