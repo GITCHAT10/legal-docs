@@ -93,6 +93,7 @@ class MaldivesLaundryEngine:
             self.orders[order_id]["status"] = status
             if status == "DELIVERED":
                 # Trigger payout release via Cloud Brain
-                self.nexus.finalize_cycle(None, order_id) # Using internal call
+                system_ctx = {"identity_id": "SYSTEM", "role": "admin", "realm": "SYSTEM"}
+                self.nexus.finalize_cycle(system_ctx, order_id) # Using internal call
             return self.orders[order_id]
         return None

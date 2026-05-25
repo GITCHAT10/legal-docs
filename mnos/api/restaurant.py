@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Body
 
 def create_restaurant_router(restaurant_engine, get_actor_ctx):
     router = APIRouter(prefix="/restaurant", tags=["restaurant"])
@@ -8,19 +8,24 @@ def create_restaurant_router(restaurant_engine, get_actor_ctx):
         return restaurant_engine.register_restaurant(actor, data)
 
     @router.post("/voice-order")
-    async def voice_order(rest_id: str, transcript: str, actor: dict = Depends(get_actor_ctx)):
-        return restaurant_engine.process_voice_order(actor, rest_id, transcript)
+    @router.post("/pos/ai-voice-order")
+    async def voice_order(merchant_id: str, transcript: str = None, data: dict = None, actor: dict = Depends(get_actor_ctx)):
+        if data and not transcript:
+             # Simulation for data-based order
+             transcript = f"Order for {data.get('items')}"
+        return restaurant_engine.process_voice_order(actor, merchant_id, transcript)
 
     @router.post("/order")
     async def create_order(rest_id: str, data: dict, actor: dict = Depends(get_actor_ctx)):
         return restaurant_engine.create_order(actor, rest_id, data)
 
     @router.get("/analytics/forecast")
-    async def get_forecast(rest_id: str, actor: dict = Depends(get_actor_ctx)):
-        return restaurant_engine.get_ai_demand_forecast(rest_id)
+    @router.get("/analytics")
+    async def get_forecast(merchant_id: str, actor: dict = Depends(get_actor_ctx)):
+        return restaurant_engine.get_ai_demand_forecast(merchant_id)
 
     @router.post("/pos/sync-offline")
-    async def sync_offline(merchant_id: str, transactions: list, actor: dict = Depends(get_actor_ctx)):
+    async def sync_offline(merchant_id: str, transactions: list = Body(...), actor: dict = Depends(get_actor_ctx)):
         return restaurant_engine.bpe.sync_offline_batch(merchant_id, transactions)
 
     return router

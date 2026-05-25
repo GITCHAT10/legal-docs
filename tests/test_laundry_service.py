@@ -4,19 +4,6 @@ from main import app, identity_core, laundry_engine
 
 client = TestClient(app)
 
-@pytest.fixture
-def admin_headers():
-    uid = identity_core.create_profile({"full_name": "Admin", "profile_type": "admin"})
-    did = identity_core.bind_device(uid, {"fingerprint": "adm-hw"})
-    identity_core.verify_identity(uid, "SYS")
-    return {"X-AEGIS-IDENTITY": uid, "X-AEGIS-DEVICE": did, "X-AEGIS-SIGNATURE": f"VALID_SIG_FOR_{uid}"}
-
-@pytest.fixture
-def guest_headers():
-    uid = identity_core.create_profile({"full_name": "Guest", "profile_type": "guest"})
-    did = identity_core.bind_device(uid, {"fingerprint": "gst-phone"})
-    return {"X-AEGIS-IDENTITY": uid, "X-AEGIS-DEVICE": did, "X-AEGIS-SIGNATURE": f"VALID_SIG_FOR_{uid}"}
-
 def test_laundry_workflow_multi_store(admin_headers, guest_headers):
     # 1. Register Store
     store_data = {"name": "Maafushi Ultra Wash", "island": "Maafushi", "owner_id": "owner-1"}

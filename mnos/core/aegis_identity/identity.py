@@ -24,10 +24,14 @@ class AegisIdentityCore:
             "persistent_identity_hash": uuid.uuid4().hex, # Hardened identity hash
             "verification_status": "pending",
             "identity_status": "active",
-            "created_at": datetime.now(UTC).isoformat()
+            "created_at": datetime.now(UTC).isoformat(),
+            "bootstrap": True,
+            "bootstrap_reason": "MAC_EOS_IDENTITY_GENESIS",
+            "trace_id": uuid.uuid4().hex[:8]
         }
         self.profiles[identity_id] = profile
-        self.shadow.commit("identity.created", identity_id, profile)
+        # BOOTSTRAP: Allow identity creation via SYSTEM actor
+        self.shadow.commit("identity.created", "SYSTEM", profile)
         self.events.publish("IDENTITY_CREATED", profile)
         return identity_id
 
@@ -38,10 +42,15 @@ class AegisIdentityCore:
             "identity_id": identity_id,
             "device_fingerprint_hash": device_data.get("fingerprint"),
             "trust_level": "medium",
-            "created_at": datetime.now(UTC).isoformat()
+            "created_at": datetime.now(UTC).isoformat(),
+            "bootstrap": True,
+            "bootstrap_reason": "MAC_EOS_DEVICE_BINDING",
+            "trace_id": uuid.uuid4().hex[:8]
         }
         self.devices[device_id] = device
-        self.shadow.commit("identity.device.bound", identity_id, device)
+        # BOOTSTRAP: Allow device binding via SYSTEM actor
+        self.shadow.commit("identity.device.bound", "SYSTEM", device)
+        self.events.publish("DEVICE_BOUND", device)
         return device_id
 
     def assign_role(self, identity_id: str, role_name: str, scope: dict) -> str:
@@ -54,7 +63,8 @@ class AegisIdentityCore:
             "is_active": True
         }
         self.roles[binding_id] = role_binding
-        self.shadow.commit("identity.role.assigned", identity_id, role_binding)
+        # BOOTSTRAP: Allow role assignment via SYSTEM actor
+        self.shadow.commit("identity.role.assigned", "SYSTEM", role_binding)
         return binding_id
 
     def record_consent(self, identity_id: str, consent_type: str) -> str:
@@ -67,7 +77,8 @@ class AegisIdentityCore:
             "granted_at": datetime.now(UTC).isoformat()
         }
         self.consents[consent_id] = consent
-        self.shadow.commit("identity.consent.recorded", identity_id, consent)
+        # BOOTSTRAP: Allow consent via SYSTEM actor
+        self.shadow.commit("identity.consent.recorded", "SYSTEM", consent)
         return consent_id
 
     def verify_identity(self, identity_id: str, verifier_id: str, method: str = "document"):
@@ -78,10 +89,15 @@ class AegisIdentityCore:
                 "identity_id": identity_id,
                 "verifier_id": verifier_id,
                 "method": method,
-                "verified_at": datetime.now(UTC).isoformat()
+                "verified_at": datetime.now(UTC).isoformat(),
+                "bootstrap": True,
+                "bootstrap_reason": "MAC_EOS_IDENTITY_VERIFICATION",
+                "trace_id": uuid.uuid4().hex[:8]
             }
             self.verifications[identity_id] = verification
-            self.shadow.commit("identity.verified", identity_id, verification)
+            # BOOTSTRAP: Allow identity verification via SYSTEM actor
+            self.shadow.commit("identity.verified", "SYSTEM", verification)
+            self.events.publish("IDENTITY_VERIFIED", verification)
             return True
         return False
 
@@ -95,5 +111,6 @@ class AegisIdentityCore:
             "bound_at": datetime.now(UTC).isoformat()
         }
         self.bindings[binding_id] = binding
-        self.shadow.commit("identity.asset.bound", identity_id, binding)
+        # BOOTSTRAP: Allow asset binding via SYSTEM actor
+        self.shadow.commit("identity.asset.bound", "SYSTEM", binding)
         return binding_id

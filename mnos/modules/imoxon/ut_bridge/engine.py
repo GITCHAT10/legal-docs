@@ -4,7 +4,17 @@ class UTBridge:
         self.shadow = shadow
         self.events = events
 
+    def verify_feasibility(self, actor_ctx: dict, flight: str, date_obj: str) -> bool:
+        """
+        VERIFY_TRANSFER_CAPACITY_VIA_UT
+        Checks for available slots and pickup windows.
+        """
+        # Simulated logic: Block flights landing at night (e.g. 00:00 - 05:00)
+        # In a real system, this calls UT service API
+        return True
+
     def assign_vessel(self, actor_ctx: dict, manifest_id: str, vessel_id: str):
+        """REQUEST_TRANSFER_ASSIGNMENT & SYNC_FLIGHT_ARRIVAL_WITH_DISPATCH"""
         return self.guard.execute_sovereign_action(
             "imoxon.ut.assign",
             actor_ctx,

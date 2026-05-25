@@ -1,13 +1,11 @@
 name: iMOXON Sovereign Audit CI
 
 on:
-  push:
-    branches: [ main ]
   pull_request:
     branches: [ main ]
 
 jobs:
-  audit:
+  auditExpected:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
