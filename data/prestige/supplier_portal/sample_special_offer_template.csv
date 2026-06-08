@@ -1,0 +1,4 @@
+offer_name,offer_type,discount_value,start_date,end_date,room_categories
+Honeymoon Benefit,HONEYMOON,0.15,2024-01-01,2024-12-31,ALL
+Stay 7 Pay 5,FREE_NIGHT,1.0,2024-05-01,2024-07-31,"BEACH_VILLA,WATER_VILLA"
+Early Bird 90 Days,EARLY_BIRD,0.10,2024-01-01,2024-12-31,ALL

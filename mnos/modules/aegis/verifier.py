@@ -24,8 +24,10 @@ class AegisVerifier:
         self.device_bindings[device_id] = user_id
 
     def verify_access(self, user_id: str, device_id: str, role: str) -> bool:
-        if role == "TOURIST_USER": return False
-        if self.device_bindings.get(device_id) != user_id: return False
+        if role == "TOURIST_USER":
+            return False
+        if self.device_bindings.get(device_id) != user_id:
+            return False
         return True
 
     def verify_kyb(self, business_docs: dict) -> bool:

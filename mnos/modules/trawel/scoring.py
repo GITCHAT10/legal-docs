@@ -1,7 +1,3 @@
-import uuid
-from datetime import datetime, UTC, timedelta
-from typing import Dict, List, Any, Optional
-from decimal import Decimal, ROUND_HALF_UP
 
 class AtollCommanderScoringEngine:
     """
@@ -21,7 +17,8 @@ class AtollCommanderScoringEngine:
         HUSTLE_SCORE = (Verified Vendors × 10) + (Transactions × 2) + (Revenue × 0.05)
         """
         stats = self.island_system.island_stats.get(island)
-        if not stats: return
+        if not stats:
+            return
 
         # Filtering for active/verified vendors only
         verified_vendors = [v for v in self.core.nexus.vendors.values()
@@ -37,7 +34,8 @@ class AtollCommanderScoringEngine:
     def _is_vendor_qualified(self, vendor_id: str) -> bool:
         """Vendor must be AEGIS verified and have >= 5 SHADOW transactions."""
         v_data = self.vendor_registry.get(vendor_id)
-        if not v_data: return False
+        if not v_data:
+            return False
 
         # In a real system, we'd check AEGIS and SHADOW ledger counts
         return v_data.get("verified", False) and v_data.get("tx_count", 0) >= 5
@@ -46,7 +44,8 @@ class AtollCommanderScoringEngine:
         """
         PULSE_SCORE = ((Baseline - Current) / Baseline) × 100 × 5
         """
-        if baseline <= 0: return
+        if baseline <= 0:
+            return
         improvement = (baseline - current) / baseline
         pulse = improvement * 100 * 5
         self._update_gm_score_component(gm_id, "pulse", pulse)

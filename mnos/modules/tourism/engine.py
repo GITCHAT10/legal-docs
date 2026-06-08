@@ -1,5 +1,4 @@
 import uuid
-from datetime import datetime, UTC
 
 class TourismEngine:
     def __init__(self, core):

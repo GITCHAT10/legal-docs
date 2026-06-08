@@ -1,0 +1,30 @@
+seaplane_cutoff_time: "15:30"
+latest_safe_arrival_for_seaplane: "15:00"
+international_to_seaplane_buffer_minutes: 60
+domestic_connection_buffer_minutes: 120
+green_safe_arrival_before: "13:00"
+yellow_window_start: "14:00"
+yellow_window_end: "15:30"
+red_after: "15:30"
+night_speedboat_review_after: "18:00"
+night_speedboat_swell_red_threshold_m: 2.5
+overnight_male_required_after: "15:30"
+stale_dataset_threshold_days: 7
+pilot_mode: true
+live_api_enabled: false
+require_human_review_for_p3_p4: true
+require_human_review_for_uhnw: true
+require_shadow_seal: true
+safe_to_confirm_default: false
+
+heavy_baggage_markets:
+  - "CIS"
+  - "GCC"
+  - "Global UHNW"
+
+atoll_zones:
+  NORTH_MALE: ["KAAFU_NORTH"]
+  SOUTH_MALE: ["KAAFU_SOUTH"]
+  NORTH_ZONE: ["RAA", "BAA", "LHAVIYANI", "NOONU"]
+  SOUTH_ZONE: ["ARI_NORTH", "ARI_SOUTH", "FELIDHOO", "VAVU"]
+  DEEP_SOUTH: ["LAAUMU", "GAAFU_ALIFU", "GAAFU_DHAALU", "GNAVYANI", "ADDU"]

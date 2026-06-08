@@ -1,0 +1,116 @@
+channels:
+  adalte:
+    tenant_id: "PH-ADALTE-001"
+    enabled: true
+    base_url: "https://api.adalte.com/v1"
+    auth_type: "HMAC"
+    base_currency: "USD"
+    tax_profile: "TOURISM_17_10"
+    privacy_policy_version: "1.2"
+    rate_limits:
+      requests_per_minute: 60
+    sync_direction: "bidirectional"
+    inventory_types:
+      - tour_package
+      - bundle
+      - activity
+    timeout_seconds: 30
+    retry_settings:
+      max_retries: 3
+      backoff_factor: 2
+    webhook_settings:
+      enabled: true
+      endpoint: "/webhooks/adalte"
+    fallback_policy: "REJECT"
+    transfer_rules: "maldives_mandatory_feasibility"
+
+  siteminder:
+    tenant_id: "PH-SITEMINDER-001"
+    enabled: true
+    base_url: "https://api.siteminder.com/v2"
+    auth_type: "BEARER"
+    base_currency: "USD"
+    tax_profile: "TOURISM_17_10"
+    privacy_policy_version: "1.2"
+    rate_limits:
+      requests_per_minute: 120
+    sync_direction: "bidirectional"
+    inventory_types:
+      - hotel_room
+      - villa
+    timeout_seconds: 20
+    retry_settings:
+      max_retries: 5
+      backoff_factor: 1.5
+    webhook_settings:
+      enabled: true
+      endpoint: "/webhooks/siteminder"
+    fallback_policy: "REJECT"
+    transfer_rules: "maldives_mandatory_feasibility"
+
+  travelgatex:
+    tenant_id: "PH-TRAVELGATEX-001"
+    enabled: true
+    base_url: "https://api.travelgatex.com/graphql"
+    auth_type: "API_KEY"
+    base_currency: "USD"
+    tax_profile: "TOURISM_17_10"
+    privacy_policy_version: "1.2"
+    rate_limits:
+      requests_per_minute: 100
+    sync_direction: "bidirectional"
+    inventory_types:
+      - hotel_room
+      - villa
+      - activity
+    timeout_seconds: 45
+    retry_settings:
+      max_retries: 3
+      backoff_factor: 2
+    webhook_settings:
+      enabled: true
+      endpoint: "/webhooks/travelgatex"
+    fallback_policy: "REJECT"
+    transfer_rules: "maldives_mandatory_feasibility"
+
+  rategain:
+    tenant_id: "PH-RATEGAIN-001"
+    enabled: false
+    base_url: "https://api.rategain.com/v1"
+    auth_type: "HMAC"
+    base_currency: "USD"
+    tax_profile: "TOURISM_17_10"
+    privacy_policy_version: "1.2"
+    rate_limits:
+      requests_per_minute: 60
+    sync_direction: "bidirectional"
+    inventory_types:
+      - hotel_room
+      - villa
+    timeout_seconds: 30
+    retry_settings:
+      max_retries: 3
+      backoff_factor: 2
+    webhook_settings:
+      enabled: false
+    fallback_policy: "REJECT"
+    transfer_rules: "maldives_mandatory_feasibility"
+
+  booking_com:
+    enabled: false
+    tenant_id: "PLACEHOLDER"
+  expedia:
+    enabled: false
+    tenant_id: "PLACEHOLDER"
+  agoda:
+    enabled: false
+    tenant_id: "PLACEHOLDER"
+  hotelbeds:
+    enabled: false
+    tenant_id: "PLACEHOLDER"
+  tbo:
+    enabled: false
+    tenant_id: "PLACEHOLDER"
+  ratehawk:
+    enabled: false
+    tenant_id: "PLACEHOLDER"

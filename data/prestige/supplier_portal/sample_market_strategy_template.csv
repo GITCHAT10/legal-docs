@@ -1,0 +1,6 @@
+market_region,markup_percent,agent_commission_percent,visibility_status
+EU,15,10,PUBLIC
+CIS,20,10,PUBLIC
+GCC,20,12,PUBLIC
+Asia,15,10,PUBLIC
+Global_UHNW,25,15,VIP_ONLY
