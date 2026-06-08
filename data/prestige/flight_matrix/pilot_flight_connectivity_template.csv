@@ -1,0 +1,6 @@
+market_region,origin_country,origin_city,origin_airport,airline_code,flight_number,arrival_airport,scheduled_arrival_time_mle,estimated_arrival_time_mle,arrival_day_pattern,seasonality,average_delay_minutes,delay_risk_level,guest_segment,privacy_level,preferred_resort_cluster,resort_id,resort_name,destination_atoll,transfer_mode,last_domestic_flight_time,baggage_estimate_kg,baggage_risk,weather_risk,swell_height_m,vip_cip_required,confidence_score
+EU,Germany,Frankfurt,FRA,LH,LH756,MLE,10:30,10:45,DAILY,YEAR_ROUND,15,LOW,STANDARD,2,speedboat_luxury,RES-001,Baros,KAAFU_NORTH,SPEEDBOAT,N/A,30,LOW,LOW,1.2,FALSE,0.95
+CIS,Russia,Moscow,SVO,SU,SU320,MLE,11:15,11:30,DAILY,WINTER_PEAK,20,MEDIUM,VIP,3,uhNW_black_book,RES-002,Velaa Private Island,NOONU,SEAPLANE,N/A,50,MEDIUM,LOW,0.8,TRUE,0.98
+GCC,UAE,Dubai,DXB,EK,EK652,MLE,15:45,16:00,DAILY,YEAR_ROUND,10,LOW,UHNW,4,uhNW_black_book,RES-003,Cheval Blanc Randheli,NOONU,SEAPLANE,N/A,60,HIGH,LOW,1.0,TRUE,0.99
+Asia,Singapore,Singapore,SIN,SQ,SQ438,MLE,20:10,20:20,DAILY,YEAR_ROUND,5,LOW,STANDARD,2,speedboat_volume,RES-004,Hard Rock Hotel,KAAFU_SOUTH,SPEEDBOAT,N/A,25,LOW,LOW,1.5,FALSE,0.92
+Global UHNW,USA,New_York,JFK,PJ,PVT-001,MLE,17:30,17:30,ON_DEMAND,YEAR_ROUND,0,LOW,UHNW,4,uhNW_black_book,RES-005,Soneva Jani,NOONU,SEAPLANE,N/A,100,HIGH,LOW,0.5,TRUE,1.0

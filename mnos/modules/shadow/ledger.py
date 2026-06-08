@@ -1,9 +1,17 @@
 import hashlib
 import json
-import time
+from decimal import Decimal
+from datetime import date, datetime, time, UTC
 import uuid
 import copy
-from datetime import datetime, UTC
+
+class ShadowEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return str(obj)
+        if isinstance(obj, (date, datetime, time)):
+            return obj.isoformat()
+        return super().default(obj)
 
 class ShadowLedger:
     """
@@ -44,11 +52,20 @@ class ShadowLedger:
         temp = copy.deepcopy(block)
         if "hash" in temp:
             temp.pop("hash")
-        block_string = json.dumps(temp, sort_keys=True).encode()
+        block_string = json.dumps(temp, sort_keys=True, cls=ShadowEncoder).encode()
         return hashlib.sha256(block_string).hexdigest()
 
     def _sign_event(self, payload: dict) -> str:
-        # Placeholder for cryptographic signing
+        """
+        Signs the payload. Handles Decimal types by serializing with ShadowEncoder
+        before 'signing' (mocked).
+        """
+        try:
+            json.dumps(payload, sort_keys=True, cls=ShadowEncoder)
+            # In a real system, we'd use RSA/Ed25519 here on the hash of payload_str
+        except Exception:
+            pass # Fallback to generic signature if serialization fails
+
         return f"SIG-{uuid.uuid4().hex[:8]}"
 
     def verify_integrity(self) -> bool:

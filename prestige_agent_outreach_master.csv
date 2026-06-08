@@ -1,0 +1,5 @@
+contact_id,full_name,email,priority,lead_score
+C001,Priority Client A,vip@example.com,A,15
+C002,Regular Client B,client@example.com,B,10
+C003,Low Score C,low@example.com,C,5
+C004,High Score B,high_b@example.com,B,14

@@ -14,7 +14,7 @@ def create_finance_router(fce_hardened, mira_bridge, get_actor_ctx):
             release_amt = fce_hardened.release_milestone(actor["identity_id"], escrow_id, 10 if milestone == "AWARD" else 0)
             return {"release_amount": release_amt, "status": "RELEASED"}
         finally:
-            _sovereign_context.set(None)
+            _sovereign_context.reset(token)
 
     @router.post("/installment")
     async def create_installment(total: float, months: int, actor: dict = Depends(get_actor_ctx)):

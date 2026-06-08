@@ -1,7 +1,5 @@
-import uuid
 from datetime import datetime, UTC
-from typing import Dict, List, Any, Optional
-from decimal import Decimal
+from typing import List
 
 class GlobalDemandHeatmap:
     """
@@ -17,7 +15,7 @@ class GlobalDemandHeatmap:
     def get_national_summary(self) -> dict:
         """Aggregated National Stats (SHADOW_VERIFIED_ONLY)."""
         total_revenue = sum(s["revenue"] for s in self.island_system.island_stats.values())
-        total_tax = sum(l["tgst"] + l["green_tax"] for l in self.mira.daily_ledgers.values())
+        total_tax = sum(item_l["tgst"] + item_l["green_tax"] for item_l in self.mira.daily_ledgers.values())
 
         return {
             "total_revenue": total_revenue,
@@ -35,8 +33,10 @@ class GlobalDemandHeatmap:
             # (Mock occupancy: revenue / 1000, max 100)
             occupancy = min((stats["revenue"] / 5000) * 100, 100)
             status = "GREEN"
-            if occupancy > 90: status = "RED"
-            elif occupancy > 70: status = "YELLOW"
+            if occupancy > 90:
+                status = "RED"
+            elif occupancy > 70:
+                status = "YELLOW"
 
             # Reinvestment Signal Layer
             fund = self.reinvestment.get_island_fund_status(island)
@@ -53,7 +53,8 @@ class GlobalDemandHeatmap:
     def drill_down(self, island: str) -> dict:
         """Detailed island performance intelligence."""
         stats = self.island_system.island_stats.get(island)
-        if not stats: return {}
+        if not stats:
+            return {}
 
         daily_mira = self.mira.get_daily_report(date=datetime.now(UTC).date().isoformat())
         island_tax = sum(r["tgst"] for r in daily_mira if self.island_system.vendors.get(r["vendor_id"], {}).get("island") == island)
