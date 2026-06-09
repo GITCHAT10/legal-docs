@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, UTC
-from typing import Dict, List, Any, Optional
+from typing import List
 from decimal import Decimal
 
 class MaldivesLaundryEngine:
@@ -85,14 +85,14 @@ class MaldivesLaundryEngine:
     def update_order_status(self, actor_ctx: dict, order_id: str, status: str):
         """Execution action: Update laundry status (WASHING, READY, DELIVERED)."""
         return self.core.execute_commerce_action(
-            "laundry.order.update", actor_ctx, self._internal_update_status, order_id, status
+            "laundry.order.update", actor_ctx, self._internal_update_status, order_id, status, actor_ctx
         )
 
-    def _internal_update_status(self, order_id, status):
+    def _internal_update_status(self, order_id, status, actor_ctx):
         if order_id in self.orders:
             self.orders[order_id]["status"] = status
             if status == "DELIVERED":
                 # Trigger payout release via Cloud Brain
-                self.nexus.finalize_cycle(None, order_id) # Using internal call
+                self.nexus.finalize_cycle(actor_ctx, order_id)
             return self.orders[order_id]
         return None

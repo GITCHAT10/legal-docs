@@ -1,7 +1,5 @@
 import uuid
 from datetime import datetime, UTC
-from typing import Dict, List, Any, Optional
-from decimal import Decimal
 
 class MaldivesRestaurantEngine:
     """

@@ -1,7 +1,3 @@
-import uuid
-from datetime import datetime, UTC, timedelta
-from typing import Dict, List, Any, Optional
-from decimal import Decimal, ROUND_HALF_UP
 
 class AtollCommanderScoringEngine:
     """
@@ -24,7 +20,7 @@ class AtollCommanderScoringEngine:
         if not stats: return
 
         # Filtering for active/verified vendors only
-        verified_vendors = [v for v in self.core.nexus.vendors.values()
+        verified_vendors = [v for v in self.island_system.nexus.vendors.values()
                            if v["island"] == island and self._is_vendor_qualified(v["id"])]
 
         vendor_count = len(verified_vendors)

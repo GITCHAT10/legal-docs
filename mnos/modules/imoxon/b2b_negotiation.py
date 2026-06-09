@@ -1,7 +1,5 @@
 import uuid
-from datetime import datetime, UTC, timedelta
-from typing import Dict, List, Any, Optional
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal
 
 class B2BAutoNegotiationEngine:
     """
@@ -19,8 +17,17 @@ class B2BAutoNegotiationEngine:
         """
         RFQ Logic: identify partner lens, pull inventory, apply MEGE pricing, and check floor.
         """
+        return self.core.execute_commerce_action(
+            "b2b.rfq.process",
+            actor_ctx,
+            self._internal_rfq,
+            rfq_data,
+            actor_ctx
+        )
+
+    def _internal_rfq(self, rfq_data, actor_ctx):
         partner_type = rfq_data.get("partner_type") # TO or DMC
-        pax_count = rfq_data.get("pax_count", 1)
+        p_count = rfq_data.get("pax_count", 1)
 
         # 1. Pull Inventory from TRAWEL
         packages = self.nexus.get_inventory_search(actor_ctx, {})
@@ -44,7 +51,7 @@ class B2BAutoNegotiationEngine:
             quote = {
                 "quote_id": f"Q-PKG-{uuid.uuid4().hex[:6].upper()}",
                 "quote_type": "PACKAGE",
-                "total_price": pricing["total"] * pax_count,
+                "total_price": pricing["total"] * p_count,
                 "price_per_pax": pricing["total"],
                 "includes": ["room", "speedboat_transfer", "breakfast", "priority_arrival"],
                 "surge_applied": priority_buffer > 0
@@ -65,7 +72,7 @@ class B2BAutoNegotiationEngine:
                 "quote_type": "NET",
                 "net_rate": float(base_floor),
                 "platform_fee": float(platform_fee),
-                "total_price": pricing["total"] * pax_count,
+                "total_price": pricing["total"] * p_count,
                 "direct_contact_allowed": True
             }
 
@@ -85,12 +92,20 @@ class B2BAutoNegotiationEngine:
         """
         Instant Booking: Lock inventory and trigger full cycle.
         """
+        return self.core.execute_commerce_action(
+            "b2b.booking.confirm",
+            actor_ctx,
+            self._internal_confirm,
+            quote_id,
+            actor_ctx
+        )
+
+    def _internal_confirm(self, quote_id, actor_ctx):
         quote_entry = self.quotes.get(quote_id)
         if not quote_entry:
              raise ValueError("Quote not found or expired")
 
         # 5. FAIR ALLOCATION logic (TO vs DMC Collision)
-        # Simplified: Check if we are over-allocating to one channel
         p_type = quote_entry["partner_type"]
         if self.allocation_stats[p_type] > 0.7 and p_type == "TO":
              # Enforce 70% max for TO if collision exists (simulated)
@@ -99,5 +114,5 @@ class B2BAutoNegotiationEngine:
         # 6. Lock Inventory & Trigger Cycle
         order = self.nexus.process_full_cycle(actor_ctx, actor_ctx["identity_id"], quote_entry["pkg_id"])
 
-        self.core.shadow.commit("b2b.booking.confirm", actor_ctx["identity_id"], {"order_id": order["id"]})
+        self.core.shadow.commit("b2b.booking.confirm.audit", actor_ctx["identity_id"], {"order_id": order["id"]})
         return {"status": "BOOKING_CONFIRMED", "order_id": order["id"]}

@@ -1,18 +1,7 @@
-import pytest
 from fastapi.testclient import TestClient
-from main import app, identity_core
+from main import app
 
 client = TestClient(app)
-
-@pytest.fixture
-def setup_identity():
-    # Valid identity in the database
-    identity_id = identity_core.create_profile({
-        "full_name": "Valid User",
-        "profile_type": "user"
-    })
-    device_id = identity_core.bind_device(identity_id, {"fingerprint": "secure-fingerprint"})
-    return identity_id, device_id
 
 def test_unauthorized_header_injection_fails():
     # Attempting to fake a role via headers (if it were possible)
@@ -25,36 +14,21 @@ def test_unauthorized_header_injection_fails():
     assert response.status_code == 401
     assert "INVALID_IDENTITY" in response.json()["detail"]
 
-def test_valid_aegis_identity_passes(setup_identity):
-    identity_id, device_id = setup_identity
-    headers = {
-        "X-AEGIS-IDENTITY": identity_id,
-        "X-AEGIS-DEVICE": device_id,
-        "X-AEGIS-SIGNATURE": f"VALID_SIG_FOR_{identity_id}"
-    }
-    response = client.post("/imoxon/orders/create", json={"items": [], "amount": 100}, headers=headers)
+def test_valid_aegis_identity_passes(verified_actor_headers):
+    response = client.post("/imoxon/orders/create", json={"items": [], "amount": 100}, headers=verified_actor_headers)
     # Success here depends on procurement engine logic for empty items,
     # but at least it should pass AEGIS auth.
     assert response.status_code in [200, 422]
 
-def test_device_mismatch_blocks(setup_identity):
-    identity_id, device_id = setup_identity
-    headers = {
-        "X-AEGIS-IDENTITY": identity_id,
-        "X-AEGIS-DEVICE": "wrong-device",
-        "X-AEGIS-SIGNATURE": f"VALID_SIG_FOR_{identity_id}"
-    }
+def test_device_mismatch_blocks(verified_actor_headers):
+    headers = verified_actor_headers.copy()
+    headers["X-AEGIS-DEVICE"] = "wrong-device"
     response = client.post("/imoxon/orders/create", json={"items": [], "amount": 100}, headers=headers)
     assert response.status_code == 403
     assert "DEVICE_BINDING_INVALID" in response.json()["detail"]
 
-def test_imoxon_endpoints_alignment(setup_identity):
-    identity_id, device_id = setup_identity
-    headers = {
-        "X-AEGIS-IDENTITY": identity_id,
-        "X-AEGIS-DEVICE": device_id,
-        "X-AEGIS-SIGNATURE": f"VALID_SIG_FOR_{identity_id}"
-    }
+def test_imoxon_endpoints_alignment(verified_actor_headers):
+    headers = verified_actor_headers
 
     # 1. Supplier connect
     resp = client.post("/imoxon/suppliers/connect", params={"name": "Test Supplier"}, headers=headers)

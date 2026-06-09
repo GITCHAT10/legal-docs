@@ -1,7 +1,4 @@
-import uuid
-from datetime import datetime, UTC
-from typing import Dict, List, Any, Optional
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal
 
 class IslandGMSystem:
     """
@@ -82,6 +79,15 @@ class IslandGMSystem:
 
     def sync_revenue(self, island_name: str, amount: float):
         """Internal: Sync revenue from completed orders to island stats."""
+        if island_name not in self.island_stats:
+             # Auto-onboard island for sync if it exists in TraWel but not here
+             self.island_stats[island_name] = {
+                "inventory_count": 0,
+                "vendor_count": 0,
+                "revenue": 0.0,
+                "commission_rate": 0.05
+             }
+
         if island_name in self.island_stats:
             self.island_stats[island_name]["revenue"] += amount
             # Audit in SHADOW

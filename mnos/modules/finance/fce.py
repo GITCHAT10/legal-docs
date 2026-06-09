@@ -1,6 +1,5 @@
 from decimal import Decimal, ROUND_HALF_UP
 import uuid
-from typing import Dict, Any
 from datetime import datetime, UTC
 
 class FCEEngine:
@@ -57,6 +56,26 @@ class FCEEngine:
 
     def price_order(self, amount: float):
         return self.calculate_local_order(Decimal(str(amount)))
+
+    def calculate_landed_cost(self, base_price: float, category: str = "RESORT_SUPPLY") -> dict:
+        """
+        Calculates Maldives Landed Cost:
+        1. Base Price
+        2. Logistics/Shipping (15%)
+        3. Merchant Markup (10%)
+        4. FCE Maldives Taxes (10% SC + 17% TGST)
+        """
+        base = Decimal(str(base_price))
+        # 1. Logistics (15%)
+        logistics = (base * Decimal("0.15")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        with_logistics = base + logistics
+
+        # 2. Markup (10%)
+        markup = (with_logistics * Decimal("0.10")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        landed_base = with_logistics + markup
+
+        # 3. FCE Taxes
+        return self.calculate_local_order(landed_base, category)
 
     def calculate_milestone_release(self, milestone: str, data: dict):
         total = Decimal(str(data["total_amount"]))

@@ -22,7 +22,7 @@ class MockGuard:
         return {"identity_id": "test_actor"}
 
 @pytest.fixture
-def setup_engine():
+def setup_engine(admin_headers):
     shadow = ShadowLedger()
     events = DistributedEventBus()
     fce = FCEEngine()
@@ -34,9 +34,30 @@ def setup_engine():
     imoxon = ImoxonCore(guard, fce, shadow, events)
     engine = LowCostHospitalityEngine(imoxon)
 
+    # Manual context setting for bootstrap events in local objects
+    token = ExecutionGuard.set_system_context()
     # Register a test property
-    admin_ctx = {"identity_id": "admin", "device_id": "dev1", "role": "admin"}
+    # Translate headers to actor_ctx
+    from main import identity_core as global_identity
+    aid = admin_headers["X-AEGIS-IDENTITY"]
+    global_identity.verify_identity(aid, "TEST")
+
+    admin_ctx = {
+        "identity_id": aid,
+        "device_id": admin_headers["X-AEGIS-DEVICE"],
+        "role": "admin",
+        "verified": True
+    }
+
+    # We need the local identity core to have the admin profile if we use ExecutionGuard.execute_sovereign_action
+    # Or we can just use the global objects if they are used by the engine.
+    # The engine uses imoxon.guard which is the guard we created here.
+    # So we need to create the admin in THIS local identity core.
+    identity.profiles[aid] = {"identity_id": aid, "profile_type": "admin", "verification_status": "verified"}
+    identity.devices[admin_ctx["device_id"]] = {"device_id": admin_ctx["device_id"], "identity_id": aid}
+
     engine.register_property(admin_ctx, {"name": "Tune Maldives", "location": "Hulhumale", "base_rate": 50.0})
+    ExecutionGuard.reset_context(token)
 
     return engine, imoxon
 
@@ -44,10 +65,16 @@ def test_airline_partner_discount(setup_engine):
     engine, imoxon = setup_engine
     prop_id = list(engine.properties.keys())[0]
 
+    # Populate local identity core for policy engine
+    aid = "airline_staff_1"
+    imoxon.guard.identity_core.profiles[aid] = {"identity_id": aid, "profile_type": "airline_partner", "verification_status": "verified"}
+    imoxon.guard.identity_core.devices["phone_1"] = {"device_id": "phone_1", "identity_id": aid}
+
     actor_ctx = {
-        "identity_id": "airline_staff_1",
+        "identity_id": aid,
         "device_id": "phone_1",
-        "role": "airline_partner"
+        "role": "airline_partner",
+        "verified": True
     }
 
     booking_data = {
@@ -71,10 +98,15 @@ def test_medical_worker_discount(setup_engine):
     engine, imoxon = setup_engine
     prop_id = list(engine.properties.keys())[0]
 
+    aid = "doctor_1"
+    imoxon.guard.identity_core.profiles[aid] = {"identity_id": aid, "profile_type": "medical_worker", "verification_status": "verified"}
+    imoxon.guard.identity_core.devices["phone_2"] = {"device_id": "phone_2", "identity_id": aid}
+
     actor_ctx = {
-        "identity_id": "doctor_1",
+        "identity_id": aid,
         "device_id": "phone_2",
-        "role": "medical_worker"
+        "role": "medical_worker",
+        "verified": True
     }
 
     booking_data = {
@@ -123,9 +155,10 @@ def test_maldives_taxes_applied(setup_engine):
     # Base MVR: 771.0
     # Service Charge: 10% = 77.10
     # Subtotal: 848.10
-    # TGST (Tourism): 17% of 848.10 = 144.177 -> 144.18
-    # Total: 848.10 + 144.18 = 992.28
+    # TGST (Tourism): 17% of 848.10 = 144.18
+    # Green Tax (Guesthouse): $6 * 15.42 = 92.52
+    # Total: 848.10 + 144.18 + 92.52 = 1084.8
 
     assert booking["pricing"]["service_charge"] == 77.10
     assert booking["pricing"]["tax_amount"] == 144.18
-    assert booking["pricing"]["total"] == 992.28
+    assert booking["pricing"]["total"] == 1084.8

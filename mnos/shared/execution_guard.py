@@ -40,8 +40,7 @@ class ExecutionGuard:
             raise PermissionError(f"FAIL CLOSED: Policy Violation - {msg}")
 
         # 3. Set Sovereign Context (Authorized)
-        token = str(uuid.uuid4())
-        _sovereign_context.set({"token": token, "actor": actor_context})
+        token = _sovereign_context.set({"token": str(uuid.uuid4()), "actor": actor_context})
 
         try:
             # BEGIN ATOMIC TX (Simulated via context and SHADOW intent)
@@ -83,12 +82,22 @@ class ExecutionGuard:
             self.shadow.commit(f"{action_type}.failed", identity_id or "UNKNOWN", fail_payload)
             raise RuntimeError(f"SOVEREIGN EXECUTION FAILED: {str(e)}")
         finally:
-            # Clear context
-            _sovereign_context.set(None)
+            # Clear context safely (supports nesting)
+            _sovereign_context.reset(token)
 
     @staticmethod
     def is_authorized() -> bool:
         return _sovereign_context.get() is not None
+
+    @staticmethod
+    def set_system_context():
+        """Bypass for internal bootstrap flows."""
+        token = str(uuid.uuid4())
+        return _sovereign_context.set({"token": token, "actor": {"identity_id": "SYSTEM", "role": "admin"}})
+
+    @staticmethod
+    def reset_context(token):
+        _sovereign_context.reset(token)
 
     @staticmethod
     def get_actor() -> Optional[Dict]:
@@ -107,11 +116,12 @@ class ExecutionGuardMiddleware(BaseHTTPMiddleware):
         guarded_paths = ["/supply", "/finance", "/aegis/asset", "/commerce"]
 
         if any(request.url.path.startswith(path) for path in guarded_paths):
-            identity_id = request.headers.get("X-AEGIS-IDENTITY")
+            identity_id = request.headers.get("X-AEGIS-IDENTITY") or request.headers.get("X-AEGIS-ACTOR")
             device_id = request.headers.get("X-AEGIS-DEVICE")
+            session_id = request.headers.get("X-AEGIS-SESSION")
 
-            # Require AEGIS Identity for all guarded paths
-            if not identity_id:
+            # Require AEGIS Identity or Session for all guarded paths
+            if not identity_id and not session_id:
                 return self._violation("Missing Actor Identity")
 
             # Require Device Binding for Mutating Actions
