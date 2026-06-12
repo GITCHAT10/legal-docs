@@ -29,7 +29,7 @@ class ShadowLedger:
                  "aegis.auth.sig.failed", "aegis.auth.session.success",
                  "aegis.auth.session.failure", "aegis.session.started"
              ]
-             if event_type not in bootstrap_events:
+             if event_type not in bootstrap_events and not event_type.endswith(".auth_failure"):
                 raise PermissionError(f"FAIL CLOSED: Unauthorized direct write to SHADOW Ledger blocked for {event_type}.")
 
         prev_hash = self.chain[-1]["hash"] if self.chain else self.genesis_hash

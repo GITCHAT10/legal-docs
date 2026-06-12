@@ -22,12 +22,11 @@ def create_restaurant_router(restaurant_engine, get_actor_ctx):
 
     @router.post("/pos/sync-offline")
     async def sync_offline(merchant_id: str, transactions: List[dict] = Body(...), actor: dict = Depends(get_actor_ctx)):
-        from mnos.shared.execution_guard import _sovereign_context
-        import uuid
-        token = _sovereign_context.set({"token": str(uuid.uuid4()), "actor": actor})
-        try:
-            return restaurant_engine.bpe.sync_offline_batch(merchant_id, transactions)
-        finally:
-            _sovereign_context.reset(token)
+        return restaurant_engine.core.execute_commerce_action(
+            "bpe.offline_sync",
+            actor,
+            restaurant_engine.bpe.sync_offline_batch,
+            merchant_id, transactions
+        )
 
     return router

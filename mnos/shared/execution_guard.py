@@ -21,13 +21,41 @@ class ExecutionGuard:
         MANDATORY ENTRYPOINT for all mutating commerce actions.
         ORBAN -> AEGIS -> ExecutionGuard -> FCE -> SHADOW
         """
-        identity_id = actor_context.get("identity_id")
-        device_id = actor_context.get("device_id")
-        role = actor_context.get("role")
+        # --- Priority 2: Robust Actor Normalization ---
+        # Handle dicts directly or legacy header formats
+        identity_id = (
+            actor_context.get("identity_id") or
+            actor_context.get("X-AEGIS-IDENTITY") or
+            actor_context.get("X-AEGIS-ACTOR") or
+            actor_context.get("id")
+        )
+        device_id = (
+            actor_context.get("device_id") or
+            actor_context.get("X-AEGIS-DEVICE")
+        )
+        role = (
+            actor_context.get("role") or
+            actor_context.get("X-AEGIS-ROLE") or
+            "guest"
+        )
 
-        # 1. AEGIS Identity & Binding Check
-        if not identity_id or not device_id:
-            raise PermissionError(f"FAIL CLOSED: Missing Identity or Device Binding for {action_type}")
+        # Re-build canonical context for internal consistency
+        actor_context = {
+            "identity_id": identity_id,
+            "device_id": device_id,
+            "role": role,
+            "national_id_verified": actor_context.get("national_id_verified", False) or actor_context.get("verified", False)
+        }
+
+        # 1. AEGIS Identity & Binding Check (Fail-closed)
+        if not identity_id:
+            self.shadow.commit(f"{action_type}.auth_failure", "UNKNOWN", {"reason": "Missing Actor Identity"})
+            raise PermissionError(f"FAIL CLOSED: Missing Actor Identity for {action_type}")
+
+        if not device_id:
+            # P1 Hardening: Strictly block mutations without a real device
+            self.shadow.commit(f"{action_type}.auth_failure", identity_id, {"reason": "Missing Device Binding"})
+            raise PermissionError(f"FAIL CLOSED: Missing Device Binding for {action_type}")
 
         # ZERO_TRUST_DEFAULT_DENY for sensitive procurement actions
         sensitive_actions = ["procurement.order.settle", "finance.escrow.release"]

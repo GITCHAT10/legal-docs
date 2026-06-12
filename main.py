@@ -178,14 +178,37 @@ def get_actor_ctx(
     """
     identity_id = x_aegis_identity or x_aegis_actor
 
+    # Unified normalization for headers passed as dict (e.g. from internal calls)
+    if isinstance(x_aegis_session, dict):
+        return x_aegis_session
+
     # Prefer Session-based Auth from Gateway
     if x_aegis_session:
         try:
-            actor = identity_gateway.validate_session(x_aegis_session)
-            actor["device_id"] = x_aegis_device or "SESSION-DEVICE"
-            actor["trace_id"] = x_trace_id or f"TR-SES-{uuid.uuid4().hex[:8].upper()}"
-            actor["national_id_verified"] = actor.get("verified", False)
-            shadow_core.commit("aegis.auth.session.success", actor["identity_id"], {"session_id": x_aegis_session})
+            session_actor = identity_gateway.validate_session(x_aegis_session)
+
+            # HARDENING: Validate device binding even for sessions if device is provided
+            if x_aegis_device:
+                device = identity_core.devices.get(x_aegis_device)
+                if not device or device.get("identity_id") != session_actor["identity_id"]:
+                    shadow_core.commit("aegis.auth.device.mismatch", session_actor["identity_id"], {"device_id": x_aegis_device})
+                    raise HTTPException(status_code=403, detail="DEVICE_BINDING_INVALID: Access Denied")
+
+            # Return canonical actor context
+            actor = {
+                "identity_id": session_actor["identity_id"],
+                "device_id": x_aegis_device, # Strictly from header or None
+                "role": session_actor["role"],
+                "auth_type": "session",
+                "realm": session_actor.get("realm"),
+                "org_id": session_actor.get("org_id"),
+                "island": session_actor.get("island"),
+                "verified": session_actor.get("verified", False),
+                "national_id_verified": session_actor.get("verified", False),
+                "trace_id": x_trace_id or f"TR-SES-{uuid.uuid4().hex[:8].upper()}"
+            }
+
+            shadow_core.commit("aegis.auth.session.success", actor["identity_id"], {"session_id": x_aegis_session, "device_id": x_aegis_device})
             return actor
         except PermissionError as e:
             shadow_core.commit("aegis.auth.session.failure", "UNKNOWN", {"reason": str(e)})
