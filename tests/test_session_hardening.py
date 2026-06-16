@@ -1,7 +1,7 @@
 import pytest
 import uuid
 from fastapi.testclient import TestClient
-from main import app, identity_core, identity_gateway
+from main import app, identity_core, identity_gateway, mars_unified
 
 client = TestClient(app)
 
@@ -32,7 +32,9 @@ def test_session_auth_without_device_rejected_for_mutating_action(session_user):
 
     # Should be rejected because device_id is missing in actor context
     assert resp.status_code == 403
-    assert "FAIL CLOSED: Missing Device Binding" in resp.json()["detail"]
+    # Flexible check for the detail message as it might be prefixed
+    assert "FAIL CLOSED: Missing" in resp.json()["detail"]
+    assert "Device Binding" in resp.json()["detail"]
 
 def test_session_auth_with_invalid_device_rejected(session_user):
     """Device provided with session must belong to the user."""

@@ -46,7 +46,7 @@ def test_unauthorized_package_build(verified_actor_headers):
     # Verified actor is 'merchant' in conftest, not allowed to build packages if we enforce roles
     # But currently trawel.package.build allows 'admin' and others?
     # Let's check get_actor_ctx. It doesn't block based on role, ExecutionGuard does via policy_engine.
-    client.post("/imoxon/itravel/packages/build", json={}, headers=verified_actor_headers)
+    resp = client.post("/imoxon/itravel/packages/build", json={}, headers=verified_actor_headers)
     # If the policy allows it, it might pass. If not, 403.
     pass
 

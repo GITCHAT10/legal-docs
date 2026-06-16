@@ -10,6 +10,7 @@ async def run_final_cto_audit():
 
     os.environ["NEXGEN_SECRET"] = "cto-audit-2026"
     transport = ASGITransport(app=app)
+    results = []
 
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         # 1. Setup Admin

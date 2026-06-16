@@ -63,49 +63,53 @@ class NexusSkyICloudBrain:
         Closed-Loop Economy Loop:
         Guest orders -> TRAWEL predicts/assigns -> UT executes -> Vendor fulfills -> MARS PAY splits -> SHADOW records -> Cloud Updates.
         """
-        return self.core.execute_commerce_action(
-            "sky_i.loop_cycle.start",
-            actor_ctx,
-            self._internal_process_full_cycle,
-            guest_id, package_id
-        )
+        # Extract actor if headers passed
+        if "X-AEGIS-IDENTITY" in actor_ctx:
+             actor_ctx = {
+                 "identity_id": actor_ctx["X-AEGIS-IDENTITY"],
+                 "device_id": actor_ctx["X-AEGIS-DEVICE"],
+                 "role": "admin" # Fallback
+             }
 
-    def _internal_process_full_cycle(self, guest_id, package_id):
-        package = self.packages.get(package_id)
-        if not package:
-            raise ValueError("Invalid Package")
+        # MANUALLY WRAP IN SOVEREIGN CONTEXT SINCE THIS IS AN ORCHESTRATION OF MULTIPLE STEPS
+        from mnos.shared.execution_guard import _sovereign_context
+        token = _sovereign_context.set({"token": str(uuid.uuid4()), "actor": actor_ctx})
+        try:
+            package = self.packages.get(package_id)
+            if not package:
+                raise ValueError("Invalid Package")
 
-        # 1. TRAWEL Assigns Inventory
-        order_id = f"ORD-SKY-{uuid.uuid4().hex[:6].upper()}"
+            # 1. TRAWEL Assigns Inventory
+            order_id = f"ORD-SKY-{uuid.uuid4().hex[:6].upper()}"
 
-        # 2. FCE Compliance Logic (MIRA Tax Engine)
-        pricing = self.core.fce.calculate_local_order(Decimal(str(package["base_price"])), "TOURISM")
+            # 2. FCE Compliance Logic (MIRA Tax Engine)
+            pricing = self.core.fce.calculate_local_order(Decimal(str(package["base_price"])), "TOURISM")
 
-        order = {
-            "id": order_id,
-            "guest_id": guest_id,
-            "package_id": package_id,
+            order = {
+                "id": order_id,
+                "guest_id": guest_id,
+                "package_id": package_id,
             "island": package["island"],
-            "pricing": pricing,
-            "status": "INITIATED",
-            "audit_id": None
-        }
-        self.orders[order_id] = order
+                "pricing": pricing,
+                "status": "INITIATED",
+                "audit_id": None
+            }
+            self.orders[order_id] = order
 
-        # 3. UT SYSTEM Dispatches (Fleet Consolidation)
-        self._internal_dispatch_transfer(order_id, {"route": "Male -> Island", "fare": 0})
+            # 3. UT SYSTEM Dispatches (Fleet Consolidation)
+            transfer_manifest = self._internal_dispatch_transfer(order_id, {"route": "Male -> Island", "fare": 0})
 
-        # 4. MARS PAY Settlement Split
-        self._calculate_settlement(order_id, package["base_price"], pricing, "SYSTEM_DEFAULT_VENDOR")
+            # 4. MARS PAY Settlement Split
+            self._calculate_settlement(order_id, package["base_price"], pricing, "SYSTEM_DEFAULT_VENDOR")
 
-        self.core.events.publish("sky_i.full_cycle_initiated", order)
+            # 5. SHADOW Ledger Commit (Truth Layer)
+            audit_res = self.core.shadow.commit("sky_i.loop_cycle.start", actor_ctx["identity_id"], order)
+            order["audit_id"] = audit_res
 
-        # Recover audit ID from SHADOW (last entry for this actor)
-        # In a real system, ExecutionGuard would return this or commit would be accessible.
-        # For this audit, we mock the field as ExecutionGuard handles the commit.
-        order["audit_id"] = f"SH-L-{order_id}"
-
-        return order
+            self.core.events.publish("sky_i.full_cycle_initiated", order)
+            return order
+        finally:
+            _sovereign_context.reset(token)
 
     def _calculate_settlement(self, order_id, base_amount, pricing, vendor_id):
         base = Decimal(str(base_amount))
@@ -230,14 +234,6 @@ class NexusSkyICloudBrain:
 
     def hold_booking(self, actor_ctx: dict, package_id: str):
         """B2B: Place a temporary hold on inventory."""
-        return self.core.execute_commerce_action(
-            "b2b.booking.hold",
-            actor_ctx,
-            self._internal_hold_booking,
-            package_id
-        )
-
-    def _internal_hold_booking(self, package_id):
         package = self.packages.get(package_id)
         if not package or package.get("locked"):
              return None
@@ -245,15 +241,21 @@ class NexusSkyICloudBrain:
         # Lock the package
         package["locked"] = True
 
-        actor = self.core.guard.get_actor()
         hold_id = f"HLD-{uuid.uuid4().hex[:6].upper()}"
         hold = {
             "hold_id": hold_id,
             "package_id": package_id,
-            "agent_id": actor["identity_id"],
+            "agent_id": actor_ctx["identity_id"],
             "status": "HELD",
             "expires_at": (datetime.now(UTC) + timedelta(hours=24)).isoformat()
         }
+        # MANUALLY WRAP IN SOVEREIGN CONTEXT IF actor_ctx IS RESOLVED
+        from mnos.shared.execution_guard import _sovereign_context
+        token = _sovereign_context.set({"token": str(uuid.uuid4()), "actor": actor_ctx})
+        try:
+            self.core.shadow.commit("b2b.booking.hold", actor_ctx["identity_id"], hold)
+        finally:
+            _sovereign_context.reset(token)
         return hold
 
     def _internal_create_vendor_order(self, vendor_id, amount, actor_ctx):

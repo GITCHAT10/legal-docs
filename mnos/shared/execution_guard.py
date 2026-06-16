@@ -39,6 +39,12 @@ class ExecutionGuard:
             "guest"
         )
 
+        # Enrich role if missing but identity is present (for internal calls passing partial info)
+        if identity_id and (not role or role == "guest"):
+            profile = self.identity_core.profiles.get(identity_id)
+            if profile:
+                role = profile.get("profile_type", role)
+
         # Re-build canonical context for internal consistency
         actor_context = {
             "identity_id": identity_id,

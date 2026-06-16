@@ -79,7 +79,7 @@ class BubblePOSEngine:
                 "pricing": pricing,
                 "status": "SYNCED_TO_SHADOW"
             }
-            # Shadow commit is now handled by ExecutionGuard wrapping the whole batch
+            self.mnos.shadow.commit("bpe.offline_sync", merchant_id, entry)
             results.append(entry)
 
         return {"merchant_id": merchant_id, "synced_count": len(results), "records": results}
