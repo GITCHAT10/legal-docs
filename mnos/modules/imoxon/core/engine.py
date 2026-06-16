@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, UTC
-from typing import Dict, List, Any, Optional
+from typing import Dict, Any
 
 class ImoxonCore:
     """
@@ -127,6 +127,9 @@ class CatalogManager:
         self.approval_queue.append(normalized)
         self.core.events.publish("imoxon.product_imported", normalized)
         return normalized
+
+    def get_catalog(self, actor_ctx: dict):
+        return self.products
 
     def approve_product(self, actor_ctx: dict, product_id: str):
         return self.core.execute_commerce_action(

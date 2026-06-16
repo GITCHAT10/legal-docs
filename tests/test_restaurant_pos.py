@@ -6,14 +6,19 @@ client = TestClient(app)
 
 @pytest.fixture
 def admin_headers():
+    from mnos.shared.execution_guard import ExecutionGuard
+    token = ExecutionGuard.set_system_context()
     identity_id = identity_core.create_profile({
         "full_name": "Restaurant Admin",
         "profile_type": "admin"
     })
     device_id = identity_core.bind_device(identity_id, {"fingerprint": "rest-device"})
+    identity_core.verify_identity(identity_id, "TEST")
+    ExecutionGuard.reset_context(token)
     return {
         "X-AEGIS-IDENTITY": identity_id,
-        "X-AEGIS-DEVICE": device_id
+        "X-AEGIS-DEVICE": device_id,
+        "X-AEGIS-SIGNATURE": f"VALID_SIG_FOR_{identity_id}"
     }
 
 def test_restaurant_registration_and_ai_voice_order(admin_headers):
@@ -57,8 +62,7 @@ def test_offline_pos_sync(admin_headers):
     ]
 
     resp = client.post(
-        "/imoxon/restaurant/pos/sync-offline",
-        params={"merchant_id": merchant_id},
+        f"/imoxon/restaurant/pos/sync-offline?merchant_id={merchant_id}",
         json=offline_txs,
         headers=admin_headers
     )

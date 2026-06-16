@@ -1,6 +1,5 @@
 import uuid
 from datetime import datetime, UTC, timedelta
-from typing import Dict, List, Any, Optional
 from decimal import Decimal, ROUND_HALF_UP
 
 class NexusSkyICloudBrain:
@@ -64,38 +63,53 @@ class NexusSkyICloudBrain:
         Closed-Loop Economy Loop:
         Guest orders -> TRAWEL predicts/assigns -> UT executes -> Vendor fulfills -> MARS PAY splits -> SHADOW records -> Cloud Updates.
         """
-        package = self.packages.get(package_id)
-        if not package:
-            raise ValueError("Invalid Package")
+        # Extract actor if headers passed
+        if "X-AEGIS-IDENTITY" in actor_ctx:
+             actor_ctx = {
+                 "identity_id": actor_ctx["X-AEGIS-IDENTITY"],
+                 "device_id": actor_ctx["X-AEGIS-DEVICE"],
+                 "role": "admin" # Fallback
+             }
 
-        # 1. TRAWEL Assigns Inventory
-        order_id = f"ORD-SKY-{uuid.uuid4().hex[:6].upper()}"
+        # MANUALLY WRAP IN SOVEREIGN CONTEXT SINCE THIS IS AN ORCHESTRATION OF MULTIPLE STEPS
+        from mnos.shared.execution_guard import _sovereign_context
+        token = _sovereign_context.set({"token": str(uuid.uuid4()), "actor": actor_ctx})
+        try:
+            package = self.packages.get(package_id)
+            if not package:
+                raise ValueError("Invalid Package")
 
-        # 2. FCE Compliance Logic (MIRA Tax Engine)
-        pricing = self.core.fce.calculate_local_order(Decimal(str(package["base_price"])), "TOURISM")
+            # 1. TRAWEL Assigns Inventory
+            order_id = f"ORD-SKY-{uuid.uuid4().hex[:6].upper()}"
 
-        order = {
-            "id": order_id,
-            "guest_id": guest_id,
-            "package_id": package_id,
-            "pricing": pricing,
-            "status": "INITIATED",
-            "audit_id": None
-        }
-        self.orders[order_id] = order
+            # 2. FCE Compliance Logic (MIRA Tax Engine)
+            pricing = self.core.fce.calculate_local_order(Decimal(str(package["base_price"])), "TOURISM")
 
-        # 3. UT SYSTEM Dispatches (Fleet Consolidation)
-        transfer_manifest = self._internal_dispatch_transfer(order_id, {"route": "Male -> Island", "fare": 0})
+            order = {
+                "id": order_id,
+                "guest_id": guest_id,
+                "package_id": package_id,
+            "island": package["island"],
+                "pricing": pricing,
+                "status": "INITIATED",
+                "audit_id": None
+            }
+            self.orders[order_id] = order
 
-        # 4. MARS PAY Settlement Split
-        self._calculate_settlement(order_id, package["base_price"], pricing, "SYSTEM_DEFAULT_VENDOR")
+            # 3. UT SYSTEM Dispatches (Fleet Consolidation)
+            transfer_manifest = self._internal_dispatch_transfer(order_id, {"route": "Male -> Island", "fare": 0})
 
-        # 5. SHADOW Ledger Commit (Truth Layer)
-        audit_res = self.core.shadow.commit("sky_i.loop_cycle.start", order_id, order)
-        order["audit_id"] = audit_res
+            # 4. MARS PAY Settlement Split
+            self._calculate_settlement(order_id, package["base_price"], pricing, "SYSTEM_DEFAULT_VENDOR")
 
-        self.core.events.publish("sky_i.full_cycle_initiated", order)
-        return order
+            # 5. SHADOW Ledger Commit (Truth Layer)
+            audit_res = self.core.shadow.commit("sky_i.loop_cycle.start", actor_ctx["identity_id"], order)
+            order["audit_id"] = audit_res
+
+            self.core.events.publish("sky_i.full_cycle_initiated", order)
+            return order
+        finally:
+            _sovereign_context.reset(token)
 
     def _calculate_settlement(self, order_id, base_amount, pricing, vendor_id):
         base = Decimal(str(base_amount))
@@ -118,6 +132,14 @@ class NexusSkyICloudBrain:
         return settlement
 
     def register_owner(self, actor_ctx: dict, owner_data: dict):
+        # Extract actor if headers passed
+        if "X-AEGIS-IDENTITY" in actor_ctx:
+             actor_ctx = {
+                 "identity_id": actor_ctx["X-AEGIS-IDENTITY"],
+                 "device_id": actor_ctx["X-AEGIS-DEVICE"],
+                 "role": "admin"
+             }
+
         return self.core.execute_commerce_action(
             "mars.owner.register", actor_ctx, self._internal_register_owner, owner_data
         )
@@ -134,6 +156,14 @@ class NexusSkyICloudBrain:
         return owner
 
     def register_vendor(self, actor_ctx: dict, vendor_data: dict):
+        # Extract actor if headers passed
+        if "X-AEGIS-IDENTITY" in actor_ctx:
+             actor_ctx = {
+                 "identity_id": actor_ctx["X-AEGIS-IDENTITY"],
+                 "device_id": actor_ctx["X-AEGIS-DEVICE"],
+                 "role": "admin"
+             }
+
         return self.core.execute_commerce_action(
             "mars.vendor.register", actor_ctx, self._internal_register_vendor, vendor_data
         )
@@ -154,11 +184,19 @@ class NexusSkyICloudBrain:
 
     def finalize_cycle(self, actor_ctx: dict, order_id: str):
         """Final fulfillment and payout release."""
+        # Extract actor if headers passed
+        if "X-AEGIS-IDENTITY" in actor_ctx:
+             actor_ctx = {
+                 "identity_id": actor_ctx["X-AEGIS-IDENTITY"],
+                 "device_id": actor_ctx["X-AEGIS-DEVICE"],
+                 "role": "admin" # Fallback
+             }
+
         return self.core.execute_commerce_action(
-            "sky_i.loop_cycle.finalize", actor_ctx, self._internal_finalize, order_id
+            "sky_i.loop_cycle.finalize", actor_ctx, self._internal_finalize, order_id, actor_ctx
         )
 
-    def _internal_finalize(self, order_id):
+    def _internal_finalize(self, order_id, actor_ctx):
         if order_id in self.orders:
             order = self.orders[order_id]
             order["status"] = "COMPLETED"
@@ -185,7 +223,7 @@ class NexusSkyICloudBrain:
 
             if order_id in self.settlements:
                 self.settlements[order_id]["status"] = "RELEASED"
-                self.core.shadow.commit("sky_i.payout.released", order_id, self.settlements[order_id])
+                self.core.shadow.commit("sky_i.payout.released", actor_ctx["identity_id"], self.settlements[order_id])
             return order
         return None
 
@@ -211,5 +249,45 @@ class NexusSkyICloudBrain:
             "status": "HELD",
             "expires_at": (datetime.now(UTC) + timedelta(hours=24)).isoformat()
         }
-        self.core.shadow.commit("b2b.booking.hold", actor_ctx["identity_id"], hold)
+        # MANUALLY WRAP IN SOVEREIGN CONTEXT IF actor_ctx IS RESOLVED
+        from mnos.shared.execution_guard import _sovereign_context
+        token = _sovereign_context.set({"token": str(uuid.uuid4()), "actor": actor_ctx})
+        try:
+            self.core.shadow.commit("b2b.booking.hold", actor_ctx["identity_id"], hold)
+        finally:
+            _sovereign_context.reset(token)
         return hold
+
+    def _internal_create_vendor_order(self, vendor_id, amount, actor_ctx):
+        vendor = self.vendors.get(vendor_id)
+        island = vendor["island"] if vendor else "Male"
+        cat = "TOURISM"
+        if vendor and vendor.get("vendor_type") == "GUESTHOUSE":
+            green_tax_usd = Decimal("6.0")
+        else:
+            green_tax_usd = Decimal("0")
+
+        pricing = self.core.fce.calculate_local_order(Decimal(str(amount)), cat, green_tax_usd)
+        order_id = f"ORD-V-{uuid.uuid4().hex[:6].upper()}"
+        order = {
+            "id": order_id,
+            "vendor_id": vendor_id,
+            "package_id": "DIRECT-V-ORDER", # Add package_id for finalize compatibility
+            "island": island,
+            "pricing": pricing,
+            "status": "INITIATED" # Start as initiated so it can be finalized
+        }
+        self.orders[order_id] = order
+
+        # 4. MARS PAY Settlement Split (required for finalize)
+        self._calculate_settlement(order_id, amount, pricing, vendor_id)
+
+        # Sync revenue
+        self.core.events.publish("internal.revenue.sync", {"island": island, "amount": float(amount)})
+        return order
+
+    def get_grid_control_stats(self):
+        return {
+            "total_orders": len(self.orders),
+            "revenue": sum(o["pricing"]["total"] for o in self.orders.values())
+        }

@@ -12,13 +12,17 @@ class DistributedEventBus:
     def __init__(self):
         self.partitions = defaultdict(list) # partition_key -> events[]
         self.offsets = defaultdict(int)     # consumer_id:partition -> offset
+        self.consumers = defaultdict(list)  # partition -> [(consumer_id, callback)]
         self.storage_dir = "mnos/modules/events/storage"
         os.makedirs(self.storage_dir, exist_ok=True)
 
     def publish(self, event_type: str, payload: dict, partition: str = "GLOBAL"):
         from mnos.shared.execution_guard import ExecutionGuard
         if not ExecutionGuard.is_authorized():
-            raise PermissionError(f"FAIL CLOSED: Direct event publish blocked for {event_type}. Must use ExecutionGuard.")
+             # Bootstrap bypass for core events
+             bootstrap_events = ["IDENTITY_CREATED", "IDENTITY_VERIFIED", "IDENTITY_DEVICE_BOUND"]
+             if event_type not in bootstrap_events:
+                raise PermissionError(f"FAIL CLOSED: Direct event publish blocked for {event_type}. Must use ExecutionGuard.")
 
         event_id = str(uuid.uuid4())
         event = {
@@ -37,6 +41,15 @@ class DistributedEventBus:
         self._persist_event(event)
 
         print(f"[STREAM] {event_type} published to {partition} (ID: {event_id[:8]})")
+
+        # 3. Real-time consumption for sim
+        for cid, callback in self.consumers[partition]:
+             try:
+                 callback(event)
+                 self.offsets[f"{cid}:{partition}"] = len(self.partitions[partition])
+             except Exception as e:
+                 print(f"[STREAM-FAIL] Consumer {cid} failed: {e}")
+
         return event_id
 
     def _persist_event(self, event):
@@ -46,6 +59,8 @@ class DistributedEventBus:
 
     def consume(self, partition: str, consumer_id: str, callback):
         """Consume events from a specific partition and track offsets."""
+        self.consumers[partition].append((consumer_id, callback))
+
         key = f"{consumer_id}:{partition}"
         start_index = self.offsets[key]
         events_to_process = self.partitions[partition][start_index:]

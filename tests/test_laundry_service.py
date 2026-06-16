@@ -1,6 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
-from main import app, identity_core, laundry_engine
+from main import app, identity_core
 
 client = TestClient(app)
 

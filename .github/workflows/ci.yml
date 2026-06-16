@@ -8,6 +8,7 @@ on:
 
 jobs:
   audit:
+    name: audit
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -29,7 +30,15 @@ jobs:
       run: python validate_schema.py || true
 
     - name: Run Lint
-      run: ruff check . || true
+      run: ruff check .
 
     - name: Run Tests
-      run: python -m pytest test_sovereign_commerce.py test_consolidated_imoxon.py || true
+      run: PYTHONPATH=. python -m pytest -q
+
+  auditExpected:
+    name: auditExpected
+    runs-on: ubuntu-latest
+    needs: audit
+    steps:
+    - name: Final Audit Confirmation
+      run: echo "iMOXON Sovereign Audit CI / auditExpected passed because audit passed"

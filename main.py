@@ -1,8 +1,8 @@
 import os
-from fastapi import FastAPI, HTTPException, Header, Depends, Query, Request
+import uuid
+from fastapi import FastAPI, HTTPException, Header, Depends, Query, Request, Body
 from fastapi.responses import JSONResponse
-from typing import List, Optional, Dict
-from decimal import Decimal
+from typing import Optional, Any
 
 # MNOS Core (N-DEOS)
 from mnos.modules.finance.fce import FCEEngine, FCEHardenedEngine
@@ -24,8 +24,7 @@ from mnos.gateway.engine import APIGatewayControlPlane
 
 # iMOXON Consolidated
 from mnos.modules.imoxon.core.engine import (
-    ImoxonCore, CatalogManager, ProcurementEngine as LegacyProcurementEngine,
-    CampaignManager, MerchantManager, POSManager
+    ImoxonCore, CatalogManager, CampaignManager, MerchantManager, POSManager
 )
 from mnos.modules.imoxon.procurement.engine import ProcurementEngine
 from mnos.modules.imoxon.resort.weekly_system import ResortWeeklyOrderSystem
@@ -132,6 +131,22 @@ heatmap_engine = GlobalDemandHeatmap(imoxon, island_gm, mira_bridge, reinvestmen
 imoxon.mira_bridge = mira_bridge
 imoxon.vvip_engine = vvip_engine
 imoxon.reinvestment = reinvestment_engine
+imoxon.island_gm = island_gm
+
+# --- Event Wired Logic ---
+def on_revenue_sync(event):
+    if event["type"] == "internal.revenue.sync":
+        payload = event["payload"]
+        # Revenue sync is an internal system event, wrap in system context
+        from mnos.shared.execution_guard import _sovereign_context
+        import uuid
+        token = _sovereign_context.set({"token": str(uuid.uuid4()), "actor": {"identity_id": "SYSTEM_EVENT", "role": "system"}})
+        try:
+            island_gm.sync_revenue(payload["island"], payload["amount"])
+        finally:
+            _sovereign_context.reset(token)
+
+events_core.consume("GLOBAL", "REVENUE_SYNC_HANDLER", on_revenue_sync)
 
 # Bubble OS
 intent_engine = ChatIntentEngine(imoxon)
@@ -151,57 +166,92 @@ app.add_middleware(ExecutionGuardMiddleware, guard=guard, events=events_core)
 def get_actor_ctx(
     x_aegis_session: str = Header(None, alias="X-AEGIS-SESSION"),
     x_aegis_identity: str = Header(None, alias="X-AEGIS-IDENTITY"),
+    x_aegis_actor: str = Header(None, alias="X-AEGIS-ACTOR"),
     x_aegis_device: str = Header(None, alias="X-AEGIS-DEVICE"),
-    x_aegis_signature: str = Header(None, alias="X-AEGIS-SIGNATURE")
+    x_aegis_signature: str = Header(None, alias="X-AEGIS-SIGNATURE"),
+    x_trace_id: str = Header(None, alias="X-TRACE-ID")
 ):
     """
     AEGIS AUTH HARDENING: Production Security Layer.
     Forces identity verification via AEGIS registry and validates device binding.
     LOGS all attempts to SHADOW ledger.
     """
+    identity_id = x_aegis_identity or x_aegis_actor
+
+    # Unified normalization for headers passed as dict (e.g. from internal calls)
+    if isinstance(x_aegis_session, dict):
+        return x_aegis_session
+
     # Prefer Session-based Auth from Gateway
     if x_aegis_session:
         try:
-            actor = identity_gateway.validate_session(x_aegis_session)
-            shadow_core.commit("aegis.auth.session.success", actor["identity_id"], {"session_id": x_aegis_session})
+            session_actor = identity_gateway.validate_session(x_aegis_session)
+
+            # HARDENING: Validate device binding even for sessions if device is provided
+            if x_aegis_device:
+                device = identity_core.devices.get(x_aegis_device)
+                if not device or device.get("identity_id") != session_actor["identity_id"]:
+                    shadow_core.commit("aegis.auth.device.mismatch", session_actor["identity_id"], {"device_id": x_aegis_device})
+                    raise HTTPException(status_code=403, detail="DEVICE_BINDING_INVALID: Access Denied")
+
+            # Return canonical actor context
+            actor = {
+                "identity_id": session_actor["identity_id"],
+                "device_id": x_aegis_device, # Strictly from header or None
+                "role": session_actor["role"],
+                "auth_type": "session",
+                "realm": session_actor.get("realm"),
+                "org_id": session_actor.get("org_id"),
+                "island": session_actor.get("island"),
+                "verified": session_actor.get("verified", False),
+                "national_id_verified": session_actor.get("verified", False),
+                "trace_id": x_trace_id or f"TR-SES-{uuid.uuid4().hex[:8].upper()}"
+            }
+
+            shadow_core.commit("aegis.auth.session.success", actor["identity_id"], {"session_id": x_aegis_session, "device_id": x_aegis_device})
             return actor
         except PermissionError as e:
             shadow_core.commit("aegis.auth.session.failure", "UNKNOWN", {"reason": str(e)})
             raise HTTPException(status_code=403, detail=str(e))
 
     # Fallback to Direct Hardened Handshake (B2B / API)
-    if not x_aegis_identity or not x_aegis_device or not x_aegis_signature:
+    if not identity_id or not x_aegis_device or not x_aegis_signature:
         shadow_core.commit("aegis.auth.direct.failure", "UNKNOWN", {"reason": "Missing Headers"})
         raise HTTPException(status_code=401, detail="AEGIS_REQUIRED: Missing Identity, Device or Signature")
 
     # 1. Identity lookup via AEGIS registry (persistence)
-    profile = identity_core.profiles.get(x_aegis_identity)
+    profile = identity_core.profiles.get(identity_id)
     if not profile:
-        shadow_core.commit("aegis.auth.identity.invalid", x_aegis_identity, {"reason": "Not in Registry"})
+        shadow_core.commit("aegis.auth.identity.invalid", identity_id, {"reason": "Not in Registry"})
         raise HTTPException(status_code=401, detail="INVALID_IDENTITY: Unauthorized")
 
     # 2. Validate device binding (device.owner_id == identity.id)
     device = identity_core.devices.get(x_aegis_device)
-    if not device or device.get("identity_id") != x_aegis_identity:
-        shadow_core.commit("aegis.auth.device.mismatch", x_aegis_identity, {"device_id": x_aegis_device})
+    if not device or device.get("identity_id") != identity_id:
+        shadow_core.commit("aegis.auth.device.mismatch", identity_id, {"device_id": x_aegis_device})
         raise HTTPException(status_code=403, detail="DEVICE_BINDING_INVALID: Access Denied")
 
     # 3. Cryptographic Signature Validation
-    if x_aegis_signature != f"VALID_SIG_FOR_{x_aegis_identity}":
-         shadow_core.commit("aegis.auth.sig.failed", x_aegis_identity, {"sig": x_aegis_signature})
+    if x_aegis_signature != f"VALID_SIG_FOR_{identity_id}":
+         shadow_core.commit("aegis.auth.sig.failed", identity_id, {"sig": x_aegis_signature})
          raise HTTPException(status_code=403, detail="HANDSHAKE_FAILED: Invalid Signature")
 
     # 4. Success: Derive role from database (NO HEADER TRUST)
+    is_verified = profile.get("verification_status") == "verified"
     actor = {
-        "identity_id": x_aegis_identity,
+        "identity_id": identity_id,
         "role": profile.get("profile_type"),
         "realm": "API_DIRECT",
         "org_id": profile.get("organization_id"),
         "island": profile.get("assigned_island"),
-        "verified": profile.get("verification_status") == "verified",
-        "persistent_hash": profile.get("persistent_identity_hash")
+        "assigned_island": profile.get("assigned_island"),
+        "verified": is_verified,
+        "national_id_verified": is_verified,
+        "persistent_hash": profile.get("persistent_identity_hash"),
+        "device_id": x_aegis_device,
+        "trace_id": x_trace_id or f"TR-{uuid.uuid4().hex[:8].upper()}"
     }
-    shadow_core.commit("aegis.auth.direct.success", x_aegis_identity, {"role": actor["role"]})
+    shadow_core.commit("aegis.auth.direct.success", identity_id, {"role": actor["role"]})
     return actor
 
 # --- Consolidated APIs ---
@@ -220,6 +270,7 @@ async def connect_supplier(name: str, actor: dict = Depends(get_actor_ctx)):
         "imoxon.supplier.connect",
         actor,
         lambda: {
+            "id": supplier_id,
             "supplier_id": supplier_id,
             "name": name,
             "status": "CONNECTED",
@@ -229,11 +280,32 @@ async def connect_supplier(name: str, actor: dict = Depends(get_actor_ctx)):
 
 @app.post("/imoxon/orders/create")
 async def imoxon_create_order(data: dict, actor: dict = Depends(get_actor_ctx)):
-    return procurement.create_purchase_request(actor, data.get("items"), data.get("amount"))
+    items = data.get("items")
+    amount = data.get("amount") or data.get("estimated_amount")
+    return procurement.create_purchase_request(actor, items, float(amount) if amount is not None else 0.0)
 
 @app.post("/imoxon/products/import")
-async def import_product(sid: str, raw: dict, actor: dict = Depends(get_actor_ctx)):
-    return catalog.import_supplier_product(actor, sid, raw)
+async def import_product(
+    sid: Optional[str] = Query(None),
+    supplier_id: Optional[str] = Query(None),
+    raw: Any = Body(...),
+    actor: dict = Depends(get_actor_ctx)
+):
+    target_sid = sid or supplier_id
+    if not target_sid:
+        raise HTTPException(status_code=422, detail="Missing supplier_id or sid")
+
+    # Handle both single product (dict) and multiple (list)
+    products_to_import = raw if isinstance(raw, list) else [raw]
+
+    results = []
+    for p in products_to_import:
+        results.append(catalog.import_supplier_product(actor, target_sid, p))
+
+    if isinstance(raw, list):
+        return {"products": results}
+    else:
+        return results[0]
 
 @app.post("/imoxon/products/approve")
 async def approve_product(pid: str, actor: dict = Depends(get_actor_ctx)):
@@ -263,6 +335,15 @@ app.include_router(create_laundry_router(laundry_engine, get_actor_ctx), prefix=
 @app.exception_handler(PermissionError)
 async def permission_error_handler(request: Request, exc: PermissionError):
     return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+@app.exception_handler(RuntimeError)
+async def runtime_error_handler(request: Request, exc: RuntimeError):
+    msg = str(exc)
+    if "SOVEREIGN EXECUTION FAILED" in msg:
+        if "not found" in msg.lower() or "not in queue" in msg.lower():
+            return JSONResponse(status_code=404, content={"detail": msg})
+        return JSONResponse(status_code=400, content={"detail": msg})
+    return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
 
 @app.get("/health")
 async def health():

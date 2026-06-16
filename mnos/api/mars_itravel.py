@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, HTTPException
-from decimal import Decimal
 
 def create_itravel_router(mars_engine, get_actor_ctx):
     router = APIRouter(prefix="/itravel", tags=["itravel"])
@@ -24,6 +23,20 @@ def create_itravel_router(mars_engine, get_actor_ctx):
         if not result:
             raise HTTPException(status_code=404, detail="Order not found")
         return result
+
+    @router.post("/orders/create")
+    async def create_simple_order(vendor_id: str, amount: float, actor: dict = Depends(get_actor_ctx)):
+        """Simple vendor order via TraWel/Nexus."""
+        # This endpoint seems to be expected by legacy TraWel tests
+        # We simulate a package on the fly or just use mars_engine to create it if it supports it.
+        # Looking at mars_unified.py, process_full_cycle takes a package_id.
+        # For simplicity, we create a generic vendor order.
+        return mars_engine.core.execute_commerce_action(
+            "imoxon.order.create",
+            actor,
+            mars_engine._internal_create_vendor_order,
+            vendor_id, amount, actor
+        )
 
     return router
 

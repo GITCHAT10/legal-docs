@@ -1,7 +1,6 @@
 import uuid
 from datetime import datetime, UTC
-from typing import Dict, List, Any, Optional
-from decimal import Decimal, ROUND_HALF_UP
+from typing import Optional
 
 class MiraBridgeEngine:
     """
@@ -62,8 +61,12 @@ class MiraBridgeEngine:
 
         # 3. Trigger Reinvestment Engine (25% loop)
         if hasattr(self.core, "reinvestment"):
-             # Get island from vendor
-             island = self.core.island_gm.vendors.get(vendor_id, {}).get("island", "Male")
+             # Get island from order data or fallback to vendor
+             island = order_data.get("island")
+             if not island:
+                 # Fallback to nexus vendor mapping if available
+                 island = self.core.island_gm.nexus.vendors.get(vendor_id, {}).get("island", "Male")
+
              self.core.reinvestment.process_island_reinvestment(
                  island, pricing["tax_amount"], pricing.get("green_tax", 0.0)
              )

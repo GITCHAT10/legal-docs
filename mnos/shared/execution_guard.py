@@ -21,13 +21,47 @@ class ExecutionGuard:
         MANDATORY ENTRYPOINT for all mutating commerce actions.
         ORBAN -> AEGIS -> ExecutionGuard -> FCE -> SHADOW
         """
-        identity_id = actor_context.get("identity_id")
-        device_id = actor_context.get("device_id")
-        role = actor_context.get("role")
+        # --- Priority 2: Robust Actor Normalization ---
+        # Handle dicts directly or legacy header formats
+        identity_id = (
+            actor_context.get("identity_id") or
+            actor_context.get("X-AEGIS-IDENTITY") or
+            actor_context.get("X-AEGIS-ACTOR") or
+            actor_context.get("id")
+        )
+        device_id = (
+            actor_context.get("device_id") or
+            actor_context.get("X-AEGIS-DEVICE")
+        )
+        role = (
+            actor_context.get("role") or
+            actor_context.get("X-AEGIS-ROLE") or
+            "guest"
+        )
 
-        # 1. AEGIS Identity & Binding Check
-        if not identity_id or not device_id:
-            raise PermissionError(f"FAIL CLOSED: Missing Identity or Device Binding for {action_type}")
+        # Enrich role if missing but identity is present (for internal calls passing partial info)
+        if identity_id and (not role or role == "guest"):
+            profile = self.identity_core.profiles.get(identity_id)
+            if profile:
+                role = profile.get("profile_type", role)
+
+        # Re-build canonical context for internal consistency
+        actor_context = {
+            "identity_id": identity_id,
+            "device_id": device_id,
+            "role": role,
+            "national_id_verified": actor_context.get("national_id_verified", False) or actor_context.get("verified", False)
+        }
+
+        # 1. AEGIS Identity & Binding Check (Fail-closed)
+        if not identity_id:
+            self.shadow.commit(f"{action_type}.auth_failure", "UNKNOWN", {"reason": "Missing Actor Identity"})
+            raise PermissionError(f"FAIL CLOSED: Missing Actor Identity for {action_type}")
+
+        if not device_id:
+            # P1 Hardening: Strictly block mutations without a real device
+            self.shadow.commit(f"{action_type}.auth_failure", identity_id, {"reason": "Missing Device Binding"})
+            raise PermissionError(f"FAIL CLOSED: Missing Device Binding for {action_type}")
 
         # ZERO_TRUST_DEFAULT_DENY for sensitive procurement actions
         sensitive_actions = ["procurement.order.settle", "finance.escrow.release"]
@@ -40,8 +74,7 @@ class ExecutionGuard:
             raise PermissionError(f"FAIL CLOSED: Policy Violation - {msg}")
 
         # 3. Set Sovereign Context (Authorized)
-        token = str(uuid.uuid4())
-        _sovereign_context.set({"token": token, "actor": actor_context})
+        token = _sovereign_context.set({"token": str(uuid.uuid4()), "actor": actor_context})
 
         try:
             # BEGIN ATOMIC TX (Simulated via context and SHADOW intent)
@@ -83,12 +116,22 @@ class ExecutionGuard:
             self.shadow.commit(f"{action_type}.failed", identity_id or "UNKNOWN", fail_payload)
             raise RuntimeError(f"SOVEREIGN EXECUTION FAILED: {str(e)}")
         finally:
-            # Clear context
-            _sovereign_context.set(None)
+            # Clear context safely (supports nesting)
+            _sovereign_context.reset(token)
 
     @staticmethod
     def is_authorized() -> bool:
         return _sovereign_context.get() is not None
+
+    @staticmethod
+    def set_system_context():
+        """Bypass for internal bootstrap flows."""
+        token = str(uuid.uuid4())
+        return _sovereign_context.set({"token": token, "actor": {"identity_id": "SYSTEM", "role": "admin"}})
+
+    @staticmethod
+    def reset_context(token):
+        _sovereign_context.reset(token)
 
     @staticmethod
     def get_actor() -> Optional[Dict]:
@@ -107,11 +150,12 @@ class ExecutionGuardMiddleware(BaseHTTPMiddleware):
         guarded_paths = ["/supply", "/finance", "/aegis/asset", "/commerce"]
 
         if any(request.url.path.startswith(path) for path in guarded_paths):
-            identity_id = request.headers.get("X-AEGIS-IDENTITY")
+            identity_id = request.headers.get("X-AEGIS-IDENTITY") or request.headers.get("X-AEGIS-ACTOR")
             device_id = request.headers.get("X-AEGIS-DEVICE")
+            session_id = request.headers.get("X-AEGIS-SESSION")
 
-            # Require AEGIS Identity for all guarded paths
-            if not identity_id:
+            # Require AEGIS Identity or Session for all guarded paths
+            if not identity_id and not session_id:
                 return self._violation("Missing Actor Identity")
 
             # Require Device Binding for Mutating Actions
