@@ -15,7 +15,7 @@ class AegisIdentityCore:
 
     def create_profile(self, profile_data: dict) -> str:
         with authorized_context():
-            identity_id = profile_data.get("identity_id") or str(uuid.uuid4())
+            identity_id = str(uuid.uuid4())
             profile = {
                 "identity_id": identity_id,
                 "profile_type": profile_data.get("profile_type"), # staff, supplier, etc

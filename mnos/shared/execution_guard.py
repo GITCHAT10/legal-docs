@@ -120,7 +120,15 @@ class ExecutionGuard:
 
             return result
 
-        except PermissionError:
+        except PermissionError as e:
+            # ROLLBACK LOGIC for PermissionError (Policy/Logic failures after intent)
+            fail_payload = {
+                "action": action_type,
+                "actor_aegis_id": identity_id,
+                "error": str(e),
+                "status": "FAILED_ROLLBACK"
+            }
+            self.shadow.commit(f"{action_type}.failed", identity_id or "UNKNOWN", fail_payload)
             raise
         except Exception as e:
             # ROLLBACK LOGIC
