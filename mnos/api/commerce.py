@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends
 
 def create_commerce_router(imoxon, catalog, merchant, pos, procurement, get_actor_ctx):
     router = APIRouter(tags=["commerce"])
@@ -42,5 +42,16 @@ def create_commerce_router(imoxon, catalog, merchant, pos, procurement, get_acto
     @router.post("/pos/stock")
     async def sync_stock(data: dict, actor: dict = Depends(get_actor_ctx)):
         return pos.sync_stock(actor, data)
+
+    @router.get("/catalog")
+    async def get_catalog():
+        return catalog.products
+
+    @router.post("/pricing/landed-cost")
+    async def get_landed_cost(base: float, cat: str = "RETAIL"):
+        # Landed Cost Logic: Base + 15% Logistics + 10% Markup
+        landed_base = base * 1.15 * 1.10
+        # FCE call for pricing math
+        return imoxon.fce.finalize_invoice(landed_base, cat)
 
     return router

@@ -8,13 +8,21 @@ client = TestClient(app)
 def admin_headers():
     identity_id = identity_core.create_profile({"full_name": "Admin", "profile_type": "admin"})
     device_id = identity_core.bind_device(identity_id, {"fingerprint": "admin-dev"})
-    return {"X-AEGIS-IDENTITY": identity_id, "X-AEGIS-DEVICE": device_id}
+    return {
+        "X-AEGIS-IDENTITY": identity_id,
+        "X-AEGIS-DEVICE": device_id,
+        "X-AEGIS-SIGNATURE": f"VALID_SIG_FOR_{identity_id}"
+    }
 
 @pytest.fixture
 def guest_headers():
     identity_id = identity_core.create_profile({"full_name": "Guest 102", "profile_type": "guest"})
     device_id = identity_core.bind_device(identity_id, {"fingerprint": "guest-phone"})
-    return {"X-AEGIS-IDENTITY": identity_id, "X-AEGIS-DEVICE": device_id}
+    return {
+        "X-AEGIS-IDENTITY": identity_id,
+        "X-AEGIS-DEVICE": device_id,
+        "X-AEGIS-SIGNATURE": f"VALID_SIG_FOR_{identity_id}"
+    }
 
 def test_maafushi_guest_order_flow(admin_headers, guest_headers):
     # 1. Setup: Register Owner and Vendor (Cafe Reef)

@@ -1,6 +1,5 @@
 import pytest
 import httpx
-import os
 from main import app
 from httpx import ASGITransport
 
@@ -17,28 +16,35 @@ async def client():
 @pytest.fixture
 async def headers(client):
     # Setup authorized actor
-    res = await client.post("/aegis/identity/create", json={"full_name": "Test Admin", "profile_type": "admin"})
+    res = await client.post("/imoxon/aegis/identity/create", json={"full_name": "Test Admin", "profile_type": "admin"})
     actor_id = res.json()["identity_id"]
-    await client.post("/aegis/identity/device/bind", params={"identity_id": actor_id}, json={"fingerprint": "test-dev"})
-    return {"X-AEGIS-IDENTITY": actor_id, "X-AEGIS-DEVICE": "test-dev"}
+    from main import identity_core
+    identity_core.verify_identity(actor_id, "SYSTEM")
+    res = await client.post("/imoxon/aegis/identity/device/bind", params={"identity_id": actor_id}, json={"fingerprint": "test-dev"})
+    device_id = res.json()["device_id"]
+    return {
+        "X-AEGIS-IDENTITY": actor_id,
+        "X-AEGIS-DEVICE": device_id,
+        "X-AEGIS-SIGNATURE": f"VALID_SIG_FOR_{actor_id}"
+    }
 
 @pytest.mark.anyio
 async def test_supplier_product_import(client, headers):
     # Connect
-    res = await client.post("/imoxon/suppliers/connect", json={"name": "Test Global", "type": "GLOBAL"}, headers=headers)
-    sid = res.json()["id"]
+    res = await client.post("/imoxon/suppliers/connect", params={"name": "Test Global"}, headers=headers)
+    sid = res.json()["supplier_id"]
     # Import
-    res = await client.post("/imoxon/products/import", params={"sid": sid}, json=[{"name": "Item 1", "price": 100}], headers=headers)
+    res = await client.post("/imoxon/products/import", params={"sid": sid}, json={"name": "Item 1", "price": 100}, headers=headers)
     assert res.status_code == 200
-    assert len(res.json()["products"]) == 1
+    assert "id" in res.json()
 
 @pytest.mark.anyio
 async def test_product_approval_required(client, headers):
     # Import
-    res = await client.post("/imoxon/suppliers/connect", json={"name": "Supplier X"}, headers=headers)
-    sid = res.json()["id"]
-    res = await client.post("/imoxon/products/import", params={"sid": sid}, json=[{"name": "Secret Item", "price": 10}], headers=headers)
-    pid = res.json()["products"][0]["id"]
+    res = await client.post("/imoxon/suppliers/connect", params={"name": "Supplier X"}, headers=headers)
+    sid = res.json()["supplier_id"]
+    res = await client.post("/imoxon/products/import", params={"sid": sid}, json={"name": "Secret Item", "price": 10}, headers=headers)
+    pid = res.json()["id"]
     # Check Catalog (should be empty)
     res = await client.get("/imoxon/catalog")
     assert pid not in res.json()
@@ -61,4 +67,4 @@ async def test_landed_cost_calculation(client, headers):
 async def test_no_direct_db_write():
     from main import shadow_core
     with pytest.raises(PermissionError):
-        shadow_core.commit("manual.hack", {"data": "rogue"})
+        shadow_core.commit("manual.hack", "SYSTEM", {"data": "rogue"})

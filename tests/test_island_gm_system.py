@@ -1,6 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
-from main import app, identity_core, island_gm
+from main import app, identity_core
 
 client = TestClient(app)
 
@@ -18,6 +18,7 @@ def test_island_gm_isolation_and_commission(admin_headers):
         "profile_type": "island_gm",
         "assigned_island": "Maafushi"
     })
+    identity_core.verify_identity(gm_uid, "NATIONAL-SECURITY")
     gm_did = identity_core.bind_device(gm_uid, {"fingerprint": "gm-tablet"})
     gm_headers = {"X-AEGIS-IDENTITY": gm_uid, "X-AEGIS-DEVICE": gm_did, "X-AEGIS-SIGNATURE": f"VALID_SIG_FOR_{gm_uid}"}
 
@@ -42,6 +43,7 @@ def test_island_gm_isolation_and_commission(admin_headers):
 def test_island_dashboard_access(admin_headers):
     # Setup GM
     uid = identity_core.create_profile({"full_name": "G", "profile_type": "island_gm", "assigned_island": "Baa"})
+    identity_core.verify_identity(uid, "NATIONAL-SECURITY")
     did = identity_core.bind_device(uid, {"fingerprint": "t1"})
     headers = {"X-AEGIS-IDENTITY": uid, "X-AEGIS-DEVICE": did, "X-AEGIS-SIGNATURE": f"VALID_SIG_FOR_{uid}"}
 

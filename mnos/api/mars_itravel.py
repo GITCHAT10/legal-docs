@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, HTTPException
-from decimal import Decimal
 
 def create_itravel_router(mars_engine, get_actor_ctx):
     router = APIRouter(prefix="/itravel", tags=["itravel"])
@@ -25,6 +24,11 @@ def create_itravel_router(mars_engine, get_actor_ctx):
             raise HTTPException(status_code=404, detail="Order not found")
         return result
 
+    @router.post("/orders/create")
+    async def create_mars_order(vendor_id: str, amount: float, actor: dict = Depends(get_actor_ctx)):
+        """Legacy MARS: Create a direct vendor order."""
+        return mars_engine.create_legacy_order(actor, vendor_id, amount)
+
     return router
 
 def create_flow_router(mars_engine, get_actor_ctx):
@@ -34,6 +38,14 @@ def create_flow_router(mars_engine, get_actor_ctx):
     async def dispatch_transfer(order_id: str, transfer_data: dict, actor: dict = Depends(get_actor_ctx)):
         """UT SYSTEM: Dispatch a physical transfer."""
         return mars_engine.execute_transfer(actor, order_id, transfer_data)
+
+    @router.post("/delivery/update")
+    async def update_delivery(order_id: str, status: str, actor: dict = Depends(get_actor_ctx)):
+        """MIG Action: Update delivery state."""
+        result = mars_engine.update_delivery_status(actor, order_id, status)
+        if not result:
+             raise HTTPException(status_code=404, detail="Order not found")
+        return result
 
     return router
 

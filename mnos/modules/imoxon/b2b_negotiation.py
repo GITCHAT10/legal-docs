@@ -1,7 +1,5 @@
 import uuid
-from datetime import datetime, UTC, timedelta
-from typing import Dict, List, Any, Optional
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal
 
 class B2BAutoNegotiationEngine:
     """
@@ -19,6 +17,15 @@ class B2BAutoNegotiationEngine:
         """
         RFQ Logic: identify partner lens, pull inventory, apply MEGE pricing, and check floor.
         """
+        return self.core.execute_commerce_action(
+            "b2b.rfq",
+            actor_ctx,
+            self._internal_process_rfq,
+            rfq_data
+        )
+
+    def _internal_process_rfq(self, rfq_data: dict) -> dict:
+        actor_ctx = self.core.guard.get_actor()
         partner_type = rfq_data.get("partner_type") # TO or DMC
         pax_count = rfq_data.get("pax_count", 1)
 
@@ -57,7 +64,7 @@ class B2BAutoNegotiationEngine:
             # 3. Floor Guard
             if base_floor < Decimal("40.0"): # Simulated floor
                  self.core.shadow.commit("b2b.rfq.rejected", actor_ctx["identity_id"], {"reason": "Below Floor", "price": float(base_floor)})
-                 raise ValueError("FAIL CLOSED: Rate below hotel floor")
+                 raise PermissionError("FAIL CLOSED: Rate below hotel floor")
 
             pricing = self.core.fce.calculate_local_order(subtotal, "RETAIL")
             quote = {
@@ -85,6 +92,15 @@ class B2BAutoNegotiationEngine:
         """
         Instant Booking: Lock inventory and trigger full cycle.
         """
+        return self.core.execute_commerce_action(
+            "b2b.booking.confirm",
+            actor_ctx,
+            self._internal_confirm_booking,
+            quote_id
+        )
+
+    def _internal_confirm_booking(self, quote_id: str):
+        actor_ctx = self.core.guard.get_actor()
         quote_entry = self.quotes.get(quote_id)
         if not quote_entry:
              raise ValueError("Quote not found or expired")

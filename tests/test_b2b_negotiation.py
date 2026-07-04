@@ -2,7 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 from main import app, identity_core, mars_unified
 
-client = TestClient(app)
+client = TestClient(app, raise_server_exceptions=False)
 
 @pytest.fixture
 def b2b_agent_headers():
@@ -16,7 +16,12 @@ def b2b_agent_headers():
     from main import identity_gateway
     session_id = f"SES-B2B-{uid[:4]}"
     identity_gateway.sessions[session_id] = {
-        "identity_id": uid, "role": "b2b_agent", "realm": "B2B", "org_id": "GLOBAL-TO"
+        "identity_id": uid,
+        "device_id": did,
+        "role": "b2b_agent",
+        "realm": "B2B",
+        "org_id": "GLOBAL-TO",
+        "verified": True
     }
     return {"X-AEGIS-SESSION": session_id}
 
@@ -26,6 +31,14 @@ def admin_headers():
     did = identity_core.bind_device(uid, {"fingerprint": "root-hw"})
     identity_core.verify_identity(uid, "SYS")
     return {"X-AEGIS-IDENTITY": uid, "X-AEGIS-DEVICE": did, "X-AEGIS-SIGNATURE": f"VALID_SIG_FOR_{uid}"}
+
+@pytest.fixture(autouse=True)
+def clear_state():
+    from main import b2b_negotiator
+    mars_unified.packages.clear()
+    mars_unified.orders.clear()
+    mars_unified.settlements.clear()
+    b2b_negotiator.quotes.clear()
 
 def test_b2b_rfq_package_mode(admin_headers, b2b_agent_headers):
     # 1. Setup: Admin creates inventory
@@ -56,7 +69,7 @@ def test_b2b_rfq_net_mode_and_floor_guard(admin_headers, b2b_agent_headers):
     # 2. Agent RFQ in NET MODE (DMC style) - Should be rejected by floor guard
     rfq_data = {"partner_type": "DMC", "pax_count": 1}
     resp = client.post("/imoxon/b2b/rfq", json=rfq_data, headers=b2b_agent_headers)
-    assert resp.status_code == 400
+    assert resp.status_code == 403
     assert "Rate below hotel floor" in resp.json()["detail"]
 
 def test_b2b_booking_confirmation(admin_headers, b2b_agent_headers):
@@ -71,7 +84,7 @@ def test_b2b_booking_confirmation(admin_headers, b2b_agent_headers):
     quote_id = resp.json()["quote_id"]
 
     # 3. Confirm Booking
-    resp = client.post(f"/imoxon/b2b/confirm?quote_id={quote_id}", headers=b2b_agent_headers)
+    resp = client.post(f"/imoxon/b2b/booking/confirm?quote_id={quote_id}", headers=b2b_agent_headers)
     assert resp.status_code == 200
     assert resp.json()["status"] == "BOOKING_CONFIRMED"
     assert "order_id" in resp.json()

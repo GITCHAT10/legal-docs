@@ -1,7 +1,6 @@
-import uuid
 from datetime import datetime, UTC
-from typing import Dict, List, Any, Optional
-from decimal import Decimal, ROUND_HALF_UP
+from typing import List, Optional
+from decimal import Decimal
 
 class HustleLeaderboardEngine:
     """
@@ -20,7 +19,8 @@ class HustleLeaderboardEngine:
     def update_leaderboard(self, event_type: str, data: dict):
         """Processes economic events to update rankings."""
         island = data.get("island")
-        if not island: return
+        if not island:
+            return
 
         # SHADOW VALIDATION ONLY (Simulated)
         if not data.get("shadow_ref"):
@@ -66,7 +66,15 @@ class HustleLeaderboardEngine:
         sorted_hustlers = sorted(self.hustler_rankings.items(), key=lambda x: x[1], reverse=True)
         return [{"user_id": k, "revenue": v} for k, v in sorted_hustlers[:10]]
 
-    def trigger_surge_alert(self, island: str, factor: float):
+    def trigger_surge_alert(self, actor_ctx: dict, island: str, factor: float):
+        return self.core.execute_commerce_action(
+            "hustle.surge.alert",
+            actor_ctx,
+            self._internal_trigger_surge,
+            island, factor
+        )
+
+    def _internal_trigger_surge(self, island: str, factor: float):
         alert = {
             "island": island,
             "spike": f"+{int(factor * 100)}%",

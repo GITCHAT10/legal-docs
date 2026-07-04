@@ -1,7 +1,6 @@
 import httpx
 import asyncio
 import os
-import json
 from main import app, shadow_core
 from httpx import ASGITransport
 
@@ -11,7 +10,6 @@ async def run_final_cto_audit():
 
     os.environ["NEXGEN_SECRET"] = "cto-audit-2026"
     transport = ASGITransport(app=app)
-    results = []
 
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         # 1. Setup Admin
