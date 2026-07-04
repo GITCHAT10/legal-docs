@@ -1,5 +1,6 @@
 import contextvars
 import uuid
+import contextlib
 from typing import Callable, Any, Dict, Optional
 from fastapi import Request
 from fastapi.responses import JSONResponse
@@ -21,13 +22,17 @@ class ExecutionGuard:
         MANDATORY ENTRYPOINT for all mutating commerce actions.
         ORBAN -> AEGIS -> ExecutionGuard -> FCE -> SHADOW
         """
-        identity_id = actor_context.get("identity_id")
-        device_id = actor_context.get("device_id")
+        identity_id = actor_context.get("identity_id") or actor_context.get("X-AEGIS-IDENTITY")
+        device_id = actor_context.get("device_id") or actor_context.get("X-AEGIS-DEVICE")
         role = actor_context.get("role")
 
         # 1. AEGIS Identity & Binding Check
         if not identity_id or not device_id:
             raise PermissionError(f"FAIL CLOSED: Missing Identity or Device Binding for {action_type}")
+
+        # Normalize context
+        actor_context["identity_id"] = identity_id
+        actor_context["device_id"] = device_id
 
         # ZERO_TRUST_DEFAULT_DENY for sensitive procurement actions
         sensitive_actions = ["procurement.order.settle", "finance.escrow.release"]
@@ -41,7 +46,7 @@ class ExecutionGuard:
 
         # 3. Set Sovereign Context (Authorized)
         token = str(uuid.uuid4())
-        _sovereign_context.set({"token": token, "actor": actor_context})
+        ctx_token = _sovereign_context.set({"token": token, "actor": actor_context})
 
         try:
             # BEGIN ATOMIC TX (Simulated via context and SHADOW intent)
@@ -84,7 +89,7 @@ class ExecutionGuard:
             raise RuntimeError(f"SOVEREIGN EXECUTION FAILED: {str(e)}")
         finally:
             # Clear context
-            _sovereign_context.set(None)
+            _sovereign_context.reset(ctx_token)
 
     @staticmethod
     def is_authorized() -> bool:
@@ -94,6 +99,19 @@ class ExecutionGuard:
     def get_actor() -> Optional[Dict]:
         ctx = _sovereign_context.get()
         return ctx["actor"] if ctx else None
+
+    @staticmethod
+    @contextlib.contextmanager
+    def authorized_context(actor_context: Dict):
+        """
+        Context manager for internal authorized operations (bootstrap/self-healing).
+        """
+        token = str(uuid.uuid4())
+        t_token = _sovereign_context.set({"token": token, "actor": actor_context})
+        try:
+            yield
+        finally:
+            _sovereign_context.reset(t_token)
 
 class ExecutionGuardMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, guard, events):

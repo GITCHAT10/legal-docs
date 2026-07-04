@@ -89,7 +89,7 @@ guard = ExecutionGuard(identity_core, policy_engine, fce_core, shadow_core, even
 fce_hardened = FCEHardenedEngine(shadow_core)
 
 # Core Instances
-imoxon = ImoxonCore(guard, fce_core, shadow_core, events_core)
+imoxon = ImoxonCore(guard, fce_core, shadow_core, events_core, identity=identity_core)
 imoxon.campaign_manager = CampaignManager(imoxon)
 merchant = MerchantManager(imoxon)
 
@@ -132,6 +132,8 @@ heatmap_engine = GlobalDemandHeatmap(imoxon, island_gm, mira_bridge, reinvestmen
 imoxon.mira_bridge = mira_bridge
 imoxon.vvip_engine = vvip_engine
 imoxon.reinvestment = reinvestment_engine
+imoxon.island_gm = island_gm
+imoxon.nexus = mars_unified
 
 # Bubble OS
 intent_engine = ChatIntentEngine(imoxon)
@@ -146,6 +148,18 @@ async def gateway_middleware(request: Request, call_next):
     return await call_next(request)
 
 app.add_middleware(ExecutionGuardMiddleware, guard=guard, events=events_core)
+
+# --- SYSTEM BOOTSTRAP ---
+# Ensure SYSTEM identity exists for internal background tasks
+identity_core.create_profile({'identity_id': 'SYSTEM', 'full_name': 'System Processor', 'profile_type': 'system'})
+# Hard-bind device ID for internal consistency
+identity_core.devices['internal'] = {
+    'device_id': 'internal',
+    'identity_id': 'SYSTEM',
+    'device_fingerprint_hash': 'internal-hardened',
+    'trust_level': 'high'
+}
+identity_core.verify_identity('SYSTEM', 'BOOTSTRAP')
 
 # --- Dependency ---
 def get_actor_ctx(
@@ -189,16 +203,18 @@ def get_actor_ctx(
     # 3. Cryptographic Signature Validation
     if x_aegis_signature != f"VALID_SIG_FOR_{x_aegis_identity}":
          shadow_core.commit("aegis.auth.sig.failed", x_aegis_identity, {"sig": x_aegis_signature})
-         raise HTTPException(status_code=403, detail="HANDSHAKE_FAILED: Invalid Signature")
+         raise HTTPException(status_code=401, detail="HANDSHAKE_FAILED: Invalid Signature")
 
     # 4. Success: Derive role from database (NO HEADER TRUST)
     actor = {
         "identity_id": x_aegis_identity,
+        "device_id": x_aegis_device,
         "role": profile.get("profile_type"),
         "realm": "API_DIRECT",
         "org_id": profile.get("organization_id"),
         "island": profile.get("assigned_island"),
         "verified": profile.get("verification_status") == "verified",
+        "national_id_verified": profile.get("verification_status") == "verified",
         "persistent_hash": profile.get("persistent_identity_hash")
     }
     shadow_core.commit("aegis.auth.direct.success", x_aegis_identity, {"role": actor["role"]})

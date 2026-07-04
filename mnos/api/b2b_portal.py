@@ -9,9 +9,14 @@ def create_b2b_portal_router(nexus_brain, b2b_negotiator, get_actor_ctx):
         """Auto-Negotiation: Request for Quote (TO vs DMC)."""
         try:
             return b2b_negotiator.process_rfq(actor, rfq_data)
-        except ValueError as e:
+        except (ValueError, RuntimeError) as e:
+            # Handle FAIL CLOSED floor guard wrapped in RuntimeError by ExecutionGuard
+            msg = str(e)
+            if "FAIL CLOSED" in msg or "below hotel floor" in msg:
+                 raise HTTPException(status_code=400, detail=msg)
             raise HTTPException(status_code=400, detail=str(e))
 
+    @router.post("/confirm")
     @router.post("/booking/confirm")
     async def confirm_booking(quote_id: str, actor: dict = Depends(get_actor_ctx)):
         """Instant Booking: Confirm quote and lock inventory."""

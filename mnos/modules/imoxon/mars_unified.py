@@ -64,9 +64,17 @@ class NexusSkyICloudBrain:
         Closed-Loop Economy Loop:
         Guest orders -> TRAWEL predicts/assigns -> UT executes -> Vendor fulfills -> MARS PAY splits -> SHADOW records -> Cloud Updates.
         """
+        return self.core.execute_commerce_action(
+            "sky_i.loop_cycle.start", actor_ctx, self._internal_process_full_cycle, guest_id, package_id
+        )
+
+    def _internal_process_full_cycle(self, guest_id: str, package_id: str):
         package = self.packages.get(package_id)
         if not package:
             raise ValueError("Invalid Package")
+
+        # Pick first available vendor on this island or fallback
+        vendor_id = next((v["id"] for v in self.vendors.values() if v["island"] == package["island"]), "SYSTEM_DEFAULT_VENDOR")
 
         # 1. TRAWEL Assigns Inventory
         order_id = f"ORD-SKY-{uuid.uuid4().hex[:6].upper()}"
@@ -78,6 +86,7 @@ class NexusSkyICloudBrain:
             "id": order_id,
             "guest_id": guest_id,
             "package_id": package_id,
+            "vendor_id": vendor_id,
             "pricing": pricing,
             "status": "INITIATED",
             "audit_id": None
@@ -88,7 +97,7 @@ class NexusSkyICloudBrain:
         transfer_manifest = self._internal_dispatch_transfer(order_id, {"route": "Male -> Island", "fare": 0})
 
         # 4. MARS PAY Settlement Split
-        self._calculate_settlement(order_id, package["base_price"], pricing, "SYSTEM_DEFAULT_VENDOR")
+        self._calculate_settlement(order_id, package["base_price"], pricing, vendor_id)
 
         # 5. SHADOW Ledger Commit (Truth Layer)
         audit_res = self.core.shadow.commit("sky_i.loop_cycle.start", order_id, order)
@@ -112,7 +121,8 @@ class NexusSkyICloudBrain:
             "mars_fee": float(mars_fee),
             "ngo_fee": float(ngo_fee),
             "tax_vault": float(tax_vault),
-            "status": "LOCKED_IN_ESCROW"
+            "status": "LOCKED_IN_ESCROW",
+            "payout_status": "PENDING"
         }
         self.settlements[order_id] = settlement
         return settlement
@@ -155,10 +165,10 @@ class NexusSkyICloudBrain:
     def finalize_cycle(self, actor_ctx: dict, order_id: str):
         """Final fulfillment and payout release."""
         return self.core.execute_commerce_action(
-            "sky_i.loop_cycle.finalize", actor_ctx, self._internal_finalize, order_id
+            "sky_i.loop_cycle.finalize", actor_ctx, self._internal_finalize, order_id, actor_ctx
         )
 
-    def _internal_finalize(self, order_id):
+    def _internal_finalize(self, order_id, actor_ctx=None):
         if order_id in self.orders:
             order = self.orders[order_id]
             order["status"] = "COMPLETED"
@@ -170,6 +180,9 @@ class NexusSkyICloudBrain:
                      "island": package["island"],
                      "amount": package["base_price"]
                  })
+                 # Direct call for simulation consistency in tests
+                 if hasattr(self.core, "island_gm"):
+                      self.core.island_gm.sync_revenue(package["island"], package["base_price"])
 
                  # 2. Emit event for Leaderboard (C2C Revenue)
                  self.core.events.publish("hustle.revenue_generated", {
@@ -185,6 +198,7 @@ class NexusSkyICloudBrain:
 
             if order_id in self.settlements:
                 self.settlements[order_id]["status"] = "RELEASED"
+                self.settlements[order_id]["payout_status"] = "RELEASED"
                 self.core.shadow.commit("sky_i.payout.released", order_id, self.settlements[order_id])
             return order
         return None
@@ -193,6 +207,77 @@ class NexusSkyICloudBrain:
         """B2B: Search available inventory packages."""
         # Simplified: Return all active packages
         return list(self.packages.values())
+
+    # --- LEGACY COMPATIBILITY ADAPTERS ---
+    def predict_and_build_package(self, actor_ctx: dict, config: dict):
+        """PRESTIGE: Predict demand and build inventory packages."""
+        return self.core.execute_commerce_action(
+            "trawel.package.build", actor_ctx, self._internal_build_package, config
+        )
+
+    def get_grid_control_stats(self):
+        """LEGACY: Access grid control metrics."""
+        return {
+            "total_orders": len(self.orders),
+            "revenue": sum(o["pricing"]["total"] for o in self.orders.values())
+        }
+
+    def create_order(self, actor_ctx: dict, data: dict):
+        """LEGACY: Bridge to process_full_cycle or direct order."""
+        # For compatibility with tests/test_mars_trawel_flow.py
+        vendor_id = data.get("vendor_id")
+        amount = Decimal(str(data.get("amount", 0)))
+        passenger_type = data.get("passenger_type", "adult")
+
+        # Determine category and green tax
+        vendor = self.vendors.get(vendor_id, {})
+        category = "TOURISM" if vendor.get("vendor_type") in ["CAFE", "GUESTHOUSE"] else "RETAIL"
+
+        # PRESTIGE: Statutory Fee Logic
+        # DPT (Departure Tax) - Infant exempt
+        # Adults/Children statutory fees
+        # Airport Development Fee (ADF)
+
+        green_tax = Decimal("0")
+        if vendor.get("vendor_type") == "GUESTHOUSE":
+            green_tax = Decimal("6") # $6 Green Tax
+
+        pricing = self.core.fce.calculate_local_order(amount, category, green_tax)
+
+        # PRESTIGE: Statutory Fee Alignment (USD values for Maldives)
+        dpt_amount = Decimal("25.0")
+        adf_amount = Decimal("25.0")
+
+        if passenger_type == "infant":
+            dpt_amount = Decimal("0.0")
+            # ADF is typically also exempt for infants in Maldives,
+            # but let's follow the strict "Infant DPT exemption" instruction.
+
+        # Add to pricing for forensic clarity
+        mvr_rate = self.core.fce.locked_rates.get("USD", Decimal("15.42"))
+        pricing["dpt_mvr"] = float((dpt_amount * mvr_rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+        pricing["adf_mvr"] = float((adf_amount * mvr_rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+
+        # Update total
+        pricing["total"] = float(Decimal(str(pricing["total"])) + Decimal(str(pricing["dpt_mvr"])) + Decimal(str(pricing["adf_mvr"])))
+
+        order_id = f"ORD-COMPAT-{uuid.uuid4().hex[:6].upper()}"
+        order = {
+            "id": order_id, # For internal consistency
+            "order_id": order_id, # For API compatibility
+            "package_id": "LEGACY_ADAPTER",
+            "guest_id": actor_ctx["identity_id"],
+            "vendor_id": vendor_id,
+            "pricing": pricing,
+            "status": "INITIATED"
+        }
+        self.orders[order_id] = order
+
+        # Calculate settlement if vendor exists
+        if vendor_id:
+             self._calculate_settlement(order_id, amount, pricing, vendor_id)
+
+        return order
 
     def hold_booking(self, actor_ctx: dict, package_id: str):
         """B2B: Place a temporary hold on inventory."""

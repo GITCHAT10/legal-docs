@@ -31,18 +31,26 @@ def setup_engine():
 
     # We use a real guard but simplified for testing if needed
     guard = ExecutionGuard(identity, policy, fce, shadow, events)
-    imoxon = ImoxonCore(guard, fce, shadow, events)
+    imoxon = ImoxonCore(guard, fce, shadow, events, identity=identity)
     engine = LowCostHospitalityEngine(imoxon)
 
     # Register a test property
+    identity.create_profile({"identity_id": "admin", "profile_type": "admin", "full_name": "Admin"})
+    identity.bind_device("admin", {"fingerprint": "dev1"})
+    identity.verify_identity("admin", "SYSTEM")
+
     admin_ctx = {"identity_id": "admin", "device_id": "dev1", "role": "admin"}
-    engine.register_property(admin_ctx, {"name": "Tune Maldives", "location": "Hulhumale", "base_rate": 50.0})
+    engine.register_property(admin_ctx, {"name": "Tune Maldives", "location": "Hulhumale", "base_rate": 50.0, "type": "HOTEL"})
 
     return engine, imoxon
 
 def test_airline_partner_discount(setup_engine):
     engine, imoxon = setup_engine
     prop_id = list(engine.properties.keys())[0]
+
+    identity = imoxon.identity
+    identity.create_profile({"identity_id": "airline_staff_1", "profile_type": "airline_partner", "full_name": "Airline Staff"})
+    identity.bind_device("airline_staff_1", {"fingerprint": "phone_1"})
 
     actor_ctx = {
         "identity_id": "airline_staff_1",
@@ -70,6 +78,10 @@ def test_airline_partner_discount(setup_engine):
 def test_medical_worker_discount(setup_engine):
     engine, imoxon = setup_engine
     prop_id = list(engine.properties.keys())[0]
+
+    identity = imoxon.identity
+    identity.create_profile({"identity_id": "doctor_1", "profile_type": "medical_worker", "full_name": "Doctor"})
+    identity.bind_device("doctor_1", {"fingerprint": "phone_2"})
 
     actor_ctx = {
         "identity_id": "doctor_1",

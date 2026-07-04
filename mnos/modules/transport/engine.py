@@ -22,10 +22,13 @@ class TransportEngine:
             "operator_cut": fare * 0.9,
             "platform_fee": fare * 0.1
         }
+        actor = self.core.guard.get_actor()
+        passenger_id = actor.get("identity_id") if actor else "SYSTEM"
+
         booking = {
             "ticket_id": f"TR-{uuid.uuid4().hex[:6].upper()}",
             "route": data.get("route"),
-            "passenger_id": self.core.guard.get_actor().get("identity_id"),
+            "passenger_id": passenger_id,
             "split": split,
             "status": "BOARDING_READY"
         }

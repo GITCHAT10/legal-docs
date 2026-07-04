@@ -9,7 +9,10 @@ def create_hospitality_router(hospitality_engine, get_actor_ctx):
 
     @router.post("/properties/register")
     async def register_property(data: dict, actor: dict = Depends(get_actor_ctx)):
-        return hospitality_engine.register_property(actor, data)
+        try:
+            return hospitality_engine.register_property(actor, data)
+        except PermissionError as e:
+            raise HTTPException(status_code=403, detail=str(e))
 
     @router.post("/book")
     async def book_stay(data: dict, actor: dict = Depends(get_actor_ctx)):

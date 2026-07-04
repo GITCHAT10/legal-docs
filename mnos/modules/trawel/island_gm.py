@@ -37,8 +37,9 @@ class IslandGMSystem:
         """Island GM Action: Onboard a local restaurant/shop."""
         island = vendor_data.get("island")
         # Security: Island-bound check
-        if actor_ctx.get("role") == "island_gm" and actor_ctx.get("assigned_island") != island:
-             raise PermissionError(f"Access Denied: You are only authorized for {actor_ctx.get('assigned_island')}")
+        # Use 'island' key from actor context as normalized in get_actor_ctx
+        if actor_ctx.get("role") == "island_gm" and actor_ctx.get("island") != island:
+             raise PermissionError(f"Access Denied: You are only authorized for {actor_ctx.get('island')}")
 
         return self.core.execute_commerce_action(
             "island.vendor.onboard", actor_ctx, self._internal_onboard_vendor, vendor_data
@@ -61,7 +62,7 @@ class IslandGMSystem:
 
     def get_gm_dashboard(self, actor_ctx: dict, island_name: str):
         """Island Command Panel: Real-time stats for GM."""
-        if actor_ctx.get("role") == "island_gm" and actor_ctx.get("assigned_island") != island_name:
+        if actor_ctx.get("role") == "island_gm" and actor_ctx.get("island") != island_name:
              raise PermissionError("Access Denied: Island Mismatch")
 
         stats = self.island_stats.get(island_name)

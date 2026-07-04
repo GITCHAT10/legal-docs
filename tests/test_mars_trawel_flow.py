@@ -8,13 +8,22 @@ client = TestClient(app)
 def admin_headers():
     identity_id = identity_core.create_profile({"full_name": "Admin", "profile_type": "admin"})
     device_id = identity_core.bind_device(identity_id, {"fingerprint": "admin-dev"})
-    return {"X-AEGIS-IDENTITY": identity_id, "X-AEGIS-DEVICE": device_id}
+    identity_core.verify_identity(identity_id, "SYSTEM")
+    return {
+        "X-AEGIS-IDENTITY": identity_id,
+        "X-AEGIS-DEVICE": device_id,
+        "X-AEGIS-SIGNATURE": f"VALID_SIG_FOR_{identity_id}"
+    }
 
 @pytest.fixture
 def guest_headers():
     identity_id = identity_core.create_profile({"full_name": "Guest 102", "profile_type": "guest"})
     device_id = identity_core.bind_device(identity_id, {"fingerprint": "guest-phone"})
-    return {"X-AEGIS-IDENTITY": identity_id, "X-AEGIS-DEVICE": device_id}
+    return {
+        "X-AEGIS-IDENTITY": identity_id,
+        "X-AEGIS-DEVICE": device_id,
+        "X-AEGIS-SIGNATURE": f"VALID_SIG_FOR_{identity_id}"
+    }
 
 def test_maafushi_guest_order_flow(admin_headers, guest_headers):
     # 1. Setup: Register Owner and Vendor (Cafe Reef)
@@ -36,7 +45,8 @@ def test_maafushi_guest_order_flow(admin_headers, guest_headers):
 
     assert order["pricing"]["service_charge"] == 2.0
     assert order["pricing"]["tax_amount"] == 3.74
-    assert order["pricing"]["total"] == 25.74
+    # Total = 20.0 + 2.0 + 3.74 + 385.50 (DPT) + 385.50 (ADF) = 796.74
+    assert order["pricing"]["total"] == 796.74
 
     # 3. Verify MARS PAY Settlement Split
     # Base $20: MARS 4% ($0.80), NGO 2% ($0.40), Vendor Net $18.80
@@ -76,8 +86,8 @@ def test_accommodation_flow_with_green_tax(admin_headers, guest_headers):
     assert order["pricing"]["service_charge"] == 10.0
     assert order["pricing"]["tax_amount"] == 18.70
     assert order["pricing"]["green_tax"] == 92.52
-    # 100 + 10 + 18.70 + 92.52 = 221.22
-    assert order["pricing"]["total"] == 221.22
+    # 100 + 10 + 18.70 + 92.52 + 385.50 (DPT) + 385.50 (ADF) = 992.22
+    assert order["pricing"]["total"] == 992.22
 
 def test_grid_control_stats(admin_headers, guest_headers):
     # Ensure some orders exist

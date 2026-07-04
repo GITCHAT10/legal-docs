@@ -63,7 +63,9 @@ class MiraBridgeEngine:
         # 3. Trigger Reinvestment Engine (25% loop)
         if hasattr(self.core, "reinvestment"):
              # Get island from vendor
-             island = self.core.island_gm.vendors.get(vendor_id, {}).get("island", "Male")
+             island = "Male"
+             if hasattr(self.core, "island_gm") and hasattr(self.core.island_gm, "nexus"):
+                  island = self.core.island_gm.nexus.vendors.get(vendor_id, {}).get("island", "Male")
              self.core.reinvestment.process_island_reinvestment(
                  island, pricing["tax_amount"], pricing.get("green_tax", 0.0)
              )
