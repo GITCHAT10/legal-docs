@@ -14,20 +14,25 @@ def clear_state():
     identity_core.devices.clear()
 
 def test_p1_reject_caller_supplied_identity_id():
-    # Attempt to create identity with pre-set ID
-    evil_id = "evil-admin-id"
+    # 1. Create a legitimate user
+    real_uid = identity_core.create_profile({"full_name": "Real User", "profile_type": "user"})
+
+    # 2. Attempt to "overwrite" that user with an admin role by supplying its ID
     resp = client.post("/imoxon/aegis/identity/create", json={
-        "full_name": "Evil Actor",
+        "full_name": "Attacker",
         "profile_type": "admin",
-        "identity_id": evil_id
+        "identity_id": real_uid
     })
     assert resp.status_code == 200
     returned_id = resp.json()["identity_id"]
 
-    # Prove the evil_id was ignored
-    assert returned_id != evil_id
-    assert evil_id not in identity_core.profiles
+    # Prove a NEW ID was generated and the real user was NOT overwritten
+    assert returned_id != real_uid
+    assert identity_core.profiles[real_uid]["profile_type"] == "user"
+    assert identity_core.profiles[real_uid]["full_name"] == "Real User"
+
     assert returned_id in identity_core.profiles
+    assert identity_core.profiles[returned_id]["full_name"] == "Attacker"
 
 def test_p2_audit_permission_error_after_intent():
     # Setup B2B Agent
@@ -55,10 +60,15 @@ def test_p2_audit_permission_error_after_intent():
 
     # 2. Trigger RFQ which will fail Floor Guard (PermissionError in logic)
     initial_chain_len = len(shadow_core.chain)
+    initial_quote_count = len(b2b_negotiator.quotes)
+
     resp = client.post("/imoxon/b2b/rfq", json={"partner_type": "DMC", "pax_count": 1}, headers=headers)
 
     assert resp.status_code == 403
     assert "Rate below hotel floor" in resp.json()["detail"]
+
+    # Prove NO state mutation persisted in B2B negotiator
+    assert len(b2b_negotiator.quotes) == initial_quote_count
 
     # 3. Verify terminal audit entry exists
     # Intent + Committed (if success) OR Intent + Failed (if rollback)
