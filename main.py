@@ -184,6 +184,10 @@ def get_actor_ctx(
             raise HTTPException(status_code=403, detail=str(e))
 
     # Fallback to Direct Hardened Handshake (B2B / API)
+    if x_aegis_identity == "SYSTEM":
+        shadow_core.commit("aegis.auth.direct.failure", "SYSTEM", {"reason": "SYSTEM_NOT_ALLOWED_ON_PUBLIC_API"})
+        raise HTTPException(status_code=401, detail="INVALID_IDENTITY: SYSTEM identity restricted to internal context")
+
     if not x_aegis_identity or not x_aegis_device or not x_aegis_signature:
         shadow_core.commit("aegis.auth.direct.failure", "UNKNOWN", {"reason": "Missing Headers"})
         raise HTTPException(status_code=401, detail="AEGIS_REQUIRED: Missing Identity, Device or Signature")

@@ -224,6 +224,14 @@ class NexusSkyICloudBrain:
 
     def create_order(self, actor_ctx: dict, data: dict):
         """LEGACY: Bridge to process_full_cycle or direct order."""
+        return self.core.execute_commerce_action(
+            "itravel.legacy_order.create",
+            actor_ctx,
+            self._internal_legacy_create_order,
+            data
+        )
+
+    def _internal_legacy_create_order(self, data):
         # For compatibility with tests/test_mars_trawel_flow.py
         vendor_id = data.get("vendor_id")
         amount = Decimal(str(data.get("amount", 0)))
@@ -234,10 +242,6 @@ class NexusSkyICloudBrain:
         category = "TOURISM" if vendor.get("vendor_type") in ["CAFE", "GUESTHOUSE"] else "RETAIL"
 
         # PRESTIGE: Statutory Fee Logic
-        # DPT (Departure Tax) - Infant exempt
-        # Adults/Children statutory fees
-        # Airport Development Fee (ADF)
-
         green_tax = Decimal("0")
         if vendor.get("vendor_type") == "GUESTHOUSE":
             green_tax = Decimal("6") # $6 Green Tax
@@ -250,8 +254,6 @@ class NexusSkyICloudBrain:
 
         if passenger_type == "infant":
             dpt_amount = Decimal("0.0")
-            # ADF is typically also exempt for infants in Maldives,
-            # but let's follow the strict "Infant DPT exemption" instruction.
 
         # Add to pricing for forensic clarity
         mvr_rate = self.core.fce.locked_rates.get("USD", Decimal("15.42"))
@@ -261,12 +263,15 @@ class NexusSkyICloudBrain:
         # Update total
         pricing["total"] = float(Decimal(str(pricing["total"])) + Decimal(str(pricing["dpt_mvr"])) + Decimal(str(pricing["adf_mvr"])))
 
+        actor = self.core.guard.get_actor()
+        guest_id = actor["identity_id"] if actor else "SYSTEM"
+
         order_id = f"ORD-COMPAT-{uuid.uuid4().hex[:6].upper()}"
         order = {
             "id": order_id, # For internal consistency
             "order_id": order_id, # For API compatibility
             "package_id": "LEGACY_ADAPTER",
-            "guest_id": actor_ctx["identity_id"],
+            "guest_id": guest_id,
             "vendor_id": vendor_id,
             "pricing": pricing,
             "status": "INITIATED"

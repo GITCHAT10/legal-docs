@@ -23,7 +23,7 @@ class IdentityPolicyEngine:
                 return False, "Action requires staff binding"
 
         # Hardened Verification requirements
-        hardened_actions = ["hospitality.property.register", "sky_i.loop_cycle.finalize", "imoxon.vendor.approve"]
+        hardened_actions = ["hospitality.property.register", "sky_i.loop_cycle.finalize", "imoxon.vendor.approve", "itravel.legacy_order.create"]
         if action_type in hardened_actions:
             if not self._is_verified(identity_id):
                  return False, f"CRITICAL ACTION: Identity {identity_id} must be verified (National ID / Biometric)"

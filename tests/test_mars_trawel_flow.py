@@ -19,6 +19,7 @@ def admin_headers():
 def guest_headers():
     identity_id = identity_core.create_profile({"full_name": "Guest 102", "profile_type": "guest"})
     device_id = identity_core.bind_device(identity_id, {"fingerprint": "guest-phone"})
+    identity_core.verify_identity(identity_id, "SYSTEM")
     return {
         "X-AEGIS-IDENTITY": identity_id,
         "X-AEGIS-DEVICE": device_id,

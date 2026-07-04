@@ -14,8 +14,12 @@ def create_itravel_router(mars_engine, get_actor_ctx):
         """NEXUS SKY-i: Trigger full closed-loop economy cycle."""
         try:
             return mars_engine.process_full_cycle(actor, guest_id, package_id)
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e))
+        except Exception as e:
+            # Unwrap ValueError if wrapped by ExecutionGuard or other layers
+            err_msg = str(e)
+            if "Invalid Package" in err_msg:
+                 raise HTTPException(status_code=400, detail="Invalid Package")
+            raise e
 
     @router.post("/orders/finalize")
     async def finalize_order(order_id: str, actor: dict = Depends(get_actor_ctx)):
