@@ -23,14 +23,14 @@ def hardened_admin():
 def test_missing_signature_rejected(hardened_admin):
     headers = hardened_admin.copy()
     del headers["X-AEGIS-SIGNATURE"]
-    resp = client.post("/imoxon/suppliers/connect", params={"name": "Test"}, headers=headers)
+    resp = client.post("/imoxon/suppliers/connect", json={"name": "Test"}, headers=headers)
     assert resp.status_code == 403
     assert "Missing Identity, Device or Signature" in resp.json()["detail"]
 
 def test_invalid_signature_rejected(hardened_admin):
     headers = hardened_admin.copy()
     headers["X-AEGIS-SIGNATURE"] = "MALICIOUS_SIG"
-    resp = client.post("/imoxon/suppliers/connect", params={"name": "Test"}, headers=headers)
+    resp = client.post("/imoxon/suppliers/connect", json={"name": "Test"}, headers=headers)
     assert resp.status_code == 403
     assert "Invalid Cryptographic Handshake" in resp.json()["detail"]
 
@@ -56,6 +56,6 @@ def test_verified_identity_allowed_critical(hardened_admin):
     assert "id" in resp.json()
 
 def test_persistent_hash_returned_on_onboarding(hardened_admin):
-    resp = client.post("/imoxon/suppliers/connect", params={"name": "Global Foods"}, headers=hardened_admin)
+    resp = client.post("/imoxon/suppliers/connect", json={"name": "Global Foods"}, headers=hardened_admin)
     assert resp.status_code == 200
     assert "persistent_hash" in resp.json()

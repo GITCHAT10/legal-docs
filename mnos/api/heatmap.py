@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, HTTPException
-from typing import List
 
 def create_heatmap_router(heatmap_engine, get_actor_ctx):
     router = APIRouter(prefix="/national", tags=["national-intelligence"])

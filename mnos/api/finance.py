@@ -8,7 +8,7 @@ def create_finance_router(fce_hardened, mira_bridge, get_actor_ctx):
         from mnos.shared.execution_guard import _sovereign_context
         import uuid
         # MANUALLY WRAP IN SOVEREIGN CONTEXT SINCE FCE_HARDENED IS LEGACY COMPONENT
-        token = _sovereign_context.set({"token": str(uuid.uuid4()), "actor": actor})
+        _sovereign_context.set({"token": str(uuid.uuid4()), "actor": actor})
         try:
             escrow_id = fce_hardened.create_escrow(actor["identity_id"], total_amount, ref_id)
             release_amt = fce_hardened.release_milestone(actor["identity_id"], escrow_id, 10 if milestone == "AWARD" else 0)

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Request
 
 def create_restaurant_router(restaurant_engine, get_actor_ctx):
     router = APIRouter(prefix="/restaurant", tags=["restaurant"])
@@ -20,7 +20,14 @@ def create_restaurant_router(restaurant_engine, get_actor_ctx):
         return restaurant_engine.get_ai_demand_forecast(rest_id)
 
     @router.post("/pos/sync-offline")
-    async def sync_offline(merchant_id: str, transactions: list, actor: dict = Depends(get_actor_ctx)):
-        return restaurant_engine.bpe.sync_offline_batch(merchant_id, transactions)
+    async def sync_offline(request: Request, merchant_id: str, actor: dict = Depends(get_actor_ctx)):
+        transactions = await request.json()
+        return restaurant_engine.core.execute_commerce_action(
+            "restaurant.pos.sync_offline",
+            actor,
+            restaurant_engine.bpe.sync_offline_batch,
+            merchant_id,
+            transactions
+        )
 
     return router

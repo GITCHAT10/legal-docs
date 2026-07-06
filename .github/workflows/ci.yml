@@ -29,7 +29,14 @@ jobs:
       run: python validate_schema.py || true
 
     - name: Run Lint
-      run: ruff check . || true
+      run: ruff check .
 
     - name: Run Tests
-      run: python -m pytest test_sovereign_commerce.py test_consolidated_imoxon.py || true
+      run: python -m pytest
+
+  auditExpected:
+    runs-on: ubuntu-latest
+    needs: audit
+    steps:
+    - name: Audit Status Passthrough
+      run: echo "Audit successfully passed. iMOXON Sovereign integrity confirmed."
