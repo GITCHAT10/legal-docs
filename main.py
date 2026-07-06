@@ -1,8 +1,6 @@
 import os
-from fastapi import FastAPI, HTTPException, Header, Depends, Query, Request
+from fastapi import FastAPI, HTTPException, Header, Depends, Request
 from fastapi.responses import JSONResponse
-from typing import List, Optional, Dict
-from decimal import Decimal
 
 # MNOS Core (N-DEOS)
 from mnos.modules.finance.fce import FCEEngine, FCEHardenedEngine
@@ -24,8 +22,7 @@ from mnos.gateway.engine import APIGatewayControlPlane
 
 # iMOXON Consolidated
 from mnos.modules.imoxon.core.engine import (
-    ImoxonCore, CatalogManager, ProcurementEngine as LegacyProcurementEngine,
-    CampaignManager, MerchantManager, POSManager
+    ImoxonCore, CatalogManager, CampaignManager, MerchantManager, POSManager
 )
 from mnos.modules.imoxon.procurement.engine import ProcurementEngine
 from mnos.modules.imoxon.resort.weekly_system import ResortWeeklyOrderSystem

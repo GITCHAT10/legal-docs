@@ -1,4 +1,3 @@
-import pytest
 from fastapi.testclient import TestClient
 from main import app, shadow_core
 from mnos.shared.execution_guard import ExecutionGuard

@@ -1,6 +1,5 @@
 import uuid
 from datetime import datetime, UTC, timedelta
-from typing import Dict, List, Any, Optional
 from decimal import Decimal, ROUND_HALF_UP
 
 class NexusSkyICloudBrain:
@@ -94,7 +93,7 @@ class NexusSkyICloudBrain:
         self.orders[order_id] = order
 
         # 3. UT SYSTEM Dispatches (Fleet Consolidation)
-        transfer_manifest = self._internal_dispatch_transfer(order_id, {"route": "Male -> Island", "fare": 0})
+        self._internal_dispatch_transfer(order_id, {"route": "Male -> Island", "fare": 0})
 
         # 4. MARS PAY Settlement Split
         self._calculate_settlement(order_id, package["base_price"], pricing, vendor_id)
@@ -209,12 +208,6 @@ class NexusSkyICloudBrain:
         return list(self.packages.values())
 
     # --- LEGACY COMPATIBILITY ADAPTERS ---
-    def predict_and_build_package(self, actor_ctx: dict, config: dict):
-        """PRESTIGE: Predict demand and build inventory packages."""
-        return self.core.execute_commerce_action(
-            "trawel.package.build", actor_ctx, self._internal_build_package, config
-        )
-
     def get_grid_control_stats(self):
         """LEGACY: Access grid control metrics."""
         return {

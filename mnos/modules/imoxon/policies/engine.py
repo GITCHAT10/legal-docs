@@ -4,7 +4,6 @@ class IdentityPolicyEngine:
 
     def validate_action(self, action_type: str, context: dict):
         identity_id = context.get("identity_id")
-        device_id = context.get("device_id")
 
         # Island GM Binding
         island_gm_actions = ["island.vendor.onboard", "island.registry.setup"]
@@ -71,12 +70,14 @@ class IdentityPolicyEngine:
         return True, "Accepted"
 
     def _has_role(self, identity_id, role_name):
-        if not identity_id: return False
+        if not identity_id:
+            return False
         # Simplified check for demo
         profile = self.identity_core.profiles.get(identity_id)
         return profile and profile.get("profile_type") == role_name
 
     def _is_verified(self, identity_id):
-        if not identity_id: return False
+        if not identity_id:
+            return False
         profile = self.identity_core.profiles.get(identity_id)
         return profile and profile.get("verification_status") == "verified"
