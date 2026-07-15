@@ -10,10 +10,10 @@ jobs:
   audit:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: '3.12'
 
@@ -23,10 +23,10 @@ jobs:
         pip install -r requirements.txt
 
     - name: Run Boot Check
-      run: NEXGEN_SECRET=audit-test python mnos/boot_check.py || true
+      run: NEXGEN_SECRET=audit-test python mnos/boot_check.py
 
     - name: Run Schema Validation
-      run: python validate_schema.py || true
+      run: python validate_schema.py
 
     - name: Run Lint
       run: ruff check .
