@@ -1,6 +1,5 @@
 import pytest
-import uuid
-from main import identity_core, shadow_core
+from main import identity_core
 
 @pytest.fixture
 def admin_headers():

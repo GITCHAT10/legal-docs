@@ -24,7 +24,7 @@ def create_restaurant_router(restaurant_engine, get_actor_ctx):
         # PRESTIGE Hardening: Manual body extraction to support both list and dict shapes
         try:
             body = await request.json()
-        except:
+        except Exception:
             raise HTTPException(status_code=422, detail="Invalid JSON body")
 
         if isinstance(body, list):

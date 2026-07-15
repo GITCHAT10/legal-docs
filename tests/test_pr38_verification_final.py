@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 from decimal import Decimal
-from main import app, identity_core, mars_unified, shadow_core, events_core
+from main import app, identity_core, shadow_core
 
 client = TestClient(app)
 
