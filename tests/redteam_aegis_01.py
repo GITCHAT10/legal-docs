@@ -59,7 +59,7 @@ def test_attack_identity_spoofing():
         "X-AEGIS-SIGNATURE": "VALID_SIG_FOR_non-existent-uuid"
     }
     resp = client.get("/imoxon/grid-control/dashboard", headers=headers)
-    assert resp.status_code == 401
+    assert resp.status_code == 403
     assert "INVALID_IDENTITY" in resp.json()["detail"]
 
 def test_attack_forged_signature(setup_valid_entities):

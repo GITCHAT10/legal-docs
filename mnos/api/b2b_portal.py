@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, HTTPException
-from typing import List
 
 def create_b2b_portal_router(nexus_brain, b2b_negotiator, get_actor_ctx):
     router = APIRouter(prefix="/b2b", tags=["b2b-portal"])
@@ -8,16 +7,28 @@ def create_b2b_portal_router(nexus_brain, b2b_negotiator, get_actor_ctx):
     async def request_quote(rfq_data: dict, actor: dict = Depends(get_actor_ctx)):
         """Auto-Negotiation: Request for Quote (TO vs DMC)."""
         try:
-            return b2b_negotiator.process_rfq(actor, rfq_data)
-        except ValueError as e:
+            return b2b_negotiator.core.execute_commerce_action(
+                "b2b.rfq",
+                actor,
+                b2b_negotiator.process_rfq,
+                actor,
+                rfq_data
+            )
+        except (ValueError, PermissionError, RuntimeError) as e:
             raise HTTPException(status_code=400, detail=str(e))
 
     @router.post("/booking/confirm")
     async def confirm_booking(quote_id: str, actor: dict = Depends(get_actor_ctx)):
         """Instant Booking: Confirm quote and lock inventory."""
         try:
-            return b2b_negotiator.confirm_booking(actor, quote_id)
-        except ValueError as e:
+            return b2b_negotiator.core.execute_commerce_action(
+                "b2b.booking.confirm",
+                actor,
+                b2b_negotiator.confirm_booking,
+                actor,
+                quote_id
+            )
+        except (ValueError, PermissionError, RuntimeError) as e:
             raise HTTPException(status_code=400, detail=str(e))
 
     @router.get("/inventory/search")

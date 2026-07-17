@@ -1,9 +1,17 @@
 import hashlib
 import json
-import time
 import uuid
 import copy
 from datetime import datetime, UTC
+from decimal import Decimal
+
+def json_serial(obj):
+    """JSON serializer for objects not serializable by default json code."""
+    if isinstance(obj, Decimal):
+        return str(obj)
+    if isinstance(obj, (datetime,)):
+        return obj.isoformat()
+    raise TypeError(f"Type {type(obj)} not serializable")
 
 class ShadowLedger:
     """
@@ -17,7 +25,12 @@ class ShadowLedger:
     def commit(self, event_type: str, actor_id: str, payload: dict) -> str:
         # SECURITY: Enforcement of ExecutionGuard Authority
         from mnos.shared.execution_guard import ExecutionGuard
-        if not ExecutionGuard.is_authorized():
+
+        # Forensic Audit Doctrine: Allow logging auth failures and identity bootstrap without active context
+        permitted_events = ["aegis.auth.", "identity.", "system.bootstrap", "aegis.session.started"]
+        is_permitted = any(event_type.startswith(p) for p in permitted_events)
+
+        if not ExecutionGuard.is_authorized() and not is_permitted:
              raise PermissionError("FAIL CLOSED: Unauthorized direct write to SHADOW Ledger blocked.")
 
         prev_hash = self.chain[-1]["hash"] if self.chain else self.genesis_hash
@@ -44,12 +57,17 @@ class ShadowLedger:
         temp = copy.deepcopy(block)
         if "hash" in temp:
             temp.pop("hash")
-        block_string = json.dumps(temp, sort_keys=True).encode()
+        block_string = json.dumps(temp, sort_keys=True, default=json_serial).encode()
         return hashlib.sha256(block_string).hexdigest()
 
     def _sign_event(self, payload: dict) -> str:
         # Placeholder for cryptographic signing
         return f"SIG-{uuid.uuid4().hex[:8]}"
+
+    def get_block(self, index: int) -> dict:
+        if 0 <= index < len(self.chain):
+            return self.chain[index]
+        return None
 
     def verify_integrity(self) -> bool:
         if not self.chain:

@@ -1,6 +1,5 @@
 import uuid
 from datetime import datetime, UTC, timedelta
-from typing import Dict, List, Any, Optional
 from decimal import Decimal, ROUND_HALF_UP
 
 class NexusSkyICloudBrain:
@@ -64,6 +63,14 @@ class NexusSkyICloudBrain:
         Closed-Loop Economy Loop:
         Guest orders -> TRAWEL predicts/assigns -> UT executes -> Vendor fulfills -> MARS PAY splits -> SHADOW records -> Cloud Updates.
         """
+        return self.core.execute_commerce_action(
+            "sky_i.full_cycle",
+            actor_ctx,
+            self._internal_process_full_cycle,
+            guest_id, package_id
+        )
+
+    def _internal_process_full_cycle(self, guest_id: str, package_id: str):
         package = self.packages.get(package_id)
         if not package:
             raise ValueError("Invalid Package")
@@ -85,15 +92,14 @@ class NexusSkyICloudBrain:
         self.orders[order_id] = order
 
         # 3. UT SYSTEM Dispatches (Fleet Consolidation)
-        transfer_manifest = self._internal_dispatch_transfer(order_id, {"route": "Male -> Island", "fare": 0})
+        self._internal_dispatch_transfer(order_id, {"route": "Male -> Island", "fare": 0})
 
         # 4. MARS PAY Settlement Split
         self._calculate_settlement(order_id, package["base_price"], pricing, "SYSTEM_DEFAULT_VENDOR")
 
         # 5. SHADOW Ledger Commit (Truth Layer)
-        audit_res = self.core.shadow.commit("sky_i.loop_cycle.start", order_id, order)
-        order["audit_id"] = audit_res
-
+        # Note: shadow.commit is handled by execute_commerce_action automatically for intent/completed.
+        # But we still log the domain specific event.
         self.core.events.publish("sky_i.full_cycle_initiated", order)
         return order
 
@@ -166,12 +172,16 @@ class NexusSkyICloudBrain:
             # 1. Sync Revenue to Island GM System
             package = self.packages.get(order["package_id"])
             if package:
+                 if hasattr(self.core, "island_gm"):
+                      self.core.island_gm.sync_revenue(package["island"], package["base_price"])
                  self.core.events.publish("internal.revenue.sync", {
                      "island": package["island"],
                      "amount": package["base_price"]
                  })
 
                  # 2. Emit event for Leaderboard (C2C Revenue)
+                 if hasattr(self.core, "leaderboard"):
+                      self.core.leaderboard.update_leaderboard("hustle.revenue_generated", {"island": package["island"], "amount": package["base_price"], "hustler_id": order["guest_id"]})
                  self.core.events.publish("hustle.revenue_generated", {
                      "island": package["island"],
                      "amount": package["base_price"],

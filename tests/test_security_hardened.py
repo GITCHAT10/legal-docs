@@ -16,17 +16,18 @@ def setup_identity():
     return identity_id, device_id
 
 def test_missing_headers_rejected():
-    response = client.post("/imoxon/suppliers/connect", params={"name": "Test"})
+    response = client.post("/imoxon/suppliers/connect", json={"name": "Test"})
     assert response.status_code == 403
-    assert "Missing Identity or Device" in response.json()["detail"]
+    assert "Missing Identity, Device or Signature" in response.json()["detail"]
 
 def test_fake_identity_rejected(setup_identity):
     identity_id, device_id = setup_identity
     headers = {
         "X-AEGIS-IDENTITY": "fake-id",
-        "X-AEGIS-DEVICE": device_id
+        "X-AEGIS-DEVICE": device_id,
+        "X-AEGIS-SIGNATURE": "VALID_SIG_FOR_fake-id"
     }
-    response = client.post("/imoxon/suppliers/connect", params={"name": "Test"}, headers=headers)
+    response = client.post("/imoxon/suppliers/connect", json={"name": "Test"}, headers=headers)
     assert response.status_code == 403
     assert "Identity Unauthorized" in response.json()["detail"]
 
@@ -38,9 +39,10 @@ def test_unbound_device_rejected(setup_identity):
 
     headers = {
         "X-AEGIS-IDENTITY": other_id,
-        "X-AEGIS-DEVICE": device_id # device bound to identity_id, not other_id
+        "X-AEGIS-DEVICE": device_id, # device bound to identity_id, not other_id
+        "X-AEGIS-SIGNATURE": f"VALID_SIG_FOR_{other_id}"
     }
-    response = client.post("/imoxon/suppliers/connect", params={"name": "Test"}, headers=headers)
+    response = client.post("/imoxon/suppliers/connect", json={"name": "Test"}, headers=headers)
     assert response.status_code == 403
     assert "Device Binding Invalid" in response.json()["detail"]
 
@@ -52,12 +54,8 @@ def test_role_derived_from_db(setup_identity):
         "full_name": "Regular User",
         "profile_type": "user"
     })
-    user_device = identity_core.bind_device(user_id, {"fingerprint": "user-phone"})
+    identity_core.bind_device(user_id, {"fingerprint": "user-phone"})
 
-    headers = {
-        "X-AEGIS-IDENTITY": user_id,
-        "X-AEGIS-DEVICE": user_device
-    }
 
     # Try an action that might require admin (e.g. hospitality registration in policy engine if restricted,
     # though currently policy engine for hospitality.property.register might not be strict in my previous implementation)
@@ -73,10 +71,6 @@ def test_role_derived_from_db(setup_identity):
     # We can just verify the response of a generic endpoint to see what actor context it got if we had a debug endpoint.
     # Alternatively, try a supplier action with a user role.
 
-    headers = {
-        "X-AEGIS-IDENTITY": user_id,
-        "X-AEGIS-DEVICE": user_device
-    }
     # "imoxon.supplier.connect" doesn't seem to have a specific role check in policy engine yet.
     # But we can verify it fails if we added one.
 
@@ -86,9 +80,10 @@ def test_authorized_access(setup_identity):
     identity_id, device_id = setup_identity
     headers = {
         "X-AEGIS-IDENTITY": identity_id,
-        "X-AEGIS-DEVICE": device_id
+        "X-AEGIS-DEVICE": device_id,
+        "X-AEGIS-SIGNATURE": f"VALID_SIG_FOR_{identity_id}"
     }
-    response = client.post("/imoxon/suppliers/connect", params={"name": "Authorized Supplier"}, headers=headers)
+    response = client.post("/imoxon/suppliers/connect", json={"name": "Authorized Supplier"}, headers=headers)
     assert response.status_code == 200
     assert response.json()["name"] == "Authorized Supplier"
-    assert "id" in response.json()
+    assert "supplier_id" in response.json()

@@ -1,8 +1,6 @@
 import os
-from fastapi import FastAPI, HTTPException, Header, Depends, Query, Request
+from fastapi import FastAPI, HTTPException, Header, Depends, Request
 from fastapi.responses import JSONResponse
-from typing import List, Optional, Dict
-from decimal import Decimal
 
 # MNOS Core (N-DEOS)
 from mnos.modules.finance.fce import FCEEngine, FCEHardenedEngine
@@ -24,8 +22,7 @@ from mnos.gateway.engine import APIGatewayControlPlane
 
 # iMOXON Consolidated
 from mnos.modules.imoxon.core.engine import (
-    ImoxonCore, CatalogManager, ProcurementEngine as LegacyProcurementEngine,
-    CampaignManager, MerchantManager, POSManager
+    ImoxonCore, CatalogManager, CampaignManager, MerchantManager, POSManager
 )
 from mnos.modules.imoxon.procurement.engine import ProcurementEngine
 from mnos.modules.imoxon.resort.weekly_system import ResortWeeklyOrderSystem
@@ -130,8 +127,14 @@ laundry_engine = MaldivesLaundryEngine(imoxon, mars_unified)
 heatmap_engine = GlobalDemandHeatmap(imoxon, island_gm, mira_bridge, reinvestment_engine)
 
 imoxon.mira_bridge = mira_bridge
+imoxon.island_gm = island_gm
+imoxon.mars_unified = mars_unified
+imoxon.nexus = mars_unified
+imoxon.reinvestment = reinvestment_engine
+imoxon.leaderboard = leaderboard
 imoxon.vvip_engine = vvip_engine
 imoxon.reinvestment = reinvestment_engine
+imoxon.leaderboard = leaderboard
 
 # Bubble OS
 intent_engine = ChatIntentEngine(imoxon)
@@ -156,95 +159,122 @@ def get_actor_ctx(
 ):
     """
     AEGIS AUTH HARDENING: Production Security Layer.
-    Forces identity verification via AEGIS registry and validates device binding.
-    LOGS all attempts to SHADOW ledger.
+    Refined Precedence: Complete Direct Signature > Session Auth > Fail Closed.
     """
-    # Prefer Session-based Auth from Gateway
+    # 1. Complete Direct Signature Auth
+    if x_aegis_identity and x_aegis_device and x_aegis_signature:
+        profile = identity_core.profiles.get(x_aegis_identity)
+        if not profile:
+            shadow_core.commit("aegis.auth.identity.invalid", x_aegis_identity, {"reason": "Not in Registry"})
+            raise HTTPException(status_code=403, detail="INVALID_IDENTITY: Identity Unauthorized")
+
+        device = identity_core.devices.get(x_aegis_device)
+        if not device or device.get("identity_id") != x_aegis_identity:
+            shadow_core.commit("aegis.auth.device.mismatch", x_aegis_identity, {"device_id": x_aegis_device})
+            raise HTTPException(status_code=403, detail="DEVICE_BINDING_INVALID: Device Binding Invalid")
+
+        if x_aegis_signature != f"VALID_SIG_FOR_{x_aegis_identity}":
+             shadow_core.commit("aegis.auth.sig.failed", x_aegis_identity, {"sig": x_aegis_signature})
+             raise HTTPException(status_code=403, detail="HANDSHAKE_FAILED: Invalid Cryptographic Handshake")
+
+        actor = {
+            "identity_id": x_aegis_identity,
+            "device_id": x_aegis_device,
+            "role": profile.get("profile_type"),
+            "realm": "API_DIRECT",
+            "auth_type": "signature",
+            "org_id": profile.get("organization_id"),
+            "island": profile.get("assigned_island"),
+            "assigned_island": profile.get("assigned_island"),
+            "verified": profile.get("verification_status") == "verified",
+            "national_id_verified": profile.get("verification_status") == "verified",
+            "persistent_hash": profile.get("persistent_identity_hash")
+        }
+        shadow_core.commit("aegis.auth.direct.success", x_aegis_identity, {"role": actor["role"]})
+        return actor
+
+    # 2. Session Auth (Fallback if direct headers are missing or incomplete)
     if x_aegis_session:
         try:
             actor = identity_gateway.validate_session(x_aegis_session)
+            # Security: If partial direct headers were provided, check for mismatches
+            if x_aegis_identity and actor["identity_id"] != x_aegis_identity:
+                 raise PermissionError("Identity Mismatch: Session does not match Identity header")
+
+            # Fetch fresh profile to ensure all fields like assigned_island and verification are sync'd
+            profile = identity_core.profiles.get(actor["identity_id"], {})
+
+            actor["auth_type"] = "session"
+            actor["verified"] = profile.get("verification_status") == "verified"
+            actor["national_id_verified"] = actor["verified"]
+            actor["assigned_island"] = profile.get("assigned_island") or actor.get("island")
+
             shadow_core.commit("aegis.auth.session.success", actor["identity_id"], {"session_id": x_aegis_session})
             return actor
         except PermissionError as e:
             shadow_core.commit("aegis.auth.session.failure", "UNKNOWN", {"reason": str(e)})
             raise HTTPException(status_code=403, detail=str(e))
 
-    # Fallback to Direct Hardened Handshake (B2B / API)
-    if not x_aegis_identity or not x_aegis_device or not x_aegis_signature:
-        shadow_core.commit("aegis.auth.direct.failure", "UNKNOWN", {"reason": "Missing Headers"})
-        raise HTTPException(status_code=401, detail="AEGIS_REQUIRED: Missing Identity, Device or Signature")
-
-    # 1. Identity lookup via AEGIS registry (persistence)
-    profile = identity_core.profiles.get(x_aegis_identity)
-    if not profile:
-        shadow_core.commit("aegis.auth.identity.invalid", x_aegis_identity, {"reason": "Not in Registry"})
-        raise HTTPException(status_code=401, detail="INVALID_IDENTITY: Unauthorized")
-
-    # 2. Validate device binding (device.owner_id == identity.id)
-    device = identity_core.devices.get(x_aegis_device)
-    if not device or device.get("identity_id") != x_aegis_identity:
-        shadow_core.commit("aegis.auth.device.mismatch", x_aegis_identity, {"device_id": x_aegis_device})
-        raise HTTPException(status_code=403, detail="DEVICE_BINDING_INVALID: Access Denied")
-
-    # 3. Cryptographic Signature Validation
-    if x_aegis_signature != f"VALID_SIG_FOR_{x_aegis_identity}":
-         shadow_core.commit("aegis.auth.sig.failed", x_aegis_identity, {"sig": x_aegis_signature})
-         raise HTTPException(status_code=403, detail="HANDSHAKE_FAILED: Invalid Signature")
-
-    # 4. Success: Derive role from database (NO HEADER TRUST)
-    actor = {
-        "identity_id": x_aegis_identity,
-        "role": profile.get("profile_type"),
-        "realm": "API_DIRECT",
-        "org_id": profile.get("organization_id"),
-        "island": profile.get("assigned_island"),
-        "verified": profile.get("verification_status") == "verified",
-        "persistent_hash": profile.get("persistent_identity_hash")
-    }
-    shadow_core.commit("aegis.auth.direct.success", x_aegis_identity, {"role": actor["role"]})
-    return actor
+    # 3. Fail Closed
+    shadow_core.commit("aegis.auth.failure", "UNKNOWN", {"reason": "Missing required AEGIS credentials"})
+    raise HTTPException(status_code=403, detail="AEGIS_REQUIRED: Missing Identity, Device or Signature")
 
 # --- Consolidated APIs ---
 
-@app.post("/imoxon/suppliers/connect")
-async def connect_supplier(name: str, actor: dict = Depends(get_actor_ctx)):
-    # Create a profile in Aegis for the supplier to get a real ID
-    supplier_id = identity_core.create_profile({
-        "full_name": name,
-        "profile_type": "supplier",
-        "organization_id": "IMOXON-NETWORK"
-    })
-    profile = identity_core.profiles[supplier_id]
 
-    return imoxon.execute_commerce_action(
-        "imoxon.supplier.connect",
-        actor,
-        lambda: {
+@app.post("/imoxon/suppliers/connect")
+async def connect_supplier(data: dict, actor: dict = Depends(get_actor_ctx)):
+    name = data.get("name")
+
+    def _logic():
+        supplier_id = identity_core.create_profile({
+            "full_name": name,
+            "profile_type": "supplier",
+            "organization_id": "IMOXON-NETWORK"
+        })
+        profile = identity_core.profiles[supplier_id]
+        return {
+            "id": supplier_id,
             "supplier_id": supplier_id,
             "name": name,
             "status": "CONNECTED",
             "persistent_hash": profile["persistent_identity_hash"]
         }
+
+    return imoxon.execute_commerce_action(
+        "imoxon.supplier.connect",
+        actor,
+        _logic
     )
+
 
 @app.post("/imoxon/orders/create")
 async def imoxon_create_order(data: dict, actor: dict = Depends(get_actor_ctx)):
     return procurement.create_purchase_request(actor, data.get("items"), data.get("amount"))
 
 @app.post("/imoxon/products/import")
-async def import_product(sid: str, raw: dict, actor: dict = Depends(get_actor_ctx)):
-    return catalog.import_supplier_product(actor, sid, raw)
+async def import_product(request: Request, sid: str, actor: dict = Depends(get_actor_ctx)):
+    raw = await request.json()
+    items = raw if isinstance(raw, list) else [raw]
+    results = []
+    for item in items:
+        res = catalog.import_supplier_product(actor, sid, item)
+        results.append(res)
+    return {"products": results}
 
 @app.post("/imoxon/products/approve")
 async def approve_product(pid: str, actor: dict = Depends(get_actor_ctx)):
-    return catalog.approve_product(actor, pid)
+    try:
+        return catalog.approve_product(actor, pid)
+    except (KeyError, ValueError, RuntimeError) as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 @app.post("/bubble/chat/message")
 async def chat_message(message: str, actor: dict = Depends(get_actor_ctx)):
     return chat_os.process_message(actor, message)
 
 # --- Routers ---
-app.include_router(create_identity_router(identity_core, policy_engine, identity_gateway), prefix="/imoxon")
+app.include_router(create_identity_router(identity_core, policy_engine, identity_gateway))
 app.include_router(create_commerce_router(imoxon, catalog, merchant, pos, procurement, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_finance_router(fce_hardened, mira_bridge, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_specialized_router(tourism, faith, transport, housing, exchange, education, get_actor_ctx), prefix="/imoxon")

@@ -17,7 +17,7 @@ class StaffOnboardingFlow:
             self.identity_core.record_consent(identity_id, "data_usage")
 
             # 3. Bind Device
-            device_id = self.identity_core.bind_device(identity_id, {"fingerprint": staff.get("device_hash")})
+            self.identity_core.bind_device(identity_id, {"fingerprint": staff.get("device_hash")})
 
             # 4. Verify Identity (Simplified batch verification)
             self.identity_core.verify_identity(identity_id, "SYSTEM_ONBOARDER")

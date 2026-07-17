@@ -1,5 +1,4 @@
 import uuid
-from datetime import datetime, UTC
 
 class TransportEngine:
     def __init__(self, core):
@@ -25,7 +24,7 @@ class TransportEngine:
         booking = {
             "ticket_id": f"TR-{uuid.uuid4().hex[:6].upper()}",
             "route": data.get("route"),
-            "passenger_id": self.core.guard.get_actor().get("identity_id"),
+            "passenger_id": (self.core.guard.get_actor() or {}).get("identity_id") or "SYSTEM",
             "split": split,
             "status": "BOARDING_READY"
         }

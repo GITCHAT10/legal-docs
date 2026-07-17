@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, UTC
-from typing import Dict, List, Any, Optional
+from typing import Dict, Any
 
 class ImoxonCore:
     """
@@ -143,7 +143,7 @@ class CatalogManager:
                 self.products[pid] = p
                 self.core.events.publish("imoxon.product_goes_live", p)
                 return p
-        raise ValueError("Product not in queue")
+        raise KeyError("Product not in queue")
 
 class ProcurementEngine:
     def __init__(self, core):
