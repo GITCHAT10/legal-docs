@@ -1,8 +1,15 @@
 import pytest
 from fastapi.testclient import TestClient
-from main import app, identity_core, mars_unified
+from main import app, identity_core, mars_unified, b2b_negotiator
 
 client = TestClient(app)
+
+@pytest.fixture(autouse=True)
+def clear_state():
+    mars_unified.packages.clear()
+    mars_unified.orders.clear()
+    mars_unified.settlements.clear()
+    b2b_negotiator.quotes.clear()
 
 @pytest.fixture
 def b2b_agent_headers():
@@ -15,8 +22,10 @@ def b2b_agent_headers():
     # Mocking B2B Realm for this session
     from main import identity_gateway
     session_id = f"SES-B2B-{uid[:4]}"
+    identity_core.verify_identity(uid, "SYSTEM")
     identity_gateway.sessions[session_id] = {
-        "identity_id": uid, "role": "b2b_agent", "realm": "B2B", "org_id": "GLOBAL-TO"
+        "identity_id": uid, "role": "b2b_agent", "realm": "B2B", "org_id": "GLOBAL-TO",
+        "verified": True, "device_id": did
     }
     return {"X-AEGIS-SESSION": session_id}
 

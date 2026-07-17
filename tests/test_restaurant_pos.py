@@ -11,9 +11,11 @@ def admin_headers():
         "profile_type": "admin"
     })
     device_id = identity_core.bind_device(identity_id, {"fingerprint": "rest-device"})
+    identity_core.verify_identity(identity_id, "SYSTEM")
     return {
         "X-AEGIS-IDENTITY": identity_id,
-        "X-AEGIS-DEVICE": device_id
+        "X-AEGIS-DEVICE": device_id,
+        "X-AEGIS-SIGNATURE": f"VALID_SIG_FOR_{identity_id}"
     }
 
 def test_restaurant_registration_and_ai_voice_order(admin_headers):

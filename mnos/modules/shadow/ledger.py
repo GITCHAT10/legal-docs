@@ -1,9 +1,19 @@
 import hashlib
 import json
-import time
 import uuid
 import copy
+from decimal import Decimal
 from datetime import datetime, UTC
+
+def json_serial(obj):
+    """JSON serializer for objects not serializable by default json code"""
+    if isinstance(obj, (datetime)):
+        return obj.isoformat()
+    if isinstance(obj, Decimal):
+        return float(obj)
+    if isinstance(obj, uuid.UUID):
+        return str(obj)
+    raise TypeError ("Type %s not serializable" % type(obj))
 
 class ShadowLedger:
     """
@@ -15,15 +25,23 @@ class ShadowLedger:
         self.genesis_hash = "0" * 64
 
     def commit(self, event_type: str, actor_id: str, payload: dict) -> str:
+        # Deepcopy payload to prevent retro-active changes breaking the hash
+        # and normalize non-serializable types (e.g., Decimal -> float)
+        safe_payload = json.loads(json.dumps(payload, default=json_serial))
+
         # SECURITY: Enforcement of ExecutionGuard Authority
         from mnos.shared.execution_guard import ExecutionGuard
-        if not ExecutionGuard.is_authorized():
+
+        # EXEMPTION: Permit auth failure and identity bootstrap events to be committed without full guard
+        exempt_events = ["aegis.auth.direct.failure", "aegis.auth.session.failure",
+                         "aegis.auth.identity.invalid", "aegis.auth.device.mismatch",
+                         "aegis.auth.sig.failed", "aegis.auth.direct.success",
+                         "aegis.auth.session.success"]
+
+        if not ExecutionGuard.is_authorized() and event_type not in exempt_events and not event_type.endswith(".auth_failure"):
              raise PermissionError("FAIL CLOSED: Unauthorized direct write to SHADOW Ledger blocked.")
 
         prev_hash = self.chain[-1]["hash"] if self.chain else self.genesis_hash
-
-        # Deepcopy payload to prevent retro-active changes breaking the hash
-        safe_payload = copy.deepcopy(payload)
 
         block = {
             "index": len(self.chain),
@@ -44,7 +62,7 @@ class ShadowLedger:
         temp = copy.deepcopy(block)
         if "hash" in temp:
             temp.pop("hash")
-        block_string = json.dumps(temp, sort_keys=True).encode()
+        block_string = json.dumps(temp, sort_keys=True, default=json_serial).encode()
         return hashlib.sha256(block_string).hexdigest()
 
     def _sign_event(self, payload: dict) -> str:

@@ -1,6 +1,5 @@
 import uuid
 from datetime import datetime, UTC
-from typing import Dict, List, Any, Optional
 from decimal import Decimal
 
 class LowCostHospitalityEngine:
@@ -98,7 +97,11 @@ class LowCostHospitalityEngine:
 
         # Apply Maldives Taxes via FCE
         # Green Tax Logic: $6 per night per guest (assumed 1 guest for base calculation)
-        green_tax_usd = Decimal("6.0") * nights if prop["type"] == "GUESTHOUSE" else Decimal("0")
+        # BUGFIX: Only apply Green Tax if specifically for accommodation/guesthouse
+        green_tax_usd = Decimal("0")
+        if prop.get("type") == "GUESTHOUSE":
+             green_tax_usd = Decimal("6.0") * nights
+
         pricing = self.core.fce.calculate_local_order(subtotal_mvr, "TOURISM", green_tax_usd)
 
         booking = {

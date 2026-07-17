@@ -11,16 +11,18 @@ def admin_headers():
         "profile_type": "admin"
     })
     device_id = identity_core.bind_device(identity_id, {"fingerprint": "admin-device"})
+    identity_core.verify_identity(identity_id, "SYSTEM")
     return {
         "X-AEGIS-IDENTITY": identity_id,
-        "X-AEGIS-DEVICE": device_id
+        "X-AEGIS-DEVICE": device_id,
+        "X-AEGIS-SIGNATURE": f"VALID_SIG_FOR_{identity_id}"
     }
 
 def test_full_supplier_onboarding_flow(admin_headers):
     # 1. Connect Supplier
     resp = client.post("/imoxon/suppliers/connect", params={"name": "Thoddoo Farms"}, headers=admin_headers)
     assert resp.status_code == 200
-    supplier_id = resp.json()["id"]
+    supplier_id = resp.json()["supplier_id"]
     assert supplier_id.startswith("p_") or len(supplier_id) > 10 # uuid based
 
     # 2. Import Product

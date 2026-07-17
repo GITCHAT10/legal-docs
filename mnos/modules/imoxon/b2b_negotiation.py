@@ -1,7 +1,5 @@
 import uuid
-from datetime import datetime, UTC, timedelta
-from typing import Dict, List, Any, Optional
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal
 
 class B2BAutoNegotiationEngine:
     """
@@ -19,6 +17,11 @@ class B2BAutoNegotiationEngine:
         """
         RFQ Logic: identify partner lens, pull inventory, apply MEGE pricing, and check floor.
         """
+        return self.core.execute_commerce_action(
+            "b2b.rfq.process", actor_ctx, self._internal_process_rfq, rfq_data, actor_ctx
+        )
+
+    def _internal_process_rfq(self, rfq_data, actor_ctx):
         partner_type = rfq_data.get("partner_type") # TO or DMC
         pax_count = rfq_data.get("pax_count", 1)
 

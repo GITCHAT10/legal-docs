@@ -34,6 +34,7 @@ def test_attack_fake_device_binding(setup_valid_entities):
         "X-AEGIS-SIGNATURE": entities["admin"]["sig"]
     }
     resp = client.get("/imoxon/grid-control/dashboard", headers=headers)
+    # Doctrine: 403 for authenticated actors blocked by device binding
     assert resp.status_code == 403
     assert "DEVICE_BINDING_INVALID" in resp.json()["detail"]
 
@@ -59,6 +60,7 @@ def test_attack_identity_spoofing():
         "X-AEGIS-SIGNATURE": "VALID_SIG_FOR_non-existent-uuid"
     }
     resp = client.get("/imoxon/grid-control/dashboard", headers=headers)
+    # Doctrine: 401 for unknown identity
     assert resp.status_code == 401
     assert "INVALID_IDENTITY" in resp.json()["detail"]
 
@@ -71,7 +73,8 @@ def test_attack_forged_signature(setup_valid_entities):
         "X-AEGIS-SIGNATURE": "FORGED_HMAC_HERE"
     }
     resp = client.get("/imoxon/grid-control/dashboard", headers=headers)
-    assert resp.status_code == 403
+    # Doctrine: 401 for failed handshake
+    assert resp.status_code == 401
     assert "HANDSHAKE_FAILED" in resp.json()["detail"]
 
 def test_attack_unverified_critical_action(setup_valid_entities):

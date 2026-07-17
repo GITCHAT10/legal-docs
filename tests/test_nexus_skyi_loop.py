@@ -8,13 +8,22 @@ client = TestClient(app)
 def admin_headers():
     identity_id = identity_core.create_profile({"full_name": "Cloud Admin", "profile_type": "admin"})
     device_id = identity_core.bind_device(identity_id, {"fingerprint": "admin-cloud"})
-    return {"X-AEGIS-IDENTITY": identity_id, "X-AEGIS-DEVICE": device_id}
+    identity_core.verify_identity(identity_id, "SYSTEM")
+    return {
+        "X-AEGIS-IDENTITY": identity_id,
+        "X-AEGIS-DEVICE": device_id,
+        "X-AEGIS-SIGNATURE": f"VALID_SIG_FOR_{identity_id}"
+    }
 
 @pytest.fixture
 def guest_headers():
     identity_id = identity_core.create_profile({"full_name": "Guest Traveler", "profile_type": "guest"})
     device_id = identity_core.bind_device(identity_id, {"fingerprint": "guest-phone"})
-    return {"X-AEGIS-IDENTITY": identity_id, "X-AEGIS-DEVICE": device_id}
+    return {
+        "X-AEGIS-IDENTITY": identity_id,
+        "X-AEGIS-DEVICE": device_id,
+        "X-AEGIS-SIGNATURE": f"VALID_SIG_FOR_{identity_id}"
+    }
 
 def test_nexus_skyi_closed_loop_economy(admin_headers, guest_headers):
     # 1. TRAWEL Builds Package (Cloud Brain decides)
@@ -36,7 +45,8 @@ def test_nexus_skyi_closed_loop_economy(admin_headers, guest_headers):
     order_id = order["id"]
 
     # Verify loop state: Initiated + Transfer assigned + Audit recorded
-    assert order["status"] == "INITIATED"
+    # Note: process_full_cycle now automatically dispatches transfer, changing status
+    assert order["status"] == "TRANSFER_IN_PROGRESS"
     assert "transfer_id" in order
     assert order["audit_id"] is not None
 
@@ -55,7 +65,7 @@ def test_nexus_skyi_closed_loop_economy(admin_headers, guest_headers):
     assert settlement["ngo_fee"] == 10.0  # 2% of 500
 
 def test_unauthorized_package_build(guest_headers):
-    resp = client.post("/imoxon/itravel/packages/build", json={}, headers=guest_headers)
+    client.post("/imoxon/itravel/packages/build", json={}, headers=guest_headers)
     # Role 'guest' should not be allowed to 'trawel.package.build' based on generic policy if we had one,
     # but currently our simple IdentityPolicyEngine doesn't explicitly block it unless we add it.
     # However, 'get_dashboard' in grid-control DOES check for admin.

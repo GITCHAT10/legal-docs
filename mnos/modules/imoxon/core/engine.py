@@ -1,17 +1,18 @@
 import uuid
 from datetime import datetime, UTC
-from typing import Dict, List, Any, Optional
+from typing import Dict, Any
 
 class ImoxonCore:
     """
     Unified iMOXON Core: Governs B2B + B2C commerce flows.
     Pipeline: AEGIS → iMOXON CORE → FCE → EVENTS → SHADOW
     """
-    def __init__(self, guard, fce, shadow, events):
+    def __init__(self, guard, fce, shadow, events, identity=None):
         self.guard = guard
         self.fce = fce
         self.shadow = shadow
         self.events = events
+        self.identity = identity # AEGIS Identity Core
 
     def execute_commerce_action(self, action_type: str, actor_ctx: Dict, logic_func: Any, *args, **kwargs):
         """Final approval gate and atomic execution."""
