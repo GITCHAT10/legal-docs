@@ -1,0 +1,117 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "MARS A-RETAIL API",
+    "description": "Autonomous Retail Module for MNOS",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/v1/retail/autonomous/session/start": {
+      "post": {
+        "summary": "Start Session",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionStartRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/retail/autonomous/sensor/event": {
+      "post": {
+        "summary": "Ingest Sensor Event",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SensorEventRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/retail/autonomous/session/{session_id}/cart": {
+      "get": {
+        "summary": "Get Live Cart",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/retail/autonomous/session/exit": {
+      "post": {
+        "summary": "Session Exit",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionExitRequest"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "SessionStartRequest": {
+        "type": "object",
+        "properties": {
+          "store_id": { "type": "string" },
+          "auth_type": { "type": "string" },
+          "auth_token": { "type": "string" }
+        }
+      },
+      "SessionResponse": {
+        "type": "object",
+        "properties": {
+          "session_id": { "type": "string", "format": "uuid" },
+          "status": { "type": "string" },
+          "unlock": { "type": "boolean" }
+        }
+      },
+      "SensorEventRequest": {
+        "type": "object",
+        "properties": {
+          "session_id": { "type": "string", "format": "uuid" },
+          "event_type": { "type": "string" },
+          "source": { "type": "string" },
+          "product_id": { "type": "string" },
+          "qty": { "type": "number" },
+          "confidence": { "type": "number" },
+          "timestamp": { "type": "string", "format": "date-time" }
+        }
+      },
+      "SessionExitRequest": {
+        "type": "object",
+        "properties": {
+          "session_id": { "type": "string", "format": "uuid" }
+        }
+      }
+    }
+  }
+}
