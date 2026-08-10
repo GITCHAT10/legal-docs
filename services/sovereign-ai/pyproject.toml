@@ -9,6 +9,7 @@ dependencies = [
   "pydantic-settings>=2.5,<3",
   "sqlalchemy[asyncio]>=2.0.35,<3",
   "asyncpg>=0.29,<1",
+  "cryptography>=45,<46",
 ]
 
 [project.optional-dependencies]
