@@ -1,8 +1,7 @@
 name: iMOXON Sovereign Audit CI
 
 on:
-  # Required status checks must be produced on feature-branch head commits
-  # as well as on the PR merge context.
+  # Produce audit results on feature-branch heads and PR merge contexts.
   push:
     branches: [ "**" ]
   pull_request:
@@ -15,6 +14,8 @@ permissions:
 jobs:
   audit:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+
     steps:
     - uses: actions/checkout@v4
 
@@ -30,61 +31,28 @@ jobs:
         pip install pyyaml
 
     - name: Run Boot Check (legacy advisory)
-      run: NEXGEN_SECRET=audit-test python mnos/boot_check.py || true
+      run: |
+        if ! NEXGEN_SECRET=audit-test python mnos/boot_check.py; then
+          echo "::warning::Legacy boot check failed; retained as advisory debt outside the EF-05 release gate."
+        fi
 
     - name: Run Schema Validation (legacy advisory)
-      run: python validate_schema.py || true
+      run: |
+        if ! python validate_schema.py; then
+          echo "::warning::Legacy schema validation failed; retained as advisory debt outside the EF-05 release gate."
+        fi
 
     - name: Run Lint (legacy advisory)
-      run: ruff check . || true
-
-    - name: Run Legacy Regression Tests (advisory)
-      run: python -m pytest test_sovereign_commerce.py test_consolidated_imoxon.py || true
-
-    - name: Validate E-LEGAL authoritative source registry
       run: |
-        python - <<'PY'
-        from pathlib import Path
-        from urllib.parse import urlparse
-        import yaml
+        if ! ruff check .; then
+          echo "::warning::Legacy lint debt remains; retained as advisory debt outside the EF-05 release gate."
+        fi
 
-        path = Path("elegal/legal-sources/registry/2026-08-31.yaml")
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    - name: Run Sovereign Regression Tests
+      run: python -m pytest test_sovereign_commerce.py test_consolidated_imoxon.py
 
-        assert data["jurisdiction"] == "MV"
-        assert data["snapshot_date"] == "2026-08-31"
-        instruments = data["instruments"]
-        expected = {
-            "MV-ACT-10-2026",
-            "MV-ACT-11-2026",
-            "MV-ACT-12-2026",
-            "MV-ACT-13-2026",
-            "MV-ACT-14-2026",
-            "MV-ACT-15-2026",
-            "MV-ACT-16-2026",
-            "MV-REG-73-R-2026",
-        }
-        ids = {item["id"] for item in instruments}
-        assert expected.issubset(ids)
-
-        for item in instruments:
-            assert item["source_authority"] == "OFFICIAL_GAZETTE"
-            assert item["publication_date"] == "2026-08-31"
-            assert item["ingestion_state"] == "SOURCE_VERIFIED_METADATA"
-            assert item["source_hash_status"] == "PENDING_SOURCE_ARCHIVE"
-
-            gazette = urlparse(item["gazette_url"])
-            assert gazette.scheme == "https"
-            assert gazette.netloc in {"gazette.gov.mv", "www.gazette.gov.mv"}
-
-            status = item["commencement_status"]
-            if status == "IN_FORCE":
-                assert item.get("effective_date")
-            if status == "ENACTED_NOT_YET_EFFECTIVE":
-                assert item.get("commencement_rule") or item.get("effective_date")
-
-        print(f"E-LEGAL registry validated: {len(instruments)} authoritative source records")
-        PY
+    - name: Validate E-LEGAL EF-05 authoritative source registry
+      run: python elegal/legal-sources/validate_registry.py
 
     - name: Publish required sovereign audit status
       if: ${{ success() }}
@@ -104,7 +72,7 @@ jobs:
         payload = json.dumps({
             "state": "success",
             "context": "iMOXON Sovereign Audit CI / audit",
-            "description": "Required audit and E-LEGAL registry validation passed"
+            "description": "Required regressions and EF-05 registry validation passed"
         }).encode("utf-8")
 
         request = urllib.request.Request(
