@@ -1,8 +1,10 @@
 name: iMOXON Sovereign Audit CI
 
 on:
+  # Required status checks must be produced on feature-branch head commits,
+  # not only on main. Keep PR validation as a separate merge-context check.
   push:
-    branches: [ main ]
+    branches: [ "**" ]
   pull_request:
     branches: [ main ]
 
