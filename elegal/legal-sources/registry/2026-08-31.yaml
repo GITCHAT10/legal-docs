@@ -1,0 +1,172 @@
+registry_version: "1.0"
+jurisdiction: "MV"
+snapshot_date: "2026-08-31"
+publisher_priority:
+  - "Maldives Government Gazette"
+  - "President's Office"
+notes:
+  - "This registry verifies source metadata and commencement status where explicitly confirmed by authoritative sources."
+  - "No source hash is fabricated. Full-text acquisition and hashing remain separate ingestion steps."
+  - "Publication date must not be assumed to equal commencement date unless the authoritative source confirms it."
+
+instruments:
+  - id: "MV-ACT-10-2026"
+    citation: "Act 10/2026"
+    title_en: "Eighth Amendment to the Goods and Services Tax Act"
+    amends: "Act 10/2011"
+    publication_date: "2026-08-31"
+    source_authority: "OFFICIAL_GAZETTE"
+    gazette_volume: 55
+    gazette_issue: 129
+    gazette_url: "https://gazette.gov.mv/gazette/7553"
+    presidency_url: "https://presidency.gov.mv/Press/Article/37276"
+    commencement_status: "IN_FORCE"
+    effective_date: "2026-08-31"
+    practice_areas: ["TAX", "TOURISM", "CROSS_BORDER", "COMMERCIAL"]
+    impact:
+      - "GST framework extended to qualifying inbound tourism products supplied through offshore booking platforms, foreign tour operators and travel agents."
+      - "TGST rate of 17 percent applies to covered tourism products."
+      - "Implementing regulation changes required within 30 days."
+    ingestion_state: "SOURCE_VERIFIED_METADATA"
+    source_hash_status: "PENDING_SOURCE_ARCHIVE"
+
+  - id: "MV-ACT-11-2026"
+    citation: "Act 11/2026"
+    title_en: "Second Amendment to the Income Tax Act"
+    amends: "Act 25/2019"
+    publication_date: "2026-08-31"
+    source_authority: "OFFICIAL_GAZETTE"
+    gazette_volume: 55
+    gazette_issue: 130
+    gazette_url: "https://gazette.gov.mv/gazette/7554"
+    presidency_url: "https://presidency.gov.mv/Press/Article/37277"
+    commencement_status: "IN_FORCE"
+    effective_date: "2026-08-31"
+    practice_areas: ["TAX", "CONSTRUCTION", "CROSS_BORDER", "CORPORATE"]
+    impact:
+      - "Withholding tax on payments to non-resident construction contractors increases from 5 percent to 10 percent."
+      - "The withholding amount is described by the President's Office as full and final tax liability for such contractors."
+      - "Definition of non-resident contractor is further specified."
+    ingestion_state: "SOURCE_VERIFIED_METADATA"
+    source_hash_status: "PENDING_SOURCE_ARCHIVE"
+
+  - id: "MV-ACT-12-2026"
+    citation: "Act 12/2026"
+    title_en: "Act on Leasing Uninhabited Islands and Lagoons"
+    publication_date: "2026-08-31"
+    source_authority: "OFFICIAL_GAZETTE"
+    gazette_volume: 55
+    gazette_issue: 131
+    gazette_url: "https://gazette.gov.mv/gazette/7555"
+    presidency_url: "https://presidency.gov.mv/Press/Article/37271"
+    commencement_status: "ENACTED_NOT_YET_EFFECTIVE"
+    commencement_rule: "Comes into force 30 days from ratification and publication in the Government Gazette."
+    effective_date: null
+    repeals_on_commencement: "Act 20/98"
+    practice_areas: ["PROPERTY", "LAND", "LOCAL_GOVERNMENT", "COMMERCIAL"]
+    impact:
+      - "Creates new framework for non-tourism leasing/varuvaa of uninhabited islands and standalone lagoon areas."
+      - "Introduces differentiated rent rates by purpose."
+    ingestion_state: "SOURCE_VERIFIED_METADATA"
+    source_hash_status: "PENDING_SOURCE_ARCHIVE"
+
+  - id: "MV-ACT-13-2026"
+    citation: "Act 13/2026"
+    title_en: "First Amendment to the Foreign Currency Act"
+    amends: "Act 32/2024"
+    publication_date: "2026-08-31"
+    source_authority: "OFFICIAL_GAZETTE"
+    gazette_volume: 55
+    gazette_issue: 132
+    gazette_url: "https://gazette.gov.mv/gazette/7556"
+    presidency_url: "https://presidency.gov.mv/Press/Article/37274"
+    commencement_status: "ENACTED_NOT_YET_EFFECTIVE"
+    effective_date: "2026-09-01"
+    practice_areas: ["BANKING", "FOREIGN_EXCHANGE", "TOURISM", "CORPORATE", "COMPLIANCE"]
+    impact:
+      - "Foreign currency exchange must occur at rates or within bands determined by MMA."
+      - "Foreign currency exchange business requires an MMA licence."
+      - "Non-tourism foreign-currency income threshold revised from USD 15 million to USD 25 million."
+      - "Tourism and qualifying non-tourism conversion requirements revised."
+    ingestion_state: "SOURCE_VERIFIED_METADATA"
+    source_hash_status: "PENDING_SOURCE_ARCHIVE"
+
+  - id: "MV-ACT-14-2026"
+    citation: "Act 14/2026"
+    title_en: "Second Amendment to the Maldives Fisheries Act"
+    amends: "Act 14/2019"
+    publication_date: "2026-08-31"
+    source_authority: "OFFICIAL_GAZETTE"
+    gazette_volume: 55
+    gazette_issue: 133
+    gazette_url: "https://gazette.gov.mv/gazette/7557"
+    presidency_url: "https://presidency.gov.mv/Press/Article/37275"
+    commencement_status: "IN_FORCE"
+    effective_date: "2026-08-31"
+    practice_areas: ["FISHERIES", "MARITIME", "AQUACULTURE", "ADMINISTRATIVE"]
+    impact:
+      - "Revises enforcement and administrative measures involving fishing vessels."
+      - "Regulates fishing and aquaculture activities within protected areas."
+      - "Creates framework for specialised fishing harbours including recreational and sport fishing."
+      - "Requires relevant regulations/rules/procedures within 60 days from commencement."
+    ingestion_state: "SOURCE_VERIFIED_METADATA"
+    source_hash_status: "PENDING_SOURCE_ARCHIVE"
+
+  - id: "MV-ACT-15-2026"
+    citation: "Act 15/2026"
+    title_en: "Fourth Amendment to the Tax Administration Act"
+    amends: "Act 3/2010"
+    publication_date: "2026-08-31"
+    source_authority: "OFFICIAL_GAZETTE"
+    gazette_volume: 55
+    gazette_issue: 134
+    gazette_url: "https://gazette.gov.mv/gazette/7558"
+    presidency_url: "https://presidency.gov.mv/Press/Article/37272"
+    commencement_status: "IN_FORCE"
+    effective_date: "2026-08-31"
+    practice_areas: ["TAX", "DISPUTES", "INVESTIGATIONS", "COMPLIANCE", "INTERNATIONAL_TAX"]
+    impact:
+      - "Strengthens MIRA audit, investigation and tax-recovery powers."
+      - "Adds information-gathering, offences and penalty provisions."
+      - "Addresses CbC Reporting, CRS and joint foreign tax examinations."
+    ingestion_state: "SOURCE_VERIFIED_METADATA"
+    source_hash_status: "PENDING_SOURCE_ARCHIVE"
+
+  - id: "MV-ACT-16-2026"
+    citation: "Act 16/2026"
+    title_en: "Land Transport Act"
+    publication_date: "2026-08-31"
+    source_authority: "OFFICIAL_GAZETTE"
+    gazette_volume: 55
+    gazette_issue: 135
+    gazette_url: "https://gazette.gov.mv/gazette/7559"
+    presidency_url: "https://presidency.gov.mv/Press/Article/37273"
+    commencement_status: "ENACTED_NOT_YET_EFFECTIVE"
+    commencement_rule: "Comes into force 30 days after ratification and publication in the Government Gazette."
+    effective_date: null
+    repeals_on_commencement:
+      - "Act 5/2009"
+      - "Act 70/78"
+    practice_areas: ["TRANSPORT", "ADMINISTRATIVE", "REGULATORY", "ROAD_SAFETY"]
+    impact:
+      - "Creates new framework for vehicle registration, driving, parking and public transport."
+      - "Creates Greater Male controlled traffic framework and National Road Safety Council."
+    ingestion_state: "SOURCE_VERIFIED_METADATA"
+    source_hash_status: "PENDING_SOURCE_ARCHIVE"
+
+  - id: "MV-REG-73-R-2026"
+    citation: "Regulation 73-R/2026"
+    title_en: "Fourth Amendment to the Maldives Passport Regulation"
+    amends: "Regulation 83-R/2017"
+    publication_date: "2026-08-31"
+    source_authority: "OFFICIAL_GAZETTE"
+    gazette_volume: 55
+    gazette_issue: 136
+    gazette_url: "https://gazette.gov.mv/gazette/7560"
+    commencement_status: "PENDING_FULL_TEXT_VERIFICATION"
+    effective_date: null
+    practice_areas: ["IMMIGRATION", "IDENTITY", "ADMINISTRATIVE"]
+    impact:
+      - "Triggers revalidation of passport/identity workflows once authoritative full text and commencement clause are parsed."
+    ingestion_state: "SOURCE_VERIFIED_METADATA"
+    source_hash_status: "PENDING_SOURCE_ARCHIVE"
