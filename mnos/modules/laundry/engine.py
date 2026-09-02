@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, UTC
-from typing import Dict, List, Any, Optional
+from typing import List
 from decimal import Decimal
 
 class MaldivesLaundryEngine:
@@ -93,6 +93,7 @@ class MaldivesLaundryEngine:
             self.orders[order_id]["status"] = status
             if status == "DELIVERED":
                 # Trigger payout release via Cloud Brain
-                self.nexus.finalize_cycle(None, order_id) # Using internal call
+                actor = self.core.guard.get_actor()
+                self.nexus.finalize_cycle(actor, order_id)
             return self.orders[order_id]
         return None

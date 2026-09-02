@@ -1,6 +1,5 @@
 import uuid
 from datetime import datetime, UTC
-from typing import Dict, Any
 
 class BubblePOSEngine:
     """

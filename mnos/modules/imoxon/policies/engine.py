@@ -4,7 +4,19 @@ class IdentityPolicyEngine:
 
     def validate_action(self, action_type: str, context: dict):
         identity_id = context.get("identity_id")
-        device_id = context.get("device_id")
+        context.get("device_id")
+
+        # B2B / Commercial actions
+        b2b_actions = ["b2b.rfq", "b2b.booking.confirm"]
+        if action_type in b2b_actions:
+            if not self._has_role(identity_id, "b2b_agent") and not self._has_role(identity_id, "admin"):
+                return False, "Action requires B2B agent or admin role"
+
+        # Island GM actions
+        island_gm_actions = ["island.vendor.onboard", "island.gm.dashboard"]
+        if action_type in island_gm_actions:
+            if not self._has_role(identity_id, "island_gm") and not self._has_role(identity_id, "admin"):
+                return False, "Action requires Island GM or admin role"
 
         # Staff Binding requirements
         staff_actions = ["onboarding", "uniform_assignment", "linen_assignment", "delivery_acceptance"]
@@ -55,12 +67,14 @@ class IdentityPolicyEngine:
         return True, "Accepted"
 
     def _has_role(self, identity_id, role_name):
-        if not identity_id: return False
+        if not identity_id:
+            return False
         # Simplified check for demo
         profile = self.identity_core.profiles.get(identity_id)
         return profile and profile.get("profile_type") == role_name
 
     def _is_verified(self, identity_id):
-        if not identity_id: return False
+        if not identity_id:
+            return False
         profile = self.identity_core.profiles.get(identity_id)
         return profile and profile.get("verification_status") == "verified"

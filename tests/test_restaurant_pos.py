@@ -10,10 +10,12 @@ def admin_headers():
         "full_name": "Restaurant Admin",
         "profile_type": "admin"
     })
+    identity_core.verify_identity(identity_id, "SYSTEM")
     device_id = identity_core.bind_device(identity_id, {"fingerprint": "rest-device"})
     return {
         "X-AEGIS-IDENTITY": identity_id,
-        "X-AEGIS-DEVICE": device_id
+        "X-AEGIS-DEVICE": device_id,
+        "X-AEGIS-SIGNATURE": f"VALID_SIG_FOR_{identity_id}"
     }
 
 def test_restaurant_registration_and_ai_voice_order(admin_headers):
@@ -59,7 +61,7 @@ def test_offline_pos_sync(admin_headers):
     resp = client.post(
         "/imoxon/restaurant/pos/sync-offline",
         params={"merchant_id": merchant_id},
-        json=offline_txs,
+        json={"transactions": offline_txs},
         headers=admin_headers
     )
     assert resp.status_code == 200

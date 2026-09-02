@@ -1,6 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
-from main import app, identity_core, mars_unified, leaderboard
+from main import app, identity_core, leaderboard
 
 client = TestClient(app)
 
@@ -45,7 +45,7 @@ def test_leaderboard_anti_cheat(admin_headers):
 
 def test_war_room_surge_alerts(admin_headers):
     # Trigger surge
-    leaderboard.trigger_surge_alert("Maafushi", 1.8)
+    leaderboard.trigger_surge_alert(admin_headers, "Maafushi", 1.8)
 
     # Check alerts
     resp = client.get("/imoxon/leaderboard/war-room/alerts", headers=admin_headers)

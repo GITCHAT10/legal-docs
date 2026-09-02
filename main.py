@@ -1,8 +1,6 @@
 import os
-from fastapi import FastAPI, HTTPException, Header, Depends, Query, Request
+from fastapi import FastAPI, HTTPException, Header, Depends, Request
 from fastapi.responses import JSONResponse
-from typing import List, Optional, Dict
-from decimal import Decimal
 
 # MNOS Core (N-DEOS)
 from mnos.modules.finance.fce import FCEEngine, FCEHardenedEngine
@@ -24,8 +22,7 @@ from mnos.gateway.engine import APIGatewayControlPlane
 
 # iMOXON Consolidated
 from mnos.modules.imoxon.core.engine import (
-    ImoxonCore, CatalogManager, ProcurementEngine as LegacyProcurementEngine,
-    CampaignManager, MerchantManager, POSManager
+    ImoxonCore, CatalogManager, CampaignManager, MerchantManager, POSManager
 )
 from mnos.modules.imoxon.procurement.engine import ProcurementEngine
 from mnos.modules.imoxon.resort.weekly_system import ResortWeeklyOrderSystem
@@ -118,6 +115,7 @@ hospitality = LowCostHospitalityEngine(imoxon)
 restaurant = MaldivesRestaurantEngine(imoxon, bpe)
 mars_unified = NexusSkyICloudBrain(imoxon, bpe, transport)
 island_gm = IslandGMSystem(imoxon, mars_unified)
+imoxon.island_gm = island_gm
 scoring_engine = AtollCommanderScoringEngine(imoxon, island_gm)
 island_gm.scoring = scoring_engine
 leaderboard = HustleLeaderboardEngine(imoxon, island_gm, scoring_engine)
@@ -214,6 +212,7 @@ def get_actor_ctx(
         "org_id": profile.get("organization_id"),
         "island": profile.get("assigned_island"),
         "verified": profile.get("verification_status") == "verified",
+        "national_id_verified": profile.get("verification_status") == "verified",
         "persistent_hash": profile.get("persistent_identity_hash")
     }
     _record_auth_audit("aegis.auth.direct.success", x_aegis_identity, {"role": actor["role"]})

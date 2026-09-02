@@ -34,8 +34,10 @@ def setup_engine():
     imoxon = ImoxonCore(guard, fce, shadow, events)
     engine = LowCostHospitalityEngine(imoxon)
 
-    # Register a test property
-    admin_ctx = {"identity_id": "admin", "device_id": "dev1", "role": "admin"}
+    # Register a test property with verified identity
+    admin_id = identity.create_profile({"full_name": "Admin", "profile_type": "admin"})
+    identity.verify_identity(admin_id, "SYSTEM")
+    admin_ctx = {"identity_id": admin_id, "device_id": "dev1", "role": "admin", "verified": True}
     engine.register_property(admin_ctx, {"name": "Tune Maldives", "location": "Hulhumale", "base_rate": 50.0})
 
     return engine, imoxon
@@ -44,8 +46,14 @@ def test_airline_partner_discount(setup_engine):
     engine, imoxon = setup_engine
     prop_id = list(engine.properties.keys())[0]
 
+    # Use authorized_context to setup verified identities
+    from mnos.shared.execution_guard import authorized_context
+    with authorized_context():
+        aid = imoxon.guard.identity_core.create_profile({"full_name": "Airline Staff", "profile_type": "airline_partner"})
+        imoxon.guard.identity_core.verify_identity(aid, "SYSTEM")
+
     actor_ctx = {
-        "identity_id": "airline_staff_1",
+        "identity_id": aid,
         "device_id": "phone_1",
         "role": "airline_partner"
     }
@@ -71,8 +79,13 @@ def test_medical_worker_discount(setup_engine):
     engine, imoxon = setup_engine
     prop_id = list(engine.properties.keys())[0]
 
+    from mnos.shared.execution_guard import authorized_context
+    with authorized_context():
+        mid = imoxon.guard.identity_core.create_profile({"full_name": "Doctor", "profile_type": "medical_worker"})
+        imoxon.guard.identity_core.verify_identity(mid, "SYSTEM")
+
     actor_ctx = {
-        "identity_id": "doctor_1",
+        "identity_id": mid,
         "device_id": "phone_2",
         "role": "medical_worker"
     }
@@ -124,8 +137,10 @@ def test_maldives_taxes_applied(setup_engine):
     # Service Charge: 10% = 77.10
     # Subtotal: 848.10
     # TGST (Tourism): 17% of 848.10 = 144.177 -> 144.18
-    # Total: 848.10 + 144.18 = 992.28
+    # Green Tax (assuming GUESTHOUSE type): $6 * 1 night * 15.42 = 92.52
+    # Total: 848.10 + 144.18 + 92.52 = 1084.80
 
     assert booking["pricing"]["service_charge"] == 77.10
     assert booking["pricing"]["tax_amount"] == 144.18
-    assert booking["pricing"]["total"] == 992.28
+    assert booking["pricing"]["green_tax"] == 92.52
+    assert booking["pricing"]["total"] == 1084.80
