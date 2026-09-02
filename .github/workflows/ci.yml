@@ -49,7 +49,10 @@ jobs:
         fi
 
     - name: Run Sovereign Regression Tests
-      run: python -m pytest test_sovereign_commerce.py test_consolidated_imoxon.py
+      run: python -m pytest -q
+
+    - name: Lint UAT release modules
+      run: ruff check mnos/modules/ingestion mnos/modules/imoxon/procurement/engine.py tests/test_read_only_ingestion.py tests/test_united_transport_invoicing.py
 
     - name: Validate E-LEGAL EF-05 authoritative source registry
       run: python elegal/legal-sources/validate_registry.py
