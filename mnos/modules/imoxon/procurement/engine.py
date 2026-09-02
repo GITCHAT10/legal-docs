@@ -1,5 +1,6 @@
 import uuid
-from datetime import datetime, UTC
+from datetime import UTC, datetime
+
 
 class ProcurementEngine:
     """
@@ -97,6 +98,8 @@ class ProcurementEngine:
         order = self.orders.get(order_id)
         if not order:
             raise ValueError("Order not found")
+        if order["status"] != "DELIVERED":
+            raise ValueError("INVOICE_REQUIRES_DELIVERED_ORDER")
 
         # MIRA-compliant tax calculation via FCE
         pricing = self.fce.finalize_invoice(order["amount"], "RESORT_SUPPLY")
@@ -121,6 +124,8 @@ class ProcurementEngine:
         order = self.orders.get(order_id)
         if not order:
             raise ValueError("Order not found")
+        if order["status"] != "INVOICED":
+            raise ValueError("SETTLEMENT_REQUIRES_INVOICED_ORDER")
 
         # Simulated check for national ID binding in actor context
         actor = self.guard.get_actor()
@@ -135,7 +140,14 @@ class ProcurementEngine:
         return order
 
     def _internal_update_status(self, order_id, status):
-        if order_id in self.orders:
-            self.orders[order_id]["status"] = status
-            return self.orders[order_id]
-        raise ValueError("Order not found")
+        order = self.orders.get(order_id)
+        if not order:
+            raise ValueError("Order not found")
+        required_previous = {
+            "DISPATCHED": "APPROVED",
+            "DELIVERED": "DISPATCHED",
+        }
+        if order["status"] != required_previous[status]:
+            raise ValueError(f"INVALID_ORDER_TRANSITION:{order['status']}->{status}")
+        order["status"] = status
+        return order
