@@ -1,7 +1,4 @@
-import uuid
-from datetime import datetime, UTC
-from typing import Dict, List, Any, Optional
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal
 
 class IslandGMSystem:
     """
@@ -35,16 +32,18 @@ class IslandGMSystem:
 
     def onboard_vendor_local(self, actor_ctx: dict, vendor_data: dict):
         """Island GM Action: Onboard a local restaurant/shop."""
-        island = vendor_data.get("island")
-        # Security: Island-bound check
-        if actor_ctx.get("role") == "island_gm" and actor_ctx.get("assigned_island") != island:
-             raise PermissionError(f"Access Denied: You are only authorized for {actor_ctx.get('assigned_island')}")
-
         return self.core.execute_commerce_action(
             "island.vendor.onboard", actor_ctx, self._internal_onboard_vendor, vendor_data
         )
 
     def _internal_onboard_vendor(self, data):
+        actor_ctx = self.core.guard.get_actor()
+        island = data.get("island")
+        # Security: Island-bound check
+        if actor_ctx.get("role") == "island_gm" and actor_ctx.get("assigned_island") != island:
+             raise PermissionError(f"Access Denied: You are only authorized for {actor_ctx.get('assigned_island')}")
+
+
         # 1. Register in Cloud Brain
         vendor = self.nexus._internal_register_vendor(data)
 
@@ -61,6 +60,12 @@ class IslandGMSystem:
 
     def get_gm_dashboard(self, actor_ctx: dict, island_name: str):
         """Island Command Panel: Real-time stats for GM."""
+        return self.core.execute_commerce_action(
+            "island.gm.dashboard", actor_ctx, self._internal_get_dashboard, island_name
+        )
+
+    def _internal_get_dashboard(self, island_name):
+        actor_ctx = self.core.guard.get_actor()
         if actor_ctx.get("role") == "island_gm" and actor_ctx.get("assigned_island") != island_name:
              raise PermissionError("Access Denied: Island Mismatch")
 

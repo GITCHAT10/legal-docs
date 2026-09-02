@@ -1,34 +1,44 @@
 import httpx
-import asyncio
-import os
+import pytest
 from main import app
 from httpx import ASGITransport
 
+@pytest.mark.anyio
 async def test_end_to_end_imoxon():
     print("🚀 STARTING iMOXON CONSOLIDATED E2E SUCCESS TEST")
     print("-" * 60)
 
-    os.environ["NEXGEN_SECRET"] = "imoxon-e2e-final"
     transport = ASGITransport(app=app)
 
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         # 1. Identity Setup
         print("[1] Setting up Sovereign Identity...")
-        res = await client.post("/aegis/identity/create", json={"full_name": "MIG Admin", "profile_type": "admin"})
+        res = await client.post("/imoxon/aegis/identity/create", json={"full_name": "MIG Admin", "profile_type": "admin"})
+        assert res.status_code == 200, res.text
         actor_id = res.json()["identity_id"]
-        await client.post("/aegis/identity/device/bind", params={"identity_id": actor_id}, json={"fingerprint": "secure-tablet-01"})
-        headers = {"X-AEGIS-IDENTITY": actor_id, "X-AEGIS-DEVICE": "secure-tablet-01"}
+        from main import identity_core
+        identity_core.verify_identity(actor_id, "SYSTEM")
+        res = await client.post("/imoxon/aegis/identity/device/bind", params={"identity_id": actor_id}, json={"fingerprint": "secure-tablet-01"})
+        assert res.status_code == 200, res.text
+        device_id = res.json()["device_id"]
+        headers = {
+            "X-AEGIS-IDENTITY": actor_id,
+            "X-AEGIS-DEVICE": device_id,
+            "X-AEGIS-SIGNATURE": f"VALID_SIG_FOR_{actor_id}",
+        }
 
         # 2. Supplier Connection (Alibaba)
         print("[2] Connecting Global Supplier (Alibaba)...")
-        res = await client.post("/imoxon/suppliers/connect", json={"name": "Alibaba Group", "type": "GLOBAL"}, headers=headers)
-        sid = res.json()["id"]
+        res = await client.post("/imoxon/suppliers/connect", params={"name": "Alibaba Group"}, headers=headers)
+        assert res.status_code == 200, res.text
+        sid = res.json()["supplier_id"]
         print(f"    Supplier ID: {sid}")
 
         # 3. Product Import
         print("[3] Importing Products (Sourcing Grid)...")
-        res = await client.post("/imoxon/products/import", params={"sid": sid}, json=[{"name": "Industrial RO Membrane", "price": 450.0}], headers=headers)
-        pid = res.json()["products"][0]["id"]
+        res = await client.post("/imoxon/products/import", params={"sid": sid}, json={"name": "Industrial RO Membrane", "price": 450.0}, headers=headers)
+        assert res.status_code == 200, res.text
+        pid = res.json()["id"]
         print(f"    Product ID (Pending): {pid}")
 
         # 4. Landed Cost Calculation
@@ -45,8 +55,9 @@ async def test_end_to_end_imoxon():
         print("[6] SALA Resort B2B Procurement Order...")
         res = await client.post("/imoxon/orders/create", json={
             "items": [{"product_id": pid, "qty": 10}],
-            "pricing": pricing
+            "amount": pricing["total"],
         }, headers=headers)
+        assert res.status_code == 200, res.text
         order_id = res.json()["id"]
         print(f"    Order ID: {order_id}")
 
@@ -57,6 +68,3 @@ async def test_end_to_end_imoxon():
 
     print("-" * 60)
     print("✅ iMOXON CONSOLIDATED E2E SUCCESS")
-
-if __name__ == "__main__":
-    asyncio.run(test_end_to_end_imoxon())

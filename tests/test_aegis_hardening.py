@@ -24,7 +24,7 @@ def test_missing_signature_rejected(hardened_admin):
     headers = hardened_admin.copy()
     del headers["X-AEGIS-SIGNATURE"]
     resp = client.post("/imoxon/suppliers/connect", params={"name": "Test"}, headers=headers)
-    assert resp.status_code == 403
+    assert resp.status_code == 401
     assert "Missing Identity, Device or Signature" in resp.json()["detail"]
 
 def test_invalid_signature_rejected(hardened_admin):
@@ -32,7 +32,7 @@ def test_invalid_signature_rejected(hardened_admin):
     headers["X-AEGIS-SIGNATURE"] = "MALICIOUS_SIG"
     resp = client.post("/imoxon/suppliers/connect", params={"name": "Test"}, headers=headers)
     assert resp.status_code == 403
-    assert "Invalid Cryptographic Handshake" in resp.json()["detail"]
+    assert "HANDSHAKE_FAILED: Invalid Signature" in resp.json()["detail"]
 
 def test_unverified_identity_blocked_critical(hardened_admin):
     # Create unverified identity

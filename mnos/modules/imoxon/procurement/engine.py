@@ -50,7 +50,8 @@ class ProcurementEngine:
 
     def _internal_approve(self, order_id):
         order = self.orders.get(order_id)
-        if not order: raise ValueError("Order not found")
+        if not order:
+            raise ValueError("Order not found")
 
         actor = self.guard.get_actor()
         if actor["identity_id"] not in order["approvals"]:
@@ -94,7 +95,8 @@ class ProcurementEngine:
 
     def _internal_invoice(self, order_id):
         order = self.orders.get(order_id)
-        if not order: raise ValueError("Order not found")
+        if not order:
+            raise ValueError("Order not found")
 
         # MIRA-compliant tax calculation via FCE
         pricing = self.fce.finalize_invoice(order["amount"], "RESORT_SUPPLY")
@@ -117,7 +119,8 @@ class ProcurementEngine:
 
     def _internal_settle(self, order_id):
         order = self.orders.get(order_id)
-        if not order: raise ValueError("Order not found")
+        if not order:
+            raise ValueError("Order not found")
 
         # Simulated check for national ID binding in actor context
         actor = self.guard.get_actor()

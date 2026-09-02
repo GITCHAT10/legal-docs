@@ -24,7 +24,12 @@ def setup_engine():
     imoxon = ImoxonCore(guard, fce, shadow, events)
     engine = LowCostHospitalityEngine(imoxon)
 
-    admin_ctx = {"identity_id": "admin", "device_id": "dev1", "role": "admin"}
+    from mnos.shared.execution_guard import authorized_context
+    with authorized_context():
+        admin_id = identity.create_profile({"full_name": "Admin", "profile_type": "admin"})
+        identity.verify_identity(admin_id, "SYSTEM")
+
+    admin_ctx = {"identity_id": admin_id, "device_id": "dev1", "role": "admin", "verified": True}
     engine.register_property(admin_ctx, {"name": "Tune Maldives", "location": "Hulhumale", "base_rate": 50.0})
 
     return engine
@@ -32,7 +37,11 @@ def setup_engine():
 def test_airline_partner_discount():
     engine = setup_engine()
     prop_id = list(engine.properties.keys())[0]
-    actor_ctx = {"identity_id": "airline_staff_1", "device_id": "phone_1", "role": "airline_partner"}
+    from mnos.shared.execution_guard import authorized_context
+    with authorized_context():
+        aid = engine.core.guard.identity_core.create_profile({"full_name": "S", "profile_type": "airline_partner"})
+        engine.core.guard.identity_core.verify_identity(aid, "SYSTEM")
+    actor_ctx = {"identity_id": aid, "device_id": "phone_1", "role": "airline_partner"}
     booking = engine.book_stay(actor_ctx, {"property_id": prop_id, "nights": 2, "amenities": ["aircon"]})
     assert booking["discount_applied"] == 25.0
     assert booking["pricing"]["base"] == 1310.70
@@ -41,7 +50,11 @@ def test_airline_partner_discount():
 def test_medical_worker_discount():
     engine = setup_engine()
     prop_id = list(engine.properties.keys())[0]
-    actor_ctx = {"identity_id": "doctor_1", "device_id": "phone_2", "role": "medical_worker"}
+    from mnos.shared.execution_guard import authorized_context
+    with authorized_context():
+        mid = engine.core.guard.identity_core.create_profile({"full_name": "D", "profile_type": "medical_worker"})
+        engine.core.guard.identity_core.verify_identity(mid, "SYSTEM")
+    actor_ctx = {"identity_id": mid, "device_id": "phone_2", "role": "medical_worker"}
     booking = engine.book_stay(actor_ctx, {"property_id": prop_id, "nights": 1})
     assert booking["discount_applied"] == 10.0
     assert booking["pricing"]["base"] == 616.80
@@ -63,7 +76,8 @@ def test_maldives_taxes_applied():
     booking = engine.book_stay(actor_ctx, {"property_id": prop_id, "nights": 1})
     assert booking["pricing"]["service_charge"] == 77.10
     assert booking["pricing"]["tax_amount"] == 144.18
-    assert booking["pricing"]["total"] == 992.28
+    assert booking["pricing"]["green_tax"] == 92.52
+    assert booking["pricing"]["total"] == 1084.80
     print("test_maldives_taxes_applied PASSED")
 
 if __name__ == "__main__":

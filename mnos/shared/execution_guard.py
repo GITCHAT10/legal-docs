@@ -1,5 +1,6 @@
 import contextvars
 import uuid
+import contextlib
 from typing import Callable, Any, Dict, Optional
 from fastapi import Request
 from fastapi.responses import JSONResponse
@@ -7,6 +8,27 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 # Context variable to track sovereign authorization
 _sovereign_context = contextvars.ContextVar("sovereign_context", default=None)
+
+@contextlib.contextmanager
+def authorized_context(actor: Optional[Dict] = None):
+    """
+    Utility context manager to wrap legitimate internal/system flows
+    with an authorized sovereign context.
+    """
+    if actor is None:
+        actor = {
+            "identity_id": "SYSTEM",
+            "role": "admin",
+            "realm": "INTERNAL",
+            "verified": True,
+            "national_id_verified": True
+        }
+
+    token = _sovereign_context.set({"token": f"SYSTEM-{uuid.uuid4().hex[:8]}", "actor": actor})
+    try:
+        yield
+    finally:
+        _sovereign_context.reset(token)
 
 class ExecutionGuard:
     def __init__(self, identity_core, policy_engine, fce, shadow, events):
@@ -21,9 +43,35 @@ class ExecutionGuard:
         MANDATORY ENTRYPOINT for all mutating commerce actions.
         ORBAN -> AEGIS -> ExecutionGuard -> FCE -> SHADOW
         """
-        identity_id = actor_context.get("identity_id")
-        device_id = actor_context.get("device_id")
-        role = actor_context.get("role")
+        # Robust actor normalization (handles context objects and raw headers)
+        identity_id = actor_context.get("identity_id") or actor_context.get("X-AEGIS-IDENTITY")
+        device_id = actor_context.get("device_id") or actor_context.get("X-AEGIS-DEVICE")
+
+        normalized_actor = {
+            "identity_id": identity_id,
+            "device_id": device_id,
+            "role": actor_context.get("role"),
+            "realm": actor_context.get("realm"),
+            "org_id": actor_context.get("org_id"),
+            "island": actor_context.get("island") or actor_context.get("assigned_island"),
+            "assigned_island": actor_context.get("assigned_island") or actor_context.get("island"),
+            "verified": actor_context.get("verified", False),
+            "national_id_verified": actor_context.get("national_id_verified", False)
+        }
+
+        # Auto-fill missing role/verified status from registry if possible
+        profile = self.identity_core.profiles.get(identity_id) if identity_id else None
+        if profile:
+            if not normalized_actor["role"]:
+                normalized_actor["role"] = profile.get("profile_type")
+            if not normalized_actor["verified"]:
+                normalized_actor["verified"] = profile.get("verification_status") == "verified"
+            if not normalized_actor["national_id_verified"]:
+                normalized_actor["national_id_verified"] = profile.get("verification_status") == "verified"
+            if not normalized_actor["island"]:
+                normalized_actor["island"] = profile.get("assigned_island")
+            if not normalized_actor["assigned_island"]:
+                normalized_actor["assigned_island"] = profile.get("assigned_island")
 
         # 1. AEGIS Identity & Binding Check
         if not identity_id or not device_id:
@@ -31,17 +79,17 @@ class ExecutionGuard:
 
         # ZERO_TRUST_DEFAULT_DENY for sensitive procurement actions
         sensitive_actions = ["procurement.order.settle", "finance.escrow.release"]
-        if action_type in sensitive_actions and not actor_context.get("national_id_verified"):
+        if action_type in sensitive_actions and not normalized_actor.get("national_id_verified"):
              raise PermissionError(f"ZERO TRUST REJECTION: National ID binding required for {action_type}")
 
         # 2. Role / Permission Validation
-        valid, msg = self.policy_engine.validate_action(action_type, actor_context)
+        valid, msg = self.policy_engine.validate_action(action_type, normalized_actor)
         if not valid:
             raise PermissionError(f"FAIL CLOSED: Policy Violation - {msg}")
 
         # 3. Set Sovereign Context (Authorized)
         token = str(uuid.uuid4())
-        _sovereign_context.set({"token": token, "actor": actor_context})
+        token_var = _sovereign_context.set({"token": token, "actor": normalized_actor})
 
         try:
             # BEGIN ATOMIC TX (Simulated via context and SHADOW intent)
@@ -51,7 +99,7 @@ class ExecutionGuard:
                 "action": action_type,
                 "actor_aegis_id": identity_id,
                 "actor_device_id": device_id,
-                "actor_role": role,
+                "actor_role": normalized_actor.get("role"),
                 "input": serializable_input or kwargs,
                 "status": "INTENT"
             }
@@ -72,6 +120,16 @@ class ExecutionGuard:
 
             return result
 
+        except PermissionError as e:
+            # ROLLBACK LOGIC for PermissionError (Policy/Logic failures after intent)
+            fail_payload = {
+                "action": action_type,
+                "actor_aegis_id": identity_id,
+                "error": str(e),
+                "status": "FAILED_ROLLBACK"
+            }
+            self.shadow.commit(f"{action_type}.failed", identity_id or "UNKNOWN", fail_payload)
+            raise
         except Exception as e:
             # ROLLBACK LOGIC
             fail_payload = {
@@ -84,7 +142,7 @@ class ExecutionGuard:
             raise RuntimeError(f"SOVEREIGN EXECUTION FAILED: {str(e)}")
         finally:
             # Clear context
-            _sovereign_context.set(None)
+            _sovereign_context.reset(token_var)
 
     @staticmethod
     def is_authorized() -> bool:
