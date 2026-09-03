@@ -2,6 +2,7 @@ import hashlib
 import json
 from copy import deepcopy
 from datetime import UTC, datetime
+from threading import RLock
 from typing import ClassVar
 
 
@@ -22,8 +23,13 @@ class ReadOnlyIngestionEngine:
         self._events = []
         self._seen = set()
         self._cursor = {}
+        self._lock = RLock()
 
     def ingest(self, *, tenant_id: str, source: str, cursor: int, records: list[dict]) -> dict:
+        with self._lock:
+            return self._ingest_locked(tenant_id=tenant_id, source=source, cursor=cursor, records=records)
+
+    def _ingest_locked(self, *, tenant_id: str, source: str, cursor: int, records: list[dict]) -> dict:
         if not tenant_id or not tenant_id.strip():
             raise ValueError("TENANT_REQUIRED")
         if source not in self.ALLOWED_SOURCES:
@@ -69,8 +75,9 @@ class ReadOnlyIngestionEngine:
     def read_events(self, *, tenant_id: str, source: str | None = None) -> tuple[dict, ...]:
         if source is not None and source not in self.ALLOWED_SOURCES:
             raise ValueError("SOURCE_NOT_ALLOWED")
-        return tuple(
-            deepcopy(event)
-            for event in self._events
-            if event["tenant_id"] == tenant_id and (source is None or event["source"] == source)
-        )
+        with self._lock:
+            return tuple(
+                deepcopy(event)
+                for event in self._events
+                if event["tenant_id"] == tenant_id and (source is None or event["source"] == source)
+            )
