@@ -30,9 +30,10 @@ function App() {
       setLoading(true);
       try {
         const res = await calculateFootprint(input, controller.signal);
+        if (controller.signal.aborted) return;
         setResult(res);
-      } catch (err: any) {
-        if (err.name === 'AbortError') return;
+      } catch (err: unknown) {
+        if (controller.signal.aborted || (err instanceof Error && err.name === 'AbortError')) return;
         console.error(err);
       } finally {
         if (!controller.signal.aborted) {

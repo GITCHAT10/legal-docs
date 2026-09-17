@@ -22,3 +22,6 @@ dist-ssr/
 # Editor
 .vscode/
 .idea/
+
+# Verification artifacts
+verification/

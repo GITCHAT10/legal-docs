@@ -1,0 +1,23 @@
+openapi: 3.0.0
+info:
+  title: iMOXON Consolidated Commerce API
+  version: 1.0.0-RC1
+paths:
+  /imoxon/suppliers/connect:
+    post:
+      summary: Connect a new supplier node
+  /imoxon/products/import:
+    post:
+      summary: Import raw products from supplier
+  /imoxon/products/approve:
+    post:
+      summary: Admin approval for product listing
+  /imoxon/catalog:
+    get:
+      summary: Retrieve the approved iMOXON catalog
+  /imoxon/pricing/landed-cost:
+    post:
+      summary: Calculate Maldives landed cost including tax
+  /imoxon/orders/create:
+    post:
+      summary: Create B2B or B2C order

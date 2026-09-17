@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iMOXON | Maldives Local Economy Engine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .glow { box-shadow: 0 0 15px rgba(59, 130, 246, 0.3); }
+        .bg-mnos { background-color: #0f172a; }
+        .aman-folio { background-color: #f8f5f0; color: #334155; font-family: 'Georgia', serif; }
+    </style>
+</head>
+<body class="bg-mnos text-slate-100 font-sans min-h-screen">
+
+    <nav class="border-b border-slate-700 p-4 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold tracking-tighter text-blue-400">iMOXON <span class="text-xs text-slate-500 font-mono">v1.2.0 (PRODUCTION AUDIT)</span></h1>
+            <div id="user-status" class="text-sm font-mono text-emerald-400">Not Logged In</div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <div class="lg:col-span-2 space-y-6">
+
+            <section class="bg-slate-800/50 p-6 rounded-xl border border-slate-700">
+                <h2 class="text-xl font-semibold mb-4 border-b border-slate-700 pb-2">1. AEGIS Onboarding</h2>
+                <div class="flex gap-4">
+                    <button onclick="onboard('LOCAL_USER')" class="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded font-medium transition">Register Local</button>
+                    <button onclick="onboard('TOURIST_USER')" class="bg-red-600 hover:bg-red-500 px-4 py-2 rounded font-medium transition">Try Tourist (Block)</button>
+                </div>
+            </section>
+
+            <section class="bg-slate-800/50 p-6 rounded-xl border border-slate-700">
+                <h2 class="text-xl font-semibold mb-4 border-b border-slate-700 pb-2">2. iMOXON MOVE (Transport)</h2>
+                <button onclick="requestRide()" class="w-full bg-slate-700 hover:bg-slate-600 py-3 rounded-lg text-lg font-bold">Request Local Taxi</button>
+                <div id="latest-folio" class="mt-4 hidden"></div>
+            </section>
+
+            <section class="bg-slate-800/50 p-6 rounded-xl border border-slate-700">
+                <h2 class="text-xl font-semibold mb-4 border-b border-slate-700 pb-2">3. Sovereign Infrastructure</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button onclick="signLease()" class="bg-slate-700 p-4 rounded border border-slate-600 hover:border-blue-400 transition">
+                        <div class="text-sm font-bold text-blue-300">IMOXON LEX</div>
+                        <div class="text-xs text-slate-400 mt-1">Sign Lease Agreement</div>
+                    </button>
+                    <button onclick="activateHMS()" class="bg-slate-700 p-4 rounded border border-slate-600 hover:border-emerald-400 transition">
+                        <div class="text-sm font-bold text-emerald-300">iSKY HMS</div>
+                        <div class="text-xs text-slate-400 mt-1">Activate Hospitality SaaS</div>
+                    </button>
+                </div>
+            </section>
+
+        </div>
+
+        <div class="space-y-6">
+            <section class="bg-slate-900 p-6 rounded-xl border border-blue-500/30 glow h-[80vh] flex flex-col">
+                <h2 class="text-xl font-semibold mb-4 text-blue-400 flex items-center">
+                    <span class="mr-2">📡</span> AEGIS DOME
+                </h2>
+                <div id="event-log" class="flex-grow overflow-y-auto space-y-2 font-mono text-[10px]"></div>
+                <div class="mt-4 pt-4 border-t border-slate-800">
+                    <div class="flex justify-between text-[10px] font-mono">
+                        <span>INTEGRITY: <span id="integrity-status" class="text-emerald-400">SECURE</span></span>
+                        <span>FCE: <span class="text-blue-400">MIRA COMPLIANT</span></span>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+    </main>
+
+    <script>
+        let currentUser = null;
+        const API_BASE = "";
+
+        async function onboard(role) {
+            const res = await fetch(`${API_BASE}/auth/onboard?name=Adam&role=${role}&device_id=trusted-101`, {method: 'POST'});
+            const data = await res.json();
+            if(res.ok) {
+                currentUser = {did: data.did, role: role, device_id: "trusted-101"};
+                document.getElementById('user-status').innerText = `${role}: ${data.did.slice(0,8)}`;
+                logEvent("AEGIS.ACTOR_ONBOARDED", data);
+            } else {
+                alert(`AEGIS BLOCK: ${data.detail}`);
+                logEvent("AEGIS.DENIED", data);
+            }
+        }
+
+        async function requestRide() {
+            if(!currentUser) return alert("Onboard first!");
+            const res = await fetch(`${API_BASE}/move/ride?user=${currentUser.did}&dev=${currentUser.device_id}&role=${currentUser.role}&src=Male&dst=Airport`, {
+                method: 'POST',
+                headers: {
+                    'X-MNOS-USER': currentUser.did,
+                    'X-MNOS-DEVICE': currentUser.device_id,
+                    'X-MNOS-ROLE': currentUser.role
+                }
+            });
+            const data = await res.json();
+            renderFolio(data.ride);
+            logEvent("IMOXON.MOVE.RIDE", data.ride);
+        }
+
+        async function signLease() {
+            if(!currentUser) return alert("Onboard first!");
+            const res = await fetch(`${API_BASE}/lex/lease?landlord=${currentUser.did}&tenant=did:mnos:tenant&prop=villa-7`, {
+                method: 'POST',
+                headers: {
+                    'X-MNOS-USER': currentUser.did,
+                    'X-MNOS-DEVICE': currentUser.device_id,
+                    'X-MNOS-ROLE': currentUser.role
+                }
+            });
+            const data = await res.json();
+            logEvent("IMOXON.LEX.LEASE", data.lease);
+            alert("Lease Signed via IMOXON LEX.");
+        }
+
+        async function activateHMS() {
+            if(!currentUser) return alert("Onboard first!");
+            const res = await fetch(`${API_BASE}/isky/activate?operator=${currentUser.did}`, {method: 'POST'});
+            const data = await res.json();
+            logEvent("ISKY.HMS_ACTIVATED", data.activation);
+            alert("iSKY Cloud HMS Active.");
+        }
+
+        function renderFolio(ride) {
+            const container = document.getElementById('latest-folio');
+            container.classList.remove('hidden');
+            container.innerHTML = `
+                <div class="aman-folio p-6 mt-4 rounded shadow-xl border-t-2 border-slate-300 text-xs">
+                    <div class="font-serif text-lg mb-4">Transaction Folio</div>
+                    <div class="flex justify-between mb-1"><span>Base Fare</span><span>${ride.pricing.base_price} MVR</span></div>
+                    <div class="flex justify-between mb-1"><span>Service Charge</span><span>${ride.pricing.service_charge} MVR</span></div>
+                    <div class="flex justify-between mb-1"><span>GGST (8%)</span><span>${ride.pricing.tax} MVR</span></div>
+                    <div class="border-t border-slate-300 mt-2 pt-2 flex justify-between font-bold">
+                        <span>Total Settlement</span><span>${ride.pricing.total} MVR</span>
+                    </div>
+                    <div class="mt-4 text-[10px] text-slate-400">TXN: ${ride.pricing.transaction_id} | MIRA Compliant</div>
+                </div>
+            `;
+        }
+
+        function logEvent(type, payload) {
+            const log = document.getElementById('event-log');
+            const entry = document.createElement('div');
+            entry.className = 'p-2 bg-slate-800 border-l-2 border-blue-500 mb-2';
+            entry.innerHTML = `<div class="text-blue-400 font-bold">${type}</div><pre class="text-emerald-500 overflow-hidden text-[8px]">${JSON.stringify(payload, null, 2)}</pre>`;
+            log.prepend(entry);
+        }
+
+        setInterval(async () => {
+            try {
+                const res = await fetch(`${API_BASE}/health`);
+                const data = await res.json();
+                document.getElementById('integrity-status').innerText = data.shadow_integrity ? 'SECURE' : 'COMPROMISED';
+            } catch(e) {}
+        }, 5000);
+    </script>
+</body>
+</html>

@@ -7,10 +7,14 @@ interface Props {
 }
 
 export const CalculatorForm: React.FC<Props> = ({ setInput }) => {
-  const handleNestedChange = (category: keyof FootprintInput, field: string, value: any) => {
+  const handleNestedChange = <K extends Exclude<keyof FootprintInput, 'island_id'>>(
+    category: K,
+    field: keyof NonNullable<FootprintInput[K]>,
+    value: number,
+  ) => {
     setInput(prev => ({
       ...prev,
-      [category]: { ...(prev[category] as any), [field]: value }
+      [category]: { ...prev[category], [field]: value }
     }));
   };
 
