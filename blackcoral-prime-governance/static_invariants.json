@@ -1,0 +1,47 @@
+{
+  "schema_version": "1.0.0",
+  "classification": "GOVERNANCE_SPECIFICATION_ONLY",
+  "authority": {
+    "agents_may_approve": false,
+    "agents_may_merge": false,
+    "agents_may_deploy": false,
+    "agents_may_trade": false,
+    "agents_may_sign_transactions": false,
+    "human_approval_required": true,
+    "minimum_human_approvers": 2
+  },
+  "credential_boundary": {
+    "production_secrets_available_to_research": false,
+    "broker_credentials_available": false,
+    "bank_credentials_available": false,
+    "custody_credentials_available": false,
+    "wallet_private_keys_available": false
+  },
+  "environment_boundary": {
+    "research_only": true,
+    "network_egress_default": "deny",
+    "approved_data_sources_only": true,
+    "ephemeral_execution": true,
+    "resource_limits_required": true
+  },
+  "change_control": {
+    "agents_may_modify_this_file": false,
+    "signed_human_change_record_required": true,
+    "legal_review_required_for_regulated_scope": true,
+    "independent_risk_review_required": true
+  },
+  "promotion": {
+    "automatic_promotion_to_production": false,
+    "sharpe_improvement_is_sufficient": false,
+    "independent_reproduction_required": true,
+    "investment_committee_record_required": true,
+    "approval_expiry_required": true,
+    "rollback_plan_required": true
+  },
+  "tokenization": {
+    "production_issuance_enabled": false,
+    "smart_contract_deployment_enabled": false,
+    "investor_eligibility_decision_by_agent": false,
+    "jurisdiction_specific_legal_opinion_required": true
+  }
+}
