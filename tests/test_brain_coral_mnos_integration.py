@@ -9,13 +9,12 @@ client = TestClient(app)
 @pytest.fixture(autouse=True)
 def isolate_bridge_rate_limit():
     # The legacy gateway uses a process-global request counter without a time window.
-    # Restore the counter after each integration test to avoid leaking traffic into other suites.
-    before = gateway.rate_limits.copy()
+    # Reset the shared process counter after each integration test.
+    gateway.rate_limits.clear()
     try:
         yield
     finally:
         gateway.rate_limits.clear()
-        gateway.rate_limits.update(before)
 
 
 def test_brain_coral_can_read_operational_status(create_verified_identity):
