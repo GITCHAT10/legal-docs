@@ -26,6 +26,8 @@ from mnos.modules.imoxon.core.engine import (
 )
 from mnos.modules.imoxon.procurement.engine import ProcurementEngine
 from mnos.modules.imoxon.resort.weekly_system import ResortWeeklyOrderSystem
+from mnos.modules.brain_coral.integration import BrainCoralMnosBridge, MNOSIntegrationHub
+from mnos.api.brain_coral import create_brain_coral_router
 
 # Finance RC1
 from mnos.modules.finance.payment_layer import PaymentAbstractionLayer
@@ -126,10 +128,14 @@ vvip_engine = VVIPKeyEngine(imoxon)
 reinvestment_engine = RevenueReinvestmentEngine(imoxon)
 laundry_engine = MaldivesLaundryEngine(imoxon, mars_unified)
 heatmap_engine = GlobalDemandHeatmap(imoxon, island_gm, mira_bridge, reinvestment_engine)
+brain_coral_bridge = BrainCoralMnosBridge(imoxon, shadow_core, events_core)
+mnos_hub = MNOSIntegrationHub(shadow_core, events_core)
 
 imoxon.mira_bridge = mira_bridge
 imoxon.vvip_engine = vvip_engine
 imoxon.reinvestment = reinvestment_engine
+imoxon.brain_coral = brain_coral_bridge
+imoxon.mnos_hub = mnos_hub
 
 # Bubble OS
 intent_engine = ChatIntentEngine(imoxon)
@@ -275,6 +281,7 @@ app.include_router(create_leaderboard_router(leaderboard, get_actor_ctx), prefix
 app.include_router(create_b2b_portal_router(mars_unified, b2b_negotiator, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_heatmap_router(heatmap_engine, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_laundry_router(laundry_engine, get_actor_ctx), prefix="/imoxon")
+app.include_router(create_brain_coral_router(brain_coral_bridge, get_actor_ctx), prefix="/imoxon")
 
 # Error handlers
 @app.exception_handler(PermissionError)
