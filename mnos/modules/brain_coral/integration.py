@@ -72,6 +72,8 @@ class BrainCoralMnosBridge:
         This is the safe BRAIN CORAL pattern: request, audit, and queue for an
         authorized human/system workflow rather than bypassing ExecutionGuard.
         """
+        if not isinstance(request_data, dict) or not isinstance(request_data.get("target"), str) or not request_data["target"].strip():
+            raise ValueError("non-empty target is required")
         return self.core.execute_commerce_action(
             "brain_coral.action.request",
             actor_ctx,
