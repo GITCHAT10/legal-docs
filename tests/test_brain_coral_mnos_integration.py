@@ -1,8 +1,21 @@
+import pytest
 from fastapi.testclient import TestClient
 
-from main import app, brain_coral_bridge, mnos_hub, shadow_core
+from main import app, brain_coral_bridge, gateway, mnos_hub, shadow_core
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def isolate_bridge_rate_limit():
+    # The legacy gateway uses a process-global request counter without a time window.
+    # Restore the counter after each integration test to avoid leaking traffic into other suites.
+    before = gateway.rate_limits.copy()
+    try:
+        yield
+    finally:
+        gateway.rate_limits.clear()
+        gateway.rate_limits.update(before)
 
 
 def test_brain_coral_can_read_operational_status(create_verified_identity):
@@ -84,3 +97,22 @@ def test_brain_coral_safe_request_is_queued(create_verified_identity):
     payload = response.json()
     assert payload["status"] == "QUEUED_FOR_GOVERNED_REVIEW"
     assert payload["request_id"] in brain_coral_bridge.action_requests
+
+
+@pytest.mark.parametrize("target", ["procurement.order.approve", "imoxon.payment.release", "finance.refund.approve", "ops.summary.review.extra"])
+def test_unknown_or_protected_action_rejected(create_verified_identity, target):
+    identity = create_verified_identity("Brain Coral Reviewer", "brain_coral")
+    response = client.post(
+        "/imoxon/brain-coral/action-request", headers=identity["headers"],
+        json={"target": target, "intent": "review", "payload": {}},
+    )
+    assert response.status_code == 403
+
+
+@pytest.mark.parametrize("body", [{}, {"payload": {}}, {"target": "  "}])
+def test_missing_target_rejected(create_verified_identity, body):
+    identity = create_verified_identity("Brain Coral Reviewer", "brain_coral")
+    response = client.post(
+        "/imoxon/brain-coral/action-request", headers=identity["headers"], json=body,
+    )
+    assert response.status_code == 400
