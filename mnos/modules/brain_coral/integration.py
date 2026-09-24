@@ -1,8 +1,11 @@
 from datetime import UTC, datetime
+from uuid import uuid4
 from typing import Any, Dict
 
 from mnos.shared.execution_guard import authorized_context
 
+
+ALLOWED_REVIEW_TARGETS = {"ops.summary.review"}
 
 RESTRICTED_MUTATION_TARGETS = {
     "finance.release",
@@ -77,13 +80,19 @@ class BrainCoralMnosBridge:
         )
 
     def _request_governed_action(self, request_data: dict) -> dict:
+        if not isinstance(request_data, dict):
+            raise ValueError("request body must be an object")
         target = request_data.get("target")
-        if target in RESTRICTED_MUTATION_TARGETS:
+        if not isinstance(target, str) or not target.strip():
+            raise ValueError("non-empty target is required")
+        target = target.strip()
+        # Explicit review-only allowlist. Unknown action identifiers fail closed.
+        if target not in ALLOWED_REVIEW_TARGETS:
             raise PermissionError(
                 f"BRAIN CORAL read-only boundary: direct mutation blocked for {target}"
             )
 
-        request_id = f"BC-REQ-{len(self.action_requests) + 1:06d}"
+        request_id = f"BC-REQ-{uuid4()}"
         record = {
             "request_id": request_id,
             "target": target,
@@ -130,7 +139,7 @@ class MNOSIntegrationHub:
         }
         with authorized_context(actor):
             self.shadow.commit("mnos.internal.sync.completed", actor["identity_id"], record)
-            self.events.publish("mnos.internal_sync.completed", record, partition="MNOS")
+            self.events.publish("mnos.internal.sync.completed", record, partition="MNOS")
 
         self.sync_log.append(record)
         return record
