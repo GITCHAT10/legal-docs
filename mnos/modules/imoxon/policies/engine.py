@@ -6,6 +6,14 @@ class IdentityPolicyEngine:
         identity_id = context.get("identity_id")
         context.get("device_id")
 
+        # BRAIN CORAL intelligence actions are read/request only.
+        brain_coral_actions = ["brain_coral.operational.read", "brain_coral.action.request"]
+        if action_type in brain_coral_actions:
+            if not self._has_role(identity_id, "brain_coral") and not self._has_role(identity_id, "admin"):
+                return False, "Action requires BRAIN CORAL or admin role"
+            if not self._is_verified(identity_id):
+                return False, "BRAIN CORAL actor must be verified"
+
         # B2B / Commercial actions
         b2b_actions = ["b2b.rfq", "b2b.booking.confirm"]
         if action_type in b2b_actions:
