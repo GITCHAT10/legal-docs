@@ -51,6 +51,9 @@ jobs:
     - name: Run Sovereign Regression Tests
       run: python -m pytest -q
 
+    - name: Lint staging console security boundary
+      run: ruff check staging_console.py tests/test_staging_console.py
+
     - name: Lint UAT release modules
       run: ruff check mnos/modules/commissioning mnos/modules/ingestion mnos/modules/imoxon/procurement/engine.py tests/test_commissioning_gate.py tests/test_read_only_ingestion.py tests/test_uat_load_isolation.py tests/test_united_transport_invoicing.py
 
