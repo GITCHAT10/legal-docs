@@ -1,0 +1,1 @@
+"""Isolated emergency dispatch simulation."""
