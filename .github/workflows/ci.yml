@@ -15,6 +15,10 @@ jobs:
   auditExpected:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      NEXGEN_SECRET: ci-only-nonproduction-test-value
+      MNOS_ENV: local
+      MNOS_ENABLE_SIMULATED_IDENTITY: '1'
 
     steps:
     - uses: actions/checkout@v4
