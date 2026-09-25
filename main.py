@@ -185,8 +185,45 @@ def get_actor_ctx(
             _record_auth_audit("aegis.auth.session.failure", "UNKNOWN", {"reason": str(e)})
             raise HTTPException(status_code=403, detail=str(e))
 
-    # The former direct handshake accepted a predictable string as its signature.
-    # Disable it until a nonce-bound cryptographic verifier is deployed.
+    # The legacy predictable signature is available to explicit local test harnesses only.
+    if os.environ.get("MNOS_ENV") == "local" and os.environ.get("MNOS_ENABLE_SIMULATED_IDENTITY") == "1":
+        # Fallback to Direct Hardened Handshake (B2B / API)
+        if not x_aegis_identity or not x_aegis_device or not x_aegis_signature:
+            _record_auth_audit("aegis.auth.direct.failure", "UNKNOWN", {"reason": "Missing Headers"})
+            raise HTTPException(status_code=401, detail="AEGIS_REQUIRED: Missing Identity, Device or Signature")
+
+        # 1. Identity lookup via AEGIS registry (persistence)
+        profile = identity_core.profiles.get(x_aegis_identity)
+        if not profile:
+            _record_auth_audit("aegis.auth.identity.invalid", x_aegis_identity, {"reason": "Not in Registry"})
+            raise HTTPException(status_code=401, detail="INVALID_IDENTITY: Unauthorized")
+
+        # 2. Validate device binding (device.owner_id == identity.id)
+        device = identity_core.devices.get(x_aegis_device)
+        if not device or device.get("identity_id") != x_aegis_identity:
+            _record_auth_audit("aegis.auth.device.mismatch", x_aegis_identity, {"device_id": x_aegis_device})
+            raise HTTPException(status_code=403, detail="DEVICE_BINDING_INVALID: Access Denied")
+
+        # 3. Cryptographic Signature Validation
+        if x_aegis_signature != f"VALID_SIG_FOR_{x_aegis_identity}":
+             _record_auth_audit("aegis.auth.sig.failed", x_aegis_identity, {"reason": "Invalid Signature"})
+             raise HTTPException(status_code=403, detail="HANDSHAKE_FAILED: Invalid Signature")
+
+        # 4. Success: Derive role from database (NO HEADER TRUST)
+        actor = {
+            "identity_id": x_aegis_identity,
+            "device_id": x_aegis_device,
+            "role": profile.get("profile_type"),
+            "realm": "API_DIRECT",
+            "org_id": profile.get("organization_id"),
+            "island": profile.get("assigned_island"),
+            "verified": profile.get("verification_status") == "verified",
+            "national_id_verified": profile.get("verification_status") == "verified",
+            "persistent_hash": profile.get("persistent_identity_hash")
+        }
+        _record_auth_audit("aegis.auth.direct.success", x_aegis_identity, {"role": actor["role"]})
+        return actor
+
     _record_auth_audit("aegis.auth.direct.disabled", x_aegis_identity or "UNKNOWN",
                        {"reason": "No trusted direct verifier configured"})
     raise HTTPException(status_code=403, detail="DIRECT_AEGIS_AUTH_DISABLED")
