@@ -71,9 +71,7 @@ app = FastAPI(title="iMOXON N-DEOS: Consolidated Architecture Final")
 # In development, we allow a fallback, but the auditor flagged the hardcoded string.
 NEXGEN_SECRET = os.environ.get("NEXGEN_SECRET")
 if not NEXGEN_SECRET:
-    # Explicitly check for dev mode or similar if allowed, else raise
-    # For this submission, we enforce existence or a safer placeholder.
-    os.environ["NEXGEN_SECRET"] = "FALLBACK-DEV-SECRET-NOT-FOR-PROD"
+    raise RuntimeError("NEXGEN_SECRET must be configured before the API starts")
 
 fce_core = FCEEngine()
 shadow_core = ShadowLedger()
@@ -187,42 +185,11 @@ def get_actor_ctx(
             _record_auth_audit("aegis.auth.session.failure", "UNKNOWN", {"reason": str(e)})
             raise HTTPException(status_code=403, detail=str(e))
 
-    # Fallback to Direct Hardened Handshake (B2B / API)
-    if not x_aegis_identity or not x_aegis_device or not x_aegis_signature:
-        _record_auth_audit("aegis.auth.direct.failure", "UNKNOWN", {"reason": "Missing Headers"})
-        raise HTTPException(status_code=401, detail="AEGIS_REQUIRED: Missing Identity, Device or Signature")
-
-    # 1. Identity lookup via AEGIS registry (persistence)
-    profile = identity_core.profiles.get(x_aegis_identity)
-    if not profile:
-        _record_auth_audit("aegis.auth.identity.invalid", x_aegis_identity, {"reason": "Not in Registry"})
-        raise HTTPException(status_code=401, detail="INVALID_IDENTITY: Unauthorized")
-
-    # 2. Validate device binding (device.owner_id == identity.id)
-    device = identity_core.devices.get(x_aegis_device)
-    if not device or device.get("identity_id") != x_aegis_identity:
-        _record_auth_audit("aegis.auth.device.mismatch", x_aegis_identity, {"device_id": x_aegis_device})
-        raise HTTPException(status_code=403, detail="DEVICE_BINDING_INVALID: Access Denied")
-
-    # 3. Cryptographic Signature Validation
-    if x_aegis_signature != f"VALID_SIG_FOR_{x_aegis_identity}":
-         _record_auth_audit("aegis.auth.sig.failed", x_aegis_identity, {"reason": "Invalid Signature"})
-         raise HTTPException(status_code=403, detail="HANDSHAKE_FAILED: Invalid Signature")
-
-    # 4. Success: Derive role from database (NO HEADER TRUST)
-    actor = {
-        "identity_id": x_aegis_identity,
-        "device_id": x_aegis_device,
-        "role": profile.get("profile_type"),
-        "realm": "API_DIRECT",
-        "org_id": profile.get("organization_id"),
-        "island": profile.get("assigned_island"),
-        "verified": profile.get("verification_status") == "verified",
-        "national_id_verified": profile.get("verification_status") == "verified",
-        "persistent_hash": profile.get("persistent_identity_hash")
-    }
-    _record_auth_audit("aegis.auth.direct.success", x_aegis_identity, {"role": actor["role"]})
-    return actor
+    # The former direct handshake accepted a predictable string as its signature.
+    # Disable it until a nonce-bound cryptographic verifier is deployed.
+    _record_auth_audit("aegis.auth.direct.disabled", x_aegis_identity or "UNKNOWN",
+                       {"reason": "No trusted direct verifier configured"})
+    raise HTTPException(status_code=403, detail="DIRECT_AEGIS_AUTH_DISABLED")
 
 # --- Consolidated APIs ---
 
@@ -267,7 +234,10 @@ async def chat_message(message: str, actor: dict = Depends(get_actor_ctx)):
     return chat_os.process_message(actor, message)
 
 # --- Routers ---
-app.include_router(create_identity_router(identity_core, policy_engine, identity_gateway), prefix="/imoxon")
+# Identity administration and simulated login must not be exposed in the normal API.
+# They remain available only for explicit local development simulations.
+if os.environ.get("MNOS_ENV") == "local" and os.environ.get("MNOS_ENABLE_SIMULATED_IDENTITY") == "1":
+    app.include_router(create_identity_router(identity_core, policy_engine, identity_gateway), prefix="/imoxon")
 app.include_router(create_commerce_router(imoxon, catalog, merchant, pos, procurement, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_finance_router(fce_hardened, mira_bridge, get_actor_ctx), prefix="/imoxon")
 app.include_router(create_specialized_router(tourism, faith, transport, housing, exchange, education, get_actor_ctx), prefix="/imoxon")
