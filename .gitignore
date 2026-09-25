@@ -2,3 +2,7 @@ __pycache__/
 *.pyc
 *.log
 verification/
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
