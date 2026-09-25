@@ -1,7 +1,7 @@
 import pytest
 from fastapi import HTTPException
 
-from main import get_actor_ctx, identity_core
+from main import get_actor_ctx
 
 
 def test_predictable_direct_signature_rejected_outside_local_simulation(monkeypatch):
